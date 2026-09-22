@@ -1,0 +1,364 @@
+/* ════════════════════════════════════════
+   GLOBAL & SCROLLBAR
+════════════════════════════════════════ */
+:root {
+   scrollbar-width: thin;
+   scrollbar-color: #dce0f0 transparent;
+}
+
+.dark {
+   scrollbar-color: #2a3047 transparent;
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+   width: 8px;
+   height: 8px;
+}
+
+::-webkit-scrollbar-track {
+   background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+   background-color: #dce0f0;
+   border-radius: 20px;
+   border: 2px solid transparent;
+   background-clip: content-box;
+   transition: background-color 0.2s;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+   background-color: #2a3047;
+}
+
+::-webkit-scrollbar-thumb:hover {
+   background-color: #b4bcd0;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+   background-color: #353d5a;
+}
+
+/* ════════════════════════════════════════
+   FULLCALENDAR OVERRIDES
+════════════════════════════════════════ */
+.fc {
+   font-family: 'Poppins', sans-serif !important;
+}
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+   border-color: #dce0f0 !important;
+}
+
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+   border-color: #2a3047 !important;
+}
+
+.fc .fc-toolbar-title {
+   font-size: 1.1rem !important;
+   font-weight: 700 !important;
+}
+
+.fc .fc-button {
+   background-color: #f4f6fc !important;
+   border: 1px solid #dce0f0 !important;
+   color: #5b6380 !important;
+   padding: 0.375rem 0.75rem !important;
+   border-radius: 0.5rem !important;
+   font-size: 0.75rem !important;
+   font-weight: 500 !important;
+   transition: all 0.15s !important;
+}
+
+.dark .fc .fc-button {
+   background-color: #1f2436 !important;
+   border-color: #2a3047 !important;
+   color: #8b93b5 !important;
+}
+
+.fc .fc-button:hover {
+   background-color: #eaecf6 !important;
+   border-color: #b4bcd0 !important;
+   color: #1a1e30 !important;
+}
+
+.dark .fc .fc-button:hover {
+   background-color: #252a3d !important;
+   border-color: #353d5a !important;
+   color: #ffffff !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+   background-color: #5b7fff !important;
+   border-color: #5b7fff !important;
+   color: #ffffff !important;
+}
+
+.fc .fc-button:focus {
+   box-shadow: none !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+   font-size: 10px !important;
+   text-transform: uppercase !important;
+   letter-spacing: 0.05em !important;
+   font-weight: 700 !important;
+   color: #5b6380 !important;
+   text-decoration: none !important;
+   padding: 0.5rem 0 !important;
+   display: block !important;
+}
+
+.dark .fc .fc-col-header-cell-cushion {
+   color: #8b93b5 !important;
+}
+
+.fc .fc-daygrid-day-number {
+   font-size: 0.75rem !important;
+   font-weight: 500 !important;
+   /* color: #5b6380 !important; */
+   text-decoration: none !important;
+   padding: 0.375rem !important;
+}
+
+.dark .fc .fc-daygrid-day-number {
+   /* color: #8b93b5 !important; */
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+   /* color: #5b7fff !important; */
+   font-weight: 700 !important;
+}
+
+.fc-event {
+   border-radius: 6px !important;
+   border: none !important;
+   padding: 2px 4px !important;
+   min-height: 28px !important;
+   display: flex !important;
+   align-items: center !important;
+}
+
+.fc-event-main {
+   width: 100% !important;
+   overflow: hidden !important;
+}
+
+.fc-event-main img {
+   pointer-events: none !important;
+}
+
+.fc-daygrid-event-dot {
+   display: none !important;
+}
+
+/* ════════════════════════════════════════
+   MODAL TRANSITIONS
+════════════════════════════════════════ */
+#add-modal-bg.open,
+#settings-modal-bg.open,
+#edit-modal-bg.open {
+   opacity: 1 !important;
+   pointer-events: auto !important;
+}
+
+#add-modal-bg.open>div,
+#settings-modal-bg.open>div,
+#edit-modal-bg.open>div {
+   transform: translateY(0) scale(1) !important;
+}
+/* Toast notification */
+#toast {
+  animation: slideIn 0.3s ease;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Context menu */
+#booking-context-menu {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+
+#booking-context-menu button {
+  transition: all 0.15s ease;
+}
+
+#booking-context-menu button:hover {
+  background-color: rgba(91, 127, 255, 0.1);
+}
+
+/* Enhanced modal transitions */
+#edit-modal-bg.open .bg-white,
+#edit-modal-bg.open .dark\:bg-\[\#181c27\] {
+  transform: translateY(0) scale(1);
+}
+
+/* Date inputs styling */
+input[type="date"] {
+  color-scheme: dark;
+  font-family: 'Poppins', sans-serif;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+  cursor: pointer;
+}
+
+/* Hover effects for booking items */
+#booking-list > div {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+#booking-list > div:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+#booking-list > div::after {
+  content: '⋮';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  color: #9aa0bb;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#booking-list > div:hover::after {
+  opacity: 1;
+}
+
+/* Empty state styling */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9aa0bb;
+}
+
+.empty-state .icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* Modal open state */
+#edit-modal-bg.open,
+#add-modal-bg.open,
+#settings-modal-bg.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#edit-modal-bg.open .bg-white,
+#add-modal-bg.open .bg-white,
+#settings-modal-bg.open .bg-white,
+#edit-modal-bg.open .dark\:bg-\[\#181c27\],
+#add-modal-bg.open .dark\:bg-\[\#181c27\],
+#settings-modal-bg.open .dark\:bg-\[\#181c27\] {
+  transform: translateY(0) scale(1);
+}
+
+/* Overlap color */
+.bg-overlap {
+  background-color: #f59e0b;
+}
+
+.text-overlap {
+  color: #f59e0b;
+}
+
+/* Success color */
+.text-success {
+  color: #10b981;
+}
+
+/* Animation for loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Tooltip transitions */
+#tooltip {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Custom scrollbar for modals */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f4f6fc;
+  border-radius: 10px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #c0c6d9;
+  border-radius: 10px;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-track {
+  background: #1f2436;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #4e5675;
+}
+/* Edit source modal styling */
+#edit-source-modal-bg.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#edit-source-modal-bg.open .bg-white,
+#edit-source-modal-bg.open .dark\:bg-\[\#181c27\] {
+  transform: translateY(0) scale(1);
+}
+
+/* Source list buttons */
+#source-list button {
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+#source-list button:hover {
+  transform: scale(1.05);
+}
+
+/* Edit button specific styling */
+#source-list button[title="Edit source"]:hover {
+  color: #5b7fff;
+  background-color: rgba(91, 127, 255, 0.1);
+}
+

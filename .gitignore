@@ -1,0 +1,101 @@
+##########################
+# Dependencies (regenerated via composer install / npm on server or locally)
+##########################
+checkin/vendor/
+cleaning/vendor/
+**/node_modules/
+checkin/npm/
+cleaning/npm/
+checkin/php/
+cleaning/php/
+checkin/composer/
+cleaning/composer/
+
+##########################
+# Environment / secrets
+##########################
+checkin/.env
+cleaning/.env
+*.env.backup
+*.env.bak
+
+##########################
+# Laravel runtime/cache (regenerated automatically)
+##########################
+checkin/bootstrap/cache/*.php
+cleaning/bootstrap/cache/*.php
+checkin/storage/framework/cache/data/*
+cleaning/storage/framework/cache/data/*
+checkin/storage/framework/sessions/*
+cleaning/storage/framework/sessions/*
+checkin/storage/framework/views/*
+cleaning/storage/framework/views/*
+checkin/storage/logs/*
+cleaning/storage/logs/*
+!checkin/storage/logs/.gitkeep
+!cleaning/storage/logs/.gitkeep
+checkin/.phpunit.result.cache
+cleaning/.phpunit.result.cache
+error_log
+**/error_log
+
+##########################
+# User-uploaded content (ships via DB/storage backup-restore, not git)
+##########################
+checkin/storage/app/public/*
+cleaning/storage/app/public/*
+!checkin/storage/app/public/.gitkeep
+!cleaning/storage/app/public/.gitkeep
+# Legacy duplicate upload dirs (should not exist going forward, but ignore defensively)
+cleaning/public/files/
+cleaning/public/storage/
+checkin/public/storage/
+
+##########################
+# Backups, dumps, one-off exports — should never be web-deployed
+##########################
+*backup*
+*.sql
+*.sql.gz
+*.zip
+!cleaning/public/vendor/ffmpeg/**/*.zip
+**/storage_backup*/
+**/*broken_backup*/
+
+##########################
+# Loose debug/admin scripts (should not exist in app root going forward)
+##########################
+debug_live_server.php
+scanner.php
+assign_role.php
+list_users.php
+read_log.php
+check_all_images.php
+find_missing_image.php
+reoptimize_videos.php
+update_property_queries.php
+clear_cache.php
+phpinfo.php
+test-alpine.html
+
+##########################
+# Editor/OS junk, stray backup file patterns (student dev's .bak26 habit)
+##########################
+.DS_Store
+Thumbs.db
+*.bak
+*.bak*
+*.backup
+
+##########################
+# Dev-only launcher scripts (not used on cPanel)
+##########################
+*.bat
+*.ps1
+docker-compose.yml
+Dockerfile
+render.yaml
+
+##########################
+# NOTE: public/build IS committed intentionally — no npm build step on cPanel
+# NOTE: composer.lock and package-lock.json ARE committed intentionally — reproducible installs

@@ -1,0 +1,377 @@
+{
+  "generatedAt": "2026-05-14T13:05:22.160Z",
+  "appBase": "http://127.0.0.1:8003",
+  "screenshots": [
+    {
+      "section": "Admin Screens",
+      "title": "Admin Login Page",
+      "caption": "Branded admin login with clean authentication flow.",
+      "file": "screenshots/01-admin-login-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Guide & Tour",
+      "title": "Interactive Tour Guide Highlight",
+      "caption": "First-time onboarding tour introduces the admin command center and navigation.",
+      "file": "screenshots/02-interactive-tour-guide-highlight-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Admin Dashboard Command Center",
+      "caption": "Stats, onboarding checklist, needs attention, recent guests, and quick actions.",
+      "file": "screenshots/03-admin-dashboard-command-center-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Dashboard Onboarding Checklist",
+      "caption": "Setup checklist keeps first-time owners focused on launch-critical steps.",
+      "file": "screenshots/04-dashboard-onboarding-checklist-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Dashboard Recent Activity Section",
+      "caption": "Recent system activity gives owners a clear audit trail from the dashboard.",
+      "file": "screenshots/05-dashboard-recent-activity-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Properties List Page",
+      "caption": "Professional property list with operational status and management actions.",
+      "file": "screenshots/06-properties-list-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Add Property Page",
+      "caption": "Grouped property form for address, GPS, branding, and guest instructions.",
+      "file": "screenshots/07-add-property-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Edit Property Page",
+      "caption": "Property editing screen with polished content sections and upload controls.",
+      "file": "screenshots/08-edit-property-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Guests Bookings List Page",
+      "caption": "Guest booking table with filters, statuses, dates, and quick actions.",
+      "file": "screenshots/09-guests-bookings-list-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Add Guest Booking Page",
+      "caption": "Admin can add bookings and generate secure private guest URLs.",
+      "file": "screenshots/10-add-guest-booking-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Guest Detail Page",
+      "caption": "Complete booking profile with status, actions, guest URL, preview links, and logs.",
+      "file": "screenshots/11-guest-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Guest Secure URL Card",
+      "caption": "Secure guest URL and copy controls for sending the check-in link.",
+      "file": "screenshots/12-guest-secure-url-card-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Guest Progress Timeline",
+      "caption": "Timeline communicates each guest milestone from booking through checkout.",
+      "file": "screenshots/13-guest-progress-timeline-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Manual GPS Override Section",
+      "caption": "Admin override workflow for guests whose GPS verification needs approval.",
+      "file": "screenshots/14-manual-gps-override-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Copy Guest Message Section",
+      "caption": "Ready-to-send guest message templates reduce admin friction.",
+      "file": "screenshots/15-copy-guest-message-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Categories List Page",
+      "caption": "Icon-based guide category management with ordering and activation controls.",
+      "file": "screenshots/16-categories-list-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Add Edit Category Page",
+      "caption": "Category form with icon selection, text, status, and ordering fields.",
+      "file": "screenshots/17-add-edit-category-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Amenities Manager Page",
+      "caption": "Content manager includes guide pages and property-specific amenity items.",
+      "file": "screenshots/18-amenities-manager-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Settings Page",
+      "caption": "Brand, contact, GPS radius, and default guest copy in one polished settings area.",
+      "file": "screenshots/19-settings-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Users Team Management List Page",
+      "caption": "Owner-only team management with roles, statuses, and invited admins.",
+      "file": "screenshots/20-users-team-management-list-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Create User Page",
+      "caption": "User creation form for role-based admin access.",
+      "file": "screenshots/21-create-user-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "User Detail Page",
+      "caption": "Team member profile with role, status, permissions, and activity context.",
+      "file": "screenshots/22-user-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Roles Permission Overview Section",
+      "caption": "Role explanations help owners understand access levels.",
+      "file": "screenshots/23-roles-permission-overview-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Activity Logs List Page",
+      "caption": "Audit log table for guest events, admin actions, and security records.",
+      "file": "screenshots/24-activity-logs-list-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Activity Log Detail Page",
+      "caption": "Single audit event view with actor, subject, metadata, and request context.",
+      "file": "screenshots/25-activity-log-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Admin Guide Page",
+      "caption": "Built-in help center with quick start, flow explanation, troubleshooting, and security notes.",
+      "file": "screenshots/26-admin-guide-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Profile Security Page",
+      "caption": "Security guidance, profile card, password/2FA readiness, and production notes.",
+      "file": "screenshots/27-profile-security-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "2FA Setup Page",
+      "caption": "Security screen prepared for two-factor authentication workflow.",
+      "file": "screenshots/28-2fa-setup-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Notification Bell Admin Notifications",
+      "caption": "Admin topbar includes operational notifications and pending work indicators.",
+      "file": "screenshots/29-notification-bell-admin-notifications-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Admin Screens",
+      "title": "Setup System Health Checklist",
+      "caption": "Go-live checklist helps confirm the client is ready for production use.",
+      "file": "screenshots/30-setup-system-health-checklist-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Guest Pre Check-In Page",
+      "caption": "Premium welcome screen with property branding, guest greeting, and check-in steps.",
+      "file": "screenshots/31-guest-pre-check-in-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Guest Email Photo ID Upload Section",
+      "caption": "The document upload section explains security and accepted file types clearly.",
+      "file": "screenshots/32-guest-email-photo-id-upload-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Guest Waiting Confirmation Page",
+      "caption": "Confirmation state explains that check-in details unlock on arrival day.",
+      "file": "screenshots/33-guest-waiting-confirmation-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Guest Check-In Day Arrival Page",
+      "caption": "Arrival page shows address, map, parking prompt, and GPS verification.",
+      "file": "screenshots/34-guest-check-in-day-arrival-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "GPS Verification Section",
+      "caption": "Location verification CTA gives guests a clear next step at the property.",
+      "file": "screenshots/35-gps-verification-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Parking Question Section",
+      "caption": "Parking question is shown cleanly when the booking does not yet have a parking response.",
+      "file": "screenshots/36-parking-question-section-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Checked In Success Page",
+      "caption": "After check-in, guests see instructions and can open the welcome guide.",
+      "file": "screenshots/37-checked-in-success-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Welcome Guide Dashboard",
+      "caption": "Icon-led guide dashboard with highlighted WiFi, parking, checkout, and contact categories.",
+      "file": "screenshots/38-welcome-guide-dashboard-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Checkout Day Page",
+      "caption": "Checkout day prioritizes departure instructions while preserving guide access.",
+      "file": "screenshots/39-checkout-day-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "WiFi Category Detail Page",
+      "caption": "WiFi guide page with readable rich content and quick category navigation.",
+      "file": "screenshots/40-wifi-category-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Amenities Category Detail Page",
+      "caption": "Amenities content and related cards are laid out for easy scanning.",
+      "file": "screenshots/41-amenities-category-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Restaurants Category Detail Page",
+      "caption": "Local restaurant recommendations are presented in a premium content page.",
+      "file": "screenshots/42-restaurants-category-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Bars Category Detail Page",
+      "caption": "Bar recommendations follow the same polished guide detail template.",
+      "file": "screenshots/43-bars-category-detail-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Parking Details Page",
+      "caption": "Parking instructions stay accessible after check-in.",
+      "file": "screenshots/44-parking-details-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Checkout Instructions Page",
+      "caption": "Checkout category page gives guests a focused departure reference.",
+      "file": "screenshots/45-checkout-instructions-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Contact Guest Services Page",
+      "caption": "Guest services category provides clear contact pathways.",
+      "file": "screenshots/46-contact-guest-services-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Guest Experience",
+      "title": "Invalid or Expired Guest Link Page",
+      "caption": "Branded error handling for invalid guest links instead of a raw framework screen.",
+      "file": "screenshots/47-invalid-or-expired-guest-link-page-desktop.png",
+      "viewport": "desktop"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Guest Mobile Pre Check-In",
+      "caption": "Mobile pre-check-in keeps cards compact and touch-friendly.",
+      "file": "screenshots/48-guest-mobile-pre-check-in-mobile.png",
+      "viewport": "mobile"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Guest Mobile Welcome Guide",
+      "caption": "Mobile guide dashboard uses a clean stacked icon-card layout.",
+      "file": "screenshots/49-guest-mobile-welcome-guide-mobile.png",
+      "viewport": "mobile"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Guest Mobile Category Detail",
+      "caption": "Category detail remains readable on phone-size screens.",
+      "file": "screenshots/50-guest-mobile-category-detail-mobile.png",
+      "viewport": "mobile"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Admin Mobile Dashboard",
+      "caption": "Admin dashboard stacks into a usable mobile command center.",
+      "file": "screenshots/51-admin-mobile-dashboard-mobile.png",
+      "viewport": "mobile"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Admin Mobile Guest Detail",
+      "caption": "Booking detail page remains usable on mobile for urgent operational work.",
+      "file": "screenshots/52-admin-mobile-guest-detail-mobile.png",
+      "viewport": "mobile"
+    },
+    {
+      "section": "Responsive Design",
+      "title": "Admin Tablet Dashboard",
+      "caption": "Tablet layout balances dashboard density and readability.",
+      "file": "screenshots/53-admin-tablet-dashboard-tablet.png",
+      "viewport": "tablet"
+    }
+  ]
+}
