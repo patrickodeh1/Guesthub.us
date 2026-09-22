@@ -1,58 +1,57 @@
 ##########################
-# Dependencies (regenerated via composer install / npm on server or locally)
+# Dependencies
 ##########################
-checkin/vendor/
+/vendor/
+/node_modules/
+/npm/
+/php/
+/composer/
 cleaning/vendor/
-**/node_modules/
-checkin/npm/
 cleaning/npm/
-checkin/php/
 cleaning/php/
-checkin/composer/
 cleaning/composer/
 
 ##########################
 # Environment / secrets
 ##########################
-checkin/.env
-cleaning/.env
+.env
 *.env.backup
 *.env.bak
+/auth.json
 
 ##########################
-# Laravel runtime/cache (regenerated automatically)
+# Laravel runtime/cache
 ##########################
-checkin/bootstrap/cache/*.php
+/bootstrap/cache/*.php
 cleaning/bootstrap/cache/*.php
-checkin/storage/framework/cache/data/*
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/logs/.gitkeep
 cleaning/storage/framework/cache/data/*
-checkin/storage/framework/sessions/*
 cleaning/storage/framework/sessions/*
-checkin/storage/framework/views/*
 cleaning/storage/framework/views/*
-checkin/storage/logs/*
 cleaning/storage/logs/*
-!checkin/storage/logs/.gitkeep
 !cleaning/storage/logs/.gitkeep
-checkin/.phpunit.result.cache
+/.phpunit.result.cache
 cleaning/.phpunit.result.cache
 error_log
 **/error_log
 
 ##########################
-# User-uploaded content (ships via DB/storage backup-restore, not git)
+# User-uploaded content
 ##########################
-checkin/storage/app/public/*
+/storage/app/public/*
+!/storage/app/public/.gitkeep
 cleaning/storage/app/public/*
-!checkin/storage/app/public/.gitkeep
 !cleaning/storage/app/public/.gitkeep
-# Legacy duplicate upload dirs (should not exist going forward, but ignore defensively)
-cleaning/public/files/
+/public/storage/
 cleaning/public/storage/
-checkin/public/storage/
+cleaning/public/files/
 
 ##########################
-# Backups, dumps, one-off exports — should never be web-deployed
+# Backups, dumps, and exports
 ##########################
 *backup*
 *.sql
@@ -63,7 +62,7 @@ checkin/public/storage/
 **/*broken_backup*/
 
 ##########################
-# Loose debug/admin scripts (should not exist in app root going forward)
+# Loose debug/admin scripts
 ##########################
 debug_live_server.php
 scanner.php
@@ -79,16 +78,25 @@ phpinfo.php
 test-alpine.html
 
 ##########################
-# Editor/OS junk, stray backup file patterns (student dev's .bak26 habit)
+# Editor/OS files and local caches
 ##########################
 .DS_Store
 Thumbs.db
+*.log
 *.bak
 *.bak*
 *.backup
+.phpactor.json
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+.aider*
 
 ##########################
-# Dev-only launcher scripts (not used on cPanel)
+# Dev-only launcher scripts
 ##########################
 *.bat
 *.ps1
@@ -97,5 +105,8 @@ Dockerfile
 render.yaml
 
 ##########################
-# NOTE: public/build IS committed intentionally — no npm build step on cPanel
-# NOTE: composer.lock and package-lock.json ARE committed intentionally — reproducible installs
+# Local helper scripts
+##########################
+find-changes-since.sh
+
+# public/build, composer.lock, and package-lock.json are committed intentionally.
