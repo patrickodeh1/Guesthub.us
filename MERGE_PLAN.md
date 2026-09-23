@@ -189,6 +189,122 @@ to become real tasks (14)**: see TASKS.md task-002/003/004.
 
 **Safe, no collisions, ready for straight copy (remaining ~51)**: see TASKS.md task-001.
 
+## App-layer collisions found on 2026-09-23 re-read (beyond schema layer)
+
+Re-cloned and read `cleaning/app`, `cleaning/resources`, `cleaning/routes`
+directly against current root. Schema-layer tasks (now called task-A001–007,
+see below) are done/deferred as before. These are the collisions the
+*application*-layer port (task-B*) has to handle — new since the last read:
+
+- **`app/Services/SmsNotificationService.php`** exists in both, unrelated
+  purposes (root: guest Telnyx SMS; cleaning: cleaner/session SMS). Resolved by
+  rename to `CleaningSmsNotificationService` — see task-B002.
+- **`resources/views/auth/login.blade.php`** exists in both — this is the real
+  fork point. Root's is a minimal custom login form/controller
+  (`AuthController@login`, hardcoded redirect to `admin.dashboard`). Cleaning's
+  is a full Laravel-Breeze-style auth suite (`Auth/` controller directory:
+  registration, password reset, email verification, forced password change,
+  7 view files). The client wants **one login page, one redirect-by-role**
+  (guest/cleaner/admin) — root's and cleaning's login pages cannot both stay
+  live at the same route. **Needs your decision — see Open Items below.**
+- **`resources/views/layouts/guest.blade.php`** exists in both, different
+  purposes (root's: guest booking-page shell with weather widget; cleaning's:
+  generic Breeze auth-page shell). Resolved by rename to
+  `layouts/cleaning-guest.blade.php` in cleaning's copy — see task-B006.
+- **`resources/views/admin/`, `components/`, `emails/`** directories exist in
+  both but contain no overlapping filenames inside them (checked file-by-file) —
+  these merge cleanly by just adding cleaning's files alongside root's existing
+  ones, no renames needed.
+- **`app/Http/Controllers/UserController.php`** (cleaning, guest/cleaner-facing
+  user self-service, 470 lines) vs **`app/Http/Controllers/Admin/UserController.php`**
+  (root, admin user management, 186 lines) — different paths, different
+  purposes, not a real collision, just worth noting they sound similar.
+- `routes/`: root has no `auth.php`; cleaning's `routes/auth.php` needs
+  registering in root's `routes/web.php` (or kept separate and required in),
+  once the login-system decision above is made — the routes it defines depend
+  entirely on which auth system wins.
+
+## DECISION MADE (2026-09-23): Option A — root's login stays as the single
+entry point, extended with role-based redirects. Cleaning's Breeze suite
+(registration, password reset, email verification, forced password change) is
+**not discarded** — it's kept and wired in as supplementary routes/controllers
+that a user reaches only after or alongside the one login page, not as a
+competing login page. Concretely:
+- `AuthController` (`showLogin`/`login`/`logout`) stays the only way to reach
+  an authenticated session. `views/auth/login.blade.php` stays the only login
+  form.
+- Root's `login()` method gains a role-based redirect (see task-B005) instead
+  of its current hardcoded `route('admin.dashboard')`.
+- Cleaning's `Auth/` controllers and views are copied over, but their
+  `login`/`logout`/register-facing routes that would duplicate root's login
+  are **not** registered — only the supplementary ones are: password reset
+  (`PasswordResetLinkController`, `NewPasswordController`), email verification
+  (`EmailVerificationPromptController`, `EmailVerificationNotificationController`,
+  `VerifyEmailController`), forced password change
+  (`ForcePasswordChangeController`), and the in-session password-change form
+  (`PasswordController`/`ConfirmablePasswordController`). These get mounted at
+  their own routes and linked from wherever it makes sense (profile page,
+  "forgot password" link on root's login form, a first-login forced-change
+  redirect) — not as a second login page.
+- `RegisteredUserController` (self-registration) is copied but its route is
+  **not** registered/linked anywhere yet — staff/cleaners are added by an
+  admin via `UserController`, not self-service sign-up, per how root's
+  existing admin user-management already works. The controller and view stay
+  in the codebase, available to wire up later if the client ever wants public
+  registration; flagged as a deliberate no-op, not a gap.
+
+**Auth system: keep root's simple login, or adopt cleaning's full Breeze suite?**
+- **Option A — Root's login stays, extended.** Keep `AuthController` +
+  `views/auth/login.blade.php` as the one login page for everyone. Add
+  role-based redirect logic after login (admin → `admin.dashboard`,
+  owner/manager/staff → cleaning dashboard, housekeeper → cleaning session
+  view, guest → guest portal — guests likely don't log in at all, per root's
+  existing guest-session/token model, worth confirming). Cleaning's
+  registration/password-reset/email-verification/forced-password-change flows
+  either get bolted onto `AuthController` as new methods, or dropped if the
+  client doesn't need self-registration (likely true — cleaners/staff are
+  probably added by an admin, not self-registering). Less new surface area,
+  matches root's existing simpler model.
+- **Option B — Adopt cleaning's Breeze suite wholesale.** Bigger change: root's
+  `AuthController`/`views/auth/login.blade.php` get replaced by cleaning's
+  full `Auth/` controller set and 7 views, then role-redirect logic gets added
+  to `AuthenticatedSessionController`. Gains self-service password reset/email
+  verification for free (root doesn't have these today), at the cost of
+  rewriting root's current login flow and re-testing everything that depends
+  on it (webhooks, admin activity logging on login, "remember me always on"
+  behavior currently in root's `AuthController`).
+
+I'd lean **Option A** (extend root's simpler login) since it's less to break on
+a live app and the client's stated requirement is just "one login, redirect by
+role" — not self-service registration. But this is your call, same as the role
+decision was.
+
+## Full merge roadmap — what's done, what's left
+
+**Task files split 2026-09-23**: `TASKS_A.md` (renamed from the original
+`TASKS.md`) covers the database-schema layer, tasks A001–A007, all done except
+A006's verification and A007's final column drop (both deferred until DB
+population — see below). `TASKS_B.md` is new and covers everything else.
+
+| Phase | Covers | Status |
+|---|---|---|
+| 1. Cleanup | Dead files, security issues, duplicate storage | Done |
+| 2. DB — migrations | 51 safe-copy + Property/User/Settings fields | Done (TASKS_A 001–004) |
+| 3. DB — roles | Spatie unification, data migration, code rewrite | Done, column-drop deferred (TASKS_A 005–007) |
+| 4. Models | 16 non-colliding models | Open (TASKS_B 001) |
+| 5. Services | 13 services + 1 rename | Open (TASKS_B 002) |
+| 6. Form Requests + Console Commands | 9 requests, 2 commands | Open (TASKS_B 003–004) |
+| 7. Auth system | Root's login stays, extended with role redirects; cleaning's Breeze extras kept as supplementary routes | **Decided (Option A)** — see task-B005 |
+| 8. Controllers + routes | 34 controllers + `routes/web.php`/`auth.php` | Open (TASKS_B 005) |
+| 9. Views | 20 directories, incl. 2 renamed collisions | Open (TASKS_B 006) |
+| 10. Public assets | images, ffmpeg vendor, `cal`/StaySync | Open (TASKS_B 007) |
+| 11. Frontend build | `vite.config.js`, `tailwind.config.js`, `package.json` merge | Open (TASKS_B 008) |
+| 12. DB population | Merge both live DB backups into merged schema | Open (TASKS_B 009) — unblocks TASKS_A 006/007 |
+| 13. Deploy + test | Push to cPanel, verify role redirects, resolve image bug | Open (TASKS_B 010) |
+| 14. Final cleanup | Confirm `cleaning/` is empty, delete it | Open (TASKS_B 011) — the actual "done" checkpoint |
+
+`cleaning/` only becomes empty at the end of phase 10.
+
 ## Local dev vs. production environment (important — read before running anything)
 - **Local development uses Docker for everything** (PHP, composer, npm, the
   database — the whole stack runs inside containers). Any task instruction that

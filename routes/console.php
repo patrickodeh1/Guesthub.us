@@ -36,3 +36,6 @@ Schedule::command('bookings:send-checkout-reminders')->dailyAt('18:00');
 Schedule::command('pms:sync')->everyMinute()->when(
     fn () => now()->minute % max(1, (int) config('pms.poll_interval_minutes')) === 0
 );
+
+Schedule::command('photos:prune-old --days=14')->dailyAt('02:00');
+Schedule::command('training:send-reminders')->hourly();

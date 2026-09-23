@@ -8,7 +8,7 @@ use App\Models\NotificationLog;
 use App\Models\Task;
 use Illuminate\Support\Facades\Log;
 
-class SmsNotificationService
+class CleaningSmsNotificationService
 {
     /**
      * Send "Cleaning Started" notification.

@@ -11,7 +11,7 @@ use App\Models\ResourceCompletion;
 use App\Models\Task;
 use App\Models\Room;
 use App\Services\GpsService;
-use App\Services\SmsNotificationService;
+use App\Services\CleaningSmsNotificationService;
 use App\Services\TrainingValidationService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -1020,7 +1020,7 @@ class SessionController extends Controller
                 ->log("Mandatory Training Validation Failed");
             
             try {
-                \App\Services\SmsNotificationService::sendTrainingBlockedReminder($session, $incompleteCount);
+                \App\Services\CleaningSmsNotificationService::sendTrainingBlockedReminder($session, $incompleteCount);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('SMS reminder failed for training blocked: ' . $e->getMessage());
             }
@@ -1062,7 +1062,7 @@ class SessionController extends Controller
 
         // Trigger SMS notification for cleaning started
         try {
-            SmsNotificationService::sendCleaningStarted($session);
+            CleaningSmsNotificationService::sendCleaningStarted($session);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('SMS notification failed for session start: ' . $e->getMessage());
         }
@@ -1231,7 +1231,7 @@ class SessionController extends Controller
 
         // Trigger SMS notification for cleaning finished
         try {
-            SmsNotificationService::sendCleaningFinished($session);
+            CleaningSmsNotificationService::sendCleaningFinished($session);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('SMS notification failed for session complete: ' . $e->getMessage());
         }
@@ -1759,5 +1759,4 @@ class SessionController extends Controller
         }
     }
 }
-
 

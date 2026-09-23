@@ -8,7 +8,7 @@ use App\Models\Property;
 use App\Models\PropertyNotificationRecipient;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\SmsNotificationService;
+use App\Services\CleaningSmsNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
@@ -99,7 +99,7 @@ class PropertyNotificationTest extends TestCase
             return str_contains($msg, 'Cleaning has started');
         });
 
-        SmsNotificationService::sendCleaningStarted($session);
+        CleaningSmsNotificationService::sendCleaningStarted($session);
 
         $this->assertDatabaseHas('notification_logs', [
             'property_id' => $this->property->id,
@@ -116,11 +116,11 @@ class PropertyNotificationTest extends TestCase
         ]);
 
         // Send first time
-        SmsNotificationService::sendCleaningStarted($session);
+        CleaningSmsNotificationService::sendCleaningStarted($session);
         $this->assertEquals(1, NotificationLog::where('notification_type', 'started')->count());
 
         // Send second time
-        SmsNotificationService::sendCleaningStarted($session);
+        CleaningSmsNotificationService::sendCleaningStarted($session);
         // Count should still be 1
         $this->assertEquals(1, NotificationLog::where('notification_type', 'started')->count());
     }
@@ -132,8 +132,8 @@ class PropertyNotificationTest extends TestCase
         ]);
         $task = Task::factory()->create();
 
-        SmsNotificationService::sendTaskNote($session, $task, 'Note 1');
-        SmsNotificationService::sendTaskNote($session, $task, 'Note 2');
+        CleaningSmsNotificationService::sendTaskNote($session, $task, 'Note 1');
+        CleaningSmsNotificationService::sendTaskNote($session, $task, 'Note 2');
 
         $this->assertEquals(2, NotificationLog::where('notification_type', 'note')->count());
     }

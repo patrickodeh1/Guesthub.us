@@ -12,7 +12,7 @@ use App\Models\Room;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Services\ImageTimestampService;
-use App\Services\SmsNotificationService;
+use App\Services\CleaningSmsNotificationService;
 use App\Services\PersistentPhotoStorage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -266,7 +266,7 @@ class ChecklistController extends Controller
         // Trigger SMS notification for task note
         if ($request->validated('note')) {
             try {
-                SmsNotificationService::sendTaskNote($session, $task, $request->validated('note'));
+                CleaningSmsNotificationService::sendTaskNote($session, $task, $request->validated('note'));
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for task note: ' . $e->getMessage());
             }
@@ -327,7 +327,7 @@ class ChecklistController extends Controller
         // Trigger SMS notification for task note
         if ($request->validated('note')) {
             try {
-                SmsNotificationService::sendTaskNote($session, $task, $request->validated('note'));
+                CleaningSmsNotificationService::sendTaskNote($session, $task, $request->validated('note'));
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for task note: ' . $e->getMessage());
             }
@@ -421,7 +421,7 @@ class ChecklistController extends Controller
 
             // Trigger SMS notification for first photo (once per session)
             try {
-                SmsNotificationService::sendPhotoStarted($session);
+                CleaningSmsNotificationService::sendPhotoStarted($session);
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for photo started: ' . $e->getMessage());
             }
@@ -450,7 +450,7 @@ class ChecklistController extends Controller
 
             // Trigger SMS notification for task note
             try {
-                SmsNotificationService::sendTaskNote($session, $task, $request->input('note'));
+                CleaningSmsNotificationService::sendTaskNote($session, $task, $request->input('note'));
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for task note: ' . $e->getMessage());
             }
@@ -522,7 +522,7 @@ class ChecklistController extends Controller
 
             // Trigger SMS notification for first photo (once per session)
             try {
-                SmsNotificationService::sendPhotoStarted($session);
+                CleaningSmsNotificationService::sendPhotoStarted($session);
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for photo started: ' . $e->getMessage());
             }
@@ -551,7 +551,7 @@ class ChecklistController extends Controller
 
             // Trigger SMS notification for task note
             try {
-                SmsNotificationService::sendTaskNote($session, $task, $request->input('note'));
+                CleaningSmsNotificationService::sendTaskNote($session, $task, $request->input('note'));
             } catch (\Throwable $e) {
                 Log::warning('SMS notification failed for task note: ' . $e->getMessage());
             }

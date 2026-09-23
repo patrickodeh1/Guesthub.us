@@ -102,3 +102,42 @@
   available for before/after counts. The migration is validated with a dry run;
   exact production counts must be recorded when this migration is run against the
   intended database.
+
+## [task-B001] 2026-09-23 08:28
+- Copied the 17 non-colliding model files listed in `TASKS_B.md` from `/home/soarersavannah/Guesthub.us/cleaning/app/Models/` to `/home/soarersavannah/Guesthub.us/app/Models/`.
+- Verified every copied file byte-for-byte with `cmp` and passed PHP syntax checks inside the Docker `app` service.
+- Cross-checked cleaning model references against the merged `Property`, `User`, and `Setting` compatibility surfaces; no missing referenced fields were found. `Property` provides the required cleaning fields and `is_active` alias, and `Setting` provides the required `get()`/`set()` aliases.
+- Removed only the 17 verified source model files from `cleaning/app/Models/`; `Property.php`, `User.php`, and `Setting.php` remain as reference files.
+- The task title says 16 models, but its explicit file list contains 17; all 17 listed files were copied.
+
+## [task-B002] 2026-09-23 08:35
+- Renamed cleaning's SMS service to `CleaningSmsNotificationService` to avoid colliding with root's unrelated Telnyx `SmsNotificationService`.
+- Copied the renamed service to `/home/soarersavannah/Guesthub.us/app/Services/CleaningSmsNotificationService.php`.
+- Copied the 13 listed non-colliding services unchanged into `/home/soarersavannah/Guesthub.us/app/Services/` and verified each copy byte-for-byte.
+- Updated the six specified cleaning service/controller/command files to import and call `CleaningSmsNotificationService`; also updated the existing cleaning `PropertyNotificationTest.php` because it contained remaining calls to the renamed class.
+- Linted all 21 changed/copied PHP files inside Docker and confirmed no `SmsNotificationService` references remain under `cleaning/`.
+- Left the cleaning service directory in place as required; the renamed source service remains until the controller porting task.
+
+## [task-B003] 2026-09-23 08:48
+- Copied the 9 listed form requests from `/home/soarersavannah/Guesthub.us/cleaning/app/Http/Requests/` into `/home/soarersavannah/Guesthub.us/app/Http/Requests/`.
+- Copied the complete currently present `Auth/` subdirectory: `LoginRequest.php` into `/home/soarersavannah/Guesthub.us/app/Http/Requests/Auth/`.
+- Verified all 10 copied files byte-for-byte with `cmp` and passed PHP syntax checks inside the Docker `app` service.
+- Source request files remain in `cleaning/` as required until the controller-porting task.
+
+## [task-B004] 2026-09-23 08:50
+- Copied `PruneOldSessionPhotos.php` and the already-renamed `SendTrainingReminders.php` into `/home/soarersavannah/Guesthub.us/app/Console/Commands/`.
+- Verified both command copies byte-for-byte and passed PHP syntax checks inside the Docker `app` service.
+- Appended the required schedules to `/home/soarersavannah/Guesthub.us/routes/console.php`: `photos:prune-old --days=14` daily at 02:00 and `training:send-reminders` hourly.
+- Verified both commands are registered by `php artisan list` inside Docker. Scheduler runtime behavior remains for human verification as required by the task.
+- Left both source command files in `cleaning/app/Console/Commands/`; no source deletion was performed.
+
+## [task-B005] 2026-09-23 08:52
+- Blocked before copying controllers or modifying routes because the task's stated inventory does not match the repository: `cleaning/app/Http/Controllers/` contains 35 files total, including `Controller.php`, therefore 34 non-auth controllers, while B005 specifies 31 non-auth controllers.
+- The cleaning route file also has URL collisions with root: both define `/` and `/img/{path}`. The task explicitly requires stopping on any route collision instead of guessing which route wins.
+- Auth inspection found 10 cleaning auth controllers and 7 auth views. The supplementary auth routes can be evaluated after the controller-count and route-collision decisions are clarified.
+- No B005 controllers, auth views, auth routes, or cleaning routes were copied, deleted, or changed. `TASKS_B.md` is marked blocked.
+
+## [task-B005] 2026-09-23 08:57
+- Re-read the updated B005 instructions. The route collision guidance now resolves the cleaning `/` route by skipping it, but the controller inventory still does not match the repository.
+- The task specifies 33 named non-auth controllers plus the skipped `Controller.php`; the repository currently contains 34 named non-auth controllers. The complete named list is: `ActivityController.php`, `AssignmentController.php`, `CalendarController.php`, `ChecklistController.php`, `DashboardController.php`, `FamiliarityReportController.php`, `InstructionalVideoController.php`, `ManageSessionController.php`, `PhotoController.php`, `ProfileController.php`, `PropertyAssignmentsApiController.php`, `PropertyController.php`, `PropertyDuplicateController.php`, `PropertyNotificationSettingsController.php`, `PropertyRoomAttachController.php`, `PropertyRoomController.php`, `PropertyRoomOrderController.php`, `PropertyTaskOrderController.php`, `ResourcePageController.php`, `ResourcesController.php`, `RoomController.php`, `RoomSuggestionController.php`, `RoomTaskAttachController.php`, `RoomTaskOrderController.php`, `SessionController.php`, `SessionReportController.php`, `SettingsController.php`, `TaskController.php`, `TaskMediaController.php`, `TaskSuggestionController.php`, `TrainingController.php`, `TrainingReportController.php`, `UserController.php`, and `UserFamiliarityController.php`.
+- No B005 files were copied or modified. B005 remains blocked until the task explicitly accounts for the 34th named controller.

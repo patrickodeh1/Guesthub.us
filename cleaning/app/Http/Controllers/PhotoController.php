@@ -6,7 +6,7 @@ use App\Models\CleaningSession;
 use App\Models\RoomPhoto;
 use App\Services\ImageTimestampService;
 use App\Services\PersistentPhotoStorage;
-use App\Services\SmsNotificationService;
+use App\Services\CleaningSmsNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -73,7 +73,7 @@ class PhotoController extends Controller
 
             // Trigger SMS notification for first photo (once per session)
             try {
-                SmsNotificationService::sendPhotoStarted($session);
+                CleaningSmsNotificationService::sendPhotoStarted($session);
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('SMS notification failed for photo started: ' . $e->getMessage());
             }
