@@ -1,0 +1,35 @@
+# ════════════════════════════════════════
+# StaySync - .gitignore
+# ════════════════════════════════════════
+
+# User data (contains personal iCal URLs and bookings)
+data/sources.json
+
+# Temporary files and cache
+tmp/
+*.tmp
+
+# Backup files
+* copy.*
+* (2).*
+* (3).*
+* (4).*
+* (5).*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# ZIP files (ical exports)
+*.zip

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StaySync — Rental Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: "#5b7fff",
+              foreground: "#ffffff",
+            },
+            surface: {
+              light: "#ffffff",
+              dark: "#181c27",
+            },
+            overlap: {
+              DEFAULT: "#f59e0b",
+            }
+          },
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Base styles for light/dark mode */
+    :root {
+      --bg-color: #eef0f8;
+      --text-color: #1a1e30;
+      --header-bg: #ffffff;
+      --border-color: #dce0f0;
+      --card-bg: #ffffff;
+      --tooltip-bg: #ffffff;
+    }
+
+    .dark {
+      --bg-color: #0f1117;
+      --text-color: #e8ebf5;
+      --header-bg: #181c27;
+      --border-color: #2a3047;
+      --card-bg: #181c27;
+      --tooltip-bg: #181c27;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    header, .filter-bar {
+      background-color: var(--header-bg);
+      border-color: var(--border-color);
+    }
+
+    .fc {
+      background: transparent;
+    }
+
+    .fc .fc-toolbar {
+      background-color: var(--bg-color);
+    }
+
+    .dark .fc .fc-toolbar {
+      background-color: var(--bg-color);
+    }
+
+    /* Ensure all Tailwind dark classes work */
+    .dark .bg-white { background-color: #181c27 !important; }
+    .dark .bg-[#eef0f8] { background-color: #0f1117 !important; }
+    .dark .bg-[#f4f6fc] { background-color: #1f2436 !important; }
+    .dark .border-[#dce0f0] { border-color: #2a3047 !important; }
+    .dark .text-[#1a1e30] { color: #e8ebf5 !important; }
+    .dark .text-[#5b6380] { color: #8b93b5 !important; }
+    .dark .text-[#9aa0bb] { color: #4e5675 !important; }
+
+    body {
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      flex-shrink: 0;
+    }
+
+    .filter-bar {
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .calendar-container {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px;
+      min-height: 0;
+    }
+
+    .fc {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: transparent;
+    }
+
+    .fc .fc-toolbar {
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 8px 0;
+    }
+
+    .fc-toolbar-title {
+      margin-left: 10px !important;
+      margin-right: 10px !important;
+      font-size: 1.2rem !important;
+    }
+
+    .fc-event-available-block {
+      border-radius: 4px !important;
+      border: none !important;
+      margin: 1px 0 !important;
+      cursor: help !important;
+    }
+
+    .fc-event-available-block:hover {
+      opacity: 0.9 !important;
+    }
+
+    .fc-daygrid-day-events {
+      z-index: 2;
+      position: relative;
+    }
+
+    .fc-daygrid-event {
+      z-index: 3 !important;
+    }
+
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-bg.open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: 1rem;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    .fc-daygrid-day {
+      position: relative;
+    }
+
+    .status-indicator {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      z-index: 10;
+    }
+
+    .status-indicator.available {
+      background-color: #22c55e;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.3);
+    }
+
+    .status-indicator.blocked {
+      background-color: #ef4444;
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+    }
+
+    .status-indicator.booked {
+      background-color: #f59e0b;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+    }
+
+    .blocked-indicator {
+      transition: transform 0.1s ease;
+      cursor: help;
+    }
+
+    .blocked-indicator:hover {
+      transform: scale(1.5);
+    }
+
+    .fc-event-overlap {
+      box-shadow: 0 0 0 2px #ef4444 !important;
+    }
+
+    .fc-daygrid-day-number {
+      position: relative;
+      z-index: 5;
+    }
+
+    .fc-scroller {
+      overflow: visible !important;
+      height: auto !important;
+      max-height: none !important;
+    }
+
+    .fc-scrollgrid {
+      height: auto !important;
+    }
+
+    .fc-scrollgrid-section {
+      height: auto !important;
+    }
+
+    .fc-daygrid-body {
+      margin-bottom: 0 !important;
+    }
+
+    .fc-daygrid-day-frame {
+      min-height: 80px;
+      height: auto !important;
+    }
+
+    .calendar-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .calendar-container::-webkit-scrollbar-track {
+      background: #eef0f8;
+      border-radius: 4px;
+    }
+
+    .dark .calendar-container::-webkit-scrollbar-track {
+      background: #1f2436;
+    }
+
+    .calendar-container::-webkit-scrollbar-thumb {
+      background: #5b7fff;
+      border-radius: 4px;
+    }
+
+    .calendar-container::-webkit-scrollbar-thumb:hover {
+      background: #4a6bd9;
+    }
+
+    #tooltip {
+      background-color: var(--tooltip-bg);
+      border-color: var(--border-color);
+      color: var(--text-color);
+    }
+  </style>
+  <link rel="stylesheet" href="assets/css/style.css?v=3.8.0">
+</head>
+
+<body>
+
+  <header
+    class="flex items-center justify-between py-3 px-3 border-b whitespace-nowrap overflow-x-auto">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-2 shrink-0">
+      <div
+        class="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-[0_4px_10px_rgba(91,127,255,0.35)]">
+        <i data-lucide="calendar-range" class="w-4 h-4"></i>
+      </div>
+      <span class="text-base font-bold tracking-tight">
+        Stay<span class="text-primary">Sync</span>
+      </span>
+    </div>
+
+    <!-- Right controls -->
+    <div class="flex items-center gap-1.5 shrink-0">
+
+      <!-- Live badge -->
+      <div
+        class="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+        <i data-lucide="radio" class="w-3 h-3"></i>
+        <span class="hidden sm:inline">Live</span>
+      </div>
+
+      <!-- Theme -->
+      <button id="themeBtn" onclick="toggleTheme()"
+        class="w-8 h-8 rounded-lg border bg-white dark:bg-[#181c27] border-[#dce0f0] dark:border-[#2a3047] flex items-center justify-center">
+        <i data-lucide="moon" class="w-4 h-4" id="themeIcon"></i>
+      </button>
+
+      <!-- Settings Button -->
+      <button onclick="openSettings()"
+        class="w-8 h-8 rounded-lg border bg-white dark:bg-[#181c27] border-[#dce0f0] dark:border-[#2a3047] flex items-center justify-center">
+        <i data-lucide="settings" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Manage iCal -->
+      <a href="sources.html"
+        class="flex items-center gap-1 px-2 py-1.5 bg-primary text-white text-[12px] font-semibold rounded-lg">
+        <i data-lucide="calendar" class="w-4 h-4"></i>
+        <span class="hidden md:inline">Manage iCal</span>
+      </a>
+
+    </div>
+
+  </header>
+
+  
+
+  <!-- Main Calendar Container -->
+  <div class="calendar-container">
+    <div id="calendar" class="h-full w-full"></div>
+  </div>
+
+  <!-- TOOLTIP -->
+  <div
+    class="fixed z-[9000] border rounded-2xl p-3 min-w-[200px] pointer-events-none opacity-0 translate-y-1.5 transition-all duration-150 shadow-xl"
+    id="tooltip">
+    <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider mb-1">
+      <div class="w-2 h-2 rounded-full" id="tip-dot"></div>
+      <span id="tip-plat-name"></span>
+      <span class="text-sm ml-auto" id="tip-plat-logo"></span>
+    </div>
+    <div class="text-sm font-bold mb-1" id="tip-guest"></div>
+    <div class="text-xs text-[#5b6380] dark:text-[#8b93b5] mb-1 italic" id="tip-unit"></div>
+    <div class="text-xs text-[#5b6380] dark:text-[#8b93b5] mb-1" id="tip-dates"></div>
+    <div class="flex gap-1.5 flex-wrap">
+      <div class="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-primary/10 text-primary" id="tip-nights"></div>
+      <div class="hidden text-[10px] font-semibold px-2.5 py-1 rounded-full bg-overlap/10 text-overlap" id="tip-ov">
+        <i data-lucide="alert-triangle" class="w-3 w-3 inline mr-1"></i> Overlap
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal-bg" class="modal-bg">
+    <div class="bg-white dark:bg-[#181c27] rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-[#dce0f0] dark:border-[#2a3047]">
+      <div class="sticky top-0 bg-white dark:bg-[#181c27] p-4 border-b border-[#dce0f0] dark:border-[#2a3047] flex items-center justify-between">
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-primary"></i>
+          Display Settings
+        </h2>
+        <button onclick="closeSettings()" class="w-8 h-8 rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-6">
+        <div class="bg-[#f4f6fc] dark:bg-[#1f2436] rounded-xl p-4">
+          <div id="display-settings-container"></div>
+        </div>
+
+        <div>
+          <h3 class="font-bold mb-3 flex items-center gap-2">
+            <i data-lucide="rss" class="w-4 h-4 text-primary"></i>
+            Properties
+            <span id="src-count-modal" class="ml-auto text-xs bg-[#dce0f0] dark:bg-[#2a3047] px-2 py-1 rounded-full">0</span>
+          </h3>
+          <div id="source-filter-list" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
+        </div>
+
+        <div>
+          <h3 class="font-bold mb-3 flex items-center gap-2">
+            <i data-lucide="database" class="w-4 h-4 text-primary"></i>
+            Data
+          </h3>
+          <div class="space-y-2">
+            <button onclick="refreshAllSources()" class="w-full px-3 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg text-sm flex items-center justify-center gap-2 hover:bg-primary/10">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              Refresh All Calendars
+            </button>          
+            <div id="refresh-status-modal" class="hidden text-xs text-center text-[#5b6380] dark:text-[#8b93b5]">Syncing...</div>
+            <div id="last-updated-modal" class="text-xs text-center text-[#9aa0bb] dark:text-[#4e5675]">Never synced</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 bg-white dark:bg-[#181c27] p-4 border-t border-[#dce0f0] dark:border-[#2a3047]">
+        <button onclick="applySettings()" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">Apply Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD iCAL MODAL -->
+  <div id="add-modal-bg" class="modal-bg">
+    <div class="modal-content">
+      <div class="sticky top-0 p-4 border-b flex items-center justify-between">
+        <h2 class="text-lg font-bold flex items-center gap-2">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-primary"></i>
+          Add iCal Source
+        </h2>
+        <button onclick="closeAddModal()" class="w-8 h-8 rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div><label class="block text-sm font-medium mb-1">Property Name</label><input type="text" id="inp-name" placeholder="e.g., Beach House" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div>
+        <div><label class="block text-sm font-medium mb-1">Platform</label><select id="platform-select" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"><option value="airbnb">Airbnb</option><option value="vrbo">VRBO</option><option value="booking">Booking.com</option><option value="other">Other</option></select></div>
+        <div><label class="block text-sm font-medium mb-1">iCal URL</label><input type="url" id="inp-url" placeholder="https://..." class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div>
+        <div><label class="block text-sm font-medium mb-1">Color</label><input type="color" id="inp-color" value="#5b7fff" class="w-full h-10 rounded-lg cursor-pointer border border-[#dce0f0] dark:border-[#2a3047] p-1"><div id="preset-colors" class="flex flex-wrap gap-2 mt-2"></div></div>
+        <div class="flex gap-2 pt-2"><button onclick="fillWithRandomICal()" class="flex-1 px-4 py-2 border border-[#dce0f0] dark:border-[#2a3047] rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] text-sm">Random Test</button><button onclick="addFromUrl()" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm">Add Source</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT BOOKING MODAL -->
+  <div id="edit-modal-bg" class="modal-bg">
+    <div class="modal-content">
+      <div class="sticky top-0 p-4 border-b flex items-center justify-between">
+        <h2 id="edit-modal-title" class="text-lg font-bold flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5 text-primary"></i>Edit Booking</h2>
+        <button onclick="closeEditModal()" class="w-8 h-8 rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436]"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="bg-[#f4f6fc] dark:bg-[#1f2436] p-3 rounded-lg"><div class="flex items-center gap-2 mb-1"><span id="edit-platform-badge" class="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full"></span></div><div class="font-bold" id="edit-source-name"></div><div class="text-sm text-[#5b6380] dark:text-[#8b93b5]" id="edit-dates"></div></div>
+        <div><label class="block text-sm font-medium mb-1">Guest Name</label><input type="text" id="edit-guest" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div>
+        <div class="grid grid-cols-2 gap-3"><div><label class="block text-sm font-medium mb-1">Check-in</label><input type="date" id="edit-start" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div><div><label class="block text-sm font-medium mb-1">Check-out</label><input type="date" id="edit-end" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div></div>
+        <div><label class="block text-sm font-medium mb-1">Notes</label><textarea id="edit-notes" rows="3" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg" placeholder="Optional notes..."></textarea></div>
+        <div class="flex gap-2 pt-2"><button onclick="deleteBooking()" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm">Delete</button><button onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-[#dce0f0] dark:border-[#2a3047] rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] text-sm">Cancel</button><button onclick="saveEditBooking()" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm">Save Changes</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT SOURCE MODAL -->
+  <div id="edit-source-modal-bg" class="modal-bg">
+    <div class="modal-content">
+      <div class="sticky top-0 p-4 border-b flex items-center justify-between">
+        <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5 text-primary"></i>Edit Property</h2>
+        <button onclick="closeEditSourceModal()" class="w-8 h-8 rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436]"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="edit-source-id">
+        <div><label class="block text-sm font-medium mb-1">Property Name</label><input type="text" id="edit-source-name-input" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div>
+        <div><label class="block text-sm font-medium mb-1">iCal URL</label><input type="url" id="edit-source-url-input" class="w-full px-4 py-2 bg-[#f4f6fc] dark:bg-[#1f2436] border border-[#dce0f0] dark:border-[#2a3047] rounded-lg"></div>
+        <div><label class="block text-sm font-medium mb-1">Color</label><input type="color" id="edit-source-color-input" class="w-full h-10 rounded-lg cursor-pointer border border-[#dce0f0] dark:border-[#2a3047] p-1"></div>
+        <div class="flex gap-2 pt-2"><button onclick="closeEditSourceModal()" class="flex-1 px-4 py-2 border border-[#dce0f0] dark:border-[#2a3047] rounded-lg hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] text-sm">Cancel</button><button onclick="saveSourceEdit()" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm">Save Changes</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="booking-context-menu" class="hidden fixed z-[10000] bg-white dark:bg-[#181c27] border border-[#dce0f0] dark:border-[#2a3047] rounded-xl shadow-xl py-1 min-w-[160px]">
+    <button onclick="contextMenuAction('edit')" class="w-full px-4 py-2 text-left text-sm hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] flex items-center gap-2"><i data-lucide="edit-3" class="w-4 h-4"></i>Edit</button>
+    <button onclick="contextMenuAction('duplicate')" class="w-full px-4 py-2 text-left text-sm hover:bg-[#f4f6fc] dark:hover:bg-[#1f2436] flex items-center gap-2"><i data-lucide="copy" class="w-4 h-4"></i>Duplicate</button>
+    <button onclick="contextMenuAction('delete')" class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i>Delete</button>
+  </div>
+
+  <script src="assets/js/script.js?v=3.8.0"></script>
+</body>
+
+</html>

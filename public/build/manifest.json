@@ -1,6 +1,10 @@
 {
+  "_bootstrap-CIomGrQN.js": {
+    "file": "assets/bootstrap-CIomGrQN.js",
+    "name": "bootstrap"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CsLV2SQW.css",
+    "file": "assets/app-BgWLQoyP.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -8,10 +12,31 @@
       "app.css"
     ]
   },
+  "resources/css/cleaning.css": {
+    "file": "assets/cleaning-BPogYvWn.css",
+    "src": "resources/css/cleaning.css",
+    "isEntry": true,
+    "name": "cleaning",
+    "names": [
+      "cleaning.css"
+    ]
+  },
   "resources/js/app.js": {
-    "file": "assets/app-BwC4y_aQ.js",
+    "file": "assets/app-DclEDUxM.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_bootstrap-CIomGrQN.js"
+    ]
+  },
+  "resources/js/cleaning-app.js": {
+    "file": "assets/cleaning-app-C-W1TxZK.js",
+    "name": "cleaning-app",
+    "src": "resources/js/cleaning-app.js",
+    "isEntry": true,
+    "imports": [
+      "_bootstrap-CIomGrQN.js"
+    ]
   }
 }

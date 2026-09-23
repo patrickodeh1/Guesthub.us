@@ -114,7 +114,7 @@ these up (can't be verified in a dry-run — flag for human testing).
 
 ---
 
-## task-B005 — status: blocked
+## task-B005 — status: done
 **Port controllers, wire up routes — Option A auth wiring (decided)**
 
 Per MERGE_PLAN.md's decision: root's `AuthController` stays the one login
@@ -188,26 +188,39 @@ Registration is copied but left unlinked/unregistered for now.
    entirely.
 
 ### Step 3 — Everything else (controllers + routes)
-6. Copy the remaining 33 non-auth controllers from
-   `cleaning/app/Http/Controllers/` into `app/Http/Controllers/` unchanged —
-   no filename collisions confirmed against root's existing controllers.
-   **Do not copy `cleaning/app/Http/Controllers/Controller.php`** — it's a
-   byte-identical trivial abstract base class to root's own
-   `app/Http/Controllers/Controller.php`; root's stays, skip this one file.
-   (If your local `cleaning/app/Http/Controllers/` count differs from 34 total
-   files, i.e. 33 named controllers + `Controller.php`, stop and report the
-   actual list in notes.md rather than assuming this count is still right —
-   it was last verified 2026-09-23.)
+6. Copy every file in `cleaning/app/Http/Controllers/` into
+   `app/Http/Controllers/` unchanged, **except** `Controller.php` — skip that
+   one file specifically, since it's a byte-identical trivial abstract base
+   class to root's own `app/Http/Controllers/Controller.php` (root's stays).
+   Do not rely on a specific count of "how many controllers that leaves" —
+   this task has had the wrong number in it twice now (31, then 33; the real
+   answer turned out to be 34 named files + `Controller.php` = 35 total, but
+   don't hardcode that either). Just apply the rule: copy everything in that
+   directory except `Controller.php`, confirm no filename collides with
+   anything already in root's `app/Http/Controllers/` (none currently do, but
+   check fresh — don't trust this note), and report the actual count you
+   copied in notes.md so the real number is on record for once.
 7. Merge cleaning's non-auth routes from `cleaning/routes/web.php` into root's
-   `routes/web.php`. Two collisions already confirmed as of 2026-09-23, both
-   resolved — apply these, don't re-flag them:
+   `routes/web.php`. One collision already confirmed and resolved as of
+   2026-09-23 — apply it, don't re-flag it:
    - `Route::get('/', function () { return view('welcome'); })` in cleaning —
      this is Laravel's stock, unmodified Breeze scaffold page, not real
      functionality. **Skip it, don't port it.** Root's `/` (`EarlyAccessController@show`)
      wins outright, no rename needed.
-   - Any other path collision: STOP and log it in notes.md rather than
-     guessing which should win — don't assume every collision resolves as
-     easily as the one above.
+   A second collision was flagged (`/img/{path}`) but couldn't be confirmed
+   against the repo when this task was last updated — before doing anything
+   else, run `grep -n "img/{path}\|'/img" cleaning/routes/web.php routes/web.php`
+   yourself and paste both matching lines into notes.md first. If cleaning's
+   route turns out to be a different literal path (e.g. `/file/{path}`, which
+   is what an earlier read of this repo found — that does NOT collide with
+   root's `/img/{path}`, they're different URIs), note that and proceed, no
+   human decision needed. If it's a genuine literal match on `/img/{path}`,
+   STOP and log both controllers' full route definitions plus what each one
+   actually does (serves from which disk/path, any auth middleware) in
+   notes.md, and leave this task blocked — don't guess which should win.
+   For any OTHER path collision you find beyond these two: STOP and log it in
+   notes.md rather than guessing which should win — don't assume every
+   collision resolves as easily as the `/` one above.
 8. Once controllers/routes are copied and verified with a dry pass (route
    list check: `docker compose exec app php artisan route:list`, look for
    duplicate URIs — this doesn't touch the database so it's fine to run for
@@ -222,7 +235,7 @@ duplicate URIs after the merge.
 
 ---
 
-## task-B006 — status: open (views, minus the auth-dependent ones)
+## task-B006 — status: done (views, minus the auth-dependent ones)
 **Copy cleaning's non-auth views**
 
 `resources/views/admin/`, `components/`, `emails/` directories exist in both
@@ -257,7 +270,7 @@ immediately.
 
 ---
 
-## task-B007 — status: open
+## task-B007 — status: done
 **Port public assets, including the `cal`/StaySync tool**
 
 Per the decision already made: `cal/` moves over as-is, no integration work,
@@ -283,7 +296,7 @@ Report in notes.md: any filename collisions found and how you resolved them.
 
 ---
 
-## task-B008 — status: open
+## task-B008 — status: done
 **Merge frontend build config**
 
 1. Diff `cleaning/package.json` against root's `package.json` — add any
@@ -304,7 +317,7 @@ Report in notes.md: any filename collisions found and how you resolved them.
 
 ---
 
-## task-B009 — status: open (this is what unblocks TASKS_A 006/007)
+## task-B009 — status: blocked (awaiting backup confirmation and import review)
 **Merge both live database backups into the new schema**
 
 This is a data task, not a code task, and needs the client's two DB backups in
