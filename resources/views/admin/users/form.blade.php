@@ -47,7 +47,7 @@
                         <label class="field-label" for="role">Role <span class="text-red-500">*</span></label>
                         <select id="role" name="role" required class="input">
                             @foreach(\App\Models\User::ROLE_LABELS as $key => $label)
-                                <option value="{{ $key }}" @selected(old('role', $user->role) === $key)>{{ $label }}</option>
+                                <option value="{{ $key }}" @selected(old('role', $user->getRoleNames()->first()) === $key)>{{ $label }}</option>
                             @endforeach
                         </select>
                         @error('role') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
@@ -98,7 +98,7 @@
                     {{ $editing ? 'Save changes' : 'Create account' }}
                 </button>
                 <a href="{{ route('admin.users.index') }}" class="btn-ghost">Cancel</a>
-                @if($editing && $user->id !== auth()->id() && ! $user->isOwner())
+                @if($editing && $user->id !== auth()->id() && ! $user->isAdmin())
                     <form method="post" action="{{ route('admin.users.destroy', $user) }}" class="ml-auto"
                           onsubmit="return confirm('Delete this account permanently? This cannot be undone.')">
                         @csrf @method('DELETE')
@@ -116,7 +116,7 @@
                 <div class="mt-4 grid gap-3">
                     @foreach(\App\Models\User::ROLE_LABELS as $role => $label)
                         <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                            <span class="badge mb-2 {{ match($role) { 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', default => 'badge-inactive' } }}">{{ $label }}</span>
+                            <span class="badge mb-2 {{ match($role) { 'admin', 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'company' => 'border-indigo-200 bg-indigo-50 text-indigo-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', 'housekeeper' => 'border-amber-200 bg-amber-50 text-amber-700', 'viewer' => 'badge-inactive', default => 'badge-inactive' } }}">{{ $label }}</span>
                             <p class="text-xs leading-5 text-slate-600">{{ \App\Models\User::ROLE_DESCRIPTIONS[$role] }}</p>
                         </div>
                     @endforeach

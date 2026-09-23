@@ -8,7 +8,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('properties', function (Blueprint $table) {
-            $table->string('checkout_time')->default('11:00')->after('timezone');
+            $table->string('checkout_time')->default('10:00')->after('timezone');
         });
     }
     public function down(): void

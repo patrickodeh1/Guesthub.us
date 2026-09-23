@@ -227,7 +227,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
 
     // ─── Users / Team ─────────────────────────────────────────────────────────
-    Route::middleware('role:owner')->group(function () {
+    Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class);
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
         Route::get('early-access-leads', [EarlyAccessLeadController::class, 'index'])->name('early-access-leads.index');
@@ -235,7 +235,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     });
 
     // ─── Activity Logs ────────────────────────────────────────────────────────
-    Route::middleware('role:owner,manager')->group(function () {
+    Route::middleware('role:admin,manager')->group(function () {
         Route::get('logs', [LogController::class, 'index'])->name('logs.index');
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('logs/{log}', [LogController::class, 'show'])->name('logs.show');

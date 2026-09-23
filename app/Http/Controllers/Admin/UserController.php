@@ -19,7 +19,7 @@ class UserController extends Controller
                 ->where('name', 'like', "%{$s}%")
                 ->orWhere('email', 'like', "%{$s}%")
             ))
-            ->when($request->role, fn ($q, $r) => $q->where('role', $r))
+            ->when($request->role, fn ($q, $r) => $q->role($r))
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -45,17 +45,20 @@ class UserController extends Controller
             'notes'    => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $role = $data['role'];
+        unset($data['role']);
         $data['password']   = Hash::make($data['password']);
         $data['status']     = 'active';
         $data['created_by'] = auth()->id();
 
         $newUser = User::create($data);
+        $newUser->assignRole($role);
 
         ActivityLogService::admin('user_created', auth()->user()->name." created user account for {$newUser->name} ({$newUser->email}).", 'users', [
             'subject_type' => User::class,
             'subject_id'   => $newUser->id,
             'severity'     => 'success',
-            'metadata'     => ['role' => $newUser->role, 'email' => $newUser->email],
+            'metadata'     => ['role' => $role, 'email' => $newUser->email],
         ]);
 
         return redirect()->route('admin.users.show', $newUser)->with('success', "User account created for {$newUser->name}.");
@@ -81,8 +84,8 @@ class UserController extends Controller
         /** @var User $authUser */
         $authUser = auth()->user();
 
-        if ($user->isOwner() && ! $authUser->isOwner()) {
-            abort(403, 'Only the owner can edit another owner account.');
+        if ($user->isAdmin() && ! $authUser->isAdmin()) {
+            abort(403, 'Only an admin can edit another admin account.');
         }
 
         $rules = [
@@ -100,7 +103,9 @@ class UserController extends Controller
 
         $data = $request->validate($rules);
 
-        $oldRole = $user->role;
+        $oldRole = $user->getRoleNames()->first();
+        $newRole = $data['role'];
+        unset($data['role']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($data['password']);
@@ -109,12 +114,13 @@ class UserController extends Controller
         }
 
         $user->update($data);
+        $user->syncRoles([$newRole]);
 
-        if ($oldRole !== $user->role) {
-            ActivityLogService::security('role_changed', "{$authUser->name} changed {$user->name}'s role from {$oldRole} to {$user->role}.", [
+        if ($oldRole !== $newRole) {
+            ActivityLogService::security('role_changed', "{$authUser->name} changed {$user->name}'s role from {$oldRole} to {$newRole}.", [
                 'subject_type' => User::class,
                 'subject_id'   => $user->id,
-                'metadata'     => ['old_role' => $oldRole, 'new_role' => $user->role],
+                'metadata'     => ['old_role' => $oldRole, 'new_role' => $newRole],
             ]);
         } else {
             ActivityLogService::admin('user_updated', "{$authUser->name} updated user account for {$user->name}.", 'users', [
@@ -135,8 +141,8 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        if ($user->isOwner()) {
-            return back()->with('error', 'Owner accounts cannot be deleted.');
+        if ($user->isAdmin()) {
+            return back()->with('error', 'Admin accounts cannot be deleted.');
         }
 
         $name = $user->name;
@@ -159,8 +165,8 @@ class UserController extends Controller
             return back()->with('error', 'You cannot change your own account status.');
         }
 
-        if ($user->isOwner() && ! $authUser->isOwner()) {
-            abort(403, 'Only the owner can change another owner account status.');
+        if ($user->isAdmin() && ! $authUser->isAdmin()) {
+            abort(403, 'Only an admin can change another admin account status.');
         }
 
         $newStatus = $user->status === 'active' ? 'inactive' : 'active';

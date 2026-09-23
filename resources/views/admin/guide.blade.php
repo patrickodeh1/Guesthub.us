@@ -99,7 +99,7 @@
                 <div class="mt-5 grid gap-4 sm:grid-cols-2">
                     @foreach(\App\Models\User::ROLE_LABELS as $role => $label)
                         <div class="rounded-xl border border-slate-200 p-4">
-                            <span class="badge {{ match($role) { 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', default => 'badge-inactive' } }}">{{ $label }}</span>
+                            <span class="badge {{ match($role) { 'admin', 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'company' => 'border-indigo-200 bg-indigo-50 text-indigo-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', 'housekeeper' => 'border-amber-200 bg-amber-50 text-amber-700', 'viewer' => 'badge-inactive', default => 'badge-inactive' } }}">{{ $label }}</span>
                             <p class="mt-3 text-sm leading-6 text-slate-600">{{ \App\Models\User::ROLE_DESCRIPTIONS[$role] }}</p>
                         </div>
                     @endforeach

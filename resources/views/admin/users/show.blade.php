@@ -69,7 +69,7 @@
                     <p class="text-sm text-slate-500">{{ $user->formatted_phone }}</p>
                 @endif
                 <div class="mt-3 flex justify-center gap-2">
-                    <span class="badge {{ match($user->role) { 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', default => 'badge-inactive' } }}">
+                    <span class="badge {{ match($user->getRoleNames()->first()) { 'admin', 'owner' => 'border-purple-200 bg-purple-50 text-purple-700', 'company' => 'border-indigo-200 bg-indigo-50 text-indigo-700', 'manager' => 'border-blue-200 bg-blue-50 text-blue-700', 'staff' => 'badge-id_uploaded', 'housekeeper' => 'border-amber-200 bg-amber-50 text-amber-700', 'viewer' => 'badge-inactive', default => 'badge-inactive' } }}">
                         {{ $user->roleLabel() }}
                     </span>
                     <span class="badge {{ $user->isActive() ? 'badge-active' : 'badge-inactive' }}">
@@ -149,7 +149,7 @@
                             {{ $user->isActive() ? 'Deactivate account' : 'Activate account' }}
                         </button>
                     </form>
-                    @if(! $user->isOwner())
+                    @if(! $user->isAdmin())
                         <form method="post" action="{{ route('admin.users.destroy', $user) }}"
                               onsubmit="return confirm('Permanently delete {{ $user->name }}? This cannot be undone.')">
                             @csrf @method('DELETE')

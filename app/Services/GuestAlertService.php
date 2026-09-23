@@ -147,27 +147,27 @@ class GuestAlertService
      * Roles that can be individually toggled as alert recipients, in
      * addition to the guest and the Contact desk.
      */
-    public const STAFF_ROLES = ['owner', 'manager', 'staff', 'viewer'];
+    public const STAFF_ROLES = ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
 
     /**
      * All recipient sources a toggle can exist for: the guest, the Contact
      * desk, and each staff role.
      */
-    public const RECIPIENT_SOURCES = ['guest', 'contact', 'owner', 'manager', 'staff', 'viewer'];
+    public const RECIPIENT_SOURCES = ['guest', 'contact', 'admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
 
     /**
      * Default toggle state for an event when nothing has been configured
-     * yet. Guest, Contact desk, and Owner are on by default so a fresh
-     * install notifies the guest and the primary staff contact out of the
-     * box; Manager/Staff/Viewer are opt-in since not every install wants
-     * every role paged for every event.
+     * yet. Guest, Contact desk, Admin, and Owner are on by default so a fresh
+     * install notifies the guest and primary staff contacts out of the box;
+     * other roles are opt-in since not every install wants every role paged
+     * for every event.
      */
     public static function defaultToggles(): array
     {
         $toggles = [];
 
         foreach (self::RECIPIENT_SOURCES as $source) {
-            $onByDefault = in_array($source, ['guest', 'contact', 'owner'], true);
+            $onByDefault = in_array($source, ['guest', 'contact', 'admin', 'owner'], true);
             $toggles["{$source}_sms"] = $onByDefault;
             $toggles["{$source}_email"] = $onByDefault;
         }
@@ -411,7 +411,7 @@ class GuestAlertService
                 continue;
             }
 
-            $users = User::where('role', $role)->get(['phone', 'email']);
+            $users = User::role($role)->get(['phone', 'email']);
 
             if ($smsOn) {
                 foreach ($users as $user) {

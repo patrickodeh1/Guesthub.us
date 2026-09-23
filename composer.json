@@ -13,6 +13,8 @@
         "laravel/tinker": "^2.10.1",
         "sabre/vobject": "^5.0",
         "seamapi/seam": "^2.145",
+        "spatie/laravel-activitylog": "^4.10",
+        "spatie/laravel-permission": "^6.21",
         "stripe/stripe-php": "^17.4",
         "svix/svix": "^1.99"
     },

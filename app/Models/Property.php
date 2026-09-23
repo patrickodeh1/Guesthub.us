@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -55,6 +56,10 @@ class Property extends Model
         'airbnb_ical_url',
         'deposit_cap_cents',
         'required_incidentals_hold_amount',
+        'owner_id', 'photo_path', 'beds', 'baths', 'geo_radius_m',
+        'ical_url', 'vrbo_ical_url', 'deactivated_at', 'deactivated_by',
+        'notify_cleaning_started', 'notify_cleaning_finished',
+        'notify_photo_started', 'notify_task_notes',
     ];
 
     protected function casts(): array
@@ -73,7 +78,21 @@ class Property extends Model
             'late_checkout_rate_unauthorized_per_30min' => 'decimal:2',
             'deposit_cap_cents' => 'integer',
             'required_incidentals_hold_amount' => 'decimal:2',
+            'deactivated_at' => 'datetime',
+            'notify_cleaning_started' => 'boolean',
+            'notify_cleaning_finished' => 'boolean',
+            'notify_photo_started' => 'boolean',
+            'notify_task_notes' => 'boolean',
         ];
+    }
+
+    // Keep cleaning's is_active accessors compatible with root's active column.
+    protected function isActive(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->active,
+            set: fn ($value) => ['active' => $value],
+        );
     }
 
     public function bookings(): HasMany

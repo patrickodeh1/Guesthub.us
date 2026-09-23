@@ -8,26 +8,33 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
-    public const ROLES = ['owner', 'manager', 'staff', 'viewer'];
+    public const ROLES = ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
 
     public const ROLE_LABELS = [
-        'owner'   => 'Owner / Super Admin',
+        'admin'   => 'Admin / Super Admin',
+        'company' => 'Company',
+        'owner'   => 'Property Owner',
         'manager' => 'Manager',
         'staff'   => 'Staff',
         'viewer'  => 'Viewer',
+        'housekeeper' => 'Housekeeper',
     ];
 
     public const ROLE_DESCRIPTIONS = [
-        'owner'   => 'Full access to everything including users, settings, and all logs.',
+        'admin'   => 'Full access to everything including users, settings, and all logs.',
+        'company' => 'Company-level access across assigned properties and operations.',
+        'owner'   => 'Manages assigned properties and property operations.',
         'manager' => 'Can manage properties, guests, categories and view logs. Cannot manage users or settings.',
         'staff'   => 'Can view guests and update guest status. Limited access.',
         'viewer'  => 'Read-only access across the admin panel.',
+        'housekeeper' => 'Can access assigned cleaning work and task operations.',
     ];
 
     protected $fillable = [
@@ -35,7 +42,6 @@ class User extends Authenticatable
         'host_name',
         'email',
         'password',
-        'role',
         'status',
         'phone',
         'avatar',
@@ -100,47 +106,52 @@ class User extends Authenticatable
 
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return $this->hasRole('owner');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
     }
 
     public function isManager(): bool
     {
-        return in_array($this->role, ['owner', 'manager'], true);
+        return $this->hasAnyRole(['admin', 'manager']);
     }
 
     public function isStaff(): bool
     {
-        return in_array($this->role, ['owner', 'manager', 'staff'], true);
+        return $this->hasAnyRole(['admin', 'manager', 'staff']);
     }
 
     public function canManageUsers(): bool
     {
-        return $this->role === 'owner';
+        return $this->hasRole('admin');
     }
 
     public function canManageSettings(): bool
     {
-        return $this->role === 'owner';
+        return $this->hasRole('admin');
     }
 
     public function canViewLogs(): bool
     {
-        return in_array($this->role, ['owner', 'manager'], true);
+        return $this->hasAnyRole(['admin', 'manager']);
     }
 
     public function canManageProperties(): bool
     {
-        return in_array($this->role, ['owner', 'manager'], true);
+        return $this->hasAnyRole(['admin', 'manager']);
     }
 
     public function canManageGuests(): bool
     {
-        return in_array($this->role, ['owner', 'manager', 'staff'], true);
+        return $this->hasAnyRole(['admin', 'manager', 'staff']);
     }
 
     public function canDeleteData(): bool
     {
-        return $this->role === 'owner';
+        return $this->hasRole('admin');
     }
 
     // ─── Status helpers ───────────────────────────────────────────────────────
@@ -152,7 +163,9 @@ class User extends Authenticatable
 
     public function roleLabel(): string
     {
-        return self::ROLE_LABELS[$this->role] ?? ucfirst($this->role);
+        $role = $this->getRoleNames()->first();
+
+        return self::ROLE_LABELS[$role] ?? ucfirst((string) $role);
     }
 
     public function initials(): string
@@ -187,10 +200,24 @@ class User extends Authenticatable
      */
     public static function agreementHostName(): string
     {
+        $roleTable = config('permission.table_names.roles', 'roles');
+        $modelHasRolesTable = config('permission.table_names.model_has_roles', 'model_has_roles');
+        $rolePivotKey = config('permission.column_names.role_pivot_key') ?: 'role_id';
+        $modelMorphKey = config('permission.column_names.model_morph_key', 'model_id');
+
         $hostName = static::query()
             ->whereNotNull('host_name')
             ->where('host_name', '!=', '')
-            ->orderByRaw("case when role = 'owner' then 0 else 1 end")
+            ->orderByRaw(
+                "case when exists (
+                    select 1 from {$modelHasRolesTable} as mhr
+                    inner join {$roleTable} as r on r.id = mhr.{$rolePivotKey}
+                    where mhr.{$modelMorphKey} = users.id
+                      and mhr.model_type = ?
+                      and r.name = ?
+                ) then 0 else 1 end",
+                [self::class, 'admin'],
+            )
             ->value('host_name');
 
         return $hostName ?: config('app.name');

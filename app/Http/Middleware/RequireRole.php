@@ -16,7 +16,7 @@ class RequireRole
             abort(403, 'Your account is inactive. Please contact the system owner.');
         }
 
-        if (! empty($roles) && ! in_array($user->role, $roles, true)) {
+        if (! empty($roles) && ! $user->hasAnyRole($roles)) {
             abort(403, 'You do not have permission to access this section.');
         }
 
