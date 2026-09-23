@@ -13,8 +13,7 @@ return new class extends Migration
             $table->string('status')->default('active')->after('role');
             $table->string('phone')->nullable()->after('email');
             $table->string('avatar')->nullable()->after('phone');
-            $table->timestamp('last_login_at')->nullable()->after('admin_tour_completed_at');
-            $table->string('last_login_ip', 45)->nullable()->after('last_login_at');
+            $table->string('last_login_ip', 45)->nullable()->after('admin_tour_completed_at');
             $table->timestamp('dashboard_tour_completed_at')->nullable()->after('last_login_ip');
             $table->timestamp('full_system_tour_completed_at')->nullable()->after('dashboard_tour_completed_at');
             $table->unsignedBigInteger('created_by')->nullable()->after('full_system_tour_completed_at');
@@ -51,7 +50,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropIndex(['role']);
             $table->dropIndex(['status']);
-            $table->dropColumn(['role', 'status', 'phone', 'avatar', 'last_login_at', 'last_login_ip', 'dashboard_tour_completed_at', 'full_system_tour_completed_at', 'created_by', 'notes']);
+            $table->dropColumn(['role', 'status', 'phone', 'avatar', 'last_login_ip', 'dashboard_tour_completed_at', 'full_system_tour_completed_at', 'created_by', 'notes']);
         });
 
         Schema::table('activity_logs', function (Blueprint $table) {

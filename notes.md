@@ -178,3 +178,8 @@
 - B009 is blocked pending human confirmation of the approved live backups and review of the import approach. No database restore, migration, import, or destructive database command was run.
 - The repository contains two candidate data sources: `database/database.sql` (a 112 KB phpMyAdmin MariaDB dump for `welcome_guide`, generated 2026-05-19, with 17 `CREATE TABLE` statements) and `cleaning/database/database.sqlite` (a 5.9 MB SQLite database with 31 tables, including 16 users, 2 properties, 19 rooms, 44 tasks, and 2 cleaning sessions).
 - These files have not been confirmed as the current root/checkin and flipstatus/cleaning live backups. The SQL and SQLite sources also require a reviewed cross-database import plan before any data is moved into a disposable staging database.
+
+## Migration verification - 2026-09-23 10:44
+- Fixed the fresh-migration failure caused by `last_login_at` being added both by `2026_02_13_175207_add_last_login_at_to_users_table.php` and `2026_05_14_000003_enterprise_upgrade.php`. The enterprise migration now adds/drops only its own `last_login_ip` and related fields.
+- Fixed the second fresh-migration failure caused by the four property notification columns being added both by `2026_06_17_171917_add_notification_settings_to_properties_table.php` and `2026_09_22_190500_add_cleaning_fields_to_properties_table.php`. The later migration now owns only its unique cleaning property fields.
+- `docker compose exec -T app php artisan migrate:fresh --force` completed successfully, and `php artisan migrate:status` reported all migrations as ran. No production database was touched.

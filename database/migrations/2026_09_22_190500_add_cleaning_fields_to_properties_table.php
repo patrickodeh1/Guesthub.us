@@ -18,10 +18,6 @@ return new class extends Migration
             $table->string('vrbo_ical_url', 1000)->nullable();
             $table->timestamp('deactivated_at')->nullable();
             $table->foreignId('deactivated_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->boolean('notify_cleaning_started')->default(false);
-            $table->boolean('notify_cleaning_finished')->default(false);
-            $table->boolean('notify_photo_started')->default(false);
-            $table->boolean('notify_task_notes')->default(false);
         });
     }
 
@@ -40,10 +36,6 @@ return new class extends Migration
                 'vrbo_ical_url',
                 'deactivated_at',
                 'deactivated_by',
-                'notify_cleaning_started',
-                'notify_cleaning_finished',
-                'notify_photo_started',
-                'notify_task_notes',
             ]);
         });
     }
