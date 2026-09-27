@@ -5,8 +5,10 @@ namespace App\Models;
 use App\Support\PhoneFormatter;
 
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -187,6 +189,21 @@ class User extends Authenticatable
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function terminator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'terminated_by');
+    }
+
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('is_active', true);
+    }
+
+    public function scopeInactive(Builder $query): void
+    {
+        $query->where('is_active', false);
     }
 
     public function getFormattedPhoneAttribute(): ?string

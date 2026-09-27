@@ -68,7 +68,7 @@
                                 @endif
                             </h3>
                             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                {{ $property->owner->name }}
+                                {{ $property->owner?->name ?? 'Unassigned' }}
                             </p>
                             <div class="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                                 <span class="flex items-center gap-1">
@@ -147,7 +147,7 @@
                                     </span>
                                 @endif
                             </td>
-                            <td class="py-3 font-medium">{{ $property->owner->name }}</td>
+                            <td class="py-3 font-medium">{{ $property->owner?->name ?? 'Unassigned' }}</td>
                             <td class="px-4 py-3">{{ $property->rooms_count }}</td>
                             <td class="px-4 py-3">{{ $property->address ?? '—' }}</td>
                             <td class="px-4 py-3">

@@ -183,3 +183,32 @@
 - Fixed the fresh-migration failure caused by `last_login_at` being added both by `2026_02_13_175207_add_last_login_at_to_users_table.php` and `2026_05_14_000003_enterprise_upgrade.php`. The enterprise migration now adds/drops only its own `last_login_ip` and related fields.
 - Fixed the second fresh-migration failure caused by the four property notification columns being added both by `2026_06_17_171917_add_notification_settings_to_properties_table.php` and `2026_09_22_190500_add_cleaning_fields_to_properties_table.php`. The later migration now owns only its unique cleaning property fields.
 - `docker compose exec -T app php artisan migrate:fresh --force` completed successfully, and `php artisan migrate:status` reported all migrations as ran. No production database was touched.
+
+## [activity-rendering-fix] 2026-09-23 20:49
+- Added the missing `App\View\Components\AppLayout` class so cleaning pages using `<x-app-layout>` render through `resources/views/layouts/app.blade.php`.
+- Added `blade-ui-kit/blade-heroicons` and refreshed Composer dependencies for the cleaning layout's Heroicon components.
+- Configured Blade Icons to register its default component as `blade-icon`, preserving the root application's local `<x-icon>` component. This fixes the runtime collision that caused `SvgNotFound` for the local `guide` icon.
+- Verified with Docker: `php artisan optimize:clear`, `php artisan view:cache`, and PHP linting all passed. `/login` rendered successfully with HTTP 200; unauthenticated `/activity` returned the expected HTTP 302 redirect to login.
+- Files touched: `app/View/Components/AppLayout.php`, `composer.json`, `composer.lock`, `config/blade-icons.php`.
+- The pre-existing untracked `app/Console/Commands/ImportCleaningLegacyData.php` was left untouched.
+
+## [assignments-property-relations] 2026-09-23 20:52
+- Added the missing `rooms()` and `propertyTasks()` Eloquent relationships to `app/Models/Property.php`, matching the existing cleaning model contracts and root pivot tables.
+- Verified the model syntax and exercised the same eager-loading/count query used by `AssignmentController`; both relationships resolved successfully across the local Docker database (`cleaning_sessions=2`).
+- Unauthenticated `/assignments` returned the expected HTTP 302 redirect to login.
+- No schema, role, permission, or unrelated files were changed.
+
+## [properties-active-scopes] 2026-09-23 20:54
+- Added `active()`, `inactive()`, and `withInactive()` query scopes to `app/Models/Property.php`, mapping cleaning's expected scope API to the authoritative root `active` column.
+- Verified in Docker that the scopes execute successfully: `active=3`, `inactive=0`, `all=3`.
+- PHP lint and `git diff --check` passed. Unauthenticated `/properties` returned the expected HTTP 302 redirect.
+
+## [properties-owner-relation] 2026-09-23 20:57
+- Added the missing `owner()` relationship to `app/Models/Property.php`, matching `PropertyController::with('owner.roles')` and the existing `owner_id` foreign-key convention.
+- Verified in Docker that eager loading `owner.roles`, `rooms`, and `propertyTasks` succeeds for the local properties data.
+- PHP lint and `git diff --check` passed. Unauthenticated `/properties` returned the expected HTTP 302 redirect.
+
+## [properties-owner-fallback] 2026-09-23 21:04
+- Updated both responsive sections of `resources/views/properties/index.blade.php` to display `Unassigned` when a property has no related owner.
+- This handles the existing local data where all three active properties have `owner_id = NULL` without altering ownership data or schema.
+- Laravel view cache compilation and `git diff --check` passed. Unauthenticated `/properties` returned the expected HTTP 302 redirect.

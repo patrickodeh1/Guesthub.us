@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -95,6 +97,22 @@ class Property extends Model
         );
     }
 
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('active', true);
+    }
+
+    public function scopeInactive(Builder $query): void
+    {
+        $query->where('active', false);
+    }
+
+    public function scopeWithInactive(Builder $query): void
+    {
+        // Intentionally unfiltered; callers explicitly requesting inactive
+        // properties should receive both active and inactive records.
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
@@ -136,6 +154,27 @@ class Property extends Model
     public function locks(): HasMany
     {
         return $this->hasMany(PropertyLock::class);
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function rooms(): BelongsToMany
+    {
+        return $this->belongsToMany(Room::class, 'property_room')
+            ->withTimestamps()
+            ->withPivot(['sort_order'])
+            ->orderBy('property_room.sort_order');
+    }
+
+    public function propertyTasks(): BelongsToMany
+    {
+        return $this->belongsToMany(Task::class, 'property_tasks')
+            ->withTimestamps()
+            ->withPivot(['sort_order', 'instructions', 'visible_to_owner', 'visible_to_housekeeper'])
+            ->orderBy('property_tasks.sort_order');
     }
 
     /**
