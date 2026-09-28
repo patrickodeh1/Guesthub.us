@@ -4,14 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Admin Login</title>
+    @include('layouts.partials.theme-init')
+    @include('layouts.partials.brand-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
     <main class="grid min-h-screen lg:grid-cols-[1fr_520px]">
-        <section class="hidden bg-[#082b49] px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <section class="hidden bg-[var(--brand-sidebar)] px-10 py-12 text-white lg:flex lg:flex-col lg:justify-between">
             <div>
                 <div class="inline-flex items-center gap-3">
-                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-white text-[#082b49]"><x-icon name="guide" /></span>
+                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-white text-[var(--theme-primary)]"><x-icon name="guide" /></span>
                     <span class="text-lg font-semibold">Welcome Guide</span>
                 </div>
                 <div class="mt-28 max-w-2xl">

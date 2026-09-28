@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -6,12 +6,20 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const outDir = path.join(root, 'public', 'client-preview', 'screenshots');
-const manifestPath = path.join(root, 'public', 'client-preview', 'screenshots-manifest.json');
+const outDir = path.resolve(root, process.env.CLIENT_PREVIEW_SCREENSHOT_DIR || 'public/client-preview/screenshots');
+const manifestPath = process.env.CLIENT_PREVIEW_MANIFEST_PATH
+  ? path.resolve(root, process.env.CLIENT_PREVIEW_MANIFEST_PATH)
+  : path.join(path.dirname(outDir), 'screenshots-manifest.json');
 const appBase = process.env.CLIENT_PREVIEW_BASE_URL || 'http://127.0.0.1:8003';
 const adminEmail = process.env.CLIENT_PREVIEW_ADMIN_EMAIL || 'admin@example.com';
 const adminPassword = process.env.CLIENT_PREVIEW_ADMIN_PASSWORD || 'password';
 const chromePort = Number(process.env.CLIENT_PREVIEW_CHROME_PORT || 9333);
+const themeArgument = process.argv.find((argument) => argument.startsWith('--theme='));
+const requestedTheme = themeArgument?.slice('--theme='.length);
+if (requestedTheme && !['light', 'dark'].includes(requestedTheme)) {
+  throw new Error('--theme must be either light or dark');
+}
+const captureThemes = requestedTheme ? [requestedTheme] : ['light', 'dark'];
 
 const desktop = { name: 'desktop', width: 1440, height: 1000, mobile: false };
 const tablet = { name: 'tablet', width: 768, height: 1024, mobile: true };
@@ -21,19 +29,6 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
-}
-
-function run(command, args, options = {}) {
-  console.log(`> ${command} ${args.join(' ')}`);
-  const result = spawnSync(command, args, {
-    cwd: root,
-    shell: process.platform === 'win32',
-    stdio: 'inherit',
-    ...options,
-  });
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed`);
-  }
 }
 
 function httpJson(url) {
@@ -82,20 +77,7 @@ async function ensureLaravelServer() {
     return null;
   }
 
-  console.log(`Starting Laravel at ${appBase}`);
-  const server = spawn('php', ['artisan', 'serve', '--host=127.0.0.1', '--port=8003'], {
-    cwd: root,
-    shell: process.platform === 'win32',
-    stdio: 'ignore',
-    windowsHide: true,
-  });
-
-  if (!await waitFor(`${appBase}/login`)) {
-    server.kill();
-    throw new Error(`Laravel did not start at ${appBase}`);
-  }
-
-  return server;
+  throw new Error(`Laravel is not responding at ${appBase}. Start the local Docker app before capturing screenshots.`);
 }
 
 function findChrome() {
@@ -123,7 +105,10 @@ async function startChrome() {
   }
 
   const chromePath = findChrome();
-  const profileDir = path.join(root, 'storage', 'app', 'client-preview', `chrome-profile-${process.pid}`);
+  const profileBase = process.env.CLIENT_PREVIEW_PROFILE_DIR
+    ? path.resolve(root, process.env.CLIENT_PREVIEW_PROFILE_DIR)
+    : path.join(root, 'storage', 'app', 'client-preview');
+  const profileDir = path.join(profileBase, `chrome-profile-${process.pid}`);
   ensureDir(profileDir);
 
   const chrome = spawn(chromePath, [
@@ -157,7 +142,7 @@ async function startChrome() {
     throw new Error('Chrome page target was not available.');
   }
 
-  return { chrome, webSocketDebuggerUrl: pageTarget.webSocketDebuggerUrl };
+  return { chrome, webSocketDebuggerUrl: pageTarget.webSocketDebuggerUrl, profileDir };
 }
 
 class Cdp {
@@ -165,6 +150,7 @@ class Cdp {
     this.ws = new WebSocket(wsUrl);
     this.id = 1;
     this.pending = new Map();
+    this.themeScriptId = null;
     this.events = [];
   }
 
@@ -214,6 +200,16 @@ class Cdp {
         ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
         : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
     });
+  }
+
+  async setTheme(theme) {
+    if (this.themeScriptId) {
+      await this.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: this.themeScriptId });
+    }
+    const { identifier } = await this.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `localStorage.setItem('dark', ${JSON.stringify(theme === 'dark' ? 'true' : 'false')});`,
+    });
+    this.themeScriptId = identifier;
   }
 
   async navigate(url, waitMs = 1500) {
@@ -325,74 +321,50 @@ async function login(cdp) {
     document.querySelector('form')?.submit();
   })()`);
   await sleep(2200);
+  const pathAfterLogin = await cdp.eval('window.location.pathname');
+  if (pathAfterLogin === '/login') {
+    const message = await cdp.eval(`document.querySelector('[role="alert"]')?.textContent?.trim() || document.querySelector('.text-red-800')?.textContent?.trim() || ''`);
+    throw new Error(`Preview login failed${message ? `: ${message}` : '. Check CLIENT_PREVIEW_ADMIN_EMAIL and CLIENT_PREVIEW_ADMIN_PASSWORD.'}`);
+  }
+  if (pathAfterLogin === '/force-password-change') {
+    throw new Error('Preview account requires a password change before screenshots can be captured.');
+  }
 }
 
-async function restartTour(cdp) {
-  await cdp.navigate(`${appBase}/admin/guide`);
-  await cdp.eval(`(async () => {
-    const form = Array.from(document.querySelectorAll('form')).find(f => f.action.includes('/admin/tour/restart'));
-    const token = form?.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
-    if (!token) return false;
-    await fetch('${appBase}/admin/tour/restart', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': token },
-      body: new URLSearchParams({ _token: token }).toString(),
-      credentials: 'same-origin'
-    });
-    return true;
-  })()`);
-  await sleep(600);
-}
-
-async function completeTour(cdp) {
-  await cdp.eval(`(async () => {
-    const tour = document.querySelector('#admin-onboarding-tour');
-    const token = tour?.dataset.csrf || document.querySelector('meta[name="csrf-token"]')?.content;
-    const url = tour?.dataset.completeUrl || '${appBase}/admin/tour/complete';
-    if (token) {
-      await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }, credentials: 'same-origin' });
-    }
+async function dismissTour(cdp) {
+  await cdp.eval(`(() => {
     document.querySelectorAll('[id*="tour"], .fixed.inset-0').forEach(el => {
       if (el.textContent?.includes('Welcome to your command centre')) el.remove();
     });
-    return true;
   })()`);
   await sleep(500);
-}
-
-async function overrideCheckin(cdp, bookingUrl) {
-  await cdp.navigate(bookingUrl);
-  await cdp.eval(`(async () => {
-    const form = Array.from(document.querySelectorAll('form')).find(f => f.action.includes('override-checkin'));
-    const token = form?.querySelector('input[name="_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
-    if (!form || !token) return false;
-    await fetch(form.action, { method: 'POST', headers: { 'X-CSRF-TOKEN': token }, body: new FormData(form), credentials: 'same-origin' });
-    return true;
-  })()`);
-  await sleep(800);
 }
 
 function makeCapture(manifest) {
   return async function capture(cdp, entry) {
     const viewport = entry.viewport || desktop;
-    const fileName = `${String(manifest.length + 1).padStart(2, '0')}-${slugify(entry.title)}-${viewport.name}.png`;
-    const filePath = publicPathFor(fileName);
+    for (const theme of captureThemes) {
+      const fileName = `${String(manifest.length + 1).padStart(3, '0')}-${theme}-${slugify(entry.title)}-${viewport.name}.png`;
+      const filePath = publicPathFor(fileName);
 
-    try {
-      await cdp.setViewport(viewport);
-      await cdp.navigate(entry.url, entry.waitMs || 1500);
-      if (entry.action) await entry.action(cdp);
-      await cdp.screenshot(filePath);
-      manifest.push({
-        section: entry.section,
-        title: entry.title,
-        caption: entry.caption,
-        file: `screenshots/${fileName}`,
-        viewport: viewport.name,
-      });
-      console.log(`Captured ${fileName}`);
-    } catch (error) {
-      console.warn(`Skipped "${entry.title}": ${error.message}`);
+      try {
+        await cdp.setTheme(theme);
+        await cdp.setViewport(viewport);
+        await cdp.navigate(entry.url, entry.waitMs || 1500);
+        if (entry.action) await entry.action(cdp);
+        await cdp.screenshot(filePath);
+        manifest.push({
+          section: entry.section,
+          title: entry.title,
+          caption: entry.caption,
+          file: `screenshots/${fileName}`,
+          viewport: viewport.name,
+          theme,
+        });
+        console.log(`Captured ${fileName}`);
+      } catch (error) {
+        console.warn(`Skipped "${entry.title}" (${theme}): ${error.message}`);
+      }
     }
   };
 }
@@ -401,10 +373,8 @@ async function main() {
   ensureDir(outDir);
   ensureDir(path.dirname(manifestPath));
 
-  run('php', ['artisan', 'migrate', '--seed', '--force']);
-
-  const server = await ensureLaravelServer();
-  const { chrome, webSocketDebuggerUrl } = await startChrome();
+  await ensureLaravelServer();
+  const { chrome, webSocketDebuggerUrl, profileDir } = await startChrome();
   const cdp = new Cdp(webSocketDebuggerUrl);
   const manifest = [];
   const capture = makeCapture(manifest);
@@ -421,7 +391,6 @@ async function main() {
     });
 
     await login(cdp);
-    await restartTour(cdp);
 
     await capture(cdp, {
       section: 'Admin Guide & Tour',
@@ -431,7 +400,7 @@ async function main() {
       viewport: desktop,
       waitMs: 2200,
     });
-    await completeTour(cdp);
+    await dismissTour(cdp);
 
     const links = await discoverLinks(cdp);
     const preview = (state) => `${links.bookingUrl}/preview/${state}`;
@@ -487,8 +456,6 @@ async function main() {
       await capture(cdp, { section: 'Guest Experience', title, caption, url, viewport: desktop, action });
     }
 
-    await overrideCheckin(cdp, links.bookingUrl);
-
     const categoryScreens = [
       ['WiFi Category Detail Page', links.categoryUrls.wifi, 'WiFi guide page with readable rich content and quick category navigation.'],
       ['Amenities Category Detail Page', links.categoryUrls.amenities, 'Amenities content and related cards are laid out for easy scanning.'],
@@ -527,8 +494,10 @@ async function main() {
     console.log(`Manifest: ${manifestPath}`);
   } finally {
     cdp.close();
+    const chromeExit = new Promise((resolve) => chrome.once('exit', resolve));
     chrome.kill();
-    if (server) server.kill();
+    await Promise.race([chromeExit, sleep(5000)]);
+    fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 

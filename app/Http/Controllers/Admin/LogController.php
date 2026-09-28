@@ -3,37 +3,56 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityLog;
+use App\Services\UnifiedActivityFeed;
 use Illuminate\Http\Request;
 
 class LogController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(private readonly UnifiedActivityFeed $feed)
     {
-        $logs = ActivityLog::query()
-            ->when($request->search, fn ($q, $s) => $q->where(fn ($inner) => $inner
-                ->where('description', 'like', "%{$s}%")
-                ->orWhere('actor_name', 'like', "%{$s}%")
-                ->orWhere('actor_email', 'like', "%{$s}%")
-                ->orWhere('action', 'like', "%{$s}%")
-            ))
-            ->when($request->actor_type, fn ($q, $t) => $q->where('actor_type', $t))
-            ->when($request->module, fn ($q, $m) => $q->where('module', $m))
-            ->when($request->severity, fn ($q, $s) => $q->where('severity', $s))
-            ->when($request->date_from, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
-            ->when($request->date_to, fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
-            ->latest()
-            ->paginate(30)
-            ->withQueryString();
-
-        $modules   = ActivityLog::whereNotNull('module')->distinct()->orderBy('module')->pluck('module');
-        $severities = ['info', 'success', 'warning', 'danger', 'security'];
-
-        return view('admin.logs.index', compact('logs', 'modules', 'severities'));
     }
 
-    public function show(ActivityLog $log)
+    public function index(Request $request)
     {
+        $user = $request->user();
+        abort_unless($user && $user->canViewLogs() || $user?->hasRole('owner'), 403);
+
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'source' => ['nullable', 'in:portal,ops'],
+            'actor' => ['nullable', 'string', 'max:100'],
+            'module' => ['nullable', 'string', 'max:100'],
+            'severity' => ['nullable', 'string', 'max:50'],
+            'property' => ['nullable', 'integer'],
+            'subject_type' => ['nullable', 'string', 'max:255'],
+            'subject_id' => ['nullable', 'integer'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+        ]);
+
+        $logs = $this->feed->paginate($filters, $user);
+
+        return view('admin.logs.index', [
+            'logs' => $logs,
+            'modules' => $this->feed->modules(),
+            'actors' => $this->feed->actors(),
+            'severities' => ['info', 'success', 'warning', 'danger', 'security'],
+        ]);
+    }
+
+    public function show(string $source, string $id, Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user && $user->canViewLogs() || $user?->hasRole('owner'), 403);
+
+        $log = $this->feed->find($source, $id, $user);
+        abort_unless($log, 404);
+
         return view('admin.logs.show', compact('log'));
+    }
+
+    public function legacy(string $log)
+    {
+        return redirect()->route('admin.logs.show', ['source' => 'portal', 'id' => $log]);
     }
 }

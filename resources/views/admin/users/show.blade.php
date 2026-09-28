@@ -37,7 +37,7 @@
                                 @endif
                             </div>
                         </div>
-                        <a href="{{ route('admin.logs.show', $log) }}"
+                        <a href="{{ route('admin.logs.legacy', $log->id) }}"
                            class="shrink-0 text-xs text-slate-400 hover:text-slate-700">Detail →</a>
                     </div>
                 @empty

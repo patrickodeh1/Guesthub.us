@@ -24,12 +24,20 @@
                 </div>
             </div>
             <div>
+                <label class="field-label">Source</label>
+                <select name="source" class="input mt-2">
+                    <option value="">All sources</option>
+                    <option value="portal" @selected(request('source') === 'portal')>Guest Portal</option>
+                    <option value="ops" @selected(request('source') === 'ops')>Cleaning Ops</option>
+                </select>
+            </div>
+            <div>
                 <label class="field-label">Actor</label>
-                <select name="actor_type" class="input mt-2">
+                <select name="actor" class="input mt-2">
                     <option value="">All actors</option>
-                    <option value="admin"  @selected(request('actor_type') === 'admin')>Admin</option>
-                    <option value="guest"  @selected(request('actor_type') === 'guest')>Guest</option>
-                    <option value="system" @selected(request('actor_type') === 'system')>System</option>
+                    @foreach($actors as $actor)
+                        <option value="{{ $actor }}" @selected(request('actor') === $actor)>{{ ucfirst($actor) }}</option>
+                    @endforeach
                 </select>
             </div>
             <div>
@@ -59,7 +67,7 @@
                 <input name="date_to" type="date" value="{{ request('date_to') }}" class="input mt-2">
             </div>
             <button type="submit" class="btn-primary">Filter</button>
-            @if(request()->hasAny(['search', 'actor_type', 'module', 'severity', 'date_from', 'date_to']))
+            @if(request()->hasAny(['search', 'source', 'actor', 'module', 'severity', 'property', 'subject_type', 'subject_id', 'date_from', 'date_to']))
                 <a href="{{ route('admin.logs.index') }}" class="btn-secondary">Clear</a>
             @endif
         </div>
@@ -69,9 +77,8 @@
     <div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4" data-tour="logs-stats">
         @foreach([
             ['Total logs',    $logs->total(),                  'logs',         'badge-inactive'],
-            ['Admin actions', \App\Models\ActivityLog::where('actor_type','admin')->count(), 'users', 'badge-id_uploaded'],
-            ['Guest actions', \App\Models\ActivityLog::where('actor_type','guest')->count(), 'guests', 'badge-active'],
-            ['Security',      \App\Models\ActivityLog::where('severity','security')->count(), 'security', 'badge-pending'],
+            ['Portal / Ops', $logs->total(), 'activity', 'badge-id_uploaded'],
+            ['Security', $logs->total(), 'security', 'badge-pending'],
         ] as [$label, $count, $icon, $badge])
             <div class="card card-pad flex items-center gap-3">
                 <span class="icon-chip h-10 w-10"><x-icon :name="$icon" class="h-4 w-4" /></span>
@@ -109,16 +116,16 @@
                                     <p class="truncate text-sm font-medium text-slate-900" title="{{ $log->description }}">
                                         {{ $log->description }}
                                     </p>
-                                    <p class="text-xs text-slate-500">{{ $log->action }}</p>
+                                    <p class="text-xs text-slate-500">{{ $log->event }}</p>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <p class="text-sm font-medium text-slate-900">{{ $log->actorLabel() }}</p>
+                            <p class="text-sm font-medium text-slate-900">{{ $log->actor_name ?: ucfirst($log->actor_type) }}</p>
                             @if($log->actor_email)
                                 <p class="text-xs text-slate-500">{{ $log->actor_email }}</p>
                             @endif
-                            <span class="badge badge-inactive mt-1">{{ $log->actor_type }}</span>
+                            <span class="badge badge-inactive mt-1">{{ $log->source === 'portal' ? 'Guest Portal' : 'Cleaning Ops' }}</span>
                         </td>
                         <td>
                             @if($log->module)
@@ -128,16 +135,16 @@
                             @endif
                         </td>
                         <td>
-                            <span class="badge {{ $log->severityClass() }}">{{ $log->severity }}</span>
+                            <span class="badge badge-inactive">{{ $log->severity }}</span>
                         </td>
                         <td class="font-mono text-xs text-slate-500">{{ $log->ip_address ?? '-' }}</td>
                         <td class="text-sm text-slate-500">
-                            <span title="{{ $log->created_at->copy()->setTimezone(config('app.display_timezone'))->format('d M Y H:i:s') }}">
-                                {{ $log->created_at->diffForHumans() }}
+                            <span title="{{ \Illuminate\Support\Carbon::parse($log->occurred_at)->setTimezone(config('app.display_timezone'))->format('d M Y H:i:s') }}">
+                                {{ \Illuminate\Support\Carbon::parse($log->occurred_at)->diffForHumans() }}
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('admin.logs.show', $log) }}"
+                            <a href="{{ route('admin.logs.show', [$log->source, $log->id]) }}"
                                class="text-xs font-semibold text-slate-500 hover:text-slate-900">
                                 Detail →
                             </a>

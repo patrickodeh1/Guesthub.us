@@ -4,165 +4,95 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Admin' }} &middot; Welcome Guide</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <meta name="base-path" content="{{ request()->getBaseUrl() }}">
     @php
-        $siteLogo = \App\Models\Setting::get('application_logo_path') ?: \App\Models\Setting::getValue('site_logo');
-        $favicon = \App\Models\Setting::get('favicon_path') ?: \App\Models\Setting::getValue('favicon');
+        $brandSiteName = \App\Support\Branding::siteName();
+        $siteLogo = \App\Support\Branding::logoUrl();
+        $siteIcon = \App\Support\Branding::iconUrl();
+        $favicon = \App\Support\Branding::faviconUrl();
+        $navigation = app(\App\Support\Navigation::class)->forUser(auth()->user());
     @endphp
+    <title>{{ isset($title) && $title ? $title.' · ' : '' }}{{ $brandSiteName }}</title>
+    @include('layouts.partials.theme-init')
+    @include('layouts.partials.brand-vars')
+    @if($cleaning ?? false)
+        @vite([
+            'resources/css/app.css',
+            'resources/js/app.js',
+            'resources/css/cleaning.css',
+            'resources/js/cleaning-app.js',
+        ])
+    @else
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @endif
     @if($favicon)
-        <link rel="icon" href="{{ url('/img/'.$favicon) }}">
+        <link rel="icon" href="{{ $favicon }}">
+    @endif
+    @if($cleaning ?? false)
+        <link rel="preload" href="https://cdn.gtranslate.net/widgets/latest/dropdown.js" as="script">
+        <style>
+            .gtranslate_wrapper select {
+                width: 100% !important;
+                padding: 0.375rem 0.5rem !important;
+                font-size: 0.875rem !important;
+                border-radius: 0.375rem !important;
+                border: 1px solid #d1d5db !important;
+                background-color: #ffffff !important;
+                color: #1f2937 !important;
+                outline: none !important;
+                box-shadow: none !important;
+            }
+            html.dark .gtranslate_wrapper select {
+                background-color: #1f2937 !important;
+                border-color: #4b5563 !important;
+                color: #e5e7eb !important;
+            }
+            html.dark .gtranslate_wrapper option {
+                background-color: #1f2937 !important;
+                color: #e5e7eb !important;
+            }
+        </style>
     @endif
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased">
+<body class="bg-slate-50 text-slate-900 antialiased" @if($cleaning ?? false) x-data="mainState" x-on:resize.window="handleWindowResize" @endif>
+@if($cleaning ?? false)
+    <script>
+        window.__userCanUpload = {{ auth()->user()->hasAnyRole(['admin', 'owner']) ? 'true' : 'false' }};
+    </script>
+@endif
 
 {{-- ══════════════════════════════════════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════════════════════════════════════ --}}
-<aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-x-hidden overflow-y-auto bg-[#082b49] text-white shadow-xl lg:block lg:w-48 lg:shadow-none">
+<aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-x-hidden overflow-y-auto bg-[var(--brand-sidebar)] text-white shadow-xl lg:block lg:w-48 lg:shadow-none">
     {{-- Brand --}}
     <div class="flex items-center justify-between px-3 py-3">
-        <a href="{{ route('admin.dashboard') }}" class="flex min-w-0 flex-col items-start gap-1 px-3 font-semibold tracking-tight" data-tour="sidebar-brand">
+        <a href="{{ ($cleaning ?? false) ? route('dashboard') : route('admin.dashboard') }}" class="flex min-w-0 flex-col items-start gap-1 px-3 font-semibold tracking-tight" data-tour="sidebar-brand">
             @if($siteLogo)
-                <img src="{{ url('/img/'.$siteLogo) }}" alt="" class="h-10 max-w-[168px] w-auto object-contain">
+                <img src="{{ $siteLogo }}" alt="{{ $brandSiteName }}" class="h-10 max-w-[168px] w-auto object-contain">
             @else
-                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-xs font-bold text-[#082b49]">AP</span>
+                @if($siteIcon)
+                    <img src="{{ $siteIcon }}" alt="" class="h-8 w-8 shrink-0 rounded-md object-contain">
+                @else
+                    <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-white text-[var(--theme-primary)]">
+                        <x-icon name="properties" class="h-5 w-5" />
+                    </span>
+                @endif
             @endif
-            <span class="text-base font-semibold tracking-tight text-white/90">Admin Panel</span>
         </a>
         <button type="button" id="admin-sidebar-close" class="rounded-md p-1 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 lg:hidden" aria-label="Close navigation">
             <x-icon name="x" class="h-5 w-5" />
         </button>
     </div>
 
-    {{-- Navigation --}}
-    <nav class="grid gap-1 px-3 pb-4 text-sm" data-tour="sidebar-nav">
-        @php
-            $navSections = [
-                'Administration' => [
-                    ['categories', 'Manage Categories', 'admin.categories.index',   'admin.categories.*'],
-                    ['folder',     'Media Library',    'admin.media.index',        'admin.media.*'],
-                    ['users',      'Users',             'admin.users.index',        'admin.users.*'],
-                    ['users',      'Early Access Signups', 'admin.early-access-leads.index', 'admin.early-access-leads.*'],
-                    ['logs',       'Activity Logs',     'admin.logs.index',         'admin.logs.*'],
-                    ['security',   'Security',          'admin.security',           'admin.security'],
-                    ['guide',      'Admin Guide',       'admin.guide',              'admin.guide'],
-                ],
-            ];
-        @endphp
-        @php
-            $navProperties = \App\Models\Property::orderBy('name')->get();
-            $propertiesActive = request()->routeIs('admin.properties.*') || request()->routeIs('admin.instructions.*') || request()->routeIs('admin.guest-guide.*');
-        @endphp
+    @include("layouts.partials.navigation")
 
-        <p class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">Guest Admin</p>
-        <a href="{{ route('admin.dashboard') }}" data-tour="nav-dashboard" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('admin.dashboard') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-            <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="dashboard" class="h-4 w-4" /></span>
-            <span class="font-medium">Dashboard</span>
-        </a>
-        <a href="{{ route('admin.guests.index') }}" data-tour="nav-calendar" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('admin.guests.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-            <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="calendar" class="h-4 w-4" /></span>
-            <span class="font-medium">Guests</span>
-        </a>
-        {{-- Properties: expandable --}}
-        <div>
-            <div class="flex items-center rounded-sm {{ $propertiesActive ? 'bg-white/10 text-white' : 'text-slate-200' }}">
-                <a href="{{ route('admin.properties.index') }}" data-tour="nav-properties" class="flex flex-1 items-center gap-2.5 px-3 py-2.5 transition hover:text-white">
-                    <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="properties" class="h-4 w-4" /></span>
-                    <span class="font-medium">Properties</span>
-                </a>
-                <button type="button" onclick="document.getElementById('nav-properties-submenu').classList.toggle('hidden'); this.classList.toggle('rotate-90')" class="px-2 py-2.5 transition hover:text-white {{ $propertiesActive ? 'rotate-90' : '' }}">
-                    <x-icon name="chevron-right" class="h-3.5 w-3.5" />
-                </button>
-            </div>
-            <div id="nav-properties-submenu" class="ml-2 grid min-w-0 gap-1 border-l border-white/10 pl-2 {{ $propertiesActive ? '' : 'hidden' }}">
-                @foreach($navProperties as $navProperty)
-                    @php
-                        $thisPropertyActive = request()->routeIs('admin.instructions.*') || request()->routeIs('admin.guest-guide.*') || request()->routeIs('admin.properties.availability.*');
-                        $thisPropertyActive = $thisPropertyActive && (request()->route('property')?->id === $navProperty->id);
-                    @endphp
-                    <div>
-                        <button type="button" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.property-chevron').classList.toggle('rotate-90')" class="flex w-full items-start gap-1 rounded-sm px-2 py-2 text-left text-xs font-semibold transition hover:bg-white/10 {{ $thisPropertyActive ? 'bg-white/10 text-white' : 'text-slate-300 hover:text-white' }}">
-                            <span class="min-w-0 flex-1 break-words leading-snug">{{ $navProperty->name }}</span>
-                            <x-icon name="chevron-right" class="property-chevron mt-0.5 h-3 w-3 shrink-0 transition-transform {{ $thisPropertyActive ? 'rotate-90' : '' }}" />
-                        </button>
-                        <div class="ml-1 grid min-w-0 gap-1 {{ $thisPropertyActive ? '' : 'hidden' }}">
-                            <a href="{{ route('admin.instructions.show', $navProperty) }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.instructions.*') && request()->route('property')?->id === $navProperty->id ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Check In/Out Details</a>
-                            <a href="{{ route('admin.guest-guide.show', $navProperty) }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.guest-guide.*') && request()->route('property')?->id === $navProperty->id ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Guest Guide</a>
-                            <a href="{{ route('admin.properties.availability.index', $navProperty) }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.properties.availability.*') && request()->route('property')?->id === $navProperty->id ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Availability</a>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+    @if(auth()->user()->hasAnyRole(["admin", "owner", "company"]))
+        <div class="mx-3 mt-2 rounded-md border border-white/10 bg-white/5 p-3 text-xs text-slate-200">
+            <p class="font-semibold">Client-ready demo</p>
+            <p class="mt-1 leading-5">Copy a guest URL from any booking to preview the full guest experience.</p>
         </div>
-
-        @php
-            $settingsActive = request()->routeIs('admin.settings.*') || request()->routeIs('admin.payments.*') || request()->routeIs('admin.notices.*');
-        @endphp
-        <p class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">Settings</p>
-        <div>
-            <div class="flex items-center rounded-sm {{ $settingsActive ? 'bg-white/10 text-white' : 'text-slate-200' }}">
-                <a href="{{ route('admin.settings.edit') }}" data-tour="nav-settings" class="flex flex-1 items-center gap-2.5 px-3 py-2.5 transition hover:text-white">
-                    <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="settings" class="h-4 w-4" /></span>
-                    <span class="font-medium">Settings</span>
-                </a>
-                <button type="button" onclick="document.getElementById('nav-settings-submenu').classList.toggle('hidden'); this.classList.toggle('rotate-90')" class="px-2 py-2.5 transition hover:text-white {{ $settingsActive ? 'rotate-90' : '' }}">
-                    <x-icon name="chevron-right" class="h-3.5 w-3.5" />
-                </button>
-            </div>
-            <div id="nav-settings-submenu" class="ml-2 grid min-w-0 gap-1 border-l border-white/10 pl-2 {{ $settingsActive ? '' : 'hidden' }}">
-                <a href="{{ route('admin.settings.edit') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.settings.edit') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">General</a>
-                <a href="{{ route('admin.settings.legal.edit') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.settings.legal.*') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Legal</a>
-                <a href="{{ route('admin.settings.notifications.edit') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.settings.notifications.*') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Notifications</a>
-                <a href="{{ route('admin.payments.index') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.payments.*') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Payments</a>
-                <a href="{{ route('admin.notices.index') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.notices.*') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Guest Notices</a>
-            </div>
-        </div>
-
-        @role('admin|owner|company')
-            <div class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">Switch to Cleaning Ops</div>
-            <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('dashboard') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="dashboard" class="h-4 w-4" /></span>
-                <span class="font-medium">Cleaning Dashboard</span>
-            </a>
-            <a href="{{ route('assignments.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('assignments.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="assignment" class="h-4 w-4" /></span>
-                <span class="font-medium">Assignments</span>
-            </a>
-            <a href="{{ route('calendar.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('calendar.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="calendar" class="h-4 w-4" /></span>
-                <span class="font-medium">Calendar</span>
-            </a>
-            <a href="{{ route('properties.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('properties.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="properties" class="h-4 w-4" /></span>
-                <span class="font-medium">Cleaning Properties</span>
-            </a>
-            <a href="{{ route('training.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('training.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="book-open" class="h-4 w-4" /></span>
-                <span class="font-medium">Training</span>
-            </a>
-        @endrole
-
-        @foreach($navSections as $sectionLabel => $navItems)
-            <p class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">{{ $sectionLabel }}</p>
-            @foreach($navItems as [$icon, $label, $route, $pattern])
-                @php $active = request()->routeIs($pattern); @endphp
-                <a href="{{ route($route) }}"
-                   data-tour="nav-{{ $icon }}"
-                   class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ $active ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
-                    <span class="grid h-5 w-5 shrink-0 place-items-center">
-                        <x-icon :name="$icon" class="h-4 w-4" />
-                    </span>
-                    <span class="font-medium">{{ $label }}</span>
-                </a>
-            @endforeach
-        @endforeach
-
-    {{-- Sidebar tip --}}
-    <div class="mx-3 mt-2 rounded-md border border-white/10 bg-white/5 p-3 text-xs text-slate-200">
-        <p class="font-semibold">Client-ready demo</p>
-        <p class="mt-1 leading-5">Copy a guest URL from any booking to preview the full guest experience.</p>
-    </div>
+    @endif
 </aside>
 
 {{-- ══════════════════════════════════════════════════════════════════════════
@@ -182,8 +112,23 @@
 
             {{-- Page title --}}
             <div class="min-w-0 flex-1">
-                <h1 class="truncate text-base font-semibold text-slate-950 lg:text-lg">{{ $title ?? 'Dashboard' }}</h1>
+                @if(isset($header) && trim((string) $header) !== '')
+                    <div class="min-w-0">{{ $header }}</div>
+                @else
+                    <h1 class="truncate text-base font-semibold text-slate-950 lg:text-lg">{{ $title ?? 'Dashboard' }}</h1>
+                @endif
             </div>
+
+            <button type="button" id="theme-toggle" aria-label="Switch to dark theme" aria-pressed="false"
+                    class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300">
+                <svg data-theme-icon="sun" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.3 15.3A9 9 0 0 1 8.7 3.7 9 9 0 1 0 20.3 15.3Z" />
+                </svg>
+                <svg data-theme-icon="moon" class="hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" />
+                    <path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
+                </svg>
+            </button>
 
             {{-- Global Search --}}
             <div class="relative hidden sm:block" data-tour="global-search">
@@ -201,6 +146,7 @@
                 </div>
             </div>
 
+            @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
             {{-- Notification Bell --}}
             <div class="relative" data-tour="notifications">
                 <button type="button"
@@ -293,7 +239,7 @@
                         @endif
                     </div>
                     <div class="border-t border-slate-100 p-2">
-                        <a href="{{ route('admin.logs.index') }}"
+                        <a href="{{ auth()->user()->hasAnyRole(['admin', 'manager', 'owner']) ? route('admin.logs.index') : route('activity.index') }}"
                            class="block rounded-md px-3 py-2 text-center text-xs font-semibold text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300">
                             View activity logs →
                         </a>
@@ -305,6 +251,7 @@
             <a href="{{ route('admin.guests.create') }}" class="hidden btn-primary sm:inline-flex" data-tour="add-guest-btn">
                 Add Guest
             </a>
+            @endif
 
             {{-- User menu --}}
             <div class="relative" data-tour="user-menu">
@@ -312,7 +259,7 @@
                         id="user-menu-btn"
                         class="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300"
                         aria-label="Open user menu">
-                    <span class="grid h-7 w-7 place-items-center rounded-full bg-[#082b49] text-xs font-bold text-white">
+                    <span class="grid h-7 w-7 place-items-center rounded-full bg-[var(--theme-primary)] text-[var(--on-theme-primary)] text-xs font-bold">
                         {{ auth()->user()->initials() }}
                     </span>
                     <span class="hidden font-medium lg:block">{{ auth()->user()->name }}</span>
@@ -325,18 +272,23 @@
                         <p class="text-xs text-slate-500">{{ auth()->user()->roleLabel() }}</p>
                     </div>
                     <div class="p-1">
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                            <x-icon name="users" class="h-4 w-4 text-slate-400" />
+                            My Account
+                        </a>
+                        @if($cleaning ?? false)
+                            <div @click.stop class="border-y border-slate-100 px-4 py-2">
+                                <label class="mb-1.5 block text-xs font-medium text-slate-500">Language</label>
+                                <div class="gtranslate_wrapper"></div>
+                            </div>
+                        @endif
+                        @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
                         <a href="{{ route('admin.security') }}"
                            class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
                             <x-icon name="security" class="h-4 w-4 text-slate-400" />
                             Security &amp; 2FA
                         </a>
-                        @if(auth()->user()->canManageUsers())
-                            <a href="{{ route('admin.users.index') }}"
-                               class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                                <x-icon name="users" class="h-4 w-4 text-slate-400" />
-                                Manage Team
-                            </a>
-                        @endif
                         <form method="post" action="{{ route('admin.tour.restart') }}">
                             @csrf
                             <button type="submit"
@@ -350,6 +302,7 @@
                             <x-icon name="guide" class="h-4 w-4 text-slate-400" />
                             Admin Guide
                         </a>
+                        @endif
                     </div>
                     <div class="border-t border-slate-100 p-1">
                         <form method="post" action="{{ route('logout') }}">
@@ -368,10 +321,10 @@
 
     {{-- Alerts --}}
     <div class="page-shell pt-4 pb-0">
-        @if(session('success'))
+        @if(session('success') || session('ok'))
             <div id="success-flash-banner" class="mb-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 transition-opacity duration-300">
                 <x-icon name="check" class="h-4 w-4 shrink-0 text-emerald-600" />
-                {{ session('success') }}
+                {{ session('success') ?? session('ok') }}
             </div>
             <script>
                 setTimeout(() => {
@@ -404,6 +357,9 @@
         <div data-animate>
             {{ $slot }}
         </div>
+        @if($cleaning ?? false)
+            <x-footer />
+        @endif
     </div>
 </main>
 
@@ -543,6 +499,9 @@ document.addEventListener('change', function(e) {
 </script>
 
 <div id="toast-container" class="pointer-events-none fixed right-4 top-20 z-[99999] flex flex-col gap-2"></div>
+@if($cleaning ?? false)
+    @include('layouts.partials.cleaning-toasts')
+@endif
 
 {{-- ══════════════════════════════════════════════════════════════════════════
      SITE CONFIRM MODAL  (replaces window.confirm() with our own popup)
@@ -553,10 +512,15 @@ document.addEventListener('change', function(e) {
         <p id="site-confirm-body" class="mt-2 whitespace-pre-line text-sm text-slate-600"></p>
         <div class="mt-5 flex justify-end gap-2">
             <button type="button" id="site-confirm-cancel" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Cancel</button>
-            <button type="button" id="site-confirm-ok" class="rounded-lg bg-[#082b49] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#0b3a63]">Confirm</button>
+            <button type="button" id="site-confirm-ok" class="rounded-lg bg-[var(--button-primary-color)] px-3 py-2 text-sm font-medium text-[var(--on-primary)] transition hover:bg-[var(--button-primary-hover)]">Confirm</button>
         </div>
     </div>
 </div>
+
+@if($cleaning ?? false)
+    @include('layouts.partials.cleaning-modals')
+@endif
+@stack('modals')
 
 <script>
 // Site-styled replacement for window.confirm(). Usage on any <form>:
@@ -657,10 +621,25 @@ document.addEventListener('change', function(e) {
 })();
 </script>
 
+@if($cleaning ?? false)
+    <script>
+        window.gtranslateSettings = {
+            "default_language": "en",
+            "detect_browser_language": true,
+            "languages": ["en", "es", "pt"],
+            "wrapper_selector": ".gtranslate_wrapper",
+            "switcher_horizontal_position": "inline",
+            "alt_flags": {"en": "usa"}
+        };
+    </script>
+    <script src="https://cdn.gtranslate.net/widgets/latest/dropdown.js"></script>
+@endif
+@stack('scripts')
+
 {{-- ══════════════════════════════════════════════════════════════════════════
      SPOTLIGHT TOUR  (shown only on first visit)
 ══════════════════════════════════════════════════════════════════════════ --}}
-@if(auth()->check() && ! auth()->user()->admin_tour_completed_at)
+@if(auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']) && ! auth()->user()->admin_tour_completed_at)
     @php
         $tourSteps = [
             ['target' => null,               'title' => 'Welcome to your command centre', 'body' => 'This platform manages your property guest check-ins with professional tools. This short tour highlights each key module. Use the arrow keys or buttons to navigate.'],
@@ -729,6 +708,23 @@ document.addEventListener('change', function(e) {
         document.getElementById('notif-panel')?.classList.add('hidden');
         document.getElementById('user-menu-panel')?.classList.add('hidden');
         document.getElementById('search-dropdown')?.classList.add('hidden');
+    });
+
+    const themeToggle = document.getElementById('theme-toggle');
+    const updateThemeToggle = () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        themeToggle?.setAttribute('aria-pressed', String(isDark));
+        themeToggle?.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+        themeToggle?.querySelector('[data-theme-icon="sun"]')?.classList.toggle('hidden', isDark);
+        themeToggle?.querySelector('[data-theme-icon="moon"]')?.classList.toggle('hidden', !isDark);
+    };
+
+    updateThemeToggle();
+    themeToggle?.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+        window.localStorage.setItem('dark', String(isDark));
+        updateThemeToggle();
     });
 </script>
 </body>

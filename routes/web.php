@@ -138,7 +138,9 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
 Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(function () {
 
     // ─── Dashboard ───────────────────────────────────────────────────────────
-    Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('/', DashboardController::class)
+        ->middleware('role:admin,owner,company')
+        ->name('dashboard');
 
     // ─── Tour ────────────────────────────────────────────────────────────────
     Route::post('tour/complete', function () {
@@ -265,6 +267,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     // ─── Settings ─────────────────────────────────────────────────────────────
     Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::match(['put', 'post'], 'settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
+    Route::post('settings/reset-colors', [\App\Http\Controllers\Admin\SettingsController::class, 'resetColors'])->name('settings.reset-colors');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit');
     Route::match(['put', 'post'], 'settings/legal', [\App\Http\Controllers\Admin\SettingsController::class, 'legalUpdate'])->name('settings.legal.update');
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit');
@@ -286,10 +289,11 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     });
 
     // ─── Activity Logs ────────────────────────────────────────────────────────
-    Route::middleware('role:admin,manager')->group(function () {
+    Route::middleware('role:admin,manager,owner')->group(function () {
         Route::get('logs', [LogController::class, 'index'])->name('logs.index');
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
-        Route::get('logs/{log}', [LogController::class, 'show'])->name('logs.show');
+        Route::get('logs/{source}/{id}', [LogController::class, 'show'])->name('logs.show');
+        Route::get('logs/{log}', [LogController::class, 'legacy'])->name('logs.legacy');
     });
 
     // ─── Global Search ────────────────────────────────────────────────────────

@@ -10,6 +10,28 @@
     <form method="post" action="{{ route('admin.settings.notifications.update') }}" class="card card-pad">
         @csrf @method('put')
 
+        <section class="mb-6 rounded-xl border border-slate-200 p-4">
+            <h2 class="font-bold text-slate-800">Global cleaning notifications</h2>
+            <p class="field-help mt-1">These switches control live notifications used by Cleaning Ops.</p>
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+                @foreach([
+                    'notify_cleaning_started_global' => 'Cleaning started',
+                    'notify_cleaning_finished_global' => 'Cleaning finished',
+                    'notify_photo_started_global' => 'Photo started',
+                    'notify_task_notes_global' => 'Task notes',
+                    'notify_assignments' => 'Assignments',
+                    'notify_session_started' => 'Session started',
+                    'notify_session_completed' => 'Session completed',
+                ] as $key => $label)
+                    <label class="flex items-center gap-3 text-sm font-semibold text-slate-800">
+                        <input type="hidden" name="{{ $key }}" value="0">
+                        <input type="checkbox" name="{{ $key }}" value="1" @checked(\App\Models\Setting::get($key, true))>
+                        {{ $label }}
+                    </label>
+                @endforeach
+            </div>
+        </section>
+
         <div class="flex flex-col gap-3">
             @foreach($alertEvents as $key => $meta)
                 @php($row = $alertConfig[$key])

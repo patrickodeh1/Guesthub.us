@@ -52,6 +52,7 @@ class UserController extends Controller
         $data['created_by'] = auth()->id();
 
         $newUser = User::create($data);
+        $newUser->forceFill(['email_verified_at' => now()])->save();
         $newUser->assignRole($role);
 
         ActivityLogService::admin('user_created', auth()->user()->name." created user account for {$newUser->name} ({$newUser->email}).", 'users', [

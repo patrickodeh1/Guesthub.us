@@ -4,7 +4,7 @@
     "name": "bootstrap"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BgWLQoyP.css",
+    "file": "assets/app-BtbNa615.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -13,7 +13,7 @@
     ]
   },
   "resources/css/cleaning.css": {
-    "file": "assets/cleaning-BPogYvWn.css",
+    "file": "assets/cleaning-DJ41gZPE.css",
     "src": "resources/css/cleaning.css",
     "isEntry": true,
     "name": "cleaning",
@@ -22,7 +22,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-DclEDUxM.js",
+    "file": "assets/app-Dh_iGSNx.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -31,7 +31,7 @@
     ]
   },
   "resources/js/cleaning-app.js": {
-    "file": "assets/cleaning-app-C-W1TxZK.js",
+    "file": "assets/cleaning-app---iUPoQb.js",
     "name": "cleaning-app",
     "src": "resources/js/cleaning-app.js",
     "isEntry": true,

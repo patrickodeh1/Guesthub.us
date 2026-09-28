@@ -33,17 +33,6 @@
         </div>
     </div>
 
-    <div class="card card-pad mb-5">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Quick switch</p>
-                <h2 class="mt-1 text-lg font-semibold text-slate-950">Switch to Cleaning Ops</h2>
-            </div>
-            <a href="{{ route('dashboard') }}" class="btn-secondary gap-2">Open Cleaning Dashboard</a>
-        </div>
-        <p class="mt-2 text-sm text-slate-600">Use the cleaning command center for assignments, calendar views, and the property work list.</p>
-    </div>
-
     <div class="flex flex-col gap-5">
         @if($needsAttentionGuests->count() > 0)
         <section id="guests-needs-attention" class="card scroll-mt-24 overflow-hidden border-2 border-amber-200">

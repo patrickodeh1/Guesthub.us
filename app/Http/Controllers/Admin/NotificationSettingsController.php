@@ -31,6 +31,17 @@ class NotificationSettingsController extends Controller
             'alerts.*.guest_message' => ['required', 'string', 'max:1000'],
             'alerts.*.staff_message' => ['required', 'string', 'max:1000'],
         ];
+        foreach ([
+            'notify_cleaning_started_global',
+            'notify_cleaning_finished_global',
+            'notify_photo_started_global',
+            'notify_task_notes_global',
+            'notify_assignments',
+            'notify_session_started',
+            'notify_session_completed',
+        ] as $key) {
+            $rules[$key] = ['nullable', 'boolean'];
+        }
 
         foreach (GuestAlertService::RECIPIENT_SOURCES as $source) {
             $rules["alerts.*.{$source}_sms"] = ['nullable', 'boolean'];
@@ -38,6 +49,18 @@ class NotificationSettingsController extends Controller
         }
 
         $data = $request->validate($rules);
+
+        foreach ([
+            'notify_cleaning_started_global',
+            'notify_cleaning_finished_global',
+            'notify_photo_started_global',
+            'notify_task_notes_global',
+            'notify_assignments',
+            'notify_session_started',
+            'notify_session_completed',
+        ] as $key) {
+            \App\Models\Setting::putValue($key, (bool) ($data[$key] ?? false));
+        }
 
         $config = [];
         foreach (GuestAlertService::EVENTS as $key => $meta) {

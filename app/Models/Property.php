@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\User;
 
 class Property extends Model
 {
@@ -113,6 +114,43 @@ class Property extends Model
         // properties should receive both active and inactive records.
     }
 
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        if ($user->hasRole('owner')) {
+            return $query->where('owner_id', $user->id);
+        }
+
+        if ($user->hasRole('company')) {
+            return $query->where(function (Builder $properties) use ($user) {
+                $properties->where('owner_id', $user->id)
+                    ->orWhereIn('owner_id', function ($owners) use ($user) {
+                        $owners->select('id')
+                            ->from('users')
+                            ->where('owner_id', $user->id);
+                    })
+                    ->orWhereIn('owner_id', function ($owners) use ($user) {
+                        $owners->select('owner_id')
+                            ->from('housekeeper_owner')
+                            ->where('housekeeper_id', $user->id);
+                    });
+            });
+        }
+
+        if ($user->hasRole('housekeeper')) {
+            return $query->whereIn('id', function ($sessions) use ($user) {
+                $sessions->select('property_id')
+                    ->from('cleaning_sessions')
+                    ->where('housekeeper_id', $user->id);
+            });
+        }
+
+        return $query;
+    }
+
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class);
@@ -175,6 +213,11 @@ class Property extends Model
             ->withTimestamps()
             ->withPivot(['sort_order', 'instructions', 'visible_to_owner', 'visible_to_housekeeper'])
             ->orderBy('property_tasks.sort_order');
+    }
+
+    public function notificationRecipients(): HasMany
+    {
+        return $this->hasMany(PropertyNotificationRecipient::class);
     }
 
     /**

@@ -10,26 +10,6 @@
 ])
 
 @php
-    use App\Models\Setting;
-
-    // Helper function to darken a hex color (only declare if not already exists)
-    if (!function_exists('darkenColor')) {
-        function darkenColor($hex, $percent = 15) {
-            $hex = str_replace('#', '', $hex);
-            $r = hexdec(substr($hex, 0, 2));
-            $g = hexdec(substr($hex, 2, 2));
-            $b = hexdec(substr($hex, 4, 2));
-
-            $r = max(0, min(255, $r - ($r * $percent / 100)));
-            $g = max(0, min(255, $g - ($g * $percent / 100)));
-            $b = max(0, min(255, $b - ($b * $percent / 100)));
-
-            return '#' . str_pad(dechex($r), 2, '0', STR_PAD_LEFT) .
-                       str_pad(dechex($g), 2, '0', STR_PAD_LEFT) .
-                       str_pad(dechex($b), 2, '0', STR_PAD_LEFT);
-        }
-    }
-
     $baseClasses =
         'inline-flex !py-1 items-center transition-colors font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-dark-eval-2';
 
@@ -39,7 +19,7 @@
 
     switch ($variant) {
         case 'primary':
-            $variantClasses = 'text-white';
+            $variantClasses = 'text-[var(--on-primary)]';
             $inlineStyles = "background-color: var(--button-primary-color);";
             $focusRingColor = 'button-primary';
             break;
@@ -49,32 +29,24 @@
             $focusRingColor = 'button-primary';
             break;
         case 'success':
-            $successColor = Setting::get('button_success_color', '#10b981');
-            $hoverColor = darkenColor($successColor, 15);
-            $variantClasses = 'text-white';
-            $inlineStyles = "background-color: {$successColor};";
-            $focusRingColor = $successColor;
+            $variantClasses = 'text-[var(--on-success)]';
+            $inlineStyles = 'background-color: var(--button-success-color);';
+            $focusRingColor = 'button-success';
             break;
         case 'danger':
-            $dangerColor = Setting::get('button_danger_color', '#ef4444');
-            $hoverColor = darkenColor($dangerColor, 15);
-            $variantClasses = 'text-white';
-            $inlineStyles = "background-color: {$dangerColor};";
-            $focusRingColor = $dangerColor;
+            $variantClasses = 'text-[var(--on-danger)]';
+            $inlineStyles = 'background-color: var(--button-danger-color);';
+            $focusRingColor = 'button-danger';
             break;
         case 'warning':
-            $warningColor = Setting::get('button_warning_color', '#f59e0b');
-            $hoverColor = darkenColor($warningColor, 15);
-            $variantClasses = 'text-white';
-            $inlineStyles = "background-color: {$warningColor};";
-            $focusRingColor = $warningColor;
+            $variantClasses = 'text-[var(--on-warning)]';
+            $inlineStyles = 'background-color: var(--button-warning-color);';
+            $focusRingColor = 'button-warning';
             break;
         case 'info':
-            $infoColor = Setting::get('button_info_color', '#06b6d4');
-            $hoverColor = darkenColor($infoColor, 15);
-            $variantClasses = 'text-white';
-            $inlineStyles = "background-color: {$infoColor};";
-            $focusRingColor = $infoColor;
+            $variantClasses = 'text-[var(--on-info)]';
+            $inlineStyles = 'background-color: var(--button-info-color);';
+            $focusRingColor = 'button-info';
             break;
         case 'black':
             $variantClasses =
@@ -153,22 +125,13 @@
 
 @if($focusRingColor && in_array($variant, ['primary', 'secondary', 'success', 'danger', 'warning', 'info']))
     <style>
-        @if($focusRingColor === 'button-primary')
-            [data-focus-ring="button-primary"]:focus {
-                --tw-ring-color: var(--button-primary-color) !important;
-            }
-            [style*="background-color: var(--button-primary-color)"]:hover {
-                background-color: color-mix(in srgb, var(--button-primary-color) 85%, black) !important;
-            }
-        @else
-            [data-focus-ring="{{ $focusRingColor }}"]:focus {
-                --tw-ring-color: {{ $focusRingColor }} !important;
-            }
-            @if(isset($hoverColor))
-                [style*="--btn-hover-color"]:hover {
-                    background-color: var(--btn-hover-color) !important;
-                }
-            @endif
-        @endif
+        [data-focus-ring="button-primary"]:focus { --tw-ring-color: var(--button-primary-color) !important; }
+        [data-focus-ring="button-success"]:focus { --tw-ring-color: var(--button-success-color) !important; }
+        [data-focus-ring="button-danger"]:focus { --tw-ring-color: var(--button-danger-color) !important; }
+        [data-focus-ring="button-warning"]:focus { --tw-ring-color: var(--button-warning-color) !important; }
+        [data-focus-ring="button-info"]:focus { --tw-ring-color: var(--button-info-color) !important; }
+        [style*="background-color: var(--button-primary-color)"]:hover {
+            background-color: var(--button-primary-hover) !important;
+        }
     </style>
 @endif

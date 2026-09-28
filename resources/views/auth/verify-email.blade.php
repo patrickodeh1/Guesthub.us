@@ -24,7 +24,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
 
-                <button type="submit" class="text-sm text-blue-500 underline hover:text-blue-700">
+                <button type="submit" class="text-sm text-[var(--theme-primary)] underline hover:text-[var(--theme-primary-hover)]">
                     {{ __('Log Out') }}
                 </button>
             </form>

@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+@plugin '@tailwindcss/aspect-ratio';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
@@ -8,6 +13,10 @@
 @theme {
     --font-sans: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-dark-eval-0: #151823;
+    --color-dark-eval-1: #222738;
+    --color-dark-eval-2: #2A2F42;
+    --color-dark-eval-3: #2C3142;
 }
 
 @layer base {
@@ -42,7 +51,8 @@
     }
 
     .eyebrow {
-        @apply text-xs font-semibold uppercase tracking-wide text-blue-700;
+        color: var(--theme-primary);
+        @apply text-xs font-semibold uppercase tracking-wide;
     }
 
     .page-title {
@@ -74,11 +84,23 @@
     }
 
     .btn-primary {
-        @apply inline-flex min-h-10 items-center justify-center rounded-md bg-[#0b2d4d] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-px hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+        background: var(--button-primary-color);
+        color: var(--on-primary);
+        @apply inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition hover:-translate-y-px focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+    }
+
+    .btn-primary:hover {
+        background: var(--button-primary-hover);
+    }
+
+    .btn-primary:active {
+        background: var(--button-primary-active);
     }
 
     .btn-accent {
-        @apply inline-flex min-h-10 items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+        background: var(--button-primary-color);
+        color: var(--on-primary);
+        @apply inline-flex min-h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
     }
 
     .btn-secondary {
@@ -102,11 +124,22 @@
     }
 
     .input {
-        @apply mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-none outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100;
+        @apply mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-none outline-none transition placeholder:text-slate-400;
+        accent-color: var(--theme-primary);
+    }
+
+    .input:focus {
+        border-color: var(--theme-primary);
+        box-shadow: 0 0 0 3px var(--theme-primary-soft);
     }
 
     .textarea {
-        @apply mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-950 shadow-none outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 min-h-32;
+        @apply mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-950 shadow-none outline-none transition placeholder:text-slate-400 min-h-32;
+    }
+
+    .textarea:focus {
+        border-color: var(--theme-primary);
+        box-shadow: 0 0 0 3px var(--theme-primary-soft);
     }
 
     .file-box {
@@ -164,7 +197,9 @@
     .badge-id_uploaded,
     .badge-guest_approved,
     .badge-manually_approved {
-        @apply border-blue-200 bg-blue-50 text-blue-700;
+        border-color: color-mix(in srgb, var(--theme-primary) 30%, white);
+        background: var(--theme-primary-soft);
+        color: var(--theme-primary);
     }
 
     .badge-checked_out {
@@ -192,7 +227,10 @@
     }
 
     .icon-chip {
-        @apply grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-200 bg-slate-50 text-blue-700;
+        border-color: color-mix(in srgb, var(--theme-primary) 25%, white);
+        background: var(--theme-primary-soft);
+        color: var(--theme-primary);
+        @apply grid h-10 w-10 shrink-0 place-items-center rounded-lg border;
     }
 
     .lux-panel {
@@ -1002,18 +1040,18 @@
         align-items: center;
         justify-content: center;
         border-radius: 6px;
-        background: #06284a;
+        background: var(--button-primary-color);
         padding: 10px 16px;
         font-size: 12px;
         font-weight: 800;
-        color: #fff;
+        color: var(--on-primary);
         border: 0;
         box-shadow: 0 8px 16px rgb(6 40 74 / .12);
         transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
     }
 
     .guest-primary-btn:hover {
-        background: #0b3b66;
+        background: var(--button-primary-hover);
         transform: translateY(-1px);
         box-shadow: 0 12px 22px rgb(6 40 74 / .16);
     }
@@ -1132,7 +1170,7 @@
         font-size: 24px;
         font-weight: 800;
         color: #fff;
-        background: #06284a;
+        background: var(--button-primary-color);
         box-shadow: 0 4px 10px rgb(6 40 74 / .25);
     }
     .step-dash {
@@ -1304,7 +1342,7 @@
     }
 
     .guest-input:focus {
-        border-color: #06284a;
+        border-color: var(--theme-primary);
         box-shadow: 0 0 0 2px rgb(6 40 74 / .08);
     }
 
@@ -1346,7 +1384,7 @@
     }
 
     .guest-upload:hover {
-        border-color: #06284a;
+        border-color: var(--theme-primary);
         background: #f8fafc;
     }
 
@@ -1673,11 +1711,11 @@
 }
 
 [class*="bg-[#102338]"] {
-    background-color: #082b49 !important;
+    background-color: var(--brand-sidebar) !important;
 }
 
 [class*="text-[#102338]"] {
-    color: #0b2d4d !important;
+    color: var(--theme-primary) !important;
 }
 
 [class*="rounded-2xl"],
@@ -1772,6 +1810,290 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+}
+
+.dark {
+    color-scheme: dark;
+    --color-slate-50: var(--color-dark-eval-0);
+    --color-slate-100: var(--color-dark-eval-1);
+    --color-slate-200: var(--color-dark-eval-2);
+    --color-slate-300: #3b4155;
+    --color-slate-400: #64748b;
+    --color-slate-500: #94a3b8;
+    --color-slate-600: #cbd5e1;
+    --color-slate-700: #e2e8f0;
+    --color-slate-800: #f1f5f9;
+    --color-slate-900: #f8fafc;
+    --color-slate-950: #ffffff;
+}
+
+.dark .bg-white {
+    background-color: var(--color-dark-eval-1) !important;
+}
+
+.dark .bg-slate-50 {
+    background-color: var(--color-dark-eval-0) !important;
+}
+
+.dark [class*="divide-slate-"] > :not(:last-child) {
+    border-color: var(--color-dark-eval-2) !important;
+}
+
+.dark [class*="border-slate-"] {
+    border-color: var(--color-dark-eval-2) !important;
+}
+
+.dark [class*="ring-slate-"] {
+    --tw-ring-color: var(--color-dark-eval-3) !important;
+}
+
+.dark [class*="shadow-"]:not([class*="shadow-none"]) {
+    --tw-shadow-color: rgb(0 0 0 / 0.32);
+}
+
+.dark .card,
+.dark .table-wrap,
+.dark .guest-portal-card,
+.dark .guest-detail-card,
+.dark .guest-amenity-card,
+.dark .guest-event-card {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark .page-title,
+.dark .section-title,
+.dark .guest-status-title,
+.dark .guest-title,
+.dark .guest-header-title {
+    color: #f8fafc;
+}
+
+.dark .page-subtitle,
+.dark .section-copy,
+.dark .field-help,
+.dark .guest-card-label,
+.dark .guest-status-kicker {
+    color: #cbd5e1;
+}
+
+.dark .eyebrow,
+.dark .field-label {
+    color: #e2e8f0;
+}
+
+.dark .data-table thead,
+.dark .data-table tbody,
+.dark .guest-welcome-panel,
+.dark .guest-status-bar,
+.dark .guest-booking-card,
+.dark .guest-bottom-nav {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark .data-table tbody tr,
+.dark .data-table tbody td,
+.dark .guest-info-row dd,
+.dark .guest-bottom-nav a {
+    border-color: var(--color-dark-eval-2);
+    color: #e2e8f0;
+}
+
+.dark .btn-secondary,
+.dark .btn-ghost {
+    border-color: var(--color-dark-eval-3);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark .btn-secondary:hover,
+.dark .btn-ghost:hover {
+    background-color: var(--color-dark-eval-2);
+}
+
+.dark .btn-primary,
+.dark .btn-accent {
+    color: #fff;
+}
+
+.dark .btn-danger {
+    border-color: #7f1d1d;
+    background-color: rgb(127 29 29 / 0.45);
+    color: #fecaca;
+}
+
+.dark .badge {
+    border-color: var(--color-dark-eval-3);
+}
+
+.dark .badge-active,
+.dark .badge-checked_in,
+.dark .badge-currently_hosting,
+.dark .badge-gps_verified {
+    border-color: #166534;
+    background-color: rgb(20 83 45 / 0.45);
+    color: #bbf7d0;
+}
+
+.dark .badge-pending,
+.dark .badge-awaiting_deposit,
+.dark .badge-waiting_checkin {
+    border-color: #854d0e;
+    background-color: rgb(120 53 15 / 0.4);
+    color: #fde68a;
+}
+
+.dark .badge-deposit_paid {
+    border-color: #115e59;
+    background-color: rgb(17 94 89 / 0.4);
+    color: #99f6e4;
+}
+
+.dark .badge-pre_checkin_complete,
+.dark .badge-cancelled,
+.dark .badge-danger {
+    border-color: #991b1b;
+    background-color: rgb(127 29 29 / 0.4);
+    color: #fecaca;
+}
+
+.dark .badge-id_uploaded,
+.dark .badge-guest_approved,
+.dark .badge-manually_approved {
+    border-color: #1e40af;
+    background-color: rgb(30 58 138 / 0.4);
+    color: #bfdbfe;
+}
+
+.dark .badge-checked_out,
+.dark .badge-inactive,
+.dark .badge-arrival-countdown {
+    border-color: var(--color-dark-eval-3);
+    background-color: var(--color-dark-eval-2);
+    color: #e2e8f0;
+}
+
+.dark .badge-security {
+    border-color: #6b21a8;
+    background-color: rgb(88 28 135 / 0.4);
+    color: #e9d5ff;
+}
+
+.dark .icon-chip {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #93c5fd;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]),
+.dark select,
+.dark textarea,
+.dark .input,
+.dark .textarea,
+.dark .guest-card-input,
+.dark .guest-card-field,
+.dark .guest-card-postal {
+    border-color: var(--color-dark-eval-3);
+    background-color: var(--color-dark-eval-0);
+    color: #f1f5f9;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark .guest-card-input::placeholder {
+    color: #94a3b8;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus,
+.dark .input:focus,
+.dark .textarea:focus,
+.dark .guest-card-input:focus {
+    border-color: #60a5fa;
+    outline-color: #60a5fa;
+}
+
+.dark .guest-card-summary-item,
+.dark .guest-card-wizard .wizard-nav,
+.dark .guest-card-wizard .wizard-dots-row {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark [role="dialog"],
+.dark [role="menu"],
+.dark .flatpickr-calendar {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark .flatpickr-day,
+.dark .flatpickr-weekday,
+.dark .flatpickr-month,
+.dark .flatpickr-current-month,
+.dark .flatpickr-time input {
+    color: #e2e8f0;
+}
+
+.dark .tour-tooltip,
+.dark [data-tour-tooltip] {
+    border-color: var(--color-dark-eval-2);
+    background-color: var(--color-dark-eval-1);
+    color: #e2e8f0;
+}
+
+.dark .tour-tooltip {
+    background-color: var(--color-dark-eval-1) !important;
+}
+
+.dark .tour-step-number {
+    border-color: #1e3a8a !important;
+    background-color: rgb(30 58 138 / 0.4) !important;
+    color: #bfdbfe !important;
+}
+
+.dark .tour-step-title {
+    color: #f8fafc !important;
+}
+
+.dark .tour-step-description {
+    color: #cbd5e1 !important;
+}
+
+.dark .tour-step-label {
+    color: #93c5fd !important;
+}
+
+.dark .tour-progress-track {
+    background-color: var(--color-dark-eval-3) !important;
+}
+
+.dark .tour-back-btn {
+    border-color: var(--color-dark-eval-3) !important;
+    background-color: var(--color-dark-eval-2) !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .tour-skip-btn {
+    color: #cbd5e1 !important;
+}
+
+.dark #admin-sidebar .text-slate-200 {
+    color: #f8fafc;
+}
+
+.dark #admin-sidebar .text-slate-300 {
+    color: #e2e8f0;
+}
+
+.dark #admin-sidebar .text-slate-400 {
+    color: #cbd5e1;
 }
 
 @keyframes scroll-highlight-pulse {

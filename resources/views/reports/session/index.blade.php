@@ -159,6 +159,7 @@
     @endif
 
     <title>{{ $reportDisplayName }}</title>
+    @include('layouts.partials.brand-vars')
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:wght@500;600&display=swap');
 
@@ -168,8 +169,7 @@
         }
 
         :root {
-            --theme-primary: {{ $themePrimary }};
-            --button-primary: {{ $buttonPrimary }};
+            --button-primary: var(--button-primary-color);
             --rpt-header: {{ $rptHeader }};
             --rpt-status: {{ $rptStatus }};
             --rpt-checklist: {{ $rptChecklist }};

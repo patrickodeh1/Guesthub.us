@@ -8,6 +8,7 @@ use App\Models\CleaningSession;
 use App\Services\AssignmentGroupingService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -25,7 +26,9 @@ class AssignmentGroupingTest extends TestCase
         // Ensure roles exist
         Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
 
-        $this->housekeeper = User::factory()->create();
+        $this->housekeeper = User::factory()->create([
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
         $this->housekeeper->assignRole('housekeeper');
 
         $this->property = Property::factory()->create();

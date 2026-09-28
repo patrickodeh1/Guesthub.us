@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Setting;
 use App\Services\MediaService;
+use App\Support\Branding;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -36,7 +37,6 @@ class SettingsController extends Controller
             'theme_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'application_logo' => ['nullable', 'image', 'max:2048'],
             'application_icon' => ['nullable', 'image', 'max:2048'],
-            'logo_alignment' => ['nullable', 'string', 'in:left,center,right'],
             'button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'button_success_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'button_danger_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -57,7 +57,7 @@ class SettingsController extends Controller
             'notify_task_notes_global' => ['nullable', 'boolean'],
             'mandatory_instruction_viewing' => ['nullable', 'boolean'],
             'global_required_instruction_views' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'brand_color' => ['required', 'string', 'max:20'],
+            'brand_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'default_intro' => ['nullable', 'string'],
@@ -68,6 +68,27 @@ class SettingsController extends Controller
             'arrival_disclaimer' => ['nullable', 'string', 'max:2000'],
             'default_deposit_cap_dollars' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'processing_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'report_header_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_status_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_checklist_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_issues_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_photos_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_time_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_supplies_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_audit_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'report_button_secondary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'site_copyright' => ['nullable', 'string', 'max:255'],
+            'legal_effective_date' => ['nullable', 'string', 'max:255'],
+            'terms_page_title' => ['nullable', 'string', 'max:255'],
+            'privacy_page_title' => ['nullable', 'string', 'max:255'],
+            'rental_contract_page_title' => ['nullable', 'string', 'max:255'],
+            'terms_url' => ['nullable', 'string', 'max:255'],
+            'privacy_url' => ['nullable', 'string', 'max:255'],
+            'legal_terms_content' => ['nullable', 'string'],
+            'legal_privacy_content' => ['nullable', 'string'],
+            'legal_rental_contract_content' => ['nullable', 'string'],
+            'legal_sms_consent_content' => ['nullable', 'string'],
         ]);
 
         if ($request->hasFile('site_logo')) {
@@ -114,12 +135,58 @@ class SettingsController extends Controller
             unset($data['processing_fee_percent']);
         }
 
+        foreach ([
+            'report_header_color', 'report_status_color', 'report_checklist_color',
+            'report_issues_color', 'report_photos_color', 'report_time_color',
+            'report_supplies_color', 'report_audit_color', 'report_button_primary_color',
+            'report_button_secondary_color', 'site_copyright', 'legal_effective_date',
+            'terms_page_title', 'privacy_page_title', 'rental_contract_page_title',
+            'terms_url', 'privacy_url', 'legal_terms_content', 'legal_privacy_content',
+            'legal_rental_contract_content', 'legal_sms_consent_content',
+        ] as $key) {
+            if (array_key_exists($key, $data)) {
+                if (str_ends_with($key, '_content')) {
+                    $version = match ($key) {
+                        'legal_terms_content' => 'terms_version',
+                        'legal_privacy_content' => 'privacy_policy_version',
+                        'legal_rental_contract_content' => 'rental_contract_version',
+                        default => 'sms_consent_version',
+                    };
+                    $this->bumpVersionIfChanged($data, $key, $version);
+                }
+                Setting::putValue($key, $data[$key]);
+                unset($data[$key]);
+            }
+        }
+
+
+        if (array_key_exists('theme_color', $data) && $data['theme_color']) {
+            $data['brand_color'] = $data['theme_color'];
+        } else {
+            unset($data['brand_color']);
+        }
+
         foreach ($data as $key => $value) {
             Setting::putValue($key, $value);
         }
         ActivityLog::record('settings_updated', 'Brand and system settings were updated.', 'settings');
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    public function resetColors()
+    {
+        Setting::putValue('theme_color', Branding::DEFAULT_THEME_COLOR);
+        Setting::putValue('brand_color', Branding::DEFAULT_THEME_COLOR);
+        Setting::putValue('button_primary_color', Branding::DEFAULT_BUTTON_COLOR);
+        Setting::putValue('button_success_color', '#10b981');
+        Setting::putValue('button_danger_color', '#ef4444');
+        Setting::putValue('button_warning_color', '#f59e0b');
+        Setting::putValue('button_info_color', '#06b6d4');
+
+        ActivityLog::record('settings_colors_reset', 'Brand and button colors were reset to GuestHub defaults.', 'settings');
+
+        return back()->with('success', 'Brand and button colors reset to the GuestHub defaults.');
     }
 
     public function legalUpdate(Request $request)
@@ -177,8 +244,8 @@ class SettingsController extends Controller
         return [
             'gps_radius_meters' => Setting::getValue('gps_radius_meters', 150),
             'site_name' => Setting::get('site_name', config('app.name', 'Guest Hub')),
-            'theme_color' => Setting::get('theme_color', '#842eb8'),
-            'button_primary_color' => Setting::get('button_primary_color', '#842eb8'),
+            'theme_color' => Setting::get('theme_color', Branding::DEFAULT_THEME_COLOR),
+            'button_primary_color' => Setting::get('button_primary_color', Branding::DEFAULT_BUTTON_COLOR),
             'button_success_color' => Setting::get('button_success_color', '#10b981'),
             'button_danger_color' => Setting::get('button_danger_color', '#ef4444'),
             'button_warning_color' => Setting::get('button_warning_color', '#f59e0b'),
@@ -188,8 +255,9 @@ class SettingsController extends Controller
             'items_per_page' => Setting::get('items_per_page', 15),
             'timezone' => Setting::get('timezone', config('app.timezone', 'UTC')),
             'site_logo' => Setting::get('application_logo_path') ?: Setting::getValue('site_logo'),
+            'application_icon' => Setting::get('application_icon_path'),
             'favicon' => Setting::get('favicon_path') ?: Setting::getValue('favicon'),
-            'brand_color' => Setting::getValue('brand_color', '#0f766e'),
+            'brand_color' => Setting::getValue('brand_color', Branding::DEFAULT_THEME_COLOR),
             'contact_phone' => Setting::getValue('contact_phone', '+1 555 123 4567'),
             'contact_email' => Setting::getValue('contact_email', 'guestservices@example.com'),
             'default_intro' => Setting::getValue('default_intro', 'Your arrival details and local guide are ready when you are.'),
@@ -212,6 +280,27 @@ class SettingsController extends Controller
             'notify_task_notes_global' => Setting::get('notify_task_notes_global', true),
             'mandatory_instruction_viewing' => Setting::get('mandatory_instruction_viewing', false),
             'global_required_instruction_views' => Setting::get('global_required_instruction_views', 3),
+            'report_header_color' => Setting::get('report_header_color', '#842eb8'),
+            'report_status_color' => Setting::get('report_status_color', '#0e7a4b'),
+            'report_checklist_color' => Setting::get('report_checklist_color', '#3b82f6'),
+            'report_issues_color' => Setting::get('report_issues_color', '#ef4444'),
+            'report_photos_color' => Setting::get('report_photos_color', '#0e8a97'),
+            'report_time_color' => Setting::get('report_time_color', '#7c3aed'),
+            'report_supplies_color' => Setting::get('report_supplies_color', '#ec4899'),
+            'report_audit_color' => Setting::get('report_audit_color', '#64748b'),
+            'report_button_primary_color' => Setting::get('report_button_primary_color', '#842eb8'),
+            'report_button_secondary_color' => Setting::get('report_button_secondary_color', '#ffffff'),
+            'site_copyright' => Setting::getValue('site_copyright', '© Dreamzone Media LLC d/b/a Guest Hub'),
+            'legal_effective_date' => Setting::getValue('legal_effective_date', date('F j, Y')),
+            'terms_page_title' => Setting::getValue('terms_page_title', 'Terms of Service'),
+            'privacy_page_title' => Setting::getValue('privacy_page_title', 'Privacy Policy'),
+            'rental_contract_page_title' => Setting::getValue('rental_contract_page_title', 'Rental Contract'),
+            'terms_url' => Setting::getValue('terms_url', '/terms'),
+            'privacy_url' => Setting::getValue('privacy_url', '/privacy-policy'),
+            'legal_terms_content' => Setting::getValue('legal_terms_content', ''),
+            'legal_privacy_content' => Setting::getValue('legal_privacy_content', ''),
+            'legal_rental_contract_content' => Setting::getValue('legal_rental_contract_content', ''),
+            'legal_sms_consent_content' => Setting::getValue('legal_sms_consent_content', ''),
         ];
     }
 

@@ -19,6 +19,11 @@
                 <div class="card-pad">
                     <div class="flex items-start justify-between gap-3"><h2 class="text-lg font-semibold text-slate-950">{{ $property->name }}</h2><span class="badge {{ $property->active ? 'badge-active' : 'badge-inactive' }}">{{ $property->active ? 'Active' : 'Inactive' }}</span></div>
                     <p class="mt-2 text-sm leading-6 text-slate-500">{{ $property->fullAddress() }}</p>
+                    <p class="mt-3 text-xs text-slate-500">
+                        {{ $property->rooms_count }} room{{ $property->rooms_count === 1 ? '' : 's' }}
+                        · {{ $property->property_tasks_count }} property task{{ $property->property_tasks_count === 1 ? '' : 's' }}
+                        · Owner: {{ $property->owner?->name ?? 'Unassigned' }}
+                    </p>
                     <div class="mt-5 flex flex-wrap gap-2">
                         <a href="{{ route('admin.properties.edit', $property) }}" class="btn-secondary">Edit</a>
                         <button type="button" onclick="openDuplicateModal('{{ route('admin.properties.duplicate', $property) }}', '{{ $property->name }}')" class="btn-secondary">Duplicate</button>
@@ -36,7 +41,7 @@
     <div id="duplicate-modal" class="fixed inset-0 z-[99999] hidden items-center justify-center bg-slate-950/40 p-4">
         <div class="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
             <p class="mb-1 text-sm font-bold text-slate-700">Duplicate <span id="duplicate-property-name"></span></p>
-            <p class="mb-4 text-xs text-slate-500">This creates additional units at the same address with the same address, GPS, instructions, amenities, and guide content. You can edit each unit afterward.</p>
+            <p class="mb-4 text-xs text-slate-500">Choose which property content should be copied into each new unit.</p>
             <form id="duplicate-form" method="post">
                 @csrf
                 <label class="field-label">
@@ -44,6 +49,12 @@
                     <input type="number" name="count" id="duplicate-count" min="1" max="50" value="1" required class="input">
                     <span class="field-help">E.g. entering 3 creates 3 new units (Unit 2, Unit 3, Unit 4).</span>
                 </label>
+                <div class="mt-4 grid gap-2 text-sm text-slate-700">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="copy_guest_portal" value="1" checked> Guest Portal content</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="copy_rooms_tasks" value="1" checked> Rooms & tasks</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="copy_property_tasks" value="1" checked> Property tasks</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="copy_notification_recipients" value="1" checked> Notification recipients</label>
+                </div>
                 <div class="mt-4 flex gap-3">
                     <button type="button" onclick="closeDuplicateModal()" class="btn-secondary flex-1 text-sm">Cancel</button>
                     <button type="submit" class="btn-primary flex-1 text-sm">Create Units</button>

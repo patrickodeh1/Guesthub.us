@@ -19,12 +19,11 @@ class SettingsController extends Controller
 
         $settings = [
             'site_name' => Setting::get('site_name', config('app.name', 'HK Checklist')),
-            'theme_color' => Setting::get('theme_color', '#842eb8'),
+            'theme_color' => Setting::get('theme_color', \App\Support\Branding::DEFAULT_THEME_COLOR),
             'application_logo_path' => Setting::get('application_logo_path'),
             'application_icon_path' => Setting::get('application_icon_path'),
             'favicon_path' => Setting::get('favicon_path'),
-            'logo_alignment' => Setting::get('logo_alignment', 'center'),
-            'button_primary_color' => Setting::get('button_primary_color', '#842eb8'),
+            'button_primary_color' => Setting::get('button_primary_color', \App\Support\Branding::DEFAULT_BUTTON_COLOR),
             'button_success_color' => Setting::get('button_success_color', '#10b981'),
             'button_danger_color' => Setting::get('button_danger_color', '#ef4444'),
             'button_warning_color' => Setting::get('button_warning_color', '#f59e0b'),
@@ -97,11 +96,8 @@ class SettingsController extends Controller
 
         // Update theme color
         Setting::set('theme_color', $request->theme_color);
+        Setting::set('brand_color', $request->theme_color);
 
-        // Update logo alignment
-        if ($request->filled('logo_alignment')) {
-            Setting::set('logo_alignment', $request->logo_alignment);
-        }
 
         // Update button variant colors
         if ($request->filled('button_primary_color')) {

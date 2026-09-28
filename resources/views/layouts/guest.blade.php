@@ -1,24 +1,25 @@
 @props(['booking', 'property', 'title' => 'Guest Welcome', 'state' => null])
 
 @php
-    $brandColor = \App\Models\Setting::getValue('brand_color', '#082b49');
-    $favicon = \App\Models\Setting::getValue('favicon');
+    $favicon = \App\Support\Branding::faviconUrl();
     $weather = ($property->latitude && $property->longitude)
         ? app(\App\Services\WeatherService::class)->getCurrent((float) $property->latitude, (float) $property->longitude)
         : null;
 @endphp
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title }} - {{ $property->name }}</title>
+    @include('layouts.partials.theme-init')
+    @include('layouts.partials.brand-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>:root { --brand: {{ $brandColor }}; }</style>
+    <style>:root { --brand: var(--theme-primary); }</style>
     @if($favicon)
-        <link rel="icon" href="{{ url('/img/'.$favicon) }}">
+        <link rel="icon" href="{{ $favicon }}">
     @endif
 </head>
 <body class="guest-canvas text-slate-950 antialiased">

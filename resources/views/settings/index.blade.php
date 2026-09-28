@@ -173,36 +173,6 @@
                 </div>
             </div>
 
-            {{-- Logo Alignment Option --}}
-            <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <x-form.label value="Logo Alignment" />
-                <p class="mt-1 mb-3 text-sm text-gray-500 dark:text-gray-400">
-                    Choose how the logo should be aligned in the sidebar header.
-                </p>
-                <div class="flex gap-4">
-                    <label class="flex items-center">
-                        <input type="radio" name="logo_alignment" value="left" x-model="logoAlignment"
-                            {{ old('logo_alignment', $settings['logo_alignment'] ?? 'center') === 'left' ? 'checked' : '' }}
-                            @change="saveSettings()"
-                            class="mr-2 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Left</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="logo_alignment" value="center" x-model="logoAlignment"
-                            {{ old('logo_alignment', $settings['logo_alignment'] ?? 'center') === 'center' ? 'checked' : '' }}
-                            @change="saveSettings()"
-                            class="mr-2 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Center</span>
-                    </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="logo_alignment" value="right" x-model="logoAlignment"
-                            {{ old('logo_alignment', $settings['logo_alignment'] ?? 'center') === 'right' ? 'checked' : '' }}
-                            @change="saveSettings()"
-                            class="mr-2 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="text-sm text-gray-700 dark:text-gray-300">Right</span>
-                    </label>
-                </div>
-            </div>
         </x-card>
 
         {{-- Icon Upload Section --}}
@@ -746,7 +716,6 @@
                 selectedColor: '{{ $settings['theme_color'] }}',
                 customColor: '{{ $settings['theme_color'] }}',
                 siteName: '{{ $settings['site_name'] }}',
-                logoAlignment: '{{ $settings['logo_alignment'] ?? 'center' }}',
                 currentLogo: @json($hasLogo ? url('file/' . ltrim($logoPath, '/')) : null),
                 currentFavicon: @json($hasFavicon ? url('file/' . ltrim($activeFaviconPath, '/')) : null),
                 currentIcon: @json($hasIcon ? url('file/' . ltrim($iconPath, '/')) : null),
@@ -775,7 +744,6 @@
          
                         formData.append('site_name', this.siteName || document.querySelector('input[name="site_name"]')?.value || '{{ $settings['site_name'] }}');
                         formData.append('theme_color', this.selectedColor || this.customColor);
-                        formData.append('logo_alignment', this.logoAlignment || document.querySelector('input[name="logo_alignment"]:checked')?.value || 'center');
 
                         // Add button colors
                         document.querySelectorAll('input[name^="button_"][type="text"]').forEach(input => {
@@ -964,4 +932,3 @@
         }
     </script>
 </x-app-layout>
-

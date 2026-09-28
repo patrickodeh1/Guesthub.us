@@ -35,22 +35,8 @@
              x-cloak
              x-ref="panel"
              :style="panelStyle"
-             x-init="
-                const updateTheme = () => {
-                    const isDark = document.querySelector('.dark') !== null;
-                    $el.classList.toggle('bg-gray-800', isDark);
-                    $el.classList.toggle('bg-white', !isDark);
-                    $el.classList.toggle('ring-white/10', isDark);
-                    $el.classList.toggle('ring-black/5', !isDark);
-                    $el.classList.toggle('divide-gray-700', isDark);
-                    $el.classList.toggle('divide-gray-100', !isDark);
-                };
-                updateTheme();
-                const observer = new MutationObserver(updateTheme);
-                observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-                $el._themeObserver = observer;
-             "
              class="fixed z-50 rounded-md shadow-lg ring-1 bg-white ring-black/5 divide-gray-100
+                    dark:bg-gray-800 dark:ring-white/10 dark:divide-gray-700
                     {{ $width }}"
             role="menu" aria-orientation="vertical" tabindex="-1" @mousedown.stop
             @click.outside="if(!justOpened) close()" @keydown.arrow-down.prevent="focusNext($event)"

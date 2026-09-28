@@ -6,6 +6,10 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
+@php
+    $mailPrimary = \App\Support\Branding::buttonColor('primary');
+    $mailPrimaryText = \App\Support\Branding::contrastText($mailPrimary);
+@endphp
 <style>
 @media only screen and (max-width: 600px) {
 .inner-body {
@@ -20,6 +24,16 @@ width: 100% !important;
 @media only screen and (max-width: 500px) {
 .button {
 width: 100% !important;
+}
+
+.button-primary,
+.button-blue {
+background-color: {{ $mailPrimary }} !important;
+border-bottom-color: {{ $mailPrimary }} !important;
+border-left-color: {{ $mailPrimary }} !important;
+border-right-color: {{ $mailPrimary }} !important;
+border-top-color: {{ $mailPrimary }} !important;
+color: {{ $mailPrimaryText }} !important;
 }
 }
 </style>

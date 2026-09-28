@@ -13,7 +13,13 @@
         <input type="hidden" name="return_to" value="{{ $returnTo ?? '' }}">
 
         <div class="grid content-start gap-6">
-        <section class="card card-pad">
+        <nav class="card card-pad flex flex-wrap gap-2 text-sm" aria-label="Property sections">
+            <a href="#general" class="btn-secondary">General</a>
+            <a href="#cleaning-setup" class="btn-secondary">Cleaning Setup</a>
+            <a href="#calendar" class="btn-secondary">Calendar & iCal</a>
+        </nav>
+
+        <section id="general" class="card card-pad">
             <h2 class="section-title">Property details</h2>
             <p class="section-copy">This information appears throughout the guest welcome experience.</p>
             <div class="mt-6 grid gap-5 md:grid-cols-2">
@@ -24,6 +30,16 @@
                 <label class="field-label">State<input name="state" id="state_input" value="{{ old('state', $property->state) }}" placeholder="ST" class="input"></label>
                 <label class="field-label">ZIP<input name="zip" id="zip_input" value="{{ old('zip', $property->zip) }}" placeholder="ZIP Code" class="input"></label>
                 <label class="field-label">Phone<input name="contact_phone" value="{{ old('contact_phone', $property->contact_phone) }}" placeholder="+1 555 123 4567" class="input"></label>
+                <label class="field-label">Contact email<input type="email" name="contact_email" value="{{ old('contact_email', $property->contact_email) }}" placeholder="host@example.com" class="input"></label>
+                <label class="field-label">Cleaning owner
+                    <select name="owner_id" class="input">
+                        <option value="">Unassigned</option>
+                        @foreach($owners as $ownerId => $ownerName)
+                            <option value="{{ $ownerId }}" @selected((string) old('owner_id', $property->owner_id) === (string) $ownerId)>{{ $ownerName }}</option>
+                        @endforeach
+                    </select>
+                    <span class="field-help">Controls Cleaning Ops ownership and visibility.</span>
+                </label>
             </div>
         </section>
 
@@ -111,8 +127,15 @@
                 preview-class="mt-2 h-36 w-full rounded-xl border border-slate-200 object-cover"
                 help="Upload a polished property hero image."
             />
+            <label class="field-label mt-4">Cleaning property photo
+                <input type="file" name="photo" accept="image/*" class="input">
+                @if($property->photo_path)
+                    <span class="field-help">A Cleaning photo is already stored. Upload a new image to replace it.</span>
+                    <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" name="remove_photo" value="1"> Remove current Cleaning photo</label>
+                @endif
+            </label>
 
-            <div class="mt-6 border-t border-slate-200 pt-6">
+            <div id="cleaning-setup" class="mt-6 border-t border-slate-200 pt-6">
                 <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">GPS and maps</h3>
                 <label class="field-label">Latitude<input name="latitude" id="latitude_input" value="{{ old('latitude', $property->latitude) }}" placeholder="32.715736" class="input" readonly></label>
                 <label class="field-label mt-4">Longitude<input name="longitude" id="longitude_input" value="{{ old('longitude', $property->longitude) }}" placeholder="-117.161087" class="input" readonly></label>
@@ -124,6 +147,22 @@
                         @endforeach
                     </select>
                     <span class="field-help">Auto-detected from coordinates. Override if needed.</span>
+                </label>
+                <label class="field-label mt-4">Cleaning GPS radius (meters)
+                    <input type="number" min="50" name="geo_radius_m" value="{{ old('geo_radius_m', $property->geo_radius_m) }}" class="input">
+                </label>
+            </div>
+
+            <div id="calendar" class="mt-6 border-t border-slate-200 pt-6">
+                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Cleaning calendars</h3>
+                <label class="field-label">Generic iCal URL
+                    <input type="url" name="ical_url" value="{{ old('ical_url', $property->ical_url) }}" class="input">
+                </label>
+                <label class="field-label mt-4">Airbnb iCal URL
+                    <input type="url" name="airbnb_ical_url" value="{{ old('airbnb_ical_url', $property->airbnb_ical_url) }}" class="input">
+                </label>
+                <label class="field-label mt-4">Vrbo iCal URL
+                    <input type="url" name="vrbo_ical_url" value="{{ old('vrbo_ical_url', $property->vrbo_ical_url) }}" class="input">
                 </label>
             </div>
 

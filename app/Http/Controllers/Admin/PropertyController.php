@@ -8,7 +8,10 @@ use App\Models\Property;
 use App\Models\Category;
 use App\Models\CategoryPage;
 use App\Models\InstructionStep;
+use App\Models\User;
+use App\Models\PropertyNotificationRecipient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Services\MediaService;
 use Illuminate\Support\Str;
 
@@ -137,6 +140,9 @@ class PropertyController extends Controller
     public function index(Request $request)
     {
         $properties = Property::query()
+            ->visibleTo($request->user())
+            ->with(['owner'])
+            ->withCount(['rooms', 'propertyTasks'])
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%")
@@ -151,7 +157,10 @@ class PropertyController extends Controller
 
     public function create()
     {
-        return view('admin.properties.form', ['property' => new Property()]);
+        return view('admin.properties.form', [
+            'property' => new Property(),
+            'owners' => $this->ownerOptions(request()),
+        ]);
     }
 
     public function store(Request $request)
@@ -172,14 +181,18 @@ class PropertyController extends Controller
 
     public function edit(Property $property, Request $request)
     {
+        $this->ensureVisible($request, $property);
+
         return view('admin.properties.form', [
             'property' => $property,
+            'owners' => $this->ownerOptions($request),
             'returnTo' => $request->headers->get('referer'),
         ]);
     }
 
     public function update(Request $request, Property $property)
     {
+        $this->ensureVisible($request, $property);
         $data = $this->validated($request, $property);
         $data['timezone'] = $this->detectTimezone($data['latitude'] ?? null, $data['longitude'] ?? null, $data['timezone'] ?? null);
         $property->update($data);
@@ -197,6 +210,7 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
+        $this->ensureVisible(request(), $property);
         $property->delete();
         ActivityLog::record('property_deleted', "{$property->name} was deleted.", 'delete');
 
@@ -205,35 +219,43 @@ class PropertyController extends Controller
 
     public function duplicate(Request $request, Property $property)
     {
+        $this->ensureVisible($request, $property);
         $data = $request->validate([
             'count' => ['required', 'integer', 'min:1', 'max:50'],
+            'copy_guest_portal' => ['nullable', 'boolean'],
+            'copy_rooms_tasks' => ['nullable', 'boolean'],
+            'copy_property_tasks' => ['nullable', 'boolean'],
+            'copy_notification_recipients' => ['nullable', 'boolean'],
         ]);
 
+        $property->load(['amenities', 'instructionSteps', 'pages', 'categories', 'rooms.tasks', 'propertyTasks']);
         $baseName = preg_replace('/\s*-\s*Unit\s+.+$/i', '', $property->name);
-        $created = [];
+        $created = DB::transaction(function () use ($data, $property, $baseName) {
+            $created = [];
 
-        for ($i = 0; $i < $data['count']; $i++) {
-            $unitLabel = $this->nextUnitLabel($baseName);
+            for ($i = 0; $i < $data['count']; $i++) {
+                $unitLabel = $this->nextUnitLabel($baseName);
 
-            $copy = $property->replicate(['slug']);
-            $copy->name = "{$baseName} - Unit {$unitLabel}";
-            $copy->unit_number = $unitLabel;
-            $copy->slug = $this->uniqueSlug($copy->name);
-            $copy->save();
+                $copy = $property->replicate(['slug']);
+                $copy->name = "{$baseName} - Unit {$unitLabel}";
+                $copy->unit_number = $unitLabel;
+                $copy->slug = $this->uniqueSlug($copy->name);
+                $copy->save();
 
-            foreach ($property->amenities as $amenity) {
-                $newAmenity = $amenity->replicate();
-                $newAmenity->property_id = $copy->id;
-                $newAmenity->save();
-            }
+                if (! empty($data['copy_guest_portal'])) {
+                    foreach ($property->amenities as $amenity) {
+                        $newAmenity = $amenity->replicate();
+                        $newAmenity->property_id = $copy->id;
+                        $newAmenity->save();
+                    }
 
-            foreach ($property->instructionSteps as $step) {
-                $newStep = $step->replicate();
-                $newStep->property_id = $copy->id;
-                $newStep->save();
-            }
+                    foreach ($property->instructionSteps as $step) {
+                        $newStep = $step->replicate();
+                        $newStep->property_id = $copy->id;
+                        $newStep->save();
+                    }
 
-            foreach ($property->pages as $page) {
+                    foreach ($property->pages as $page) {
                 // New units inherit the original's guide content instead of
                 // copying it, so editing the source updates every unit. Use
                 // "Customize locally" on a page to break away (e.g. Wi-Fi).
@@ -246,17 +268,47 @@ class PropertyController extends Controller
                     'active' => $page->active,
                 ]);
                 $newPage->linked_page_id = $source->id;
-                $newPage->save();
+                        $newPage->save();
+                    }
+
+                    foreach ($property->categories as $category) {
+                        $copy->categories()->attach($category->id, $category->pivot->only([
+                            'custom_title', 'custom_description', 'header_image', 'active',
+                        ]));
+                    }
+                }
+
+                if (! empty($data['copy_rooms_tasks'])) {
+                    $order = 1;
+                    foreach ($property->rooms as $room) {
+                        $room->cloneForProperty($copy, $order++, false);
+                    }
+                }
+
+                if (! empty($data['copy_property_tasks'])) {
+                    $order = 1;
+                    foreach ($property->propertyTasks as $task) {
+                        $clonedTask = $task->replicate();
+                        $clonedTask->is_default = false;
+                        $clonedTask->save();
+                        $copy->propertyTasks()->attach($clonedTask->id, ['sort_order' => $order++]);
+                    }
+
+                    if (! empty($data['copy_notification_recipients'])) {
+                        $recipients = PropertyNotificationRecipient::where('property_id', $property->id)->get();
+                        foreach ($recipients as $recipient) {
+                            $copy->notificationRecipients()->create($recipient->only([
+                                'phone_number', 'recipient_name', 'active',
+                            ]));
+                        }
+                    }
+                }
+
+                $created[] = $copy;
             }
 
-            foreach ($property->categories as $category) {
-                $copy->categories()->attach($category->id, $category->pivot->only([
-                    'custom_title', 'custom_description', 'header_image', 'active',
-                ]));
-            }
-
-            $created[] = $copy;
-        }
+            return $created;
+        });
 
         ActivityLog::record('property_duplicated', "{$property->name} was duplicated into ".count($created)." unit(s).", 'properties', $property);
 
@@ -295,6 +347,13 @@ class PropertyController extends Controller
             'map_directions_url' => ['nullable', 'url'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'contact_email' => ['nullable', 'email', 'max:255'],
+            'owner_id' => ['nullable', 'integer', 'exists:users,id'],
+            'geo_radius_m' => ['nullable', 'integer', 'min:50'],
+            'photo' => ['nullable', 'image', 'max:10240'],
+            'remove_photo' => ['nullable', 'boolean'],
+            'ical_url' => ['nullable', 'url', 'max:1000'],
+            'airbnb_ical_url' => ['nullable', 'url', 'max:1000'],
+            'vrbo_ical_url' => ['nullable', 'url', 'max:1000'],
             'welcome_intro' => ['nullable', 'string'],
             'checkin_instructions' => ['nullable', 'string'],
             'parking_instructions' => ['nullable', 'string'],
@@ -328,6 +387,19 @@ class PropertyController extends Controller
             ? (int) round((float) $request->input('deposit_cap_dollars') * 100)
             : null;
         unset($data['deposit_cap_dollars']);
+        unset($data['remove_photo']);
+
+        if ($request->user()?->hasRole('owner') && ! $request->user()->hasAnyRole(['admin', 'company'])) {
+            $data['owner_id'] = $request->user()->id;
+        }
+
+        if ($request->hasFile('photo')) {
+            $data['photo_path'] = $request->file('photo')->store('properties', 'public');
+        } elseif ($request->boolean('remove_photo')) {
+            $data['photo_path'] = null;
+        } elseif ($property) {
+            unset($data['photo_path']);
+        }
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
         $data['active'] = $request->boolean('active');
@@ -344,6 +416,30 @@ class PropertyController extends Controller
         unset($data['existing_header_image']);
 
         return $data;
+    }
+
+    private function ownerOptions(Request $request): array
+    {
+        $user = $request->user();
+        $query = User::role(['admin', 'owner', 'company']);
+
+        if ($user?->hasRole('company') && ! $user->hasRole('admin')) {
+            $query->where(function ($owners) use ($user) {
+                $owners->whereKey($user->id)->orWhere('owner_id', $user->id);
+            });
+        } elseif ($user && ! $user->hasRole('admin')) {
+            $query->whereKey($user->id);
+        }
+
+        return $query->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    private function ensureVisible(Request $request, Property $property): void
+    {
+        abort_unless(
+            $request->user() && Property::query()->visibleTo($request->user())->whereKey($property->id)->exists(),
+            403
+        );
     }
 
     private function detectTimezone(?float $lat, ?float $lng, ?string $existing): string

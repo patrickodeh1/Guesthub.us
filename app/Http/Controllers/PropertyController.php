@@ -19,121 +19,13 @@ class PropertyController extends Controller
 
     public function index(Request $request)
     {
-        $authenticatedUser = $request->user();
-        $searchTerm        = (string) $request->query('q', '');
-
-        $propertyQuery = Property::query();
-
-        $showInactive = $request->query('show_inactive') === 'true' && $authenticatedUser->can('viewInactive', Property::class);
-
-        if ($showInactive) {
-            $propertyQuery->withInactive();
-        } else {
-            $propertyQuery->active();
-        }
-
-        if ($authenticatedUser->hasRole('admin')) {
-            // Admin can see all properties, no extra constraints
-        } elseif ($authenticatedUser->hasRole('owner')) {
-            $propertyQuery->where('owner_id', $authenticatedUser->id);
-        } elseif ($authenticatedUser->hasRole('company')) {
-            $propertyQuery->where(function ($q) use ($authenticatedUser) {
-                $q->where('owner_id', $authenticatedUser->id)
-                    ->orWhereIn('owner_id', function ($sub) use ($authenticatedUser) {
-                        // Owners direct-child of company
-                        $sub->select('id')->from('users')->where('owner_id', $authenticatedUser->id);
-                    })
-                    ->orWhereIn('owner_id', function ($sub) use ($authenticatedUser) {
-                        // Owners assigned via pivot
-                        $sub->select('owner_id')
-                            ->from('housekeeper_owner')
-                            ->where('housekeeper_id', $authenticatedUser->id);
-                    });
-            });
-        } elseif ($authenticatedUser->hasRole('housekeeper')) {
-            $propertyQuery->whereIn('id', function ($subQuery) use ($authenticatedUser) {
-                $subQuery->select('property_id')
-                    ->from('cleaning_sessions')
-                    ->where('housekeeper_id', $authenticatedUser->id);
-            });
-        }
-
-        $properties = $propertyQuery
-            ->when($searchTerm !== '', fn($query) => $query->where('name', 'like', "%{$searchTerm}%"))
-            ->when($request->owner_id, fn($query) => $query->where('owner_id', $request->owner_id))
-            ->with(['owner.roles', 'rooms'])
-            ->when(
-                $authenticatedUser?->hasAnyRole(['admin', 'owner', 'company']),
-                fn($query) => $query->with('propertyTasks')
-            )
-            ->withCount('rooms')
-            ->orderBy('name')
-            ->orderByDesc('created_at')
-            ->paginate(15)
-            ->withQueryString();
-
-        $ownersResourceQuery = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['owner', 'company']);
-        });
-
-        if ($authenticatedUser->hasRole('company') && !$authenticatedUser->hasRole('admin')) {
-            $ownersResourceQuery->where(function ($q) use ($authenticatedUser) {
-                $q->where('id', $authenticatedUser->id)
-                    ->orWhere('owner_id', $authenticatedUser->id)
-                    ->orWhereIn('id', function ($sub) use ($authenticatedUser) {
-                        $sub->select('owner_id')
-                            ->from('housekeeper_owner')
-                            ->where('housekeeper_id', $authenticatedUser->id);
-                    });
-            });
-        } elseif (!$authenticatedUser->hasRole('admin')) {
-            $ownersResourceQuery->where('id', $authenticatedUser->id);
-        }
-
-        $owners = $ownersResourceQuery->with('roles')->orderBy('name')->get();
-
-        $rooms = Room::select('id', 'name', 'is_default')
-            ->where('is_default', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('properties.index', compact('properties', 'owners', 'rooms', 'showInactive'));
+        return redirect()->route('admin.properties.index', $request->query());
     }
 
 
     public function create(Request $request)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can create properties.');
-
-        $user = $request->user();
-        $ownerRoleScope = $user->hasRole('admin')
-            ? ['admin', 'owner', 'company']
-            : ['owner', 'company'];
-
-        $ownerSelectQuery = User::role($ownerRoleScope);
-
-        if ($user->hasRole('company') && !$user->hasRole('admin')) {
-            $ownerSelectQuery->where(function ($q) use ($user) {
-                $q->where('id', $user->id)
-                    ->orWhere('owner_id', $user->id)
-                    ->orWhereIn('id', function ($sub) use ($user) {
-                        $sub->select('owner_id')
-                            ->from('housekeeper_owner')
-                            ->where('housekeeper_id', $user->id);
-                    });
-            });
-        } elseif (!$user->hasRole('admin')) {
-            $ownerSelectQuery->where('id', $user->id);
-        }
-
-        $owners = $ownerSelectQuery->orderBy('name')->pluck('name', 'id')->all();
-        $defaultOwnerId = old('owner_id', $user->hasRole('admin') ? $user->id : null);
-
-        return view('properties.create', [
-            'owners' => $owners,
-            'defaultOwnerId' => $defaultOwnerId,
-            "rooms" => Room::where('is_default', true)->get()
-        ]);
+        return redirect()->route('admin.properties.create');
     }
 
     public function store(PropertyStoreRequest $request)
@@ -180,28 +72,16 @@ class PropertyController extends Controller
 
     public function edit(Request $request, Property $property)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can edit properties.');
+        abort_unless($request->user() && Property::query()->visibleTo($request->user())->whereKey($property->id)->exists(), 403);
 
-        $user = $request->user();
-        $ownerRoleScope = $user->hasRole('admin')
-            ? ['admin', 'owner', 'company']
-            : ['owner', 'company'];
+        return redirect()->route('admin.properties.edit', $property);
+    }
 
-        $ownerSelectQuery = User::role($ownerRoleScope);
+    public function show(Request $request, Property $property)
+    {
+        abort_unless($request->user() && Property::query()->visibleTo($request->user())->whereKey($property->id)->exists(), 403);
 
-        if ($user->hasRole('company') && !$user->hasRole('admin')) {
-            $ownerSelectQuery->where(function ($q) use ($user) {
-                $q->where('id', $user->id)
-                    ->orWhere('owner_id', $user->id);
-            });
-        } elseif (!$user->hasRole('admin')) {
-            $ownerSelectQuery->where('id', $user->id);
-        }
-
-        return view('properties.edit', [
-            'property' => $property,
-            'owners' => $ownerSelectQuery->orderBy('name')->pluck('name', 'id')->all()
-        ]);
+        return redirect()->route('admin.properties.edit', $property);
     }
 
     public function update(Request $request, Property $property)

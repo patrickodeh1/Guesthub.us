@@ -58,19 +58,6 @@
         </div>
     </div>
 
-    <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-4 dark:border-indigo-800/70 dark:bg-indigo-900/20">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-300">Guest portal</p>
-                <h2 class="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">Switch to the admin dashboard</h2>
-            </div>
-            <a href="{{ route('admin.dashboard') }}" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500">
-                Open Admin Dashboard
-            </a>
-        </div>
-        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Check guest arrivals, bookings, and the admin operations view for the live property schedule.</p>
-    </div>
-
     <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {{-- Left: Upcoming list (role-aware) --}}
         <div class="lg:col-span-2">
