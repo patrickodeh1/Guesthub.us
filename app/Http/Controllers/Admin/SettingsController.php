@@ -32,6 +32,31 @@ class SettingsController extends Controller
             'existing_site_logo' => ['nullable', 'string'],
             'favicon' => ['nullable', 'image', 'mimes:ico,png,jpg,jpeg,svg', 'max:512'],
             'existing_favicon' => ['nullable', 'string'],
+            'site_name' => ['nullable', 'string', 'max:255'],
+            'theme_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'application_logo' => ['nullable', 'image', 'max:2048'],
+            'application_icon' => ['nullable', 'image', 'max:2048'],
+            'logo_alignment' => ['nullable', 'string', 'in:left,center,right'],
+            'button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'button_success_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'button_danger_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'button_warning_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'button_info_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'date_format' => ['nullable', 'string'],
+            'time_format' => ['nullable', 'string', 'in:12,24'],
+            'items_per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
+            'timezone' => ['nullable', 'string', 'max:255'],
+            'auto_save_enabled' => ['nullable', 'boolean'],
+            'auto_save_delay' => ['nullable', 'integer', 'min:100', 'max:5000'],
+            'notify_session_started' => ['nullable', 'boolean'],
+            'notify_session_completed' => ['nullable', 'boolean'],
+            'notify_assignments' => ['nullable', 'boolean'],
+            'notify_cleaning_started_global' => ['nullable', 'boolean'],
+            'notify_cleaning_finished_global' => ['nullable', 'boolean'],
+            'notify_photo_started_global' => ['nullable', 'boolean'],
+            'notify_task_notes_global' => ['nullable', 'boolean'],
+            'mandatory_instruction_viewing' => ['nullable', 'boolean'],
+            'global_required_instruction_views' => ['nullable', 'integer', 'min:1', 'max:100'],
             'brand_color' => ['required', 'string', 'max:20'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'contact_email' => ['nullable', 'email', 'max:255'],
@@ -47,25 +72,37 @@ class SettingsController extends Controller
 
         if ($request->hasFile('site_logo')) {
             $file = $request->file('site_logo');
-            $data['site_logo'] = $file->store('brand', 'public');
-            MediaService::register($data['site_logo'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
+            $data['application_logo_path'] = $file->store('brand', 'public');
+            MediaService::register($data['application_logo_path'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
         } elseif ($request->filled('existing_site_logo')) {
-            $data['site_logo'] = $request->input('existing_site_logo');
+            $data['application_logo_path'] = $request->input('existing_site_logo');
         } else {
-            unset($data['site_logo']);
+            unset($data['application_logo_path']);
         }
         unset($data['existing_site_logo']);
 
         if ($request->hasFile('favicon')) {
             $file = $request->file('favicon');
-            $data['favicon'] = $file->store('brand', 'public');
-            MediaService::register($data['favicon'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
+            $data['favicon_path'] = $file->store('brand', 'public');
+            MediaService::register($data['favicon_path'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
         } elseif ($request->filled('existing_favicon')) {
-            $data['favicon'] = $request->input('existing_favicon');
+            $data['favicon_path'] = $request->input('existing_favicon');
         } else {
-            unset($data['favicon']);
+            unset($data['favicon_path']);
         }
         unset($data['existing_favicon']);
+
+        if ($request->hasFile('application_logo')) {
+            $file = $request->file('application_logo');
+            $data['application_logo_path'] = $file->store('logos', 'public');
+            MediaService::register($data['application_logo_path'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
+        }
+
+        if ($request->hasFile('application_icon')) {
+            $file = $request->file('application_icon');
+            $data['application_icon_path'] = $file->store('logos', 'public');
+            MediaService::register($data['application_icon_path'], $file->getClientOriginalName(), $file->getSize(), 'Settings');
+        }
 
         if (array_key_exists('default_deposit_cap_dollars', $data)) {
             Setting::putValue('default_deposit_cap_cents', (int) round((float) ($data['default_deposit_cap_dollars'] ?? 0) * 100));
@@ -139,8 +176,19 @@ class SettingsController extends Controller
     {
         return [
             'gps_radius_meters' => Setting::getValue('gps_radius_meters', 150),
-            'site_logo' => Setting::getValue('site_logo'),
-            'favicon' => Setting::getValue('favicon'),
+            'site_name' => Setting::get('site_name', config('app.name', 'Guest Hub')),
+            'theme_color' => Setting::get('theme_color', '#842eb8'),
+            'button_primary_color' => Setting::get('button_primary_color', '#842eb8'),
+            'button_success_color' => Setting::get('button_success_color', '#10b981'),
+            'button_danger_color' => Setting::get('button_danger_color', '#ef4444'),
+            'button_warning_color' => Setting::get('button_warning_color', '#f59e0b'),
+            'button_info_color' => Setting::get('button_info_color', '#06b6d4'),
+            'date_format' => Setting::get('date_format', 'M d, Y'),
+            'time_format' => Setting::get('time_format', '12'),
+            'items_per_page' => Setting::get('items_per_page', 15),
+            'timezone' => Setting::get('timezone', config('app.timezone', 'UTC')),
+            'site_logo' => Setting::get('application_logo_path') ?: Setting::getValue('site_logo'),
+            'favicon' => Setting::get('favicon_path') ?: Setting::getValue('favicon'),
             'brand_color' => Setting::getValue('brand_color', '#0f766e'),
             'contact_phone' => Setting::getValue('contact_phone', '+1 555 123 4567'),
             'contact_email' => Setting::getValue('contact_email', 'guestservices@example.com'),
@@ -153,6 +201,17 @@ class SettingsController extends Controller
             'airbnb_payment_instructions' => Setting::getValue('airbnb_payment_instructions', "We'll send you a payment request through [[platform]]. Once it's completed, we'll confirm and send your check-in details."),
             'default_deposit_cap_dollars' => Setting::getValue('default_deposit_cap_cents', 0) / 100,
             'processing_fee_percent' => Setting::getValue('processing_fee_percent', 0),
+            'auto_save_enabled' => Setting::get('auto_save_enabled', true),
+            'auto_save_delay' => Setting::get('auto_save_delay', 400),
+            'notify_session_started' => Setting::get('notify_session_started', true),
+            'notify_session_completed' => Setting::get('notify_session_completed', true),
+            'notify_assignments' => Setting::get('notify_assignments', true),
+            'notify_cleaning_started_global' => Setting::get('notify_cleaning_started_global', true),
+            'notify_cleaning_finished_global' => Setting::get('notify_cleaning_finished_global', true),
+            'notify_photo_started_global' => Setting::get('notify_photo_started_global', true),
+            'notify_task_notes_global' => Setting::get('notify_task_notes_global', true),
+            'mandatory_instruction_viewing' => Setting::get('mandatory_instruction_viewing', false),
+            'global_required_instruction_views' => Setting::get('global_required_instruction_views', 3),
         ];
     }
 

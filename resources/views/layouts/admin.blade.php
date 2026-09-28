@@ -7,8 +7,8 @@
     <title>{{ $title ?? 'Admin' }} &middot; Welcome Guide</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @php
-        $siteLogo = \App\Models\Setting::getValue('site_logo');
-        $favicon = \App\Models\Setting::getValue('favicon');
+        $siteLogo = \App\Models\Setting::get('application_logo_path') ?: \App\Models\Setting::getValue('site_logo');
+        $favicon = \App\Models\Setting::get('favicon_path') ?: \App\Models\Setting::getValue('favicon');
     @endphp
     @if($favicon)
         <link rel="icon" href="{{ url('/img/'.$favicon) }}">
@@ -118,6 +118,30 @@
                 <a href="{{ route('admin.notices.index') }}" class="block rounded-sm px-2 py-1.5 text-xs leading-snug transition {{ request()->routeIs('admin.notices.*') ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">Guest Notices</a>
             </div>
         </div>
+
+        @role('admin|owner|company')
+            <div class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">Switch to Cleaning Ops</div>
+            <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('dashboard') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="dashboard" class="h-4 w-4" /></span>
+                <span class="font-medium">Cleaning Dashboard</span>
+            </a>
+            <a href="{{ route('assignments.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('assignments.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="assignment" class="h-4 w-4" /></span>
+                <span class="font-medium">Assignments</span>
+            </a>
+            <a href="{{ route('calendar.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('calendar.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="calendar" class="h-4 w-4" /></span>
+                <span class="font-medium">Calendar</span>
+            </a>
+            <a href="{{ route('properties.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('properties.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="properties" class="h-4 w-4" /></span>
+                <span class="font-medium">Cleaning Properties</span>
+            </a>
+            <a href="{{ route('training.index') }}" class="flex items-center gap-2.5 rounded-sm px-3 py-2.5 transition focus:outline-none focus:ring-2 focus:ring-white/30 {{ request()->routeIs('training.*') ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">
+                <span class="grid h-5 w-5 shrink-0 place-items-center"><x-icon name="book-open" class="h-4 w-4" /></span>
+                <span class="font-medium">Training</span>
+            </a>
+        @endrole
 
         @foreach($navSections as $sectionLabel => $navItems)
             <p class="mt-4 mb-1 px-3 text-xs font-bold uppercase tracking-widest text-slate-400">{{ $sectionLabel }}</p>

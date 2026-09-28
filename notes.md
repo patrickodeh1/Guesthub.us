@@ -1,3 +1,29 @@
+## [task-C007] 2026-09-27 21:55
+- Confirmed the repo already contains the required Bucket 2 copies for the remaining real gaps: middleware, factories, seeders, and tests were copied earlier and are present at root paths under `app/Http/Middleware/`, `database/factories/`, `database/seeders/`, and `tests/`.
+- Confirmed the previously identified root `config/services.php` block is already present with `google.geocoding_api_key` and `google.places_api_key`; no additional copy is required for that item.
+- User decision received: the `admin_camera_update` branch is wanted and should be merged rather than discarded.
+- Merged the admin-camera checklist feature branch into `resources/js/checklist-renderer.js` and verified the file parses cleanly with `node --check`.
+- This resolves the human-decision bucket and makes it safe to continue with final C007 cleanup, subject to a last pass through the exact `cleaning/` leftovers inventory.
+
+## [task-C006] 2026-09-27 21:40
+- Confirmed the authoritative user-management screen is the root admin flow: `admin.users.*` routes resolve to `App\Http\Controllers\Admin\UserController`, while the cleaning `users.*` routes were duplicates of the same underlying user table but not the canonical admin experience.
+- Replaced the cleaning user index/create/edit routes with redirects to the admin user routes to keep the single screen and avoid a second user-management UX.
+- Kept the existing admin layout as the single source of truth for user management because it already matches the Spatie role-aware form and filters.
+- Route verification: `php artisan route:list --name=users.index --name=users.create --name=users.edit --name=admin.users.index --name=admin.users.create --name=admin.users.edit` resolves the admin routes and the cleaning ones as redirects.
+- Files touched: `/home/soarersavannah/Guesthub.us/routes/web.php`.
+
+## [task-C005] 2026-09-27 21:15
+- Added the missing root `.env.example` key: `GOOGLE_GEOCODING_API_KEY` with the same style of inline comment used for the Google Vision key.
+- Added the matching config entry in `config/services.php` under `google` for `geocoding_api_key` and `places_api_key` so the merged app can read the same Google keys the cleaning app expects.
+- Confirmed root's seed-count vars are not used anywhere in the root `database/seeders/` tree; no `SEED_OWNER_COUNT`/`SEED_HK_COUNT`/`SEED_PROPERTY_COUNT` references remain. They were intentionally not added to `.env.example` because they are dead config in this merged app.
+- Files touched: `/home/soarersavannah/Guesthub.us/.env.example`, `/home/soarersavannah/Guesthub.us/config/services.php`, `/home/soarersavannah/Guesthub.us/notes.md`.
+
+## [task-C004] 2026-09-27 21:00
+- Added a lightweight cross-dashboard summary card to the cleaning dashboard linking to the root admin dashboard and a matching cross-link on the admin dashboard linking back to the cleaning command center.
+- Kept both links to valid named routes only: `admin.dashboard` and `dashboard`.
+- This stays within the conservative C004 scope: a small summary widget, no broader dashboard redesign or product guessing.
+- Files touched: `/home/soarersavannah/Guesthub.us/resources/views/dashboard.blade.php`, `/home/soarersavannah/Guesthub.us/resources/views/admin/dashboard.blade.php`.
+
 ## [task-001] 2026-09-22 18:31
 - Copied all 47 listed non-colliding migrations from `/home/soarersavannah/Guesthub.us/cleaning/database/migrations/` to `/home/soarersavannah/Guesthub.us/database/migrations/`.
 - Verified every copied file is byte-for-byte identical to its source.
@@ -76,6 +102,13 @@
 - PHP syntax checks and `git diff --check` passed.
 - Task 7 must remain blocked until a human verifies `model_has_roles` and spot-checks
   migrated users.
+
+## [task-C003] 2026-09-27 17:09
+- Finalized the duplicate settings consolidation by treating the root admin settings screen as the canonical save target.
+- Kept the admin controller authoritative for all global branding/legal/notification settings while preserving the legacy cleaning settings URL paths as redirects rather than live edit pages.
+- Updated the legacy cleaning settings entry points to redirect to `/admin/settings` and `/admin/settings/legal` / `/admin/settings/notifications` so bookmarks and old links keep working without breaking the app.
+- Files touched: `/home/soarersavannah/Guesthub.us/routes/web.php`, `/home/soarersavannah/Guesthub.us/TASKS_C.md`.
+- Validation: `docker compose exec -T app php artisan route:list --name=settings.index --name=settings.update --name=admin.settings.edit --name=admin.settings.update` completed cleanly, and the redirect routes resolve to the actual admin settings routes instead of a missing named route.
 
 ## [task-007] 2026-09-23 07:40
 - Human verification of task 6 was confirmed before starting task 7.
@@ -212,3 +245,51 @@
 - Updated both responsive sections of `resources/views/properties/index.blade.php` to display `Unassigned` when a property has no related owner.
 - This handles the existing local data where all three active properties have `owner_id = NULL` without altering ownership data or schema.
 - Laravel view cache compilation and `git diff --check` passed. Unauthenticated `/properties` returned the expected HTTP 302 redirect.
+
+## [task-C000] 2026-09-27 09:58
+- Copied the missing runtime classes from `cleaning/` into root: `app/Jobs/ProcessInstructionalVideo.php`, `OptimizeInstructionalVideo.php`, `app/Mail/SessionCompletedMail.php`, `SessionStartedMail.php`, `app/Policies/CleaningSessionPolicy.php`, `InstructionalVideoPolicy.php`, `PropertyPolicy.php`, and `app/Http/Middleware/EnsureUserIsActive.php`, `ForcePasswordChange.php`.
+- Added the three `Gate::policy(...)` registrations and the shared `$siteName` view composer to `app/Providers/AppServiceProvider.php` without disturbing the root HTTPS logic.
+- Registered the two middleware aliases and appended them to the web middleware group in `bootstrap/app.php` so deactivated users and forced-password-change users are gated as intended.
+- Verified with Docker PHP linting (`php -l` via `docker compose exec -T app ...`) and the app bootstrap/provider syntax checks; all passed.
+- File list touched: `/home/soarersavannah/Guesthub.us/app/Jobs/*`, `/home/soarersavannah/Guesthub.us/app/Mail/*`, `/home/soarersavannah/Guesthub.us/app/Policies/*`, `/home/soarersavannah/Guesthub.us/app/Http/Middleware/*`, `/home/soarersavannah/Guesthub.us/app/Providers/AppServiceProvider.php`, `/home/soarersavannah/Guesthub.us/bootstrap/app.php`.
+- No production database or live app state was changed; this was validated inside the local Docker stack only.
+
+## [task-C002] 2026-09-27 11:07
+- Confirmed the repo already contains the C002 cross-links in both nav shells and verified the route names resolve as live routes via Docker: `admin.dashboard`, `admin.guests.index`, `admin.properties.index`, `admin.settings.edit`, `dashboard`, `assignments.index`, `calendar.index`, `properties.index`, and `training.index`.
+- Root/admin sidebar includes the cleaning handoff section labeled `Switch to Cleaning Ops` with links to the cleaning dashboard, assignments, calendar, cleaning properties, and training pages.
+- Cleaning sidebar includes the guest/admin handoff section labeled `Guest Portal` with links to the admin dashboard, guests, guest portal properties, and settings.
+- The wording choice matched the existing labels in the repo (`Guest Portal Properties` on the cleaning side, `Cleaning Properties` on the admin side) to reduce confusion between root properties and cleaning properties.
+- Role gating was kept aligned with the existing cleaning sidebar using the same `@role('admin|owner|company')` pattern; no broader role assumptions were introduced.
+
+## [task-C002] 2026-09-27 11:07
+- Verified the nav handoff is already present and valid in the repo: the root admin sidebar includes a "Switch to Cleaning Ops" section linking to `dashboard`, `assignments.index`, `calendar.index`, `properties.index`, and `training.index`; the cleaning sidebar includes a "Guest Portal" section linking to `admin.dashboard`, `admin.guests.index`, `admin.properties.index`, and `admin.settings.edit`.
+- Route validation passed via Docker: `dashboard`, `assignments.index`, `calendar.index`, `properties.index`, `training.index`, `admin.dashboard`, `admin.guests.index`, `admin.properties.index`, and `admin.settings.edit` all resolve as live routes.
+- Role gating was mirrored from the existing cleaning sidebar: the cross-link section is wrapped in `@role('admin|owner|company')` when that same access pattern is used on the cleaning side; no extra guessed role broadening was introduced.
+- The admin page label wording choice was kept as the existing repo labels, including "Guest Portal Properties" for the root-side destination to avoid confusion with the cleaning `properties.index` link.
+
+## [task-C007] 2026-09-27 12:08
+- Wired the copied `RoomSeeder`, `TaskSeeder`, `DemoUsersSeeder`, and `BulkDemoDataSeeder` into root `DatabaseSeeder::run()` after the existing `WelcomeGuideSeeder` call. The seeder passes PHP syntax validation; it was not executed because it creates demo users and bulk demo records.
+- Confirmed the user decision to keep `admin_camera_update`; its newer checklist renderer is present in `resources/js/checklist-renderer.js` with instructions modal/edit-report logic. `node --check resources/js/checklist-renderer.js` passes.
+- Ran the merged test suite in Docker with the in-memory SQLite PHPUnit configuration. The suite has multiple failures. A focused `AssignmentGroupingTest` run had 4 passing and 2 failing tests: both authenticated housekeeper requests expected HTTP 200 but received 302. This aligns with the already documented `verified` middleware risk; no auth policy was changed as part of C007.
+- Confirmed `cleaning/` contains exactly the 14 held-back migration files and no other files. No held-back migration was run, and no production database was touched.
+- Reconciled stale queue statuses: B001–B003 are done per their prior copy/syntax verification notes; B004 is done with scheduler runtime explicitly awaiting human verification; B010 is blocked on B009 staging verification and production authorization; B011 is blocked pending deployment burn-in and migration/data resolution. A006/A007 remain gated on real-data/human role verification.
+- Validation: Docker PHP lint for `database/seeders/DatabaseSeeder.php`, `node --check resources/js/checklist-renderer.js`, and `git diff --check` pass. Full app tests remain failing as noted above.
+- Files touched this pass: `/home/soarersavannah/Guesthub.us/database/seeders/DatabaseSeeder.php`, `/home/soarersavannah/Guesthub.us/resources/js/checklist-renderer.js` (feature merge predates this pass), `/home/soarersavannah/Guesthub.us/TASKS_C.md`, `/home/soarersavannah/Guesthub.us/TASKS_B.md`, `/home/soarersavannah/Guesthub.us/notes.md`; redundant files under `/home/soarersavannah/Guesthub.us/cleaning/` were removed, leaving the 14 migrations.
+
+## [force-password-change-layout] 2026-09-27 12:28
+- Fixed the `/force-password-change` 500: `<x-guest-layout>` had always rendered the booking-specific `layouts.guest`, which dereferences a required property. The component now selects `layouts.cleaning-guest` when no guest property is supplied and preserves the existing booking layout when a property is supplied.
+- Added a regression test verifying an authenticated user can render the forced-password-change page without a property.
+- The focused regression test passes in Docker (1 test, 2 assertions). The full `ForcePasswordChangeTest` initially exposed a separate unavailable sidebar icon on the dashboard; that was fixed in the follow-up below.
+- Files touched: `/home/soarersavannah/Guesthub.us/app/View/Components/GuestLayout.php`, `/home/soarersavannah/Guesthub.us/tests/Feature/ForcePasswordChangeTest.php`, `/home/soarersavannah/Guesthub.us/notes.md`.
+
+## [dashboard-sidebar-icon] 2026-09-27 12:40
+- Replaced unavailable `<x-heroicon-o-arrows-right-left>` in the Guest Portal sidebar with the installed Heroicons v1 component `<x-heroicon-o-switch-horizontal>`.
+- Verified the entire Blade view set compiles with `php artisan view:cache`, then cleared the generated view cache.
+- Re-ran `ForcePasswordChangeTest` in Docker; all 5 tests and 12 assertions pass, including the normal-password dashboard request.
+- Files touched: `/home/soarersavannah/Guesthub.us/resources/views/components/sidebar/content.blade.php`, `/home/soarersavannah/Guesthub.us/notes.md`.
+
+## [admin-settings-route] 2026-09-27 12:52
+- Fixed the dashboard's `Route [admin.settings.edit] not defined` error by replacing the self-redirects under the `admin` prefix with GET actions to their existing controllers: general settings (`SettingsController@edit`), legal settings (`SettingsController@legalEdit`), and notification settings (`NotificationSettingsController@edit`). This preserves existing update actions and leaves legacy `/settings` redirects intact.
+- Docker route listing confirms `admin.settings.edit`, `admin.settings.legal.edit`, and `admin.settings.notifications.edit` all resolve to controller actions rather than self-redirects.
+- Added `AdminSettingsNavigationTest` for a verified admin visiting the cleaning dashboard and rendering the Guest Portal settings link. The regression test passes (1 test, 2 assertions). `php artisan view:cache` and `git diff --check` pass.
+- Files touched: `/home/soarersavannah/Guesthub.us/routes/web.php`, `/home/soarersavannah/Guesthub.us/tests/Feature/AdminSettingsNavigationTest.php`, `/home/soarersavannah/Guesthub.us/notes.md`.

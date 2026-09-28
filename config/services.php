@@ -48,6 +48,11 @@ return [
         'key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'google' => [
+        'geocoding_api_key' => env('GOOGLE_GEOCODING_API_KEY'),
+        'places_api_key' => env('GOOGLE_PLACES_API_KEY', env('GOOGLE_GEOCODING_API_KEY')),
+    ],
+
     // Used by IdDocumentExtractor to OCR guest ID photos (name/DOB/expiry).
     // A plain API key is enough for the Vision REST API — no service
     // account JSON needed. First 1,000 DOCUMENT_TEXT_DETECTION calls/month

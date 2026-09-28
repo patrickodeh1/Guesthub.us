@@ -10,13 +10,14 @@ finish the merge and empty out `cleaning/`.
 database until a human says DB population has started. `--pretend` dry-runs
 are always fine and required for verification.
 
-Work top to bottom. All tasks below are unblocked and safe to run now — the
-auth-system decision (Option A) has been made, so task-B005 is no longer
-blocked.
+Work top to bottom. The auth-system decision (Option A) has been made, so
+task-B005 is unblocked. Data population (B009), production deployment (B010),
+and final source cleanup (B011) remain gated on the human inputs and
+verification checkpoints stated in those tasks.
 
 ---
 
-## task-B001 — status: open
+## task-B001 — status: done
 **Copy cleaning's 16 non-colliding models into `app/Models/`**
 
 Same as previously scoped: `Property`, `User`, `Setting` are the only model
@@ -44,7 +45,7 @@ Report in notes.md: confirm all 16 copied; list anything flagged in step 2.
 
 ---
 
-## task-B002 — status: open
+## task-B002 — status: done
 **Copy cleaning's Services — rename the one real collision**
 
 `cleaning/app/Services/SmsNotificationService.php` and root's
@@ -81,7 +82,7 @@ Report in notes.md: grep `cleaning/` for any remaining bare
 
 ---
 
-## task-B003 — status: open
+## task-B003 — status: done
 **Copy cleaning's Form Request classes**
 
 Root has no `app/Http/Requests/` yet — no collision. Create the directory and
@@ -95,7 +96,7 @@ until task-B005 ports the controllers that use them.
 
 ---
 
-## task-B004 — status: open
+## task-B004 — status: done (scheduler runtime awaits human verification)
 **Copy cleaning's Console Commands**
 
 No collisions with root's `app/Console/Commands/`. Copy `PruneOldSessionPhotos.php`
@@ -348,7 +349,7 @@ disposable local database.
 
 ---
 
-## task-B010 — status: open
+## task-B010 — status: blocked (awaiting task-B009 staging verification and production authorization)
 **Deploy and test**
 
 1. Push the merged app to the cPanel production environment (no Docker in
@@ -369,7 +370,7 @@ disposable local database.
 
 ---
 
-## task-B011 — status: open
+## task-B011 — status: blocked (awaiting deployment burn-in and resolution of held-back migrations)
 **Final cleanup verification — the actual "done" checkpoint**
 
 1. Confirm `cleaning/` is empty (or contains only files deliberately deferred

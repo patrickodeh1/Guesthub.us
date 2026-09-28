@@ -13,6 +13,9 @@
             <h2 class="section-title">Guest experience defaults</h2>
             <p class="section-copy">These values are used when a property-specific value is not available.</p>
             <div class="mt-6 grid gap-5 md:grid-cols-2">
+                <label class="field-label">Site name<input name="site_name" value="{{ old('site_name', $settings['site_name'] ?? config('app.name', 'Guest Hub')) }}" class="input"></label>
+                <label class="field-label">Theme color<input type="color" name="theme_color" value="{{ old('theme_color', $settings['theme_color'] ?? '#842eb8') }}" class="input h-12"></label>
+                <label class="field-label">Primary button color<input type="color" name="button_primary_color" value="{{ old('button_primary_color', $settings['button_primary_color'] ?? '#842eb8') }}" class="input h-12"></label>
                 <label class="field-label">GPS radius meters<input type="number" name="gps_radius_meters" value="{{ old('gps_radius_meters', $settings['gps_radius_meters']) }}" class="input"><span class="field-help">Typical range: 100 to 250 meters for buildings and resorts.</span></label>
                 <label class="field-label">Brand color<input type="color" name="brand_color" value="{{ old('brand_color', $settings['brand_color']) }}" class="input h-12"></label>
                 <label class="field-label">Contact phone<input name="contact_phone" value="{{ old('contact_phone', $settings['contact_phone']) }}" class="input"></label>

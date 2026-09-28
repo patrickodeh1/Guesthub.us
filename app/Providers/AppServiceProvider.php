@@ -2,11 +2,15 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;
-use App\Services\Pms\PmsProviderInterface;
+use App\Models\CleaningSession;
+use App\Models\InstructionalVideo;
+use App\Models\Property;
 use App\Services\Pms\ChannexProvider;
 use App\Services\Pms\NextPaxProvider;
+use App\Services\Pms\PmsProviderInterface;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,8 +35,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(CleaningSession::class, \App\Policies\CleaningSessionPolicy::class);
+        Gate::policy(InstructionalVideo::class, \App\Policies\InstructionalVideoPolicy::class);
+        Gate::policy(Property::class, \App\Policies\PropertyPolicy::class);
+
         if (request()->header('x-forwarded-proto') === 'https') {
             URL::forceScheme('https');
         }
+
+        view()->composer('*', function ($view) {
+            $view->with('siteName', \App\Models\Setting::get('site_name', config('app.name', 'HK Checklist')));
+        });
     }
 }

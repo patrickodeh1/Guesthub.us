@@ -13,8 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\RequireRole::class,
+            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'force-password-change' => \App\Http\Middleware\ForcePasswordChange::class,
         ]);
         $middleware->prepend(\App\Http\Middleware\CheckPostSize::class);
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureUserIsActive::class,
+            \App\Http\Middleware\ForcePasswordChange::class,
+        ]);
         $middleware->validateCsrfTokens(except: [
             'webhooks/seam',
             'webhooks/channex',

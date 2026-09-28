@@ -16,5 +16,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(WelcomeGuideSeeder::class);
+        $this->call([
+            RoomSeeder::class,
+            TaskSeeder::class,
+            DemoUsersSeeder::class,
+            BulkDemoDataSeeder::class,
+        ]);
     }
 }

@@ -264,11 +264,11 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
 
     // ─── Settings ─────────────────────────────────────────────────────────────
     Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
-    Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::match(['put', 'post'], 'settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit');
-    Route::put('settings/legal', [SettingsController::class, 'legalUpdate'])->name('settings.legal.update');
+    Route::match(['put', 'post'], 'settings/legal', [\App\Http\Controllers\Admin\SettingsController::class, 'legalUpdate'])->name('settings.legal.update');
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit');
-    Route::put('settings/notifications', [NotificationSettingsController::class, 'update'])->name('settings.notifications.update');
+    Route::match(['put', 'post'], 'settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'update'])->name('settings.notifications.update');
 
     // ─── Guest Notices (conditional pop-ups / check-in steps) ──────────────
     Route::resource('notices', GuestNoticeController::class)->except(['show']);
@@ -606,10 +606,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/training/{type}/{id}/progress', [\App\Http\Controllers\TrainingController::class, 'updateProgress'])->name('training.update_progress');
 
     // User Management Routes
-    Route::get('/users', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index');
-    Route::get('/users/create', [\App\Http\Controllers\UserController::class, 'create'])->name('users.create');
+    Route::redirect('/users', '/admin/users')->name('users.index');
+    Route::redirect('/users/create', '/admin/users/create')->name('users.create');
+    Route::redirect('/users/{user}/edit', '/admin/users/{user}/edit')->name('users.edit');
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store');
-    Route::get('/users/{user}/edit', [\App\Http\Controllers\UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy');
     Route::post('/users/{user}/deactivate', [\App\Http\Controllers\UserController::class, 'deactivate'])
@@ -638,8 +638,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'detachTask'])->name('rooms.tasks.detach');
     Route::get('api/tasks/suggest', [\App\Http\Controllers\TaskSuggestionController::class, 'index'])->name('tasks.suggest');
 
-    Route::get('settings', [\App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
-    Route::post('settings', [\App\Http\Controllers\SettingsController::class, 'update'])->name('settings.update');
+    Route::redirect('settings', '/admin/settings')->name('settings.index');
+    Route::post('settings', function () {
+        return redirect('/admin/settings');
+    })->name('settings.update');
+    Route::redirect('/users', '/admin/users')->name('users.index');
+    Route::redirect('/users/create', '/admin/users/create')->name('users.create');
+    Route::redirect('/users/{user}/edit', '/admin/users/{user}/edit')->name('users.edit');
     Route::get('activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity.index');
 
     // Photo Management

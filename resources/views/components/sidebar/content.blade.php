@@ -150,11 +150,35 @@
         </x-sidebar.dropdown>
     @endrole
 
+    {{-- Guest Portal links --}}
+    @role('admin|owner|company')
+        <x-sidebar.dropdown title="Guest Portal"
+            :active="request()->routeIs('admin.dashboard') || request()->routeIs('admin.guests.*') || request()->routeIs('admin.properties.*') || request()->routeIs('admin.settings.*')">
+            <x-slot name="icon"><x-heroicon-o-switch-horizontal class="w-6 h-6" aria-hidden="true" /></x-slot>
+
+            <x-sidebar.sublink title="Dashboard"
+                href="{{ route('admin.dashboard') }}"
+                :active="request()->routeIs('admin.dashboard')" />
+
+            <x-sidebar.sublink title="Guests"
+                href="{{ route('admin.guests.index') }}"
+                :active="request()->routeIs('admin.guests.*')" />
+
+            <x-sidebar.sublink title="Guest Portal Properties"
+                href="{{ route('admin.properties.index') }}"
+                :active="request()->routeIs('admin.properties.*')" />
+
+            <x-sidebar.sublink title="Settings"
+                href="{{ route('admin.settings.edit') }}"
+                :active="request()->routeIs('admin.settings.*')" />
+        </x-sidebar.dropdown>
+    @endrole
+
     {{-- System / Audit --}}
     @role('admin')
         <x-sidebar.link title="Settings"
-            href="{{ route('settings.index') }}"
-            :isActive="request()->routeIs('settings.*')">
+            href="{{ route('admin.settings.edit') }}"
+            :isActive="request()->routeIs('admin.settings.*') || request()->routeIs('settings.*')">
             <x-slot name="icon">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
