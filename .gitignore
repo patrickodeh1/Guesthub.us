@@ -19,6 +19,8 @@ cleaning/composer/
 *.env.bak
 /auth.json
 
+####
+/storage/framework/testing/*
 ##########################
 # Laravel runtime/cache
 ##########################
