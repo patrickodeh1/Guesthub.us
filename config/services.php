@@ -60,6 +60,9 @@ return [
     // to turn the API on, even to use the free allowance.
     'google_vision' => [
         'key' => env('GOOGLE_VISION_API_KEY'),
+        // When true, the raw OCR text (personal data) is written to the log.
+        // For tuning the parser only; keep off in normal operation.
+        'debug' => (bool) env('GOOGLE_VISION_DEBUG_LOG', false),
     ],
 
     'channex' => [

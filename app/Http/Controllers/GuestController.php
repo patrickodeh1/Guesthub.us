@@ -14,6 +14,7 @@ use App\Services\SmsConsentService;
 use App\Services\SmsNotificationService;
 use App\Services\RentalAgreementService;
 use App\Services\IdDocumentExtractor;
+use App\Services\PersonNameMatcher;
 use App\Support\PhoneFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -684,7 +685,7 @@ class GuestController extends Controller
         if ($result->isExpired()) {
             $status = 'expired';
         } elseif ($result->hasUsableName()) {
-            $status = $this->normalizePersonName($result->name) === $this->normalizePersonName($booking->guest_name)
+            $status = PersonNameMatcher::matches($result->name, $booking->guest_name)
                 ? 'matched'
                 : 'name_mismatch';
         }
@@ -698,12 +699,20 @@ class GuestController extends Controller
             'id_scanned_at' => now(),
         ]);
 
-        ActivityLogService::guest('id_scanned', "ID scan for {$booking->guest_name} completed with status: {$status}.", 'photo_id', [
+        $reasonNote = $result->failureReason ? " ({$result->failureReason})" : '';
+
+        ActivityLogService::guest('id_scanned', "ID scan for {$booking->guest_name} completed with status: {$status}{$reasonNote}.", 'photo_id', [
             'booking_id'  => $booking->id,
             'property_id' => $booking->property_id,
             'actor_name'  => $booking->guest_name,
             'severity'    => in_array($status, ['expired', 'name_mismatch'], true) ? 'warning' : 'info',
-            'metadata'    => ['id_scan_status' => $status, 'extracted_name' => $result->name],
+            'metadata'    => [
+                'id_scan_status' => $status,
+                'extracted_name' => $result->name,
+                'reason'         => $result->failureReason,
+                'dob_read'       => $result->dateOfBirth !== null,
+                'expiry_read'    => $result->expiryDate !== null,
+            ],
         ]);
     }
 
@@ -1442,7 +1451,7 @@ class GuestController extends Controller
      */
     private function normalizePersonName(?string $name): string
     {
-        return strtolower(preg_replace('/\s+/', ' ', trim((string) $name)));
+        return PersonNameMatcher::normalize($name);
     }
 
     private function distanceMeters(float $lat1, float $lon1, float $lat2, float $lon2): float
