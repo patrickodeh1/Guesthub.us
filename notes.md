@@ -443,3 +443,8 @@
 - Dashboard tests passed in Docker: 2 tests. Property notification page/settings/add-recipient tests returned unexpected 302 redirects for admin and owner users; their destination was not diagnosed before stopping. The same focused run also showed three existing SMS notification tests fail because `App\Helpers\TimezoneHelper` cannot be loaded.
 - Docker is available; validation used `docker compose run --rm --no-deps app` and PHPUnit's configured in-memory SQLite database. No migration or production database command was run.
 - Blade cache, route inspection, and the full relevant test file were not completed because the focused feature run failed. The remaining duplication findings and approved `.env.example` product name decision are also pending; `.env.example` was left unchanged because the client-approved name is not known.
+
+## [task-D007-login-brand-removal] 2026-09-30 11:02
+- Removed the visible configured site-name text and product-name title from the login page; retained the logo and its accessible alt text.
+- Files touched: `resources/views/auth/login.blade.php`.
+- Verified Blade view cache compilation and clear in Docker. D007 remains blocked by its previously recorded blocker.

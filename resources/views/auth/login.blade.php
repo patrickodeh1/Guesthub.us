@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $loginSiteName }} · Sign in</title>
+    <title>Sign in</title>
     @include('layouts.partials.theme-init')
     @include('layouts.partials.brand-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -25,7 +25,6 @@
                     @else
                         <span class="grid h-11 w-11 place-items-center rounded-lg bg-white text-[var(--theme-primary)]"><x-icon name="guide" /></span>
                     @endif
-                    <span class="text-lg font-semibold">{{ $loginSiteName }}</span>
                 </div>
                 <div class="mt-28 max-w-2xl">
                 <p class="text-sm font-semibold uppercase tracking-wide text-blue-200">Property operations</p>
