@@ -31,7 +31,28 @@ class AdminSettingsNavigationTest extends TestCase
         $response = $this->actingAs($admin)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee(route('admin.settings.edit'), false);
+        $response->assertSee(route('admin.settings.edit'), false)
+            ->assertSee('Today')
+            ->assertSee('Upcoming Sessions (7d)');
+    }
+
+    public function test_housekeeper_dashboard_renders_cleaning_panels_without_guest_portal_panels(): void
+    {
+        $housekeeper = User::factory()->create([
+            'email_verified_at' => now(),
+            'must_change_password' => false,
+            'password' => Hash::make('StrongPassword123!'),
+            'status' => 'active',
+        ]);
+        $housekeeper->assignRole(Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']));
+
+        $response = $this->actingAs($housekeeper)->get(route('dashboard'));
+
+        $response->assertOk()
+            ->assertSee('Upcoming Sessions (7d)')
+            ->assertSee('My Assignments')
+            ->assertDontSee('Smart Locks')
+            ->assertDontSee('Needs Attention');
     }
 
     public function test_admin_can_load_the_consolidated_settings_sections(): void

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\CleaningSmsNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PropertyNotificationTest extends TestCase
@@ -27,7 +28,11 @@ class PropertyNotificationTest extends TestCase
         // Create role if it doesn't exist (since RefreshDatabase clears it)
         \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         
-        $this->admin = User::factory()->create();
+        $this->admin = User::factory()->create([
+            'email_verified_at' => now(),
+            'must_change_password' => false,
+            'status' => 'active',
+        ]);
         $this->admin->assignRole('admin');
 
         $this->property = Property::factory()->create([
@@ -85,6 +90,35 @@ class PropertyNotificationTest extends TestCase
         $this->assertDatabaseMissing('property_notification_recipients', [
             'id' => $recipientId,
         ]);
+    }
+
+    public function test_owner_can_only_access_notifications_for_visible_properties(): void
+    {
+        Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
+        $owner = User::factory()->create([
+            'email_verified_at' => now(),
+            'must_change_password' => false,
+            'status' => 'active',
+        ]);
+        $owner->assignRole('owner');
+        $otherOwner = User::factory()->create();
+
+        $ownedProperty = Property::factory()->create(['owner_id' => $owner->id]);
+        $otherProperty = Property::factory()->create(['owner_id' => $otherOwner->id]);
+
+        $this->actingAs($owner)
+            ->get(route('properties.notifications.index', $ownedProperty))
+            ->assertOk();
+
+        $this->getJson(route('properties.notifications.settings', $ownedProperty))
+            ->assertOk();
+
+        $this->getJson(route('properties.notifications.settings', $otherProperty))
+            ->assertForbidden();
+
+        $this->putJson(route('properties.notifications.update-settings', $otherProperty), [
+            'notify_cleaning_started' => false,
+        ])->assertForbidden();
     }
 
     public function test_sms_service_logs_cleaning_started()

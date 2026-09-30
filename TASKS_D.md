@@ -573,8 +573,10 @@ Do NOT change any data or columns. Field-level merge only.
 
 ---
 
-## task-D007 — status: in-progress
+## task-D007 — status: blocked
 **Remaining duplicated surfaces — dashboard, account, videos, emails, auth, naming**
+
+**Blocker:** Focused property-notification tests returned unexpected 302 redirects for admin and owner users; three SMS notification tests also failed because `App\Helpers\TimezoneHelper` could not be loaded. See the D007 entry in `notes.md`.
 
 Do these after D002 (shell) and D003 (brand). Each is small; keep every
 existing feature.
