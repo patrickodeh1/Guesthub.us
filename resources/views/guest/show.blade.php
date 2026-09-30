@@ -228,7 +228,6 @@
             </div>
 
             <div class="guest-portal-card mt-4">
-                <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="id_rejected" data-id-state-key="idw_form_state_{{ $booking->booking_id }}" data-id-rejection-key="idw_id_rejection_seen_{{ $booking->booking_id }}"></div>
                 <form id="guest-booking-form" method="post" data-skip-loading enctype="multipart/form-data" action="{{ route('guest.identity', [$booking->booking_id, $booking->token]) }}" class="guest-booking-card">
                     @csrf
 
@@ -459,6 +458,16 @@
                         @else
                         <div class="mt-5" id="id-capture-section">
                             <p class="text-sm font-bold mb-3">Photo ID <span class="text-red-500">*</span></p>
+                            @if(filled($booking->photo_id_front_declined_reason) || filled($booking->photo_id_back_declined_reason))
+                                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="status">
+                                    @if(filled($booking->photo_id_front_declined_reason))
+                                        <p class="mt-2"><span class="font-semibold">Front side of photo ID declined.</span> Reason: {{ $booking->photo_id_front_declined_reason }}</p>
+                                    @endif
+                                    @if(filled($booking->photo_id_back_declined_reason))
+                                        <p class="mt-2"><span class="font-semibold">Back side of photo ID declined.</span> Reason: {{ $booking->photo_id_back_declined_reason }}</p>
+                                    @endif
+                                </div>
+                            @endif
 
                             <div id="idw-desktop-notice" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
                                 <p class="text-sm font-bold text-slate-800">It's easier to snap this on your phone</p>

@@ -49,7 +49,6 @@ class SpotlightTour {
 
         // Tooltip card
         this.tooltip = document.createElement('div');
-        this.tooltip.classList.add('tour-tooltip');
         this.tooltip.style.cssText = [
             'position:fixed;z-index:9999;',
             'width:340px;max-width:calc(100vw - 32px);',
@@ -141,14 +140,14 @@ class SpotlightTour {
 
         this.tooltip.innerHTML = `
             <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">
-                <div class="tour-step-number" style="min-width:34px;height:34px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;display:grid;place-items:center;font-weight:700;font-size:13px;color:#2563eb;flex-shrink:0">${index + 1}</div>
+                <div style="min-width:34px;height:34px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;display:grid;place-items:center;font-weight:700;font-size:13px;color:#2563eb;flex-shrink:0">${index + 1}</div>
                 <div style="flex:1;min-width:0">
-                    <div class="tour-step-label" style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#2563eb;margin-bottom:4px">Step ${index + 1} of ${this.steps.length}</div>
-                    <div class="tour-step-title" style="font-size:15px;font-weight:600;color:#0f172a;line-height:1.4">${step.title}</div>
+                    <div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#2563eb;margin-bottom:4px">Step ${index + 1} of ${this.steps.length}</div>
+                    <div style="font-size:15px;font-weight:600;color:#0f172a;line-height:1.4">${step.title}</div>
                 </div>
             </div>
-            <div class="tour-step-description" style="font-size:13.5px;line-height:1.75;color:#475569;margin-bottom:18px">${step.body}</div>
-            <div class="tour-progress-track" style="height:3px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:16px">
+            <div style="font-size:13.5px;line-height:1.75;color:#475569;margin-bottom:18px">${step.body}</div>
+            <div style="height:3px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:16px">
                 <div style="height:100%;width:${pct}%;background:#2563eb;border-radius:99px;transition:width 0.22s ease"></div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -827,10 +826,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (idStateKey) sessionStorage.removeItem(idStateKey);
                     } catch (_) {}
                     if (!alreadyReloaded) {
-                        clearInterval(idPollInterval);
                         location.reload();
-                        return;
                     }
+                    clearInterval(idPollInterval);
+                    return;
                 } else if (idRejectionKey) {
                     try { sessionStorage.removeItem(idRejectionKey); } catch (_) {}
                 }
