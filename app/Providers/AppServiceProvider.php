@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         view()->composer('*', function ($view) {
-            $view->with('siteName', \App\Models\Setting::get('site_name', config('app.name', 'HK Checklist')));
+            $view->with('siteName', \App\Support\Branding::siteName());
         });
     }
 }

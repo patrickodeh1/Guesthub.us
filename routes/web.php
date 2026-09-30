@@ -138,7 +138,7 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
 Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(function () {
 
     // ─── Dashboard ───────────────────────────────────────────────────────────
-    Route::get('/', DashboardController::class)
+    Route::redirect('/', '/dashboard')
         ->middleware('role:admin,owner,company')
         ->name('dashboard');
 
@@ -171,7 +171,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
 
     // ─── Static pages ────────────────────────────────────────────────────────
     Route::view('guide', 'admin.guide')->name('guide');
-    Route::view('security', 'admin.security')->name('security');
+    Route::redirect('security', '/profile')->name('security');
 
     // ─── Guest Guide (per-property categories) ──────────────────────────────
     Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index');
@@ -547,6 +547,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('properties/{property}/tasks/{task}', [CleaningPropertyController::class, 'detachPropertyTask'])->name('properties.property-tasks.detach');
 
     // Property Notification Settings
+    Route::get('properties/{property}/notifications', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'page'])->name('properties.notifications.index');
     Route::get('properties/{property}/notifications/settings', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'getSettings'])->name('properties.notifications.settings');
     Route::put('properties/{property}/notifications/settings', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'updateSettings'])->name('properties.notifications.update-settings');
     Route::post('properties/{property}/notifications/recipients', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'addRecipient'])->name('properties.notifications.add-recipient');

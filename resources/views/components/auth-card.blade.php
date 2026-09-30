@@ -1,7 +1,8 @@
 <main class="flex flex-col items-center flex-1 px-4 pt-6 sm:justify-center">
     <div>
-        <a href="{{ url('/') }}">
-            <x-application-logo class="w-80 h-auto" />
+        <a href="{{ url('/') }}" class="flex items-center gap-3">
+            <x-application-logo class="h-12 w-12 object-contain" />
+            <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ \App\Support\Branding::siteName() }}</span>
         </a>
     </div>
 

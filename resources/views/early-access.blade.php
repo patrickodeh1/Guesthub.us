@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GuestHub</title>
-    <meta name="description" content="GuestHub handles guest ID verification, keyless check-in, and a digital welcome guide for short-term rentals.">
+    <title>{{ \App\Support\Branding::siteName() }}</title>
+    <meta name="description" content="{{ \App\Support\Branding::siteName() }} handles guest ID verification, keyless check-in, and a digital welcome guide for short-term rentals.">
     @include('layouts.partials.brand-vars')
     @php($siteLogo = \App\Support\Branding::logoUrl())
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -17,9 +17,9 @@
         <div class="relative flex flex-col justify-between overflow-hidden bg-[#f4ede4] px-6 pb-10 pt-6 sm:px-12 sm:py-10 lg:px-12">
             <div class="flex items-center gap-2.5">
                 @if($siteLogo)
-                    <img src="{{ $siteLogo }}" alt="GuestHub" class="h-8 w-auto object-contain">
+                    <img src="{{ $siteLogo }}" alt="{{ \App\Support\Branding::siteName() }}" class="h-8 w-auto object-contain">
                 @else
-                    <span class="text-lg font-semibold tracking-tight">GuestHub</span>
+                    <span class="text-lg font-semibold tracking-tight">{{ \App\Support\Branding::siteName() }}</span>
                 @endif
             </div>
 
@@ -42,7 +42,7 @@
                     Run your rentals from one place.
                 </h1>
                 <p class="mt-4 text-base leading-relaxed text-slate-700">
-                    GuestHub manages guest verification, properties, bookings, and check-in for
+                    {{ \App\Support\Branding::siteName() }} manages guest verification, properties, bookings, and check-in for
                     short-term rental hosts.
                 </p>
 

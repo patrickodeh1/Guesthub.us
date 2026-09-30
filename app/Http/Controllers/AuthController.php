@@ -45,13 +45,7 @@ class AuthController extends Controller
             ]);
 
             $role = $user->getRoleNames()->first();
-            $redirectRoute = match ($role) {
-                'admin' => 'admin.dashboard',
-                'owner', 'manager', 'staff', 'housekeeper', 'company' => 'dashboard',
-                default => null,
-            };
-
-            if ($redirectRoute === null) {
+            if ($role === null) {
                 ActivityLogService::security('login_role_missing', "{$user->name} logged in without a mapped role.", [
                     'actor_type' => 'system',
                     'actor_id' => $user->id,
@@ -60,10 +54,9 @@ class AuthController extends Controller
                     'severity' => 'warning',
                     'metadata' => ['role' => $role, 'ip' => $request->ip()],
                 ]);
-                $redirectRoute = 'admin.dashboard';
             }
 
-            return redirect()->intended(route($redirectRoute))->with('success', 'Welcome back, '.$user->name.'.');
+            return redirect()->route('dashboard')->with('success', 'Welcome back, '.$user->name.'.');
         }
 
         ActivityLogService::security('login_failed', "Failed login attempt for email: {$request->email}.", [

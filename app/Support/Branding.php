@@ -45,7 +45,7 @@ class Branding
 
     public static function siteName(): string
     {
-        return Setting::getValue('site_name', config('app.name', 'GuestHub'));
+        return Setting::getValue('site_name', config('app.name', 'Guest Hub'));
     }
 
     public static function logoUrl(): ?string

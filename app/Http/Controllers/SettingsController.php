@@ -18,7 +18,7 @@ class SettingsController extends Controller
         $this->assertAdmin();
 
         $settings = [
-            'site_name' => Setting::get('site_name', config('app.name', 'HK Checklist')),
+            'site_name' => Setting::get('site_name', config('app.name')),
             'theme_color' => Setting::get('theme_color', \App\Support\Branding::DEFAULT_THEME_COLOR),
             'application_logo_path' => Setting::get('application_logo_path'),
             'application_icon_path' => Setting::get('application_icon_path'),

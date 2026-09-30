@@ -573,7 +573,7 @@ Do NOT change any data or columns. Field-level merge only.
 
 ---
 
-## task-D007 — status: open
+## task-D007 — status: in-progress
 **Remaining duplicated surfaces — dashboard, account, videos, emails, auth, naming**
 
 Do these after D002 (shell) and D003 (brand). Each is small; keep every

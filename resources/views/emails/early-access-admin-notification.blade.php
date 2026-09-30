@@ -1,24 +1,14 @@
-<x-mail::message>
-# New early access signup
+@extends('emails.layouts.base')
 
-**Name:** {{ $lead->name }}<br>
-**Email:** {{ $lead->email }}<br>
-@if($lead->phone)
-**Phone:** {{ \App\Support\PhoneFormatter::format($lead->phone) }}<br>
-@endif
-@if($lead->role)
-**Role:** {{ ucfirst($lead->role) }}<br>
-@endif
-
-@if($lead->message)
-**Message:**<br>
-{{ $lead->message }}
-@endif
-
-<x-mail::button :url="route('admin.early-access-leads.index')">
-View in admin
-</x-mail::button>
-
-Thanks,<br>
-GuestHub
-</x-mail::message>
+@section('content')
+    <h1 style="margin:0 0 20px;font-size:22px;">New early access signup</h1>
+    <p><strong>Name:</strong> {{ $lead->name }}<br>
+    <strong>Email:</strong> {{ $lead->email }}<br>
+    @if($lead->phone)<strong>Phone:</strong> {{ \App\Support\PhoneFormatter::format($lead->phone) }}<br>@endif
+    @if($lead->role)<strong>Role:</strong> {{ ucfirst($lead->role) }}<br>@endif</p>
+    @if($lead->message)
+        <p><strong>Message:</strong><br>{{ $lead->message }}</p>
+    @endif
+    <p><a href="{{ route('admin.early-access-leads.index') }}" style="display:inline-block;padding:10px 18px;background:{{ \App\Support\Branding::buttonColor() }};color:{{ \App\Support\Branding::contrastText(\App\Support\Branding::buttonColor()) }};text-decoration:none;border-radius:6px;font-weight:bold;">View in admin</a></p>
+    <p>Thanks,<br>{{ \App\Support\Branding::siteName() }}</p>
+@endsection

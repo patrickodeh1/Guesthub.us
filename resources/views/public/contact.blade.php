@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Contact | Guest Hub</title>
+    <title>Contact | {{ \App\Support\Branding::siteName() }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
@@ -11,10 +11,10 @@
         <header class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    @if($siteLogo)
-                        <img src="{{ url('/img/'.$siteLogo) }}" alt="GuestHub" class="h-8 w-auto object-contain">
+                    @if($logoUrl = \App\Support\Branding::logoUrl())
+                        <img src="{{ $logoUrl }}" alt="{{ \App\Support\Branding::siteName() }}" class="h-8 w-auto object-contain">
                     @else
-                        <span class="text-lg font-semibold tracking-tight">GuestHub</span>
+                        <span class="text-lg font-semibold tracking-tight">{{ \App\Support\Branding::siteName() }}</span>
                     @endif
                     <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Contact</h1>
                 </div>

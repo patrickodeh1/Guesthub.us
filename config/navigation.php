@@ -67,7 +67,7 @@ return [
                             ],
                             [
                                 'label' => 'Notifications',
-                                'route' => 'properties.notifications.settings',
+                                'route' => 'properties.notifications.index',
                                 'active' => ['properties.notifications.*'],
                             ],
                         ],
@@ -189,17 +189,36 @@ return [
                             ],
                             'active' => ['tasks.*'],
                         ],
+                    ],
+                ],
+                [
+                    'label' => 'Training',
+                    'icon' => 'guide',
+                    'roles' => ['admin', 'owner', 'company', 'manager', 'staff', 'viewer', 'housekeeper'],
+                    'routes' => [
+                        ['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']],
+                        ['name' => 'training.index', 'roles' => ['housekeeper']],
+                    ],
+                    'active' => ['admin.videos.*', 'training.*', 'reports.training.*', 'reports.familiarity.*'],
+                    'collapsible' => true,
+                    'children' => [
                         [
-                            'label' => 'Video Library',
-                            'icon' => 'folder',
+                            'label' => 'Videos',
                             'routes' => [
                                 ['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'resources.videos', 'roles' => ['housekeeper']],
                             ],
-                            'active' => ['admin.videos.*'],
+                            'active' => ['admin.videos.*', 'resources.videos'],
+                        ],
+                        [
+                            'label' => 'Training Hub',
+                            'routes' => [
+                                ['name' => 'training.index', 'roles' => ['housekeeper']],
+                            ],
+                            'active' => ['training.*'],
                         ],
                         [
                             'label' => 'Training Report',
-                            'icon' => 'logs',
                             'routes' => [
                                 ['name' => 'reports.training.index', 'roles' => ['admin', 'owner', 'company']],
                             ],
@@ -207,7 +226,6 @@ return [
                         ],
                         [
                             'label' => 'Familiarity Report',
-                            'icon' => 'logs',
                             'routes' => [
                                 ['name' => 'reports.familiarity.index', 'roles' => ['admin', 'owner', 'company']],
                             ],
@@ -246,16 +264,6 @@ return [
                     'active' => ['sessions.*'],
                 ],
                 [
-                    'label' => 'Training',
-                    'icon' => 'guide',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
-                    'routes' => [
-                        ['name' => 'training.index', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['training.*'],
-                ],
-                [
                     'label' => 'Photos',
                     'icon' => 'image',
                     'roles' => ['housekeeper'],
@@ -264,16 +272,6 @@ return [
                         ['name' => 'resources.photos', 'roles' => ['housekeeper']],
                     ],
                     'active' => ['resources.photos'],
-                ],
-                [
-                    'label' => 'Videos',
-                    'icon' => 'folder',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
-                    'routes' => [
-                        ['name' => 'resources.videos', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['resources.videos'],
                 ],
                 [
                     'label' => 'Guides',
@@ -285,15 +283,18 @@ return [
                     ],
                     'active' => ['resources.guides'],
                 ],
+            ],
+        ],
+        [
+            'label' => 'Account',
+            'items' => [
                 [
                     'label' => 'My Account',
                     'icon' => 'users',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
                     'routes' => [
-                        ['name' => 'profile.edit', 'roles' => ['housekeeper']],
+                        ['name' => 'profile.edit', 'roles' => ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper']],
                     ],
-                    'active' => ['profile.*'],
+                    'active' => ['profile.*', 'admin.security'],
                 ],
             ],
         ],
@@ -339,14 +340,6 @@ return [
                         ['name' => 'admin.logs.index', 'roles' => ['admin', 'manager', 'owner']],
                     ],
                     'active' => ['admin.logs.*', 'activity.*'],
-                ],
-                [
-                    'label' => 'Security',
-                    'icon' => 'security',
-                    'routes' => [
-                        ['name' => 'admin.security', 'roles' => ['admin', 'owner', 'company']],
-                    ],
-                    'active' => ['admin.security'],
                 ],
                 [
                     'label' => 'Admin Guide',

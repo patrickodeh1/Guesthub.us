@@ -11,12 +11,18 @@ use App\Models\PropertyCheckout;
 use App\Models\Room;
 use App\Models\User;
 use App\Services\ICalService;
+use App\Services\GuestPortalDashboardData;
+use App\Services\UnifiedActivityFeed;
 
 class DashboardController extends Controller
 {
     private $icalService;
 
-    public function __construct(ICalService $icalService)
+    public function __construct(
+        ICalService $icalService,
+        private GuestPortalDashboardData $guestPortalDashboardData,
+        private UnifiedActivityFeed $activityFeed,
+    )
     {
         $this->icalService = $icalService;
     }
@@ -113,6 +119,21 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $u = Auth::user();
+        $canSeeCleaning = $u->hasAnyRole(['admin', 'owner', 'company', 'housekeeper']);
+        $canSeeGuestPortal = $u->hasAnyRole(['admin', 'owner', 'company']);
+
+        if (! $canSeeCleaning) {
+            $recentActivity = $u->hasAnyRole(['admin', 'manager', 'owner'])
+                ? $this->activityFeed->latest(10, $u)
+                : collect();
+
+            return view('dashboard', [
+                'canSeeCleaning' => false,
+                'canSeeGuestPortal' => false,
+                'recentActivity' => $recentActivity,
+            ]);
+        }
+
         $acting = $this->actingRole($request);
         abort_if($acting === 'forbidden', 403);
 
@@ -180,13 +201,6 @@ class DashboardController extends Controller
             ->limit(10)
             ->get(['id', 'property_id', 'housekeeper_id', 'scheduled_date', 'status']);
 
-        // Recent completed (last 10)
-        $recentSessions = $this->baseSessions($acting, $u->id)
-            ->where('status', 'completed')
-            ->orderByDesc('scheduled_date')
-            ->limit(10)
-            ->get(['id', 'property_id', 'housekeeper_id', 'scheduled_date', 'status']);
-
         // Housekeeper: assignments for the next 7 days (including overdue/in-progress)
         $hkTodaySessions = collect();
         if ($u->hasRole('housekeeper')) {
@@ -208,16 +222,26 @@ class DashboardController extends Controller
         // Unscheduled checkouts from iCal
         $unscheduledCheckouts = $this->getUnscheduledCheckouts($acting, $u->id);
 
-        return view('dashboard', [
+        $guestPanelData = $canSeeGuestPortal
+            ? $this->guestPortalDashboardData->get($u)
+            : [];
+
+        $recentActivity = $u->hasAnyRole(['admin', 'manager', 'owner'])
+            ? $this->activityFeed->latest(10, $u)
+            : collect();
+
+        return view('dashboard', array_merge($guestPanelData, [
+            'canSeeCleaning'   => $canSeeCleaning,
+            'canSeeGuestPortal' => $canSeeGuestPortal,
             'stats'            => $stats,
             'propertiesMini'   => $propertiesMini,
             'upcomingSessions' => $upcomingSessions,
-            'recentSessions'   => $recentSessions,
             'hkTodaySessions'  => $hkTodaySessions,
             'unscheduledCheckouts' => $unscheduledCheckouts,
             // not used by the blade but handy for debugging/scope badges if needed
             'acting'           => $acting,
-        ]);
+            'recentActivity'   => $recentActivity,
+        ]));
     }
     /**
      * Get list of unscheduled checkouts from iCal feeds.

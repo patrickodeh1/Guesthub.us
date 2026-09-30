@@ -9,6 +9,7 @@
     $endDateText = $endedAtDisplay?->format('M j, Y') ?? '--';
     $endTimeText = $endedAtDisplay?->format('g:i A') ?? '--';
     $reportDisplayName = $reportName ?? ($session->property->name . ' - Cleaning - ' . ($cleaningDate?->format('M j, Y') ?? $generatedAt->format('M j, Y')));
+    $reportBrandName = \App\Support\Branding::siteName();
     $reportDateText = $generatedAt->format('M j, Y');
 
     $themePrimary = \App\Models\Setting::get('theme_color', '#842eb8');
@@ -158,7 +159,7 @@
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @endif
 
-    <title>{{ $reportDisplayName }}</title>
+    <title>{{ $reportDisplayName }} · {{ $reportBrandName }}</title>
     @include('layouts.partials.brand-vars')
     <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:wght@500;600&display=swap');
@@ -2432,7 +2433,7 @@
             <div class="hero-top">
                 <div>
                     <h1 class="report-title">{{ $reportDisplayName }}</h1>
-                    <div class="report-date">Report Date: {{ $reportDateText }}</div>
+                    <div class="report-date">{{ $reportBrandName }} · Report Date: {{ $reportDateText }}</div>
                 </div>
             </div>
 

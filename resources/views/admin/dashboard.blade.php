@@ -1,4 +1,3 @@
-<x-admin-layout title="Dashboard">
     @php
         $hour = (int) now()->setTimezone(config('app.display_timezone'))->format('G');
         $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
@@ -126,4 +125,3 @@
     </div>
 
     <div id="dashboard-tour-data" data-steps="{{ json_encode($dashTourSteps) }}" data-complete-url="{{ route('admin.tour.dashboard.complete') }}" data-csrf="{{ csrf_token() }}" class="hidden"></div>
-</x-admin-layout>

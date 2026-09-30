@@ -2,8 +2,8 @@
     <div class="page-header">
         <div>
             <p class="eyebrow">Global settings</p>
-            <h1 class="page-title">Guest lifecycle notifications</h1>
-            <p class="page-subtitle">Customize the message sent for each stage of a booking, and choose who gets it and over which channel(s). Guest and staff each get their own wording, since staff need to be told about the guest rather than spoken to as the guest.</p>
+            <h1 class="page-title">Notifications</h1>
+            <p class="page-subtitle">Global settings control guest lifecycle messages and Cleaning Ops defaults. To configure cleaning event switches and recipients for a specific property, use its Notifications page from <a class="font-semibold text-[var(--theme-primary)] underline" href="{{ route('admin.properties.index') }}">Properties</a>.</p>
         </div>
     </div>
 

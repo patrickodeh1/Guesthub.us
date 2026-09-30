@@ -9,14 +9,19 @@ use Illuminate\Http\Request;
 
 class PropertyNotificationSettingsController extends Controller
 {
+    public function page(Request $request, Property $property)
+    {
+        $this->authorizePropertyNotifications($request, $property);
+
+        return view('properties.notifications.index', compact('property'));
+    }
+
     /**
      * Update notification settings for a property.
      */
     public function updateSettings(Request $request, Property $property)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         $validated = $request->validate([
             'notify_cleaning_started' => 'boolean',
@@ -39,9 +44,7 @@ class PropertyNotificationSettingsController extends Controller
      */
     public function addRecipient(Request $request, Property $property)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         $validated = $request->validate([
             'phone_number' => 'required|string|max:20',
@@ -66,9 +69,7 @@ class PropertyNotificationSettingsController extends Controller
      */
     public function updateRecipient(Request $request, Property $property, PropertyNotificationRecipient $recipient)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         abort_unless($recipient->property_id === $property->id, 404);
 
@@ -92,9 +93,7 @@ class PropertyNotificationSettingsController extends Controller
      */
     public function deleteRecipient(Request $request, Property $property, PropertyNotificationRecipient $recipient)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         abort_unless($recipient->property_id === $property->id, 404);
 
@@ -112,9 +111,7 @@ class PropertyNotificationSettingsController extends Controller
      */
     public function history(Request $request, Property $property)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         $logs = $property->notificationLogs()
             ->latest()
@@ -132,9 +129,7 @@ class PropertyNotificationSettingsController extends Controller
      */
     public function resend(Request $request, Property $property, NotificationLog $log)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         abort_unless($log->property_id === $property->id, 404);
 
@@ -167,11 +162,9 @@ class PropertyNotificationSettingsController extends Controller
     /**
      * Get recipients and settings (JSON API for the frontend).
      */
-    public function getSettings(Property $property)
+    public function getSettings(Request $request, Property $property)
     {
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
-            abort(403);
-        }
+        $this->authorizePropertyNotifications($request, $property);
 
         return response()->json([
             'success' => true,
@@ -183,5 +176,17 @@ class PropertyNotificationSettingsController extends Controller
             ],
             'recipients' => $property->notificationRecipients()->get(),
         ]);
+    }
+
+    private function authorizePropertyNotifications(Request $request, Property $property): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user
+                && $user->hasAnyRole(['admin', 'owner', 'company'])
+                && Property::query()->visibleTo($user)->whereKey($property->id)->exists(),
+            403
+        );
     }
 }

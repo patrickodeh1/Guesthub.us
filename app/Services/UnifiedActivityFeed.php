@@ -6,10 +6,21 @@ use App\Models\Property;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class UnifiedActivityFeed
 {
+    public function latest(int $limit = 10, ?User $user = null): Collection
+    {
+        return $this->baseQuery($user)
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('source')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+    }
+
     public function paginate(array $filters, ?User $user = null, int $perPage = 30): LengthAwarePaginator
     {
         $query = $this->baseQuery($user);

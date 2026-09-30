@@ -8,13 +8,12 @@
 @endphp
 
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" style="color-scheme:light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title }} - {{ $property->name }}</title>
-    @include('layouts.partials.theme-init')
+    <title>{{ $title }} - {{ $property->name }} · {{ \App\Support\Branding::siteName() }}</title>
     @include('layouts.partials.brand-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>:root { --brand: var(--theme-primary); }</style>

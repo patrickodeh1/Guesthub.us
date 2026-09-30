@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="base-path" content="{{ request()->getBaseUrl() }}">
 
-    <title>{{ $siteName ?? config('app.name', 'HK Checklist') }}</title>
+    <title>{{ \App\Support\Branding::siteName() }}</title>
     @include('layouts.partials.theme-init')
     @include('layouts.partials.brand-vars')
 
