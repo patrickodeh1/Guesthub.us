@@ -3,7 +3,6 @@
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentController;
-use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EarlyAccessLeadController;
 use App\Http\Controllers\Admin\GuestNoticeController;
 use App\Http\Controllers\Admin\InstructionStepController;
@@ -24,7 +23,6 @@ use App\Http\Controllers\ManageSessionController as CleaningManageSessionControl
 use App\Http\Controllers\ProfileController as CleaningProfileController;
 use App\Http\Controllers\PropertyController as CleaningPropertyController;
 use App\Http\Controllers\SessionController as CleaningSessionController;
-use App\Http\Controllers\SettingsController as CleaningSettingsController;
 use App\Http\Controllers\UserController as CleaningUserController;
 use App\Http\Controllers\CalendarController as CleaningCalendarController;
 use App\Http\Controllers\SessionReportController as CleaningSessionReportController;

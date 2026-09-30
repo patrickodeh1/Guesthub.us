@@ -33,7 +33,8 @@ class AdminSettingsNavigationTest extends TestCase
         $response->assertOk();
         $response->assertSee(route('admin.settings.edit'), false)
             ->assertSee('Today')
-            ->assertSee('Upcoming Sessions (7d)');
+            ->assertDontSee('Upcoming Sessions')
+            ->assertDontSee('Completed (30d)');
 
         $notificationsResponse = $this->get(route('admin.settings.notifications.edit'));
         $notificationsResponse->assertOk()
@@ -54,8 +55,8 @@ class AdminSettingsNavigationTest extends TestCase
         $response = $this->actingAs($housekeeper)->get(route('dashboard'));
 
         $response->assertOk()
-            ->assertSee('Upcoming Sessions (7d)')
-            ->assertSee('My Assignments')
+            ->assertDontSee('Upcoming Sessions')
+            ->assertDontSee('Completed (30d)')
             ->assertDontSee('Smart Locks')
             ->assertDontSee('Needs Attention');
     }

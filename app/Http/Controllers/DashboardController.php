@@ -8,11 +8,9 @@ use Illuminate\Support\Carbon;
 use App\Models\CleaningSession;
 use App\Models\Property;
 use App\Models\PropertyCheckout;
-use App\Models\Room;
 use App\Models\User;
 use App\Services\ICalService;
 use App\Services\GuestPortalDashboardData;
-use App\Services\UnifiedActivityFeed;
 
 class DashboardController extends Controller
 {
@@ -21,7 +19,6 @@ class DashboardController extends Controller
     public function __construct(
         ICalService $icalService,
         private GuestPortalDashboardData $guestPortalDashboardData,
-        private UnifiedActivityFeed $activityFeed,
     )
     {
         $this->icalService = $icalService;
@@ -44,40 +41,6 @@ class DashboardController extends Controller
 
         // Final fallback: if no role is found, treat as housekeeper to be safe
         return 'housekeeper';
-    }
-
-    /** Base scoped sessions query by acting role. */
-    private function baseSessions(string $acting, int $userId)
-    {
-        $q = CleaningSession::query()->with(['property:id,name,owner_id,address,latitude,longitude', 'housekeeper:id,name']);
-
-        if ($acting === 'housekeeper') {
-            $q->where('housekeeper_id', $userId);
-        } elseif ($acting === 'owner') {
-            $q->whereHas('property', fn($p) => $p->where('owner_id', $userId));
-        } elseif ($acting === 'company') {
-            // Company sees properties they own OR properties owned by people they manage OR properties explicitly assigned
-            $q->whereHas('property', function ($p) use ($userId) {
-                $p->where('owner_id', $userId)
-                  ->orWhereIn('owner_id', function ($sub) use ($userId) {
-                      $sub->select('owner_id')
-                          ->from('housekeeper_owner')
-                          ->where('housekeeper_id', $userId);
-                  })
-                  ->orWhereIn('owner_id', function ($sub) use ($userId) {
-                      // Also support the direct user-to-owner relationship if used
-                      $sub->select('id')
-                          ->from('users')
-                          ->where('owner_id', $userId);
-                  })
-                  ->orWhereHas('users', function ($sub2) use ($userId) {
-                      $sub2->where('users.id', $userId);
-                  });
-            });
-        }
-
-        // admin: no scope
-        return $q;
     }
 
     /** Visible property ids for counts/lists. */
@@ -123,101 +86,14 @@ class DashboardController extends Controller
         $canSeeGuestPortal = $u->hasAnyRole(['admin', 'owner', 'company']);
 
         if (! $canSeeCleaning) {
-            $recentActivity = $u->hasAnyRole(['admin', 'manager', 'owner'])
-                ? $this->activityFeed->latest(10, $u)
-                : collect();
-
             return view('dashboard', [
                 'canSeeCleaning' => false,
                 'canSeeGuestPortal' => false,
-                'recentActivity' => $recentActivity,
             ]);
         }
 
         $acting = $this->actingRole($request);
         abort_if($acting === 'forbidden', 403);
-
-        // ----- KPIs -----
-        $propIds = $this->visiblePropertyIds($acting, $u->id);
-
-        // Properties count
-        $propertiesCount = is_null($propIds)
-            ? Property::active()->count()
-            : Property::whereIn('id', $propIds)->count();
-
-        // Rooms count - count distinct rooms attached to visible properties
-        $roomsCount = is_null($propIds)
-            ? Room::count()
-            : Room::whereHas('properties', fn($q) => $q->whereIn('properties.id', $propIds))->count();
-
-        // Upcoming 7d (or overdue/active)
-        $today = Carbon::today()->toDateString();
-        $in7   = Carbon::today()->addDays(7)->toDateString();
-
-        $upcoming7Count = $this->baseSessions($acting, $u->id)
-            ->where(function($q) use ($today, $in7) {
-                $q->whereBetween('scheduled_date', [$today, $in7])
-                  ->orWhere(function($sub) use ($today) {
-                      $sub->where('scheduled_date', '<', $today)
-                          ->whereIn('status', ['pending', 'in_progress']);
-                  });
-            })
-            ->count();
-
-        // Completed last 30d
-        $last30 = Carbon::today()->subDays(30)->toDateString();
-        $completed30Count = $this->baseSessions($acting, $u->id)
-            ->where('status', 'completed')
-            ->whereBetween('scheduled_date', [$last30, $today])
-            ->count();
-
-        $stats = [
-            'properties'     => $propertiesCount,
-            'rooms'          => $roomsCount,
-            'upcoming_7d'    => $upcoming7Count,
-            'completed_30d'  => $completed30Count,
-        ];
-
-        // ----- Lists -----
-        // Properties mini list
-        $propertiesMini = Property::query()->active()
-            ->when(!is_null($propIds), fn($q) => $q->whereIn('id', $propIds))
-            ->withCount('rooms')
-            ->orderBy('name')
-            ->limit(6)
-            ->get(['id', 'name']);
-
-        // Active & Upcoming sessions (next 30 days + any past uncompleted)
-        $in30 = Carbon::today()->addDays(30)->toDateString();
-        $upcomingSessions = $this->baseSessions($acting, $u->id)
-            ->where(function($q) use ($today, $in30) {
-                $q->whereBetween('scheduled_date', [$today, $in30])
-                  ->orWhere(function($sub) use ($today) {
-                      $sub->where('scheduled_date', '<', $today)
-                          ->whereIn('status', ['pending', 'in_progress']);
-                  });
-            })
-            ->orderBy('scheduled_date')
-            ->limit(10)
-            ->get(['id', 'property_id', 'housekeeper_id', 'scheduled_date', 'status']);
-
-        // Housekeeper: assignments for the next 7 days (including overdue/in-progress)
-        $hkTodaySessions = collect();
-        if ($u->hasRole('housekeeper')) {
-            $hkTodaySessions = CleaningSession::with(['property:id,name,address,latitude,longitude'])
-                ->where('housekeeper_id', $u->id)
-                ->where(function($q) use ($today) {
-                    $end = \Illuminate\Support\Carbon::today()->addDays(30)->toDateString();
-                    $q->whereBetween('scheduled_date', [$today, $end])
-                      ->orWhere(function($sub) use ($today) {
-                          $sub->whereDate('scheduled_date', '<', $today)
-                              ->whereIn('status', ['pending', 'in_progress']);
-                      });
-                })
-                ->orderBy('scheduled_date')
-                ->limit(100)
-                ->get(['id', 'property_id', 'scheduled_date', 'status', 'housekeeper_id']);
-        }
 
         // Unscheduled checkouts from iCal
         $unscheduledCheckouts = $this->getUnscheduledCheckouts($acting, $u->id);
@@ -226,21 +102,12 @@ class DashboardController extends Controller
             ? $this->guestPortalDashboardData->get($u)
             : [];
 
-        $recentActivity = $u->hasAnyRole(['admin', 'manager', 'owner'])
-            ? $this->activityFeed->latest(10, $u)
-            : collect();
-
         return view('dashboard', array_merge($guestPanelData, [
             'canSeeCleaning'   => $canSeeCleaning,
             'canSeeGuestPortal' => $canSeeGuestPortal,
-            'stats'            => $stats,
-            'propertiesMini'   => $propertiesMini,
-            'upcomingSessions' => $upcomingSessions,
-            'hkTodaySessions'  => $hkTodaySessions,
             'unscheduledCheckouts' => $unscheduledCheckouts,
             // not used by the blade but handy for debugging/scope badges if needed
             'acting'           => $acting,
-            'recentActivity'   => $recentActivity,
         ]));
     }
     /**

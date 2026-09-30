@@ -408,7 +408,6 @@ async function main() {
     const adminScreens = [
       ['Admin Dashboard Command Center', `${appBase}/admin`, 'Stats, onboarding checklist, needs attention, recent guests, and quick actions.'],
       ['Dashboard Onboarding Checklist', `${appBase}/admin`, 'Setup checklist keeps first-time owners focused on launch-critical steps.'],
-      ['Dashboard Recent Activity Section', `${appBase}/admin`, 'Recent system activity gives owners a clear audit trail from the dashboard.'],
       ['Properties List Page', `${appBase}/admin/properties`, 'Professional property list with operational status and management actions.'],
       ['Add Property Page', `${appBase}/admin/properties/create`, 'Grouped property form for address, GPS, branding, and guest instructions.'],
       ['Edit Property Page', links.propertyEditUrl, 'Property editing screen with polished content sections and upload controls.'],
