@@ -10,6 +10,7 @@ use App\Models\CleaningSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -23,6 +24,16 @@ class InstructionFamiliarityTest extends TestCase
     protected Room $room;
     protected CleaningSession $session;
 
+    private function createActiveUser(array $attributes = []): User
+    {
+        return User::factory()->create(array_merge([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'must_change_password' => false,
+            'password' => Hash::make('StrongPassword123!'),
+        ], $attributes));
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,10 +42,10 @@ class InstructionFamiliarityTest extends TestCase
         Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
 
-        $this->owner = User::factory()->create();
+        $this->owner = $this->createActiveUser();
         $this->owner->assignRole('owner');
 
-        $this->housekeeper = User::factory()->create([
+        $this->housekeeper = $this->createActiveUser([
             'preferences' => ['required_instruction_views' => 3],
         ]);
         $this->housekeeper->assignRole('housekeeper');

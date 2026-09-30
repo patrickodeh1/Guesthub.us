@@ -358,12 +358,16 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         $service = app(\App\Services\Payments\PaymentService::class);
 
-        if (! $service->isConfigured()) {
-            return response()->json(['ok' => false, 'error' => 'Payments are not available right now. Please contact us.'], 503);
+        if (! $booking->pay_by_cc) {
+            return response()->json(['ok' => false, 'error' => 'Card payment is not enabled for this booking.'], 403);
         }
 
         if ($booking->isDepositCaptured() || $booking->deposit_verified_at) {
             return response()->json(['ok' => false, 'error' => 'Deposit already paid.'], 422);
+        }
+
+        if (! $service->isConfigured()) {
+            return response()->json(['ok' => false, 'error' => 'Payments are not available right now. Please contact us.'], 503);
         }
 
         $amountCents = $booking->calculatePreCheckinChargeCents();

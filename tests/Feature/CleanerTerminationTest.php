@@ -12,20 +12,22 @@ class CleanerTerminationTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
+    private function createUser(array $attributes = []): User
     {
-        parent::setUp();
-
-        // Seed roles & permissions
-        $this->artisan('db:seed', ['--class' => 'SetupRolesAndPermissionsSeeder']);
+        return User::factory()->create(array_merge([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'must_change_password' => false,
+            'password' => bcrypt('StrongPassword123!'),
+        ], $attributes));
     }
 
     public function test_admin_can_deactivate_cleaner_with_reason()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create(['is_active' => true]);
+        $cleaner = $this->createUser(['is_active' => true]);
         $cleaner->assignRole('housekeeper');
 
         $response = $this->actingAs($admin)->post(route('users.deactivate', $cleaner), [
@@ -44,10 +46,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_admin_can_reactivate_cleaner()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create([
+        $cleaner = $this->createUser([
             'is_active' => false,
             'terminated_at' => now(),
             'terminated_by' => $admin->id,
@@ -69,10 +71,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_company_role_receives_403_forbidden()
     {
-        $company = User::factory()->create();
+        $company = $this->createUser();
         $company->assignRole('company');
 
-        $cleaner = User::factory()->create(['is_active' => true]);
+        $cleaner = $this->createUser(['is_active' => true]);
         $cleaner->assignRole('housekeeper');
 
         $deactivateResponse = $this->actingAs($company)->post(route('users.deactivate', $cleaner), [
@@ -88,10 +90,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_owner_role_receives_403_forbidden()
     {
-        $owner = User::factory()->create();
+        $owner = $this->createUser();
         $owner->assignRole('owner');
 
-        $cleaner = User::factory()->create(['is_active' => true]);
+        $cleaner = $this->createUser(['is_active' => true]);
         $cleaner->assignRole('housekeeper');
 
         $deactivateResponse = $this->actingAs($owner)->post(route('users.deactivate', $cleaner), [
@@ -107,10 +109,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_housekeeper_role_receives_403_forbidden()
     {
-        $cleaner1 = User::factory()->create(['is_active' => true]);
+        $cleaner1 = $this->createUser(['is_active' => true]);
         $cleaner1->assignRole('housekeeper');
 
-        $cleaner2 = User::factory()->create(['is_active' => true]);
+        $cleaner2 = $this->createUser(['is_active' => true]);
         $cleaner2->assignRole('housekeeper');
 
         $deactivateResponse = $this->actingAs($cleaner1)->post(route('users.deactivate', $cleaner2), [
@@ -126,10 +128,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_admin_cannot_deactivate_admin_account()
     {
-        $admin1 = User::factory()->create();
+        $admin1 = $this->createUser();
         $admin1->assignRole('admin');
 
-        $admin2 = User::factory()->create(['is_active' => true]);
+        $admin2 = $this->createUser(['is_active' => true]);
         $admin2->assignRole('admin');
 
         $response = $this->actingAs($admin1)->post(route('users.deactivate', $admin2), [
@@ -142,10 +144,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_admin_cannot_deactivate_already_inactive_cleaner()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create([
+        $cleaner = $this->createUser([
             'is_active' => false,
             'terminated_at' => now(),
             'termination_reason' => 'Already inactive',
@@ -161,7 +163,7 @@ class CleanerTerminationTest extends TestCase
 
     public function test_deactivated_cleaner_cannot_login()
     {
-        $cleaner = User::factory()->create([
+        $cleaner = $this->createUser([
             'email' => 'terminated@example.com',
             'password' => bcrypt('password123'),
             'is_active' => false,
@@ -179,7 +181,7 @@ class CleanerTerminationTest extends TestCase
 
     public function test_deactivated_cleaner_is_logged_out_by_middleware()
     {
-        $cleaner = User::factory()->create(['is_active' => true]);
+        $cleaner = $this->createUser(['is_active' => true]);
         $cleaner->assignRole('housekeeper');
 
         // Log in cleaner
@@ -197,13 +199,13 @@ class CleanerTerminationTest extends TestCase
 
     public function test_deactivated_cleaner_hidden_from_session_assignment_dropdown()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $activeCleaner = User::factory()->create(['name' => 'Active Cleaner', 'is_active' => true]);
+        $activeCleaner = $this->createUser(['name' => 'Active Cleaner', 'is_active' => true]);
         $activeCleaner->assignRole('housekeeper');
 
-        $deactivatedCleaner = User::factory()->create(['name' => 'Terminated Cleaner', 'is_active' => false]);
+        $deactivatedCleaner = $this->createUser(['name' => 'Terminated Cleaner', 'is_active' => false]);
         $deactivatedCleaner->assignRole('housekeeper');
 
         $response = $this->actingAs($admin)->get(route('manage.sessions.create'));
@@ -214,10 +216,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_historical_sessions_and_reports_preserved_when_cleaner_deactivated()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create(['is_active' => true]);
+        $cleaner = $this->createUser(['is_active' => true]);
         $cleaner->assignRole('housekeeper');
 
         $property = Property::factory()->create(['owner_id' => $admin->id]);
@@ -243,10 +245,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_readding_deactivated_cleaner_email_fails_with_specific_validation_message()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create([
+        $cleaner = $this->createUser([
             'email' => 'cleaner@example.com',
             'is_active' => false,
         ]);
@@ -267,10 +269,10 @@ class CleanerTerminationTest extends TestCase
 
     public function test_readding_email_handles_whitespace_and_case_insensitivity()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create([
+        $cleaner = $this->createUser([
             'email' => 'john.doe@example.com',
             'is_active' => false,
         ]);

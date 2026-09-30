@@ -38,7 +38,7 @@ class ReportItemFilterTest extends TestCase
         ]);
     }
 
-    public function test_get_issues_returns_only_unchecked_items_with_images()
+    public function test_get_issues_returns_items_with_images_regardless_of_checked_status()
     {
         $session = $this->createSession();
         $task = Task::factory()->create();
@@ -52,7 +52,7 @@ class ReportItemFilterTest extends TestCase
         $item2 = ChecklistItem::factory()->create(array_merge($defaults, ['checked' => false]));
         ChecklistItemPhoto::forceCreate(['checklist_item_id' => $item2->id, 'path' => 'test.jpg']);
         
-        // 3. Checked + has image -> Should NOT be in results
+        // 3. Checked + has image -> Should also be in results
         $item3 = ChecklistItem::factory()->create(array_merge($defaults, ['checked' => true]));
         ChecklistItemPhoto::forceCreate(['checklist_item_id' => $item3->id, 'path' => 'test2.jpg']);
 
@@ -61,10 +61,10 @@ class ReportItemFilterTest extends TestCase
 
         $issues = $this->filter->getIssues($session);
 
-        $this->assertCount(1, $issues);
+        $this->assertCount(2, $issues);
         $this->assertTrue($issues->contains('id', $item2->id));
+        $this->assertTrue($issues->contains('id', $item3->id));
         $this->assertFalse($issues->contains('id', $item1->id));
-        $this->assertFalse($issues->contains('id', $item3->id));
     }
 
     public function test_get_compliance_items_returns_only_verify_status_items()

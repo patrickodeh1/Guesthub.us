@@ -31,6 +31,7 @@ class PropertyNotificationTest extends TestCase
         $this->admin = User::factory()->create([
             'email_verified_at' => now(),
             'must_change_password' => false,
+            'password' => bcrypt('StrongPassword123!'),
             'status' => 'active',
         ]);
         $this->admin->assignRole('admin');
@@ -98,6 +99,7 @@ class PropertyNotificationTest extends TestCase
         $owner = User::factory()->create([
             'email_verified_at' => now(),
             'must_change_password' => false,
+            'password' => bcrypt('StrongPassword123!'),
             'status' => 'active',
         ]);
         $owner->assignRole('owner');
@@ -108,7 +110,9 @@ class PropertyNotificationTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('properties.notifications.index', $ownedProperty))
-            ->assertOk();
+            ->assertOk()
+            ->assertSee(route('admin.settings.notifications.edit'), false)
+            ->assertSee('Global settings determine whether each event is enabled site-wide');
 
         $this->getJson(route('properties.notifications.settings', $ownedProperty))
             ->assertOk();

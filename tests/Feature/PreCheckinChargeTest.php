@@ -30,7 +30,13 @@ class PreCheckinChargeTest extends TestCase
 
     public function test_charge_sums_parking_and_incidentals(): void
     {
-        $property = Property::factory()->create(['parking_rate_monday' => 20]);
+        Setting::putValue('default_deposit_cap_cents', '0');
+        Setting::putValue('processing_fee_percent', '0');
+
+        $property = Property::factory()->create([
+            'parking_rate_monday' => 20,
+            'deposit_cap_cents' => null,
+        ]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
             'parking_needed' => true,
@@ -40,7 +46,12 @@ class PreCheckinChargeTest extends TestCase
         ]);
 
         // 20 (parking) + 30 (incidentals) = 50, no cap set, no fee set.
-        $this->assertSame(5000, $booking->calculatePreCheckinChargeCents());
+        $this->assertSame(5000, $booking->calculatePreCheckinChargeCents(), json_encode([
+            'property_cap' => $property->fresh()->deposit_cap_cents,
+            'global_cap' => Setting::getValue('default_deposit_cap_cents', 0),
+            'parking' => $booking->effectiveParkingCharge(),
+            'incidentals' => $booking->effectiveIncidentalsCharge(),
+        ]));
     }
 
     public function test_charge_includes_early_checkin_when_already_granted(): void
@@ -229,7 +240,7 @@ class PreCheckinChargeTest extends TestCase
 
         // Simulate what PaymentService::finalize() does on successful capture,
         // without hitting the real Stripe API.
-        $charge->update(['status' => Charge::STATUS_CAPTURED, 'captured_at' => now()]);
+        $charge->update(['status' => Charge::STATUS_SUCCESS, 'captured_at' => now()]);
         $booking->update(['incidentals_billed_cents' => (int) round(($booking->incidentals_charge ?? 0) * 100)]);
 
         $this->assertSame(0, $booking->fresh()->unbilledIncidentalsCents());

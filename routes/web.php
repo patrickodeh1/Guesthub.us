@@ -611,9 +611,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/training/{type}/{id}/progress', [\App\Http\Controllers\TrainingController::class, 'updateProgress'])->name('training.update_progress');
 
     // User Management Routes
-    Route::redirect('/users', '/admin/users')->name('users.index');
-    Route::redirect('/users/create', '/admin/users/create')->name('users.create');
-    Route::redirect('/users/{user}/edit', '/admin/users/{user}/edit')->name('users.edit');
+    Route::get('/users', fn () => redirect()->route('admin.users.index'))->name('users.index');
+    Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->name('users.create');
+    Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->name('users.edit');
     Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy');
@@ -643,13 +643,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'detachTask'])->name('rooms.tasks.detach');
     Route::get('api/tasks/suggest', [\App\Http\Controllers\TaskSuggestionController::class, 'index'])->name('tasks.suggest');
 
-    Route::redirect('settings', '/admin/settings')->name('settings.index');
+    Route::get('settings', fn () => redirect()->route('admin.settings.edit'))->name('settings.index');
     Route::post('settings', function () {
         return redirect('/admin/settings');
     })->name('settings.update');
-    Route::redirect('/users', '/admin/users')->name('users.index');
-    Route::redirect('/users/create', '/admin/users/create')->name('users.create');
-    Route::redirect('/users/{user}/edit', '/admin/users/{user}/edit')->name('users.edit');
     Route::get('activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity.index');
 
     // Photo Management

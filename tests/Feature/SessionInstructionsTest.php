@@ -10,6 +10,7 @@ use App\Models\CleaningSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -27,6 +28,16 @@ class SessionInstructionsTest extends TestCase
     protected $propertyTask;
     protected $session;
 
+    private function createActiveUser(): User
+    {
+        return User::factory()->create([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'must_change_password' => false,
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,16 +47,16 @@ class SessionInstructionsTest extends TestCase
         Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
 
-        $this->owner = User::factory()->create();
+        $this->owner = $this->createActiveUser();
         $this->owner->assignRole('owner');
 
-        $this->housekeeper = User::factory()->create();
+        $this->housekeeper = $this->createActiveUser();
         $this->housekeeper->assignRole('housekeeper');
 
-        $this->admin = User::factory()->create();
+        $this->admin = $this->createActiveUser();
         $this->admin->assignRole('admin');
 
-        $this->otherUser = User::factory()->create();
+        $this->otherUser = $this->createActiveUser();
         $this->otherUser->assignRole('housekeeper');
 
         $this->property = Property::factory()->create([

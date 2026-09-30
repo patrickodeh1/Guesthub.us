@@ -22,13 +22,23 @@ class AuthController extends Controller
         ]);
 
         if (Auth::attempt($credentials, true)) {
+            /** @var User $user */
+            $user = Auth::user();
+
+            if (! $user->is_active) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'email' => 'This cleaner account has been deactivated. Please contact your administrator.',
+                ])->onlyInput('email');
+            }
+
             // Always remember the user so a stale/backgrounded mobile tab
             // doesn't get logged out; the checkbox on the login form is
             // now cosmetic only.
             $request->session()->regenerate();
-
-            /** @var User $user */
-            $user = Auth::user();
 
             $user->forceFill([
                 'last_login_at' => now(),

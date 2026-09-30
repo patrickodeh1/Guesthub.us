@@ -34,6 +34,11 @@ class AdminSettingsNavigationTest extends TestCase
         $response->assertSee(route('admin.settings.edit'), false)
             ->assertSee('Today')
             ->assertSee('Upcoming Sessions (7d)');
+
+        $notificationsResponse = $this->get(route('admin.settings.notifications.edit'));
+        $notificationsResponse->assertOk()
+            ->assertSee(route('admin.properties.index'), false)
+            ->assertSee('Global settings control guest lifecycle messages');
     }
 
     public function test_housekeeper_dashboard_renders_cleaning_panels_without_guest_portal_panels(): void

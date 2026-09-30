@@ -13,20 +13,22 @@ class GpsOverrideAndScheduleTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
+    private function createUser(): User
     {
-        parent::setUp();
-        
-        // Ensure roles exist
-        $this->artisan('db:seed', ['--class' => 'SetupRolesAndPermissionsSeeder']);
+        return User::factory()->create([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'must_change_password' => false,
+            'password' => bcrypt('StrongPassword123!'),
+        ]);
     }
 
     public function test_cleaner_cannot_start_session_when_too_far()
     {
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
         
-        $owner = User::factory()->create();
+        $owner = $this->createUser();
         $owner->assignRole('owner');
 
         $property = Property::factory()->create([
@@ -56,10 +58,10 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_admin_can_grant_gps_override()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
         
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
 
         $property = Property::factory()->create([
@@ -90,10 +92,10 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_cleaner_cannot_grant_gps_override()
     {
-        $owner = User::factory()->create();
+        $owner = $this->createUser();
         $owner->assignRole('owner');
 
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
 
         $property = Property::factory()->create([
@@ -117,10 +119,10 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_cleaner_can_start_session_when_too_far_if_override_granted()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
 
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
@@ -155,10 +157,10 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_cleaner_cannot_access_checklist_before_scheduled_time()
     {
-        $owner = User::factory()->create();
+        $owner = $this->createUser();
         $owner->assignRole('owner');
 
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
@@ -189,10 +191,10 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_cleaner_can_access_checklist_after_scheduled_time()
     {
-        $owner = User::factory()->create();
+        $owner = $this->createUser();
         $owner->assignRole('owner');
 
-        $cleaner = User::factory()->create();
+        $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
@@ -220,7 +222,7 @@ class GpsOverrideAndScheduleTest extends TestCase
 
     public function test_admin_can_access_checklist_before_scheduled_time()
     {
-        $admin = User::factory()->create();
+        $admin = $this->createUser();
         $admin->assignRole('admin');
         
         $property = Property::factory()->create([

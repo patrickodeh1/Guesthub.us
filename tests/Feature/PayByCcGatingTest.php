@@ -40,7 +40,7 @@ class PayByCcGatingTest extends TestCase
 
     public function test_deposit_intent_is_refused_when_stripe_not_configured_even_if_pay_by_cc_true(): void
     {
-        // Deliberately don't call configureStripe() here.
+        config(['services.stripe.secret' => null]);
         $property = Property::factory()->create(['deposit_cap_cents' => 5000]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
@@ -59,7 +59,7 @@ class PayByCcGatingTest extends TestCase
         $booking = Booking::factory()->create([
             'incidentals_charge' => 40,
             'pay_by_cc' => true,
-            'deposit_payment_status' => 'captured',
+            'deposit_payment_status' => 'success',
         ]);
 
         $response = $this->postJson(route('guest.deposit.intent', [$booking->booking_id, $booking->token]));

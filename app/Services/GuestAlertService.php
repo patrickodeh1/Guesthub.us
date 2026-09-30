@@ -6,6 +6,7 @@ use App\Mail\GuestAlertMail;
 use App\Models\Booking;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\Branding;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -331,7 +332,7 @@ class GuestAlertService
 
         $label = self::labels()[$event];
         $row = self::config()[$event];
-        $appName = (string) config('app.name');
+        $appName = Branding::siteName();
 
         // The email already brands itself (header + footer), so a leading
         // app-name prefix on the stored wording is redundant there. SMS keeps

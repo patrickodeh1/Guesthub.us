@@ -22,7 +22,7 @@ class RentalAgreementService
 
         $property = $booking->property;
         $hostName = User::agreementHostName();
-        $websiteName = Setting::getValue('site_name') ?: config('app.name');
+        $websiteName = \App\Support\Branding::siteName();
         $idType = $booking->id_type === 'passport' ? 'Passport' : 'State-issued ID';
 
         $contractHtml = strtr(

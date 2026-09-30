@@ -16,7 +16,7 @@ class EnsureUserIsActive
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::check() && Auth::user()->getRawOriginal('is_active') === 0) {
+        if (Auth::check() && ! Auth::user()->is_active) {
             Auth::guard('web')->logout();
 
             $request->session()->invalidate();

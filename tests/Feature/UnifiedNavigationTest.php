@@ -130,7 +130,7 @@ class UnifiedNavigationTest extends TestCase
         );
     }
 
-    public function test_admin_with_a_cleaner_role_still_gets_only_the_cleaning_management_group(): void
+    public function test_admin_with_a_cleaner_role_sees_training_but_not_housekeeper_only_navigation(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
@@ -147,7 +147,9 @@ class UnifiedNavigationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Cleaning');
-        foreach (['My Jobs', 'Calendar', 'Sessions', 'Training', 'Photos', 'Videos', 'Guides', 'My Account'] as $label) {
+        $response->assertSee(route('admin.videos.index'))
+            ->assertSee(route('training.index'));
+        foreach (['My Jobs', 'Calendar', 'Sessions', 'Photos', 'Guides'] as $label) {
             $this->assertStringNotContainsString('>'.$label.'<', $this->sidebarHtml($response));
         }
     }
@@ -185,7 +187,7 @@ class UnifiedNavigationTest extends TestCase
             $sectionMatches[1] ?? []
         );
 
-        $this->assertSame(['Guest Admin', 'Settings', 'Cleaning Ops', 'Administration'], $sections);
+        $this->assertSame(['Guest Admin', 'Settings', 'Cleaning Ops', 'Account', 'Administration'], $sections);
 
         $navContent = $navigation[1] ?? '';
         $rootLinks = [

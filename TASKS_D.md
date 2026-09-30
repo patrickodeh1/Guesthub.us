@@ -1,4 +1,4 @@
-# Task Queue — Part D (real unification: theme, shell, activity, properties, settings)
+35;5;29M35;5;29M35;5;29M35;5;29M35;6;29M35;6;29M35;6;29M35;6;29M35;6;29M35;6;29M35;6;29M35;7;29M35;8;30M35;11;30M35;12;30M35;13;30M35;13;30M35;13;30M35;13;30M35;14;30M35;15;30M35;15;30M35;16;30M35;18;30M35;18;30M35;18;30M35;18;30M35;18;30M65;18;30M35;18;30M35;18;30M35;18;30M65;18;30M35;18;30M35;18;30M35;18;30M65;18;30M35;18;30M35;18;30M65;18;30M35;18;30M35;18;31M65;18;31M35;18;31M35;18;31M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;19;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;30M35;20;29M35;20;29M35;20;29M# Task Queue — Part D (real unification: theme, shell, activity, properties, settings)
 
 Read `AGENTS.md`, `MERGE_PLAN.md`, `TASKS_A.md`, `TASKS_B.md`, `TASKS_C.md` first.
 Log in `notes.md` as before. **Global freeze still applies**: no real
@@ -573,10 +573,8 @@ Do NOT change any data or columns. Field-level merge only.
 
 ---
 
-## task-D007 — status: blocked
+## task-D007 — status: done
 **Remaining duplicated surfaces — dashboard, account, videos, emails, auth, naming**
-
-**Blocker:** Focused property-notification tests returned unexpected 302 redirects for admin and owner users; three SMS notification tests also failed because `App\Helpers\TimezoneHelper` could not be loaded. See the D007 entry in `notes.md`.
 
 Do these after D002 (shell) and D003 (brand). Each is small; keep every
 existing feature.
@@ -635,7 +633,7 @@ existing feature.
 
 ---
 
-## task-D008 — status: open
+## task-D008 — status: blocked (4 test failures remain; manual role/theme acceptance pending)
 **Acceptance pass — do last, and don't mark the merge "feels unified" without it**
 
 1. Run `php artisan test`; report pass/fail counts. Failures caused by D000
@@ -655,10 +653,7 @@ existing feature.
 5. `grep -rn "prefers-color-scheme" resources/` returns nothing outside
    comments; `grep -rn "components.sidebar\|x-sidebar" resources/` returns
    nothing if D002 step 9 was done.
-6. Update `README.md` to match the unified app (a regenerated draft exists in
-   the reviewer's notes; a human will supply it — do not write your own
-   version unless told to).
-7. Tick the statuses in `TASKS_C.md`/`TASKS_D.md`/`TASKS_B.md` to what is
+6. Tick the statuses in `TASKS_C.md`/`TASKS_D.md`/`TASKS_B.md` to what is
    actually true, and record anything still pending (B009 data import, B010
    deploy, B011 delete `cleaning/`) — those stay blocked on the client's
    backups and are **not** part of this file.

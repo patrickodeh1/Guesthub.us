@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\IdDocumentExtractor;
 use App\Services\IdExtractionResult;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -189,6 +190,7 @@ class IdDocumentExtractorTest extends TestCase
         Storage::disk('local')->put('photo-ids/x.jpg', 'fake-image-bytes');
 
         // Happy path.
+        Http::swap(new HttpFactory());
         Http::fake(['vision.googleapis.com/*' => Http::response(['responses' => [[
             'fullTextAnnotation' => ['text' => "LN DOE\nFN JOHN\nDOB 03/15/1990\nEXP 03/15/2030"],
         ]]], 200)]);
@@ -198,11 +200,13 @@ class IdDocumentExtractorTest extends TestCase
         $this->assertSame('1990-03-15', $r->dateOfBirth->format('Y-m-d'));
 
         // 200 but no text found.
+        Http::swap(new HttpFactory());
         Http::fake(['vision.googleapis.com/*' => Http::response(['responses' => [[]]], 200)]);
         $r = (new IdDocumentExtractor('secret-key-123'))->extract('photo-ids/x.jpg');
         $this->assertSame('empty_text', $r->failureReason);
 
         // HTTP 403 from Google (API not enabled / billing / restricted key).
+        Http::swap(new HttpFactory());
         Http::fake(['vision.googleapis.com/*' => Http::response(
             ['error' => ['code' => 403, 'status' => 'PERMISSION_DENIED', 'message' => 'Cloud Vision API has not been used in project 1 before or it is disabled.']],
             403
@@ -218,6 +222,7 @@ class IdDocumentExtractorTest extends TestCase
         // Keep this case LAST: it puts a strict expectation on the logger.
         // A connection failure whose message contains the key-bearing URL must
         // log exactly one error, and its context must not contain the key.
+        Http::swap(new HttpFactory());
         Log::shouldReceive('error')->once()->withArgs(function ($message, $context = []) {
             return ! str_contains(json_encode($context), 'secret-key-123')
                 && str_contains(json_encode($context), '[redacted]');

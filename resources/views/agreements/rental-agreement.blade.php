@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Rental Agreement — {{ $booking->reservation_id ?: $booking->booking_id }}</title>
+    <title>Rental Agreement — {{ $booking->reservation_id ?: $booking->booking_id }} · {{ $websiteName }}</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; color: #0f172a; font-size: 12px; line-height: 1.55; margin: 0; padding: 0; }

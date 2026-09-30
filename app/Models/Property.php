@@ -59,7 +59,7 @@ class Property extends Model
         'airbnb_ical_url',
         'deposit_cap_cents',
         'required_incidentals_hold_amount',
-        'owner_id', 'photo_path', 'beds', 'baths', 'geo_radius_m',
+        'is_active', 'owner_id', 'photo_path', 'beds', 'baths', 'geo_radius_m',
         'ical_url', 'vrbo_ical_url', 'deactivated_at', 'deactivated_by',
         'notify_cleaning_started', 'notify_cleaning_finished',
         'notify_photo_started', 'notify_task_notes',
@@ -96,6 +96,24 @@ class Property extends Model
             get: fn () => $this->active,
             set: fn ($value) => ['active' => $value],
         );
+    }
+
+    public function deactivate(User $actor): void
+    {
+        $this->forceFill([
+            'active' => false,
+            'deactivated_at' => now(),
+            'deactivated_by' => $actor->getKey(),
+        ])->save();
+    }
+
+    public function activate(): void
+    {
+        $this->forceFill([
+            'active' => true,
+            'deactivated_at' => null,
+            'deactivated_by' => null,
+        ])->save();
     }
 
     public function scopeActive(Builder $query): void
@@ -218,6 +236,12 @@ class Property extends Model
     public function notificationRecipients(): HasMany
     {
         return $this->hasMany(PropertyNotificationRecipient::class);
+    }
+
+    public function instructionalVideos(): BelongsToMany
+    {
+        return $this->belongsToMany(InstructionalVideo::class, 'property_instructional_videos', 'property_id', 'instructional_video_id')
+            ->withTimestamps();
     }
 
     /**

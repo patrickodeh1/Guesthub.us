@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Branding;
 use App\Support\PhoneFormatter;
 
 use Database\Factories\UserFactory;
@@ -43,8 +44,17 @@ class User extends Authenticatable
         'name',
         'host_name',
         'email',
+        'phone_number',
+        'profile_photo_path',
         'password',
         'status',
+        'owner_id',
+        'preferences',
+        'must_change_password',
+        'is_active',
+        'terminated_at',
+        'terminated_by',
+        'termination_reason',
         'phone',
         'avatar',
         'admin_tour_completed_at',
@@ -71,7 +81,11 @@ class User extends Authenticatable
             'full_system_tour_completed_at' => 'datetime',
             'last_login_at'                => 'datetime',
             'password'                     => 'hashed',
+            'must_change_password'         => 'boolean',
+            'is_active'                    => 'boolean',
+            'terminated_at'                => 'datetime',
             'dismissed_notification_ids'   => 'array',
+            'preferences'                   => 'array',
         ];
     }
 
@@ -163,6 +177,26 @@ class User extends Authenticatable
         return $this->status === 'active';
     }
 
+    public function deactivate(User $actor, string $reason): void
+    {
+        $this->forceFill([
+            'is_active' => false,
+            'terminated_at' => now(),
+            'terminated_by' => $actor->getKey(),
+            'termination_reason' => $reason,
+        ])->save();
+    }
+
+    public function reactivate(): void
+    {
+        $this->forceFill([
+            'is_active' => true,
+            'terminated_at' => null,
+            'terminated_by' => null,
+            'termination_reason' => null,
+        ])->save();
+    }
+
     public function roleLabel(): string
     {
         $role = $this->getRoleNames()->first();
@@ -237,6 +271,6 @@ class User extends Authenticatable
             )
             ->value('host_name');
 
-        return $hostName ?: config('app.name');
+        return $hostName ?: Branding::siteName();
     }
 }

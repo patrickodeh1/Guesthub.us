@@ -354,7 +354,7 @@ class SessionReportController extends Controller
             'endedAtForDisplay' => $localEndedAt,
             'cleaningDate' => $cleaningDate,
             'preparedBy' => $session->housekeeper?->name ?? 'Unassigned',
-            'teamName' => $session->owner?->name ?? config('app.name', 'Team'),
+            'teamName' => $session->owner?->name ?? \App\Support\Branding::siteName(),
             'unitLabel' => $this->extractUnitLabel($session->property->name),
             'durationMinutes' => $this->durationMinutes($session->started_at, $endedAtForDisplay),
             'durationLabel' => $this->formatDuration($this->durationMinutes($session->started_at, $endedAtForDisplay)),
