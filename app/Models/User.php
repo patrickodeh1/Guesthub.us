@@ -34,7 +34,7 @@ class User extends Authenticatable
         'admin'   => 'Full access to everything including users, settings, and all logs.',
         'company' => 'Company-level access across assigned properties and operations.',
         'owner'   => 'Manages assigned properties and property operations.',
-        'manager' => 'Can manage properties, guests, categories and view logs. Cannot manage users or settings.',
+        'manager' => 'Can view notifications, manage guest notices, view activity logs and payments, and update calendar status. Cannot manage users, properties, guests or settings.',
         'staff'   => 'Can view guests and update guest status. Limited access.',
         'viewer'  => 'Read-only access across the admin panel.',
         'housekeeper' => 'Can access assigned cleaning work and task operations.',
@@ -172,9 +172,19 @@ class User extends Authenticatable
 
     // ─── Status helpers ───────────────────────────────────────────────────────
 
+    public function properties(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Property::class, 'property_user', 'user_id', 'property_id');
+    }
+
+    public function managedOwners(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'housekeeper_owner', 'housekeeper_id', 'owner_id');
+    }
+
     public function isActive(): bool
     {
-        return $this->status === 'active';
+        return (bool) $this->is_active;
     }
 
     public function deactivate(User $actor, string $reason): void

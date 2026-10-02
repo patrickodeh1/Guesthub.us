@@ -27,7 +27,4 @@
         --button-primary-active: color-mix(in srgb, var(--button-primary-color) 76%, black);
         --brand-sidebar: color-mix(in srgb, var(--theme-primary) 85%, black);
     }
-    .dark {
-        --theme-primary-soft: color-mix(in srgb, var(--theme-primary) 24%, transparent);
-    }
 </style>

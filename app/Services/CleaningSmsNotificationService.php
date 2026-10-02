@@ -151,17 +151,18 @@ class CleaningSmsNotificationService
 
         foreach ($recipients as $recipient) {
             try {
-                Log::channel('stack')->info("[SMS SENT] To: {$recipient->phone_number} ({$recipient->recipient_name})\n{$message}");
+                $result = \App\Services\SmsNotificationService::deliver($recipient->phone_number, $message, 'cleaning');
 
-                NotificationLog::create([
+            NotificationLog::create([
                     'property_id' => $property->id,
                     'cleaning_session_id' => $session->id,
                     'notification_type' => $type,
                     'recipient_phone' => $recipient->phone_number,
                     'message_content' => $message,
-                    'delivery_status' => 'sent',
-                    'sent_at' => now(),
-                ]);
+                    'delivery_status' => $result['status'],
+                'error_message' => $result['error'],
+                'sent_at' => now(),
+            ]);
             } catch (\Throwable $e) {
                 Log::error("[SMS FAILED] To: {$recipient->phone_number} - Error: {$e->getMessage()}");
 
@@ -205,7 +206,7 @@ class CleaningSmsNotificationService
         }
 
         try {
-            Log::channel('stack')->info("[SMS SENT] To Cleaner: {$housekeeper->phone_number} ({$housekeeper->name})\n{$message}");
+            $result = \App\Services\SmsNotificationService::deliver($housekeeper->phone_number, $message, 'cleaning');
 
             NotificationLog::create([
                 'property_id' => $session->property_id,
@@ -214,7 +215,8 @@ class CleaningSmsNotificationService
                 'notification_type' => $type,
                 'recipient_phone' => $housekeeper->phone_number,
                 'message_content' => $message,
-                'delivery_status' => 'sent',
+                'delivery_status' => $result['status'],
+                'error_message' => $result['error'],
                 'sent_at' => now(),
             ]);
         } catch (\Throwable $e) {

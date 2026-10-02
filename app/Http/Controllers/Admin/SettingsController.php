@@ -34,14 +34,8 @@ class SettingsController extends Controller
             'favicon' => ['nullable', 'image', 'mimes:ico,png,jpg,jpeg,svg', 'max:512'],
             'existing_favicon' => ['nullable', 'string'],
             'site_name' => ['nullable', 'string', 'max:255'],
-            'theme_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'application_logo' => ['nullable', 'image', 'max:2048'],
             'application_icon' => ['nullable', 'image', 'max:2048'],
-            'button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'button_success_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'button_danger_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'button_warning_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'button_info_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'date_format' => ['nullable', 'string'],
             'time_format' => ['nullable', 'string', 'in:12,24'],
             'items_per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
@@ -57,7 +51,6 @@ class SettingsController extends Controller
             'notify_task_notes_global' => ['nullable', 'boolean'],
             'mandatory_instruction_viewing' => ['nullable', 'boolean'],
             'global_required_instruction_views' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'brand_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'default_intro' => ['nullable', 'string'],
@@ -68,16 +61,6 @@ class SettingsController extends Controller
             'arrival_disclaimer' => ['nullable', 'string', 'max:2000'],
             'default_deposit_cap_dollars' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'processing_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'report_header_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_status_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_checklist_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_issues_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_photos_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_time_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_supplies_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_audit_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'report_button_secondary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'site_copyright' => ['nullable', 'string', 'max:255'],
             'legal_effective_date' => ['nullable', 'string', 'max:255'],
             'terms_page_title' => ['nullable', 'string', 'max:255'],
@@ -172,21 +155,6 @@ class SettingsController extends Controller
         ActivityLog::record('settings_updated', 'Brand and system settings were updated.', 'settings');
 
         return back()->with('success', 'Settings saved.');
-    }
-
-    public function resetColors()
-    {
-        Setting::putValue('theme_color', Branding::DEFAULT_THEME_COLOR);
-        Setting::putValue('brand_color', Branding::DEFAULT_THEME_COLOR);
-        Setting::putValue('button_primary_color', Branding::DEFAULT_BUTTON_COLOR);
-        Setting::putValue('button_success_color', '#10b981');
-        Setting::putValue('button_danger_color', '#ef4444');
-        Setting::putValue('button_warning_color', '#f59e0b');
-        Setting::putValue('button_info_color', '#06b6d4');
-
-        ActivityLog::record('settings_colors_reset', 'Brand and button colors were reset to GuestHub defaults.', 'settings');
-
-        return back()->with('success', 'Brand and button colors reset to the GuestHub defaults.');
     }
 
     public function legalUpdate(Request $request)

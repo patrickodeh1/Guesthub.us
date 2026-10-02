@@ -13,32 +13,26 @@
         <input type="hidden" name="return_to" value="{{ $returnTo ?? '' }}">
 
         <div class="grid content-start gap-6">
-        <nav class="card card-pad flex flex-wrap gap-2 text-sm" aria-label="Property sections">
-            <a href="#general" class="btn-secondary">General</a>
-            <a href="#cleaning-setup" class="btn-secondary">Cleaning Setup</a>
-            <a href="#calendar" class="btn-secondary">Calendar & iCal</a>
-        </nav>
 
         <section id="general" class="card card-pad">
             <h2 class="section-title">Property details</h2>
-            <p class="section-copy">This information appears throughout the guest welcome experience.</p>
             <div class="mt-6 grid gap-5 md:grid-cols-2">
-                <label class="field-label">Name <span class="text-red-600">*</span><input name="name" value="{{ old('name', $property->name) }}" required placeholder="Lumina Hotel & Residences" class="input">@error('name')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
-                <label class="field-label">Slug<input name="slug" value="{{ old('slug', $property->slug) }}" placeholder="Auto-generated from name" class="input"><span class="field-help">Used in admin references and future public property URLs.</span></label>
-                <label class="field-label md:col-span-2">Street address <span class="text-red-600">*</span><input name="address" id="address_input" value="{{ old('address', $property->address) }}" required placeholder="123 Aura Way" class="input"></label>
-                <label class="field-label">City <span class="text-red-600">*</span><input name="city" id="city_input" value="{{ old('city', $property->city) }}" required placeholder="City" class="input"></label>
-                <label class="field-label">State<input name="state" id="state_input" value="{{ old('state', $property->state) }}" placeholder="ST" class="input"></label>
-                <label class="field-label">ZIP<input name="zip" id="zip_input" value="{{ old('zip', $property->zip) }}" placeholder="ZIP Code" class="input"></label>
-                <label class="field-label">Phone<input name="contact_phone" value="{{ old('contact_phone', $property->contact_phone) }}" placeholder="+1 555 123 4567" class="input"></label>
-                <label class="field-label">Contact email<input type="email" name="contact_email" value="{{ old('contact_email', $property->contact_email) }}" placeholder="host@example.com" class="input"></label>
-                <label class="field-label">Cleaning owner
-                    <select name="owner_id" class="input">
+                <label class="field-label">Name <span class="text-red-600">*</span><x-help-tip text="The property's name as guests and staff see it, e.g. Lumina Hotel & Residences." /><input name="name" value="{{ old('name', $property->name) }}" required placeholder="Lumina Hotel & Residences" class="input">@error('name')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                <label class="field-label">Slug<x-help-tip text="The short, URL-safe version of the name used in web addresses. Leave blank to generate it from the name." /><input name="slug" value="{{ old('slug', $property->slug) }}" placeholder="Auto-generated from name" class="input"></label>
+                <label class="field-label md:col-span-2">Street address <span class="text-red-600">*</span><x-help-tip text="The street address of the property. Pick a suggestion to fill in city, state, ZIP, coordinates and timezone automatically." /><input name="address" id="address_input" value="{{ old('address', $property->address) }}" required placeholder="123 Aura Way" class="input"></label>
+                <label class="field-label">City <span class="text-red-600">*</span><x-help-tip text="The city where the property is located. Filled in automatically when you pick an address." /><input name="city" id="city_input" value="{{ old('city', $property->city) }}" required placeholder="City" class="input"></label>
+                <label class="field-label">State<x-help-tip text="The state or region abbreviation. Filled in automatically when you pick an address." /><input name="state" id="state_input" value="{{ old('state', $property->state) }}" placeholder="ST" class="input"></label>
+                <label class="field-label">ZIP<x-help-tip text="The postal code. Filled in automatically when you pick an address." /><input name="zip" id="zip_input" value="{{ old('zip', $property->zip) }}" placeholder="ZIP Code" class="input"></label>
+                <label class="field-label">Phone<x-help-tip text="A phone number guests can use to reach the host or property manager about this property." /><input name="contact_phone" value="{{ old('contact_phone', $property->contact_phone) }}" placeholder="+1 555 123 4567" class="input"></label>
+                <label class="field-label">Contact email<x-help-tip text="An email address guests can use to reach the host or property manager about this property." /><input type="email" name="contact_email" value="{{ old('contact_email', $property->contact_email) }}" placeholder="host@example.com" class="input"></label>
+                <label class="field-label">Property owner
+                    <x-help-tip text="The owner or company this property belongs to. It decides who can see and manage the property." /><select name="owner_id" class="input">
                         <option value="">Unassigned</option>
                         @foreach($owners as $ownerId => $ownerName)
                             <option value="{{ $ownerId }}" @selected((string) old('owner_id', $property->owner_id) === (string) $ownerId)>{{ $ownerName }}</option>
                         @endforeach
                     </select>
-                    <span class="field-help">Controls Cleaning Ops ownership and visibility.</span>
+                    
                 </label>
             </div>
         </section>
@@ -46,12 +40,10 @@
         @if($property->exists)
         <section class="card card-pad">
             <h2 class="section-title">Rates & billing</h2>
-            <p class="section-copy">Saved together with the rest of this form.</p>
 
             <div class="mt-6 grid gap-8">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500">Parking rates</h3>
-                    <p class="section-copy mt-1">Set a per-night parking rate for each day of the week. Guests who indicate they need parking will be charged the sum of these rates across the nights of their stay, calculated automatically. Leave a day blank to charge $0 for that night.</p>
+                    <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500">Parking rates<x-help-tip text="The nightly parking fee for each day of the week. Guests who need parking are charged the sum of the rates for the nights they stay." /></h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                         @foreach(['sunday' => 'Sunday', 'monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday'] as $day => $label)
                             <label class="field-label">
@@ -66,8 +58,7 @@
                 </div>
 
                 <div class="border-t border-slate-200 pt-8">
-                    <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500">Early check-in / late checkout rates</h3>
-                    <p class="section-copy mt-1">Flat rates for granted early check-in windows, and per-half-hour rates for late checkout. Authorized late checkout is billed by admin-entered hours (rounded up to the nearest half hour); unauthorized late checkout is billed the same way using the hours between standard checkout and the admin-recorded actual checkout time, at the higher unauthorized rate.</p>
+                    <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500">Early check-in / late checkout rates<x-help-tip text="Flat fees for early check-in windows, and per-half-hour fees for late checkout, depending on whether it was authorized." /></h3>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <label class="field-label">
                             Early check-in, 8:00 AM - 12:00 PM
@@ -113,11 +104,10 @@
 
         <aside class="card card-pad self-start xl:sticky xl:top-6">
             <h2 class="section-title">Property settings</h2>
-            <p class="section-copy">Publishing, GPS, and quick settings for this property.</p>
 
-            <label class="mt-5 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold"><span>Active property</span><input type="checkbox" name="active" value="1" @checked(old('active', $property->active ?? true)) class="rounded border-slate-300"></label>
+            <label class="mt-5 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold"><span>Active property<x-help-tip text="Inactive properties are hidden from lists and scheduling but keep all their data." /></span><input type="checkbox" name="active" value="1" @checked(old('active', $property->active ?? true)) class="rounded border-slate-300"></label>
             <label class="mt-3 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">
-                <span>Require license plate photo<br><span class="mt-0.5 block text-xs font-normal text-slate-500">Only asked of guests who say they need parking. Uncheck for properties with no parking to track.</span></span>
+                <span>Require license plate photo<x-help-tip text="Only asked of guests who say they need parking. Turn it off for properties with no parking." /></span>
                 <input type="checkbox" name="requires_vehicle_photo" value="1" @checked(old('requires_vehicle_photo', $property->requires_vehicle_photo ?? true)) class="rounded border-slate-300 shrink-0">
             </label>
             <x-media-image-field
@@ -125,73 +115,61 @@
                 label="Header image"
                 :value="$property->header_image"
                 preview-class="mt-2 h-36 w-full rounded-xl border border-slate-200 object-cover"
-                help="Upload a polished property hero image."
+                help="The main banner photo shown at the top of the guest page for this property."
             />
             <label class="field-label mt-4">Cleaning property photo
-                <input type="file" name="photo" accept="image/*" class="input">
+                <x-help-tip text="A photo of the property shown in property lists and to cleaners. Separate from the guest header image." /><input type="file" name="photo" accept="image/*" class="input">
                 @if($property->photo_path)
-                    <span class="field-help">A Cleaning photo is already stored. Upload a new image to replace it.</span>
+                    <span class="mt-1 block text-xs text-slate-500">A Cleaning photo is already stored. Upload a new image to replace it.</span>
                     <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" name="remove_photo" value="1"> Remove current Cleaning photo</label>
                 @endif
             </label>
 
             <div id="cleaning-setup" class="mt-6 border-t border-slate-200 pt-6">
                 <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">GPS and maps</h3>
-                <label class="field-label">Latitude<input name="latitude" id="latitude_input" value="{{ old('latitude', $property->latitude) }}" placeholder="32.715736" class="input" readonly></label>
-                <label class="field-label mt-4">Longitude<input name="longitude" id="longitude_input" value="{{ old('longitude', $property->longitude) }}" placeholder="-117.161087" class="input" readonly></label>
+                <label class="field-label">Latitude<x-help-tip text="The property's map position. Set automatically when you pick an address." /><input name="latitude" id="latitude_input" value="{{ old('latitude', $property->latitude) }}" placeholder="32.715736" class="input" readonly></label>
+                <label class="field-label mt-4">Longitude<x-help-tip text="The property's map position. Set automatically when you pick an address." /><input name="longitude" id="longitude_input" value="{{ old('longitude', $property->longitude) }}" placeholder="-117.161087" class="input" readonly></label>
                 <label class="field-label mt-4">
                     Timezone
-                    <select name="timezone" class="input mt-1">
+                    <x-help-tip text="The property's local timezone, used for check-in, check-out and cleaning times. Detected from the address; change it only if it is wrong." /><select name="timezone" class="input mt-1">
                         @foreach(timezone_identifiers_list() as $tz)
                             <option value="{{ $tz }}" {{ old('timezone', $property->timezone ?? 'America/New_York') === $tz ? 'selected' : '' }}>{{ $tz }}</option>
                         @endforeach
                     </select>
-                    <span class="field-help">Auto-detected from coordinates. Override if needed.</span>
+                    
                 </label>
                 <label class="field-label mt-4">Cleaning GPS radius (meters)
-                    <input type="number" min="50" name="geo_radius_m" value="{{ old('geo_radius_m', $property->geo_radius_m) }}" class="input">
+                    <x-help-tip text="How close, in meters, a cleaner must be to the property to start a cleaning. Minimum 50." /><input type="number" min="50" name="geo_radius_m" value="{{ old('geo_radius_m', $property->geo_radius_m) }}" class="input">
                 </label>
             </div>
 
-            <div id="calendar" class="mt-6 border-t border-slate-200 pt-6">
-                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Cleaning calendars</h3>
-                <label class="field-label">Generic iCal URL
-                    <input type="url" name="ical_url" value="{{ old('ical_url', $property->ical_url) }}" class="input">
-                </label>
-                <label class="field-label mt-4">Airbnb iCal URL
-                    <input type="url" name="airbnb_ical_url" value="{{ old('airbnb_ical_url', $property->airbnb_ical_url) }}" class="input">
-                </label>
-                <label class="field-label mt-4">Vrbo iCal URL
-                    <input type="url" name="vrbo_ical_url" value="{{ old('vrbo_ical_url', $property->vrbo_ical_url) }}" class="input">
-                </label>
-            </div>
 
             @if($property->exists)
             <div class="mt-6 border-t border-slate-200 pt-6">
                 <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">Quick settings</h3>
                 <label class="field-label">Incidentals threshold (USD)
-                    <input type="number" step="0.01" min="0" name="deposit_cap_dollars" value="{{ old('deposit_cap_dollars', $property->deposit_cap_cents !== null ? number_format($property->deposit_cap_cents / 100, 2, '.', '') : '') }}" placeholder="e.g. 150.00" class="input">
-                    <p class="mt-1 text-xs text-slate-500">Parking fees plus incidentals will be capped at this amount for the property. A global processing fee percentage (set in Admin Settings) is applied on top.</p>
-                    <span class="field-help">Leave blank to use the global default.</span>
+                    <x-help-tip text="The most that parking fees plus incidentals can add up to for one booking at this property. Leave blank to use the global default." /><input type="number" step="0.01" min="0" name="deposit_cap_dollars" value="{{ old('deposit_cap_dollars', $property->deposit_cap_cents !== null ? number_format($property->deposit_cap_cents / 100, 2, '.', '') : '') }}" placeholder="e.g. 150.00" class="input">
+                    
+                    
                 </label>
                 <label class="field-label mt-4">Required incidentals hold (USD)
-                    <input type="number" step="0.01" min="0" name="required_incidentals_hold_amount" value="{{ old('required_incidentals_hold_amount', $property->required_incidentals_hold_amount) }}" placeholder="e.g. 200.00" class="input">
-                    <p class="mt-1 text-xs text-slate-500">Default incidentals hold for every booking at this property.</p>
+                    <x-help-tip text="The amount held for incidentals by default on every booking at this property." /><input type="number" step="0.01" min="0" name="required_incidentals_hold_amount" value="{{ old('required_incidentals_hold_amount', $property->required_incidentals_hold_amount) }}" placeholder="e.g. 200.00" class="input">
+                    
                 </label>
                 <label class="field-label mt-4">Channex property ID
-                    <input name="channex_property_id" value="{{ old('channex_property_id', $property->channex_property_id) }}" placeholder="e.g. 3f9a2b10-..." class="input">
-                    <span class="field-help">Bookings won't import until this is set.</span>
+                    <x-help-tip text="This property's ID in Channex, your booking channel manager. Bookings will not import until it is set." /><input name="channex_property_id" value="{{ old('channex_property_id', $property->channex_property_id) }}" placeholder="e.g. 3f9a2b10-..." class="input">
+                    
                 </label>
                 <div class="mt-4 grid grid-cols-2 gap-4">
                     <label class="field-label">Check-in time
-                        <input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ?? '16:00') }}" class="input">
+                        <x-help-tip text="The standard check-in time shown to guests." /><input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ?? '16:00') }}" class="input">
                     </label>
                     <label class="field-label">Check-out time
-                        <input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ?? '11:00') }}" class="input">
+                        <x-help-tip text="The standard check-out time shown to guests." /><input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ?? '11:00') }}" class="input">
                     </label>
                 </div>
                 <label class="field-label mt-4">Lockbox code
-                    <input name="lockbox_code" value="{{ old('lockbox_code', $property->lockbox_code) }}" placeholder="4521" class="input">
+                    <x-help-tip text="The code for the key lockbox at the property." /><input name="lockbox_code" value="{{ old('lockbox_code', $property->lockbox_code) }}" placeholder="4521" class="input">
                 </label>
             </div>
             @endif

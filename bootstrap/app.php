@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\RequireRole::class,
+            'property.access' => \App\Http\Middleware\EnsurePropertyAccess::class,
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'force-password-change' => \App\Http\Middleware\ForcePasswordChange::class,
         ]);

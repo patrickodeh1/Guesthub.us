@@ -238,6 +238,11 @@ class Property extends Model
         return $this->hasMany(PropertyNotificationRecipient::class);
     }
 
+    public function notificationLogs(): HasMany
+    {
+        return $this->hasMany(NotificationLog::class);
+    }
+
     public function instructionalVideos(): BelongsToMany
     {
         return $this->belongsToMany(InstructionalVideo::class, 'property_instructional_videos', 'property_id', 'instructional_video_id')

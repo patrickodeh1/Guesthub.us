@@ -22,18 +22,18 @@
                            class="input pl-9">
                 </div>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Role</label>
-                <select name="role" class="input mt-2">
+                <select name="role" class="input mt-2 w-full">
                     <option value="">All roles</option>
                     @foreach(\App\Models\User::ROLE_LABELS as $key => $label)
                         <option value="{{ $key }}" @selected(request('role') === $key)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Status</label>
-                <select name="status" class="input mt-2">
+                <select name="status" class="input mt-2 w-full">
                     <option value="">All</option>
                     <option value="active"   @selected(request('status') === 'active')>Active</option>
                     <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
@@ -47,7 +47,43 @@
     </form>
 
     {{-- Table --}}
-    <div class="table-wrap" data-tour="users-table">
+    {{-- Mobile cards --}}
+    <div class="grid gap-3 md:hidden">
+        @forelse($users as $user)
+            <div class="card card-pad">
+                <div class="flex items-start gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#102338] text-xs font-bold text-white">{{ $user->initials() }}</span>
+                    <div class="min-w-0 flex-1">
+                        <a href="{{ route('admin.users.show', $user) }}" class="block truncate font-semibold text-slate-950">
+                            {{ $user->name }}@if($user->id === auth()->id()) <span class="ml-1 badge badge-active">You</span>@endif
+                        </a>
+                        <p class="truncate text-sm text-slate-500">{{ $user->email }}</p>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <span class="badge badge-inactive">{{ $user->roleLabel() }}</span>
+                            <span class="badge {{ $user->isActive() ? 'badge-active' : 'badge-inactive' }}">{{ $user->isActive() ? 'Active' : 'Inactive' }}</span>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500">Last login: {{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Never' }}</p>
+                    </div>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+                    <a href="{{ route('admin.users.show', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">View</a>
+                    <a href="{{ route('admin.users.edit', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">Edit</a>
+                    @if($user->id !== auth()->id())
+                        <form method="post" action="{{ route('admin.users.toggle-status', $user) }}" @if($user->isActive()) onsubmit="var r = prompt('Reason for deactivating this account (optional):'); if (r === null) { return false; } this.querySelector('[name=reason]').value = r;" @endif>
+                            @csrf
+<input type="hidden" name="reason" value="">
+                            <button class="btn-secondary px-3 py-1.5 text-xs {{ $user->isActive() ? 'text-amber-700' : 'text-emerald-700' }}">{{ $user->isActive() ? 'Deactivate' : 'Activate' }}</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="card card-pad text-center text-sm text-slate-500">No team members yet.</div>
+        @endforelse
+    </div>
+
+    {{-- Table --}}
+    <div class="table-wrap hidden md:block" data-tour="users-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -103,8 +139,9 @@
                                 <a href="{{ route('admin.users.show', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">View</a>
                                 <a href="{{ route('admin.users.edit', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">Edit</a>
                                 @if($user->id !== auth()->id())
-                                    <form method="post" action="{{ route('admin.users.toggle-status', $user) }}">
+                                    <form method="post" action="{{ route('admin.users.toggle-status', $user) }}" @if($user->isActive()) onsubmit="var r = prompt('Reason for deactivating this account (optional):'); if (r === null) { return false; } this.querySelector('[name=reason]').value = r;" @endif>
                                         @csrf
+<input type="hidden" name="reason" value="">
                                         <button class="btn-secondary px-3 py-1.5 text-xs {{ $user->isActive() ? 'text-amber-700' : 'text-emerald-700' }}">
                                             {{ $user->isActive() ? 'Deactivate' : 'Activate' }}
                                         </button>

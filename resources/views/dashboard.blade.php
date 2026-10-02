@@ -6,6 +6,7 @@
         </div>
     </div>
 
+
     @if($canSeeGuestPortal ?? false)
         @include('admin.dashboard')
     @endif

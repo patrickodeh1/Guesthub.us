@@ -20,7 +20,7 @@ class PropertyController extends Controller
 
     public function guideIndex(Request $request)
     {
-        $properties = Property::query()
+        $properties = Property::visibleTo($request->user())
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%")
@@ -40,7 +40,7 @@ class PropertyController extends Controller
         $property->load(['categories', 'pages.linkedPage.property', 'pages.linkedPages']);
         $assignedIds = $property->categories->pluck('id')->toArray();
         $categories = Category::orderBy('sort_order')->get();
-        $allProperties = Property::orderBy('name')->get();
+        $allProperties = Property::visibleTo(auth()->user())->orderBy('name')->get();
 
         return view('admin.guest-guide.show', [
             'property' => $property,
@@ -81,7 +81,7 @@ class PropertyController extends Controller
         $count = 0;
 
         foreach ($targetIds as $targetId) {
-            $target = Property::find($targetId);
+            $target = Property::visibleTo($request->user())->find($targetId);
             if (! $target) {
                 continue;
             }
@@ -141,18 +141,27 @@ class PropertyController extends Controller
     {
         $properties = Property::query()
             ->visibleTo($request->user())
-            ->with(['owner'])
+            ->with(['owner', 'rooms'])
             ->withCount(['rooms', 'propertyTasks'])
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%")
                 ->orWhere('address', 'like', "%{$search}%")
             ))
+            ->when(! $request->boolean('show_inactive'), fn ($query) => $query->where('active', true))
             ->latest()
             ->paginate(12)
             ->withQueryString();
 
-        return view('admin.properties.index', compact('properties'));
+        $roomLinks = \Illuminate\Support\Facades\DB::table('property_room')->get()->groupBy('room_id');
+        $rooms = \App\Models\Room::orderBy('name')->get()->map(fn ($room) => [
+            'id' => $room->id,
+            'name' => $room->name,
+            'is_default' => (bool) ($room->is_default ?? false),
+            'property_ids' => ($roomLinks->get($room->id) ?? collect())->pluck('property_id')->values()->all(),
+        ])->values()->all();
+
+        return view('admin.properties.index', compact('properties', 'rooms'));
     }
 
     public function create()
@@ -195,6 +204,11 @@ class PropertyController extends Controller
         $this->ensureVisible($request, $property);
         $data = $this->validated($request, $property);
         $data['timezone'] = $this->detectTimezone($data['latitude'] ?? null, $data['longitude'] ?? null, $data['timezone'] ?? null);
+        if (array_key_exists('channex_property_id', $data)
+            && $data['channex_property_id'] !== $property->channex_property_id) {
+            $data['channex_room_type_id'] = null;
+            $data['channex_rate_plan_id'] = null;
+        }
         $property->update($data);
         ActivityLog::record('property_updated', "{$property->name} was updated.", 'edit', $property);
 
@@ -210,6 +224,7 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
+        abort_unless(request()->user() && request()->user()->hasRole('admin'), 403, 'Only administrators can permanently delete properties.');
         $this->ensureVisible(request(), $property);
         $property->delete();
         ActivityLog::record('property_deleted', "{$property->name} was deleted.", 'delete');
@@ -236,7 +251,7 @@ class PropertyController extends Controller
             for ($i = 0; $i < $data['count']; $i++) {
                 $unitLabel = $this->nextUnitLabel($baseName);
 
-                $copy = $property->replicate(['slug']);
+                $copy = $property->replicate(['slug', 'channex_property_id', 'channex_room_type_id', 'ical_url', 'airbnb_ical_url', 'vrbo_ical_url', 'deactivated_at', 'deactivated_by']);
                 $copy->name = "{$baseName} - Unit {$unitLabel}";
                 $copy->unit_number = $unitLabel;
                 $copy->slug = $this->uniqueSlug($copy->name);
@@ -291,17 +306,28 @@ class PropertyController extends Controller
                         $clonedTask = $task->replicate();
                         $clonedTask->is_default = false;
                         $clonedTask->save();
-                        $copy->propertyTasks()->attach($clonedTask->id, ['sort_order' => $order++]);
+                        $copy->propertyTasks()->attach($clonedTask->id, [
+                            'sort_order' => $order++,
+                            'instructions' => $task->pivot->instructions ?? null,
+                            'visible_to_owner' => (bool) ($task->pivot->visible_to_owner ?? true),
+                            'visible_to_housekeeper' => (bool) ($task->pivot->visible_to_housekeeper ?? true),
+                        ]);
                     }
 
-                    if (! empty($data['copy_notification_recipients'])) {
-                        $recipients = PropertyNotificationRecipient::where('property_id', $property->id)->get();
-                        foreach ($recipients as $recipient) {
-                            $copy->notificationRecipients()->create($recipient->only([
-                                'phone_number', 'recipient_name', 'active',
-                            ]));
-                        }
+                }
+
+                if (! empty($data['copy_notification_recipients'])) {
+                    foreach (PropertyNotificationRecipient::where('property_id', $property->id)->get() as $recipient) {
+                        $copy->notificationRecipients()->create($recipient->only([
+                            'phone_number', 'recipient_name', 'active',
+                        ]));
                     }
+                }
+
+                // Housekeeper / company assignments carry over to the new unit.
+                $assignedIds = $property->users()->pluck('users.id')->all();
+                if (! empty($assignedIds)) {
+                    $copy->users()->sync($assignedIds);
                 }
 
                 $created[] = $copy;
@@ -351,9 +377,6 @@ class PropertyController extends Controller
             'geo_radius_m' => ['nullable', 'integer', 'min:50'],
             'photo' => ['nullable', 'image', 'max:10240'],
             'remove_photo' => ['nullable', 'boolean'],
-            'ical_url' => ['nullable', 'url', 'max:1000'],
-            'airbnb_ical_url' => ['nullable', 'url', 'max:1000'],
-            'vrbo_ical_url' => ['nullable', 'url', 'max:1000'],
             'welcome_intro' => ['nullable', 'string'],
             'checkin_instructions' => ['nullable', 'string'],
             'parking_instructions' => ['nullable', 'string'],

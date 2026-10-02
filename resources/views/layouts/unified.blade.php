@@ -23,7 +23,7 @@
             'resources/js/cleaning-app.js',
         ])
     @else
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/cleaning-app.js'])
     @endif
     @if($favicon)
         <link rel="icon" href="{{ $favicon }}">
@@ -42,17 +42,16 @@
                 outline: none !important;
                 box-shadow: none !important;
             }
-            html.dark .gtranslate_wrapper select {
-                background-color: #1f2937 !important;
-                border-color: #4b5563 !important;
-                color: #e5e7eb !important;
-            }
-            html.dark .gtranslate_wrapper option {
-                background-color: #1f2937 !important;
-                color: #e5e7eb !important;
-            }
         </style>
     @endif
+@if(request()->boolean('embed') || request()->header('Sec-Fetch-Dest') === 'iframe')
+<style>
+    #admin-sidebar, #sidebar-overlay, main > header, [data-tour="topbar"] { display: none !important; }
+    main { margin-left: 0 !important; }
+    a[href$="/admin/guests"] { display: none !important; }
+    body { background: #fff; }
+</style>
+@endif
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased" @if($cleaning ?? false) x-data="mainState" x-on:resize.window="handleWindowResize" @endif>
 @if($cleaning ?? false)
@@ -64,7 +63,8 @@
 {{-- ══════════════════════════════════════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════════════════════════════════════ --}}
-<aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-x-hidden overflow-y-auto bg-[var(--brand-sidebar)] text-white shadow-xl lg:block lg:w-48 lg:shadow-none">
+<aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-x-hidden overflow-y-auto bg-[var(--brand-sidebar)] text-white shadow-xl lg:block lg:w-60 lg:shadow-none">
+    <div class="flex min-h-full flex-col">
     {{-- Brand --}}
     <div class="flex items-center justify-between px-3 py-3">
         <a href="{{ ($cleaning ?? false) ? route('dashboard') : route('admin.dashboard') }}" class="flex min-w-0 flex-col items-start gap-1 px-3 font-semibold tracking-tight" data-tour="sidebar-brand">
@@ -93,15 +93,16 @@
             <p class="mt-1 leading-5">Copy a guest URL from any booking to preview the full guest experience.</p>
         </div>
     @endif
+    </div>
 </aside>
 
 {{-- ══════════════════════════════════════════════════════════════════════════
      MAIN CONTENT
 ══════════════════════════════════════════════════════════════════════════ --}}
-<main class="lg:ml-48 lg:flex-1">
+<main class="lg:ml-60 lg:flex-1">
     {{-- Topbar --}}
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white" data-tour="topbar">
-        <div class="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+        <div class="flex min-h-[4rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 md:flex-nowrap md:py-0 lg:px-8">
             {{-- Mobile menu --}}
             <button type="button"
                     id="admin-sidebar-open"
@@ -111,7 +112,7 @@
             </button>
 
             {{-- Page title --}}
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 {{ (isset($header) && trim((string) $header) !== '') ? 'order-last basis-full pb-1 md:order-none md:basis-auto md:pb-0' : '' }} md:flex-1">
                 @if(isset($header) && trim((string) $header) !== '')
                     <div class="min-w-0">{{ $header }}</div>
                 @else
@@ -119,16 +120,6 @@
                 @endif
             </div>
 
-            <button type="button" id="theme-toggle" aria-label="Switch to dark theme" aria-pressed="false"
-                    class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300">
-                <svg data-theme-icon="sun" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.3 15.3A9 9 0 0 1 8.7 3.7 9 9 0 1 0 20.3 15.3Z" />
-                </svg>
-                <svg data-theme-icon="moon" class="hidden h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <circle cx="12" cy="12" r="4" />
-                    <path stroke-linecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" />
-                </svg>
-            </button>
 
             {{-- Global Search --}}
             <div class="relative hidden sm:block" data-tour="global-search">
@@ -710,22 +701,6 @@ document.addEventListener('change', function(e) {
         document.getElementById('search-dropdown')?.classList.add('hidden');
     });
 
-    const themeToggle = document.getElementById('theme-toggle');
-    const updateThemeToggle = () => {
-        const isDark = document.documentElement.classList.contains('dark');
-        themeToggle?.setAttribute('aria-pressed', String(isDark));
-        themeToggle?.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
-        themeToggle?.querySelector('[data-theme-icon="sun"]')?.classList.toggle('hidden', isDark);
-        themeToggle?.querySelector('[data-theme-icon="moon"]')?.classList.toggle('hidden', !isDark);
-    };
-
-    updateThemeToggle();
-    themeToggle?.addEventListener('click', () => {
-        const isDark = document.documentElement.classList.toggle('dark');
-        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-        window.localStorage.setItem('dark', String(isDark));
-        updateThemeToggle();
-    });
 </script>
 </body>
 </html>

@@ -280,6 +280,10 @@ class BookingController extends Controller
             ],
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'id' => $booking->id]);
+        }
+
         return redirect()->route('admin.guests.show', $booking)->with('success', 'Guest booking created successfully.');
     }
 

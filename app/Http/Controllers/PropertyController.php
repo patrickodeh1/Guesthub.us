@@ -63,7 +63,7 @@ class PropertyController extends Controller
         });
 
         return redirect()
-            ->route('properties.index')
+            ->route('admin.properties.index')
             ->with('ok', match ($attach) {
                 'rooms'        => 'Property created and default rooms assigned.',
                 default        => 'Property created successfully.',
@@ -98,9 +98,7 @@ class PropertyController extends Controller
             'longitude'    => ['nullable', 'numeric', 'between:-180,180'],
             'geo_radius_m' => ['nullable', 'integer', 'min:50'],
             'photo'        => ['nullable', 'image'],
-            'ical_url'     => ['nullable', 'url', 'max:1000'],
             'airbnb_ical_url' => ['nullable', 'url', 'max:1000'],
-            'vrbo_ical_url'   => ['nullable', 'url', 'max:1000'],
             'timezone'     => ['required', 'string', 'timezone:all'],
             'remove_photo' => ['sometimes', 'boolean'],
         ];
@@ -158,7 +156,7 @@ class PropertyController extends Controller
         $property->update($data);
 
         return redirect()
-            ->route('properties.index')
+            ->route('admin.properties.index')
             ->with('ok', 'Property updated successfully.');
     }
 
@@ -168,7 +166,7 @@ class PropertyController extends Controller
 
         $property->deactivate($request->user());
 
-        return redirect()->route('properties.index')->with('ok', 'Property marked inactive.');
+        return redirect()->route('admin.properties.index')->with('ok', 'Property marked inactive.');
     }
 
     public function activate(Request $request, Property $property)

@@ -57,11 +57,8 @@ window.assignRoomsPanel = function assignRoomsPanel(
             this.isCreating = true
             try {
                 // Keep behavior consistent with prior inline implementation
-                window.api?.post?.(propertyRoomSoreUrl, {
-                    name: this.newRoomName.trim(),
-                })
-
-                const newId = Date.now()
+                
+                const newId = 'new:' + this.newRoomName.trim()
                 this.rooms.push({
                     id: newId,
                     name: this.newRoomName.trim(),
@@ -77,9 +74,27 @@ window.assignRoomsPanel = function assignRoomsPanel(
         async save() {
             this.isSaving = true
             try {
-                const response = await window.api.post(propertyRoomsAttachUrl, {
-                    room_ids: this.selectedIds,
+                const token = document.querySelector('meta[name="csrf-token"]')?.content
+                    || document.querySelector('input[name="_token"]')?.value || ''
+                const res = await fetch(propertyRoomsAttachUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        room_ids: this.selectedIds.filter((x) => Number.isInteger(x)),
+                        room_names: this.selectedIds.filter((x) => typeof x === 'string' && x.startsWith('new:')).map((x) => x.slice(4)),
+                    }),
                 })
+                const response = await res.json().catch(() => ({}))
+                if (!res.ok) {
+                    const firstErr = response.errors ? Object.values(response.errors)[0] : null
+                    throw new Error((Array.isArray(firstErr) ? firstErr[0] : firstErr) || response.message || ('Request failed (' + res.status + ')'))
+                }
 
                 this.$dispatch('toast', {
                     type: 'success',
@@ -109,6 +124,7 @@ window.assignRoomsPanel = function assignRoomsPanel(
                     type: 'error',
                     message: errorMessage,
                 })
+                window.alert(errorMessage)
             } finally {
                 this.isSaving = false
             }

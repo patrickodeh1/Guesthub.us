@@ -24,6 +24,7 @@
             ['users',      'Add Team Member', route('admin.users.create'),      'Invite staff with role-based permissions.'],
             ['logs',       'View Logs',       route('admin.logs.index'),        'Review the full system audit trail.'],
         ] as [$icon, $label, $url, $desc])
+            @continue(($icon === 'users' && ! auth()->user()->hasRole('admin')) || ($icon === 'logs' && ! auth()->user()->hasAnyRole(['admin', 'manager', 'owner'])))
             <a href="{{ $url }}" class="card card-pad flex items-start gap-3 transition hover:-translate-y-0.5 hover:shadow-md">
                 <span class="icon-chip"><x-icon :name="$icon" class="h-5 w-5" /></span>
                 <div>

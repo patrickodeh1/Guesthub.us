@@ -75,6 +75,52 @@ class SmsNotificationService
     }
 
     /**
+     * Send one SMS and report the real outcome (unlike sendTo, which only logs).
+     * Used by property/cleaner notifications and Resend. Returns
+     * ['status' => 'sent'|'failed', 'error' => string|null].
+     */
+    public static function deliver(?string $to, string $message, string $context = 'staff'): array
+    {
+        if (! config('services.sms.enabled')) {
+            return ['status' => 'failed', 'error' => 'SMS sending is turned off (SMS_ENABLED=false).'];
+        }
+
+        $to = PhoneFormatter::toTelUri($to);
+        $apiKey = config('services.telnyx.api_key');
+        $from = PhoneFormatter::toTelUri(config('services.telnyx.from_number'));
+
+        if (! $apiKey || ! $from || ! $to) {
+            return ['status' => 'failed', 'error' => 'Telnyx is not fully configured or the recipient number is missing.'];
+        }
+        if (! preg_match('/^\+[1-9]\d{9,14}$/', $from)) {
+            return ['status' => 'failed', 'error' => 'TELNYX_FROM_NUMBER is not a valid E.164 number.'];
+        }
+        if (! preg_match('/^\+[1-9]\d{9,14}$/', $to)) {
+            return ['status' => 'failed', 'error' => 'The recipient number is not a valid phone number.'];
+        }
+
+        $payload = ['from' => $from, 'to' => $to, 'text' => $message];
+        if ($profileId = config('services.telnyx.messaging_profile_id')) {
+            $payload['messaging_profile_id'] = $profileId;
+        }
+
+        try {
+            $response = Http::withToken($apiKey)->acceptJson()->post(self::TELNYX_MESSAGES_URL, $payload);
+
+            if (! $response->successful()) {
+                Log::error("SMS deliver failed ({$context}) to {$to}: HTTP {$response->status()} ".$response->body());
+                return ['status' => 'failed', 'error' => 'Telnyx HTTP '.$response->status().': '.mb_substr($response->body(), 0, 300)];
+            }
+
+            Log::info("SMS deliver sent ({$context}) to {$to}.");
+            return ['status' => 'sent', 'error' => null];
+        } catch (\Throwable $e) {
+            Log::error("SMS deliver failed ({$context}): ".$e->getMessage());
+            return ['status' => 'failed', 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Text the GUEST (not the admin) that a side of their ID was declined.
      */
     public static function photoIdDeclinedToGuest(Booking $booking, string $side, string $reason): void

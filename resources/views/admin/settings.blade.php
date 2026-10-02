@@ -14,11 +14,6 @@
             <p class="section-copy">These values are used when a property-specific value is not available.</p>
             <div class="mt-6 grid gap-5 md:grid-cols-2">
                 <label class="field-label">Site name<input name="site_name" value="{{ old('site_name', $settings['site_name'] ?? config('app.name', 'Guest Hub')) }}" class="input"></label>
-                <label class="field-label">Brand / theme color<input type="color" name="theme_color" value="{{ old('theme_color', $settings['theme_color'] ?? \App\Support\Branding::DEFAULT_THEME_COLOR) }}" class="input h-12"></label>
-                <label class="field-label">Primary button color<input type="color" name="button_primary_color" value="{{ old('button_primary_color', $settings['button_primary_color'] ?? \App\Support\Branding::DEFAULT_BUTTON_COLOR) }}" class="input h-12"></label>
-                @foreach(['button_success_color' => 'Success button', 'button_danger_color' => 'Danger button', 'button_warning_color' => 'Warning button', 'button_info_color' => 'Info button'] as $key => $label)
-                    <label class="field-label">{{ $label }}<input type="color" name="{{ $key }}" value="{{ old($key, $settings[$key]) }}" class="input h-12"></label>
-                @endforeach
                 <label class="field-label">GPS radius meters<input type="number" name="gps_radius_meters" value="{{ old('gps_radius_meters', $settings['gps_radius_meters']) }}" class="input"><span class="field-help">Typical range: 100 to 250 meters for buildings and resorts.</span></label>
                 <label class="field-label">Contact phone<input name="contact_phone" value="{{ old('contact_phone', $settings['contact_phone']) }}" class="input"></label>
                 <label class="field-label">Contact email<input name="contact_email" value="{{ old('contact_email', $settings['contact_email']) }}" class="input"></label>
@@ -102,28 +97,6 @@
             </div>
         </section>
 
-        <section id="reports" class="card card-pad">
-            <h2 class="section-title">Reports</h2>
-            <p class="section-copy">Set the report section and action colors.</p>
-            <div class="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
-                @foreach([
-                    'report_header_color' => 'Header',
-                    'report_status_color' => 'Status',
-                    'report_checklist_color' => 'Checklist',
-                    'report_issues_color' => 'Issues',
-                    'report_photos_color' => 'Photos',
-                    'report_time_color' => 'Time',
-                    'report_supplies_color' => 'Supplies',
-                    'report_audit_color' => 'Audit',
-                    'report_button_primary_color' => 'Primary button',
-                    'report_button_secondary_color' => 'Secondary button',
-                ] as $key => $label)
-                    <label class="field-label">{{ $label }}
-                        <input type="color" name="{{ $key }}" value="{{ old($key, $settings[$key]) }}" class="input h-12">
-                    </label>
-                @endforeach
-            </div>
-        </section>
 
         <aside class="card card-pad">
             <x-media-image-field
@@ -158,10 +131,6 @@
         </aside>
     </form>
 
-    <form method="post" action="{{ route('admin.settings.reset-colors') }}" class="mt-3 xl:ml-auto xl:w-[360px]">
-        @csrf
-        <button type="submit" class="btn-secondary w-full">Reset to default colors</button>
-    </form>
 
     {{-- Media Picker Modal (for editor image insert) --}}
     <div id="media-picker-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-950/40 p-4" style="z-index:2147483000;">

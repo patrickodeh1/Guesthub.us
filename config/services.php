@@ -36,6 +36,10 @@ return [
         'webhook_secret' => env('SEAM_WEBHOOK_SECRET'),
     ],
 
+    'sms' => [
+        'enabled' => (bool) env('SMS_ENABLED', false),
+    ],
+
     'telnyx' => [
         'api_key' => env('TELNYX_API_KEY'),
         'public_key' => env('TELNYX_PUBLIC_KEY'),

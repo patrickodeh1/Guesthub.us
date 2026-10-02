@@ -23,7 +23,6 @@ use App\Http\Controllers\ManageSessionController as CleaningManageSessionControl
 use App\Http\Controllers\ProfileController as CleaningProfileController;
 use App\Http\Controllers\PropertyController as CleaningPropertyController;
 use App\Http\Controllers\SessionController as CleaningSessionController;
-use App\Http\Controllers\UserController as CleaningUserController;
 use App\Http\Controllers\CalendarController as CleaningCalendarController;
 use App\Http\Controllers\SessionReportController as CleaningSessionReportController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
@@ -167,14 +166,26 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
         return response()->json(['ok' => true]);
     })->name('tour.dashboard.restart');
 
+    Route::post('cleaning-jobs/quick-assign', [\App\Http\Controllers\Admin\QuickAssignController::class, 'store'])
+        ->middleware('role:admin,owner,company')
+        ->name('cleaning-jobs.quick-assign');
+
+    Route::post('cleaning-jobs/calendar-assign', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'store'])
+        ->middleware('role:admin,owner,company')
+        ->name('cleaning-jobs.calendar-assign');
+
+    Route::post('cleaning-jobs/calendar-status', [\App\Http\Controllers\Admin\CalendarStatusController::class, 'store'])
+        ->middleware('role:admin,owner,company,manager')
+        ->name('cleaning-jobs.calendar-status');
+
     // ─── Static pages ────────────────────────────────────────────────────────
     Route::view('guide', 'admin.guide')->name('guide');
     Route::redirect('security', '/profile')->name('security');
 
     // ─── Guest Guide (per-property categories) ──────────────────────────────
-    Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index');
-    Route::get('properties/{property}/categories', [PropertyController::class, 'guide'])->name('guest-guide.show');
-    Route::post('properties/{property}/guide/copy', [PropertyController::class, 'copyGuide'])->name('guest-guide.copy');
+    Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index')->middleware('role:admin,owner,company');
+    Route::get('properties/{property}/categories', [PropertyController::class, 'guide'])->name('guest-guide.show')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/guide/copy', [PropertyController::class, 'copyGuide'])->name('guest-guide.copy')->middleware(['role:admin,owner,company', 'property.access']);
 
     // ─── Properties ──────────────────────────────────────────────────────────
     Route::resource('properties', PropertyController::class)->except(['show']);
@@ -218,65 +229,65 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::get('guests/{booking}/license-plate/view', [BookingController::class, 'licensePlateView'])->name('guests.license-plate-view');
 
     // ─── Categories ───────────────────────────────────────────────────────────
-    Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
-    Route::resource('categories', CategoryController::class)->except(['show']);
-    Route::post('categories/assign', [CategoryController::class, 'assign'])->name('categories.assign');
-    Route::get('categories/{category}/preview/{property}', [CategoryController::class, 'preview'])->name('categories.preview');
+    Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder')->middleware('role:admin,owner,company');
+    Route::resource('categories', CategoryController::class)->except(['show'])->middleware('role:admin,owner,company');
+    Route::post('categories/assign', [CategoryController::class, 'assign'])->name('categories.assign')->middleware('role:admin,owner,company');
+    Route::get('categories/{category}/preview/{property}', [CategoryController::class, 'preview'])->name('categories.preview')->middleware('role:admin,owner,company');
 
     // ─── Content / Pages ──────────────────────────────────────────────────────
-    Route::get('content/{property}/{category}/edit', [ContentController::class, 'editPage'])->name('content.edit');
-    Route::put('content/{property}/{category}', [ContentController::class, 'updatePage'])->name('content.update');
-    Route::post('content/{property}/{category}/unlink', [ContentController::class, 'unlinkPage'])->name('content.unlink');
-    Route::put('content/{property}/{category}/assignment', [ContentController::class, 'updateAssignment'])->name('content.assignment.update');
-    Route::get('content/{property}/amenities', [ContentController::class, 'amenitiesIndex'])->name('amenities.index');
-    Route::get('content/{property}/amenities/create', [ContentController::class, 'createAmenity'])->name('amenities.create');
-    Route::post('content/{property}/amenities', [ContentController::class, 'storeAmenity'])->name('amenities.store');
-    Route::get('amenities/{amenity}/edit', [ContentController::class, 'editAmenity'])->name('amenities.edit');
-    Route::put('amenities/{amenity}', [ContentController::class, 'updateAmenity'])->name('amenities.update');
-    Route::delete('amenities/{amenity}', [ContentController::class, 'deleteAmenity'])->name('amenities.destroy');
+    Route::get('content/{property}/{category}/edit', [ContentController::class, 'editPage'])->name('content.edit')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::put('content/{property}/{category}', [ContentController::class, 'updatePage'])->name('content.update')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('content/{property}/{category}/unlink', [ContentController::class, 'unlinkPage'])->name('content.unlink')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::put('content/{property}/{category}/assignment', [ContentController::class, 'updateAssignment'])->name('content.assignment.update')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('content/{property}/amenities', [ContentController::class, 'amenitiesIndex'])->name('amenities.index')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('content/{property}/amenities/create', [ContentController::class, 'createAmenity'])->name('amenities.create')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('content/{property}/amenities', [ContentController::class, 'storeAmenity'])->name('amenities.store')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('amenities/{amenity}/edit', [ContentController::class, 'editAmenity'])->name('amenities.edit')->middleware('role:admin,owner,company');
+    Route::put('amenities/{amenity}', [ContentController::class, 'updateAmenity'])->name('amenities.update')->middleware('role:admin,owner,company');
+    Route::delete('amenities/{amenity}', [ContentController::class, 'deleteAmenity'])->name('amenities.destroy')->middleware('role:admin,owner,company');
 
     // ─── Instruction Steps ───────────────────────────────────────────────────────
-    Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show');
-    Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder');
-    Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy');
-    Route::resource('instructions', InstructionStepController::class)->except(['show']);
+    Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder')->middleware('role:admin,owner,company');
+    Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy')->middleware('role:admin,owner,company');
+    Route::resource('instructions', InstructionStepController::class)->except(['show'])->middleware('role:admin,owner,company');
 
     // ─── Media Library ───────────────────────────────────────────────────────────
-    Route::get('media', [MediaController::class, 'index'])->name('media.index');
-    Route::get('media/picker', [MediaController::class, 'picker'])->name('media.picker');
-    Route::post('media/folders', [MediaController::class, 'storeFolder'])->name('media.folders.store');
-    Route::delete('media/folders/{folder}', [MediaController::class, 'destroyFolder'])->name('media.folders.destroy');
-    Route::post('media/files', [MediaController::class, 'storeFile'])->name('media.files.store');
-    Route::delete('media/files/{file}', [MediaController::class, 'destroyFile'])->name('media.files.destroy');
+    Route::get('media', [MediaController::class, 'index'])->name('media.index')->middleware('role:admin,owner,company');
+    Route::get('media/picker', [MediaController::class, 'picker'])->name('media.picker')->middleware('role:admin,owner,company');
+    Route::post('media/folders', [MediaController::class, 'storeFolder'])->name('media.folders.store')->middleware('role:admin,owner,company');
+    Route::delete('media/folders/{folder}', [MediaController::class, 'destroyFolder'])->name('media.folders.destroy')->middleware('role:admin,owner,company');
+    Route::post('media/files', [MediaController::class, 'storeFile'])->name('media.files.store')->middleware('role:admin,owner,company');
+    Route::delete('media/files/{file}', [MediaController::class, 'destroyFile'])->name('media.files.destroy')->middleware('role:admin,owner,company');
     Route::post('properties/{property}/duplicate', [PropertyController::class, 'duplicate'])->name('properties.duplicate');
-    Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store');
-    Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update');
-    Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy');
+    Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy')->middleware(['role:admin,owner,company', 'property.access']);
 
-    Route::get('properties/{property}/availability', [PropertyAvailabilityController::class, 'index'])->name('properties.availability.index');
-    Route::post('properties/{property}/availability/fetch-mapping', [PropertyAvailabilityController::class, 'fetchMapping'])->name('properties.availability.fetch-mapping');
-    Route::post('properties/{property}/availability/save-mapping', [PropertyAvailabilityController::class, 'saveMapping'])->name('properties.availability.save-mapping');
-    Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url');
-    Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical');
-    Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex');
-    Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move');
-    Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete');
+    Route::get('properties/{property}/availability', [PropertyAvailabilityController::class, 'index'])->name('properties.availability.index')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/fetch-mapping', [PropertyAvailabilityController::class, 'fetchMapping'])->name('properties.availability.fetch-mapping')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-mapping', [PropertyAvailabilityController::class, 'saveMapping'])->name('properties.availability.save-mapping')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company');
+    Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company');
 
     // ─── Settings ─────────────────────────────────────────────────────────────
-    Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
-    Route::match(['put', 'post'], 'settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
-    Route::post('settings/reset-colors', [\App\Http\Controllers\Admin\SettingsController::class, 'resetColors'])->name('settings.reset-colors');
-    Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit');
-    Route::match(['put', 'post'], 'settings/legal', [\App\Http\Controllers\Admin\SettingsController::class, 'legalUpdate'])->name('settings.legal.update');
-    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit');
-    Route::match(['put', 'post'], 'settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'update'])->name('settings.notifications.update');
+    Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
+    Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings/legal', [\App\Http\Controllers\Admin\SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
+    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'update'])->name('settings.notifications.update')->middleware('role:admin');
 
     // ─── Guest Notices (conditional pop-ups / check-in steps) ──────────────
-    Route::resource('notices', GuestNoticeController::class)->except(['show']);
+    Route::resource('notices', GuestNoticeController::class)->except(['show'])->middleware('role:admin,manager');
 
     // ─── Notification bell ──────────────────────────────────────────────────
     Route::post('notifications/dismiss', [NotificationController::class, 'dismiss'])->name('notifications.dismiss');
     Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::get('notifications', [NotificationController::class, 'index'])->middleware('role:admin,owner,company,manager')->name('notifications.index');
 
     // ─── Users / Team ─────────────────────────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
@@ -289,7 +300,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     // ─── Activity Logs ────────────────────────────────────────────────────────
     Route::middleware('role:admin,manager,owner')->group(function () {
         Route::get('logs', [LogController::class, 'index'])->name('logs.index');
-        Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+        Route::get('payments', [PaymentController::class, 'index'])->middleware('role:admin,manager')->name('payments.index');
         Route::get('logs/{source}/{id}', [LogController::class, 'show'])->name('logs.show');
         Route::get('logs/{log}', [LogController::class, 'legacy'])->name('logs.legacy');
     });
@@ -523,7 +534,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [CleaningProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Properties
-    Route::resource('properties', CleaningPropertyController::class);
+    Route::resource('properties', CleaningPropertyController::class)->except(['store', 'update']);
     Route::post('properties/{property}/activate', [CleaningPropertyController::class, 'activate'])->name('properties.activate');
 
     // Rooms within properties
@@ -589,17 +600,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/tasks/{task}/view-instruction', [CleaningChecklistController::class, 'viewPropertyTaskInstruction'])->name('checklist.property-task.view-instruction');
 
     // Add Session Routes (Admin/Owner)
-    Route::get('/manage/sessions', [CleaningManageSessionController::class, 'index'])->name('manage.sessions.index');
-    Route::get('/manage/sessions/create', [CleaningManageSessionController::class, 'create'])->name('manage.sessions.create');
-    Route::get('/reports/training', [\App\Http\Controllers\TrainingReportController::class, 'index'])->name('reports.training.index');
-    Route::get('/reports/familiarity', [\App\Http\Controllers\FamiliarityReportController::class, 'index'])->name('reports.familiarity.index');
-    Route::post('/manage/sessions', [CleaningManageSessionController::class, 'store'])->name('manage.sessions.store');
-    Route::get('/manage/sessions/{session}/edit', [CleaningManageSessionController::class, 'edit'])->name('manage.sessions.edit');
-    Route::put('/manage/sessions/{session}', [CleaningManageSessionController::class, 'update'])->name('manage.sessions.update');
-    Route::delete('/manage/sessions/{session}', [CleaningManageSessionController::class, 'destroy'])->name('manage.sessions.destroy');
-    Route::get('/api/properties/{property}/sporadic-tasks', [CleaningManageSessionController::class, 'getSporadicTasks'])->name('api.properties.sporadic-tasks');
+    Route::middleware('role:admin,owner,company')->group(function () {
+        Route::get('/manage/sessions', [CleaningManageSessionController::class, 'index'])->name('manage.sessions.index');
+        Route::get('/manage/sessions/create', [CleaningManageSessionController::class, 'create'])->name('manage.sessions.create');
+        Route::post('/manage/sessions', [CleaningManageSessionController::class, 'store'])->name('manage.sessions.store');
+        Route::get('/manage/sessions/{session}/edit', [CleaningManageSessionController::class, 'edit'])->name('manage.sessions.edit');
+        Route::put('/manage/sessions/{session}', [CleaningManageSessionController::class, 'update'])->name('manage.sessions.update');
+        Route::delete('/manage/sessions/{session}', [CleaningManageSessionController::class, 'destroy'])->name('manage.sessions.destroy');
+        Route::get('/api/properties/{property}/sporadic-tasks', [CleaningManageSessionController::class, 'getSporadicTasks'])->name('api.properties.sporadic-tasks');
 
-    // Calendar Routes
+        Route::get('/reports/training', [\App\Http\Controllers\TrainingReportController::class, 'index'])->name('reports.training.index');
+        Route::get('/reports/familiarity', [\App\Http\Controllers\FamiliarityReportController::class, 'index'])->name('reports.familiarity.index');
+    });
+
     Route::get('/calendar', [CleaningCalendarController::class, 'index'])->name('calendar.index');
     Route::get('/api/calendar/events', [CleaningCalendarController::class, 'events'])->name('api.calendar.events');
 
@@ -612,21 +625,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->name('users.index');
     Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->name('users.create');
     Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->name('users.edit');
-    Route::post('/users', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store');
-    Route::put('/users/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update');
-    Route::delete('/users/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy');
-    Route::post('/users/{user}/deactivate', [\App\Http\Controllers\UserController::class, 'deactivate'])
-        ->middleware('role:admin')
-        ->name('users.deactivate');
-    Route::post('/users/{user}/reactivate', [\App\Http\Controllers\UserController::class, 'reactivate'])
-        ->middleware('role:admin')
-        ->name('users.reactivate');
 
     Route::post('/users/{user}/familiarity/reset', [\App\Http\Controllers\UserFamiliarityController::class, 'resetAll'])->name('users.familiarity.reset_all');
     Route::post('/users/{user}/familiarity/reset/{task}', [\App\Http\Controllers\UserFamiliarityController::class, 'resetTask'])->name('users.familiarity.reset_task');
 
     // Final Additional Routes to fix 500 errors
-    Route::post('properties/{property}/duplicate', [\App\Http\Controllers\PropertyDuplicateController::class, 'store'])->name('properties.duplicate');
     // Properties -> Rooms sorting
     Route::match(['post', 'patch'], 'properties/{property}/rooms/order', [\App\Http\Controllers\PropertyRoomOrderController::class, 'update'])->name('properties.rooms.order');
 
@@ -634,12 +637,12 @@ Route::middleware('auth')->group(function () {
     Route::match(['post', 'patch'], 'properties/{property}/tasks/order', [\App\Http\Controllers\PropertyTaskOrderController::class, 'update'])->name('properties.property-tasks.order');
     Route::post('properties/{property}/rooms', [\App\Http\Controllers\PropertyRoomController::class, 'store'])->name('properties.rooms.store');
     Route::post('properties/{property}/rooms/attach', [\App\Http\Controllers\PropertyRoomAttachController::class, 'store'])->name('properties.rooms.attach');
-    Route::get('api/rooms/suggest', [\App\Http\Controllers\RoomSuggestionController::class, 'index'])->name('rooms.suggest');
+    Route::get('api/rooms/suggest', [\App\Http\Controllers\RoomSuggestionController::class, 'index'])->name('rooms.suggest')->middleware('role:admin,owner,company');
 
     Route::match(['post', 'patch'], 'rooms/{room}/tasks/order', [\App\Http\Controllers\RoomTaskOrderController::class, 'updateForRoom'])->name('rooms.tasks.order');
     Route::post('rooms/{room}/tasks/attach', [\App\Http\Controllers\RoomTaskAttachController::class, 'store'])->name('rooms.tasks.attach');
     Route::delete('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'detachTask'])->name('rooms.tasks.detach');
-    Route::get('api/tasks/suggest', [\App\Http\Controllers\TaskSuggestionController::class, 'index'])->name('tasks.suggest');
+    Route::get('api/tasks/suggest', [\App\Http\Controllers\TaskSuggestionController::class, 'index'])->name('tasks.suggest')->middleware('role:admin,owner,company');
 
     Route::get('settings', fn () => redirect()->route('admin.settings.edit'))->name('settings.index');
     Route::post('settings', function () {
@@ -652,8 +655,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('sessions/{session}/photos/{photo}', [\App\Http\Controllers\PhotoController::class, 'destroy'])->name('photos.destroy');
 
     // Task Media Management
-    Route::post('tasks/{task}/media', [\App\Http\Controllers\TaskMediaController::class, 'store'])->name('tasks.media.store');
-    Route::delete('tasks/{task}/media/{media}', [\App\Http\Controllers\TaskMediaController::class, 'destroy'])->name('tasks.media.destroy');
+    Route::post('tasks/{task}/media', [\App\Http\Controllers\TaskMediaController::class, 'store'])->name('tasks.media.store')->middleware('role:admin,owner,company');
+    Route::delete('tasks/{task}/media/{media}', [\App\Http\Controllers\TaskMediaController::class, 'destroy'])->name('tasks.media.destroy')->middleware('role:admin,owner,company');
 
     // API for dynamic form loading
     Route::get('api/properties/{property}/rooms', [\App\Http\Controllers\PropertyAssignmentsApiController::class, 'rooms'])->name('api.properties.rooms');
@@ -665,14 +668,14 @@ Route::middleware('auth')->group(function () {
     Route::post('rooms/bulk-attach-tasks', [\App\Http\Controllers\RoomController::class, 'bulkAttachTasks'])->name('rooms.bulk-attach-tasks');
 
     // Room Task Management Routes
-    Route::get('rooms/{room}/tasks', [\App\Http\Controllers\RoomController::class, 'tasks'])->name('rooms.tasks.index');
+    Route::get('rooms/{room}/tasks', [\App\Http\Controllers\RoomController::class, 'tasks'])->name('rooms.tasks.index')->middleware('role:admin,owner,company');
     Route::post('rooms/{room}/tasks', [\App\Http\Controllers\RoomController::class, 'storeTask'])->name('rooms.tasks.store');
     Route::get('rooms/{room}/tasks/{task}/edit', [\App\Http\Controllers\RoomController::class, 'editTask'])->name('rooms.tasks.edit');
     Route::put('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'updateTask'])->name('rooms.tasks.update');
     Route::post('rooms/{room}/tasks/bulk', [\App\Http\Controllers\RoomController::class, 'bulkStoreTask'])->name('rooms.tasks.bulk-store');
 
-    Route::resource('rooms', \App\Http\Controllers\RoomController::class);
-    Route::resource('tasks', \App\Http\Controllers\TaskController::class);
+    Route::resource('rooms', \App\Http\Controllers\RoomController::class)->middleware('role:admin,owner,company');
+    Route::resource('tasks', \App\Http\Controllers\TaskController::class)->middleware('role:admin,owner,company');
 
     // Resources Pages (Photos, Videos, Guides)
     Route::get('resources/photos', [\App\Http\Controllers\ResourcePageController::class, 'photos'])->name('resources.photos');
@@ -680,64 +683,16 @@ Route::middleware('auth')->group(function () {
     Route::get('resources/guides', [\App\Http\Controllers\ResourcePageController::class, 'guides'])->name('resources.guides');
 
     // Admin Instructional Video Management
-    Route::get('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'index'])->name('admin.videos.index');
-    Route::get('admin/videos/create', [\App\Http\Controllers\InstructionalVideoController::class, 'create'])->name('admin.videos.create');
-    Route::post('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'store'])->name('admin.videos.store');
-    Route::get('admin/videos/{video}/edit', [\App\Http\Controllers\InstructionalVideoController::class, 'edit'])->name('admin.videos.edit');
-    Route::post('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'update'])->name('admin.videos.update');
-    Route::delete('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'destroy'])->name('admin.videos.destroy');
-    Route::post('admin/videos/{video}/publish', [\App\Http\Controllers\InstructionalVideoController::class, 'togglePublish'])->name('admin.videos.publish');
+    Route::middleware('role:admin,owner,company')->group(function () {
+        Route::get('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'index'])->name('admin.videos.index');
+        Route::get('admin/videos/create', [\App\Http\Controllers\InstructionalVideoController::class, 'create'])->name('admin.videos.create');
+        Route::post('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'store'])->name('admin.videos.store');
+        Route::get('admin/videos/{video}/edit', [\App\Http\Controllers\InstructionalVideoController::class, 'edit'])->name('admin.videos.edit');
+        Route::post('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'update'])->name('admin.videos.update');
+        Route::delete('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'destroy'])->name('admin.videos.destroy');
+        Route::post('admin/videos/{video}/publish', [\App\Http\Controllers\InstructionalVideoController::class, 'togglePublish'])->name('admin.videos.publish');
+    });
 
     // Cleaner API endpoint for property videos
     Route::get('api/property-videos', [\App\Http\Controllers\ResourcesController::class, 'getPropertyVideos'])->name('api.property-videos');
-});
-
-Route::get('/scan-images-now', function () {
-    echo "<pre style='background:#111; color:#0f0; padding:20px; font-family:monospace;'>";
-    echo "=== cPANEL DEEP FILE SCANNER ===\n\n";
-
-    $targetFile = 'kVNfagaJs1LZTG3qNCRpZtF4eI3roD2ga71aUmXF.png';
-    $searchDir = '/home/dzm'; // The root of their cPanel
-
-    echo "Scanning the entire cPanel account ($searchDir) for '$targetFile'...\n";
-    echo "This might take a few seconds...\n\n";
-
-    $cmd = "find " . escapeshellarg($searchDir) . " -name " . escapeshellarg($targetFile) . " 2>/dev/null";
-    // Since shell_exec is disabled, we use PHP's RecursiveDirectoryIterator
-    $foundPaths = [];
-    try {
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($searchDir, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST,
-            \RecursiveIteratorIterator::CATCH_GET_CHILD
-        );
-
-        foreach ($iterator as $file) {
-            // Skip massive directories to prevent timeouts
-            $path = $file->getPathname();
-            if ($file->isDir()) {
-                $dirName = $file->getFilename();
-                if (in_array($dirName, ['vendor', 'node_modules', '.git', 'cache', 'sessions', 'logs', 'framework'])) {
-                    continue;
-                }
-            } else {
-                if ($file->getFilename() === $targetFile) {
-                    $foundPaths[] = $path;
-                }
-            }
-        }
-    } catch (\Exception $e) {
-        // Ignore permission denied errors
-    }
-
-    if (!empty($foundPaths)) {
-        echo "<strong style='color:#ffeb3b; font-size:18px;'>[FOUND IT!] The files are hiding here:</strong>\n\n";
-        foreach ($foundPaths as $fp) {
-            echo $fp . "\n";
-        }
-        echo "\nSOLUTION: Copy all images from that folder into the new storage/app/public/task-media/ folder.\n";
-    } else {
-        echo "<strong style='color:red'>[NOT FOUND]</strong>\n";
-    }
-    echo "</pre>";
 });

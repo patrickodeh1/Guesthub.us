@@ -12,7 +12,7 @@ class RequireRole
     {
         $user = $request->user();
 
-        if (! $user || $user->status !== 'active') {
+        if (! $user || $user->status !== 'active' || ! $user->is_active) {
             abort(403, 'Your account is inactive. Please contact the system owner.');
         }
 

@@ -126,8 +126,15 @@ public function editPage(Property $property, Category $category)
         ]);
     }
 
+    private function authorizeAmenity(Amenity $amenity): void
+    {
+        $u = auth()->user();
+        abort_unless($u && ($u->hasRole('admin') || \App\Models\Property::visibleTo($u)->whereKey($amenity->property_id)->exists()), 403, 'You do not have access to this property.');
+    }
+
     public function editAmenity(Amenity $amenity)
     {
+        $this->authorizeAmenity($amenity);
         return view('admin.content.amenity-form', [
             'property' => $amenity->property,
             'amenity' => $amenity,
@@ -162,6 +169,7 @@ public function editPage(Property $property, Category $category)
 
     public function updateAmenity(Request $request, Amenity $amenity)
     {
+        $this->authorizeAmenity($amenity);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:80'],
@@ -188,6 +196,7 @@ public function editPage(Property $property, Category $category)
 
     public function deleteAmenity(Amenity $amenity)
     {
+        $this->authorizeAmenity($amenity);
         foreach ($amenity->images ?? [] as $image) {
             Storage::disk('public')->delete($image);
         }

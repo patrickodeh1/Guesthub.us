@@ -10,6 +10,7 @@ use App\Models\Property;
 use App\Models\User;
 use App\Models\Task;
 use App\Models\ChecklistItem;
+use App\Services\CleaningJobService;
 
 class ManageSessionController extends Controller
 {
@@ -172,11 +173,92 @@ class ManageSessionController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section'));
+        // Checkouts with no cleaning job on their checkout date (same property + date match as the calendar).
+        $needsCleaner = collect();
+        $bookingByJob = [];
+
+        $scopeIds = $properties->pluck('id');
+        if (! empty($filters['property_id'])) {
+            $scopeIds = $scopeIds->filter(fn ($id) => (int) $id === (int) $filters['property_id'])->values();
+        }
+
+        $showNeeds = $section !== 'past' && ! $hasExplicitDateFilter
+            && empty($filters['housekeeper_id']) && empty($filters['status']);
+
+        if ($showNeeds && $scopeIds->isNotEmpty()) {
+            $horizon = now()->addDays(30)->toDateString();
+            $upcoming = \App\Models\Booking::query()
+                ->notArchived()
+                ->whereNull('cancelled_at')
+                ->whereIn('property_id', $scopeIds)
+                ->whereDate('check_out_date', '>=', $today)
+                ->whereDate('check_out_date', '<=', $horizon)
+                ->orderBy('check_out_date')
+                ->get();
+
+            $coveredKeys = CleaningSession::query()
+                ->whereIn('property_id', $upcoming->pluck('property_id')->unique())
+                ->whereDate('scheduled_date', '>=', $today)
+                ->whereDate('scheduled_date', '<=', $horizon)
+                ->get(['property_id', 'scheduled_date'])
+                ->map(fn ($s) => $s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())
+                ->flip();
+
+            $names = $properties->pluck('name', 'id');
+            foreach ($upcoming as $b) {
+                $d = \Carbon\Carbon::parse($b->check_out_date)->toDateString();
+                $key = $b->property_id . '|' . $d;
+                if ($coveredKeys->has($key)) { continue; }
+                $coveredKeys->put($key, true);
+                $needsCleaner->push([
+                    'booking_id' => $b->getKey(),
+                    'property_id' => $b->property_id,
+                    'property_name' => $names[$b->property_id] ?? 'Property',
+                    'date' => $d,
+                    'guest_name' => $b->guest_name ?: 'Guest',
+                ]);
+            }
+        }
+
+        // Link each listed job to its guest registration (property + checkout date).
+        $datedJobs = collect($sessions->items())->filter(fn ($s) => $s->scheduled_date);
+        if ($datedJobs->isNotEmpty()) {
+            $jobDates = $datedJobs->map(fn ($s) => \Carbon\Carbon::parse($s->scheduled_date)->toDateString());
+            $jobBookings = \App\Models\Booking::query()
+                ->notArchived()
+                ->whereNull('cancelled_at')
+                ->whereIn('property_id', $datedJobs->pluck('property_id')->unique())
+                ->whereDate('check_out_date', '>=', $jobDates->min())
+                ->whereDate('check_out_date', '<=', $jobDates->max())
+                ->get()
+                ->groupBy(fn ($b) => $b->property_id . '|' . \Carbon\Carbon::parse($b->check_out_date)->toDateString());
+            foreach ($datedJobs as $s) {
+                $b = $jobBookings->get($s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())?->first();
+                if ($b) {
+                    $bookingByJob[$s->id] = ['id' => $b->getKey(), 'guest' => $b->guest_name ?: 'Guest'];
+                }
+            }
+        }
+
+        $drawerCleaners = \Illuminate\Support\Facades\DB::table('property_user')
+            ->whereIn('property_id', $properties->pluck('id'))
+            ->get(['property_id', 'user_id'])
+            ->groupBy('property_id')
+            ->map(fn ($r) => $r->pluck('user_id')->map(fn ($i) => (int) $i)->all())
+            ->toArray();
+        $drawerHousekeepers = User::query()->active()
+            ->whereIn('id', collect($drawerCleaners)->flatten()->unique()->values())
+            ->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($h) => ['id' => $h->id, 'name' => $h->name])->values();
+        $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
+
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps'));
     }
 
     public function create(Request $request)
     {
+        return redirect()->route('manage.sessions.index', array_filter(['new' => 1, 'new_property' => $request->query('property_id'), 'new_date' => $request->query('date')]));
+
         $u = Auth::user();
         $acting = $this->actingRole($request);
         abort_if($acting === 'forbidden', 403);
@@ -243,11 +325,9 @@ class ManageSessionController extends Controller
         return view('sessions.manage.create', compact('properties', 'housekeepers', 'propertyCleaners', 'acting', 'preselect'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CleaningJobService $cleaningJobService)
     {
         $u = Auth::user();
-        $acting = $this->actingRole($request);
-        abort_if($acting === 'forbidden', 403);
 
         $data = $request->validate([
             'property_id'    => ['required', 'integer', 'exists:properties,id'],
@@ -255,66 +335,16 @@ class ManageSessionController extends Controller
             'scheduled_date' => ['required', 'date'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'status'         => ['nullable', Rule::in(['pending', 'in_progress', 'completed'])],
-            'checkout_id'    => ['nullable', 'integer', 'exists:property_checkouts,id'],
             'sporadic_tasks' => ['nullable', 'array'],
             'sporadic_tasks.*'=> ['string'],
         ]);
 
+        $cleaningJobService->create($u, $data);
 
-        $property = Property::with(['rooms.tasks', 'propertyTasks'])->find($data['property_id']);
-        $taskCount = ($property?->rooms->flatMap->tasks->count() ?? 0) + ($property?->propertyTasks->count() ?? 0);
-        if ($taskCount < 1) {
-            return back()
-                ->withErrors(['property_id' => 'The selected property has no tasks defined. Please define rooms or property tasks before scheduling a session.'])
-                ->withInput();
+        $rt = (string) $request->input('_return_to');
+        if ($rt !== '' && (parse_url($rt, PHP_URL_HOST) === null || parse_url($rt, PHP_URL_HOST) === $request->getHost())) {
+            return redirect()->to($rt)->with('ok', 'Assignment created.');
         }
-
-
-        // owner may create only for own properties or their owners' properties
-        if ($acting === 'owner') {
-            $isAuthorized = ($property->owner_id === $u->id);
-            if (!$isAuthorized && $u->hasRole('company')) {
-                $isAuthorized = User::where('id', $property->owner_id)->where('owner_id', $u->id)->exists();
-            }
-            abort_unless($isAuthorized, 403, 'You can schedule only for your properties or properties of your owners.');
-        }
-
-        // assignee must be explicitly assigned to the property
-        abort_unless(
-            \Illuminate\Support\Facades\DB::table('property_user')
-                ->where('property_id', $data['property_id'])
-                ->where('user_id', $data['housekeeper_id'])
-                ->exists(),
-            422,
-            'Assignee must be explicitly assigned to this property.'
-        );
-
-        // prevent duplicates (also enforced by unique index)
-        $dup = CleaningSession::query()
-            ->where('property_id', $data['property_id'])
-            ->where('housekeeper_id', $data['housekeeper_id'])
-            ->whereDate('scheduled_date', $data['scheduled_date'])
-            ->exists();
-        if ($dup) {
-            return back()
-                ->withErrors(['scheduled_date' => 'Duplicate assignment for this housekeeper/property/date.'])
-                ->withInput();
-        }
-
-        // Use Property's owner_id so that the actual property owner can see the session
-        // (If Admin creates, they also use property's owner_id)
-        $ownerId = $property->owner_id;
-
-        CleaningSession::create([
-            'property_id'    => $data['property_id'],
-            'owner_id'       => $ownerId,
-            'housekeeper_id' => $data['housekeeper_id'],
-            'scheduled_date' => $data['scheduled_date'],
-            'scheduled_time' => $data['scheduled_time'] ?? null,
-            'status'         => $data['status'] ?? 'pending',
-            'checkout_id'    => $data['checkout_id'] ?? null,
-            'sporadic_tasks' => array_values(array_unique($data['sporadic_tasks'] ?? [])),
-        ]);
 
         return redirect()->route('calendar.index', [
             'month' => \Carbon\Carbon::parse($data['scheduled_date'])->format('Y-m'),
@@ -324,6 +354,8 @@ class ManageSessionController extends Controller
 
     public function edit(Request $request, CleaningSession $session)
     {
+        return redirect()->route('manage.sessions.index');
+
         $u = Auth::user();
         $acting = $this->actingRole($request);
         abort_if($acting === 'forbidden', 403);
@@ -398,77 +430,19 @@ class ManageSessionController extends Controller
         return view('sessions.manage.edit', compact('session', 'properties', 'housekeepers', 'propertyCleaners', 'acting', 'checkouts'));
     }
 
-    public function update(Request $request, CleaningSession $session)
+    public function update(Request $request, CleaningSession $session, CleaningJobService $cleaningJobService)
     {
-        $u = Auth::user();
-        $acting = $this->actingRole($request);
-        abort_if($acting === 'forbidden', 403);
-
-        // Check view/edit permission
-        if ($acting === 'owner') {
-            $isAuthorized = ($session->property->owner_id === $u->id);
-            if (!$isAuthorized && $u->hasRole('company')) {
-                $isAuthorized = User::where('id', $session->property->owner_id)->where('owner_id', $u->id)->exists();
-            }
-            abort_unless($isAuthorized, 403);
-        }
-
         $data = $request->validate([
             'property_id'    => ['required', 'integer', 'exists:properties,id'],
             'housekeeper_id' => ['required', 'integer', 'exists:users,id'],
             'scheduled_date' => ['required', 'date'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'status'         => ['required', Rule::in(['pending', 'in_progress', 'completed'])],
-            'checkout_id'    => ['nullable', 'integer', 'exists:property_checkouts,id'],
             'sporadic_tasks' => ['nullable', 'array'],
             'sporadic_tasks.*'=> ['string'],
         ]);
 
-        $newProperty = Property::find($data['property_id']);
-
-        // Check if user is allowed to assign this new property
-        if ($acting === 'owner') {
-            $isAuthorized = ($newProperty->owner_id === $u->id);
-            if (!$isAuthorized && $u->hasRole('company')) {
-                 $isAuthorized = User::where('id', $newProperty->owner_id)->where('owner_id', $u->id)->exists();
-            }
-            abort_unless($isAuthorized, 403, 'You do not have permission for this property.');
-        }
-
-        // assignee must be explicitly assigned to the property
-        abort_unless(
-            \Illuminate\Support\Facades\DB::table('property_user')
-                ->where('property_id', $data['property_id'])
-                ->where('user_id', $data['housekeeper_id'])
-                ->exists(),
-            422,
-            'Assignee must be explicitly assigned to this property.'
-        );
-
-        $dup = CleaningSession::query()
-            ->where('property_id', $data['property_id'])
-            ->where('housekeeper_id', $data['housekeeper_id'])
-            ->whereDate('scheduled_date', $data['scheduled_date'])
-            ->where('id', '<>', $session->id)
-            ->exists();
-        if ($dup) {
-            return back()
-                ->withErrors(['scheduled_date' => 'Duplicate assignment for this housekeeper/property/date.'])
-                ->withInput();
-        }
-
-        // Always sync the owner_id to the property's owner_id to maintain consistency
-        $data['owner_id'] = $newProperty->owner_id;
-        $data['sporadic_tasks'] = array_values(array_unique($data['sporadic_tasks'] ?? []));
-
-        // When status is changed away from 'completed', reset the stage from 'summary'
-        // so the session doesn't get stuck showing the completed summary screen
-        if ($data['status'] !== 'completed' && $session->status === 'completed' && $session->stage === 'summary') {
-            $data['stage'] = 'rooms';
-            $data['ended_at'] = null;
-        }
-
-        $session->update($data);
+        $cleaningJobService->update($request->user(), $session, $data);
 
         return redirect()->to(
             $request->input('_return_to', route('manage.sessions.index'))
@@ -501,6 +475,7 @@ class ManageSessionController extends Controller
         $u = Auth::user();
         $acting = $this->actingRole($request);
         abort_if($acting === 'forbidden', 403);
+        abort_unless(Property::query()->visibleTo($u)->whereKey($property->id)->exists(), 403);
 
         // 1. Get Room IDs for this property as a primitive array to prevent in_array TypeErrors
         $roomIds = $property->rooms()->pluck('rooms.id')->toArray();
@@ -575,4 +550,3 @@ class ManageSessionController extends Controller
         return response()->json(array_values($formatted));
     }
 }
-

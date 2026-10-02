@@ -1,120 +1,85 @@
 <?php
 
+/*
+|--------------------------------------------------------------------------
+| Unified admin navigation (Guest Hub + Flip Status)
+|--------------------------------------------------------------------------
+| Same structure/keys as the previous file: sections > items > children.
+| Housekeeper-only items are kept so cleaners' menus keep working.
+|
+| TEMPORARY block: the Settings item still has children so nothing becomes
+| unreachable. Delete 'children' and 'collapsible' from it once the tabbed
+| Settings page exists.
+*/
+
+$staff = ['admin', 'owner', 'company'];
+
 return [
     'sections' => [
         [
-            'label' => 'Guest Admin',
+            'label' => 'Main',
             'items' => [
                 [
                     'label' => 'Dashboard',
                     'icon' => 'dashboard',
                     'tour' => 'nav-dashboard',
                     'routes' => [
-                        ['name' => 'admin.dashboard', 'roles' => ['admin', 'owner', 'company']],
+                        ['name' => 'dashboard', 'roles' => $staff],
                     ],
-                    'active' => ['admin.dashboard'],
+                    'active' => ['admin.dashboard', 'dashboard'],
                 ],
                 [
-                    'label' => 'Guests',
+                    'label' => 'Calendar',
                     'icon' => 'calendar',
                     'tour' => 'nav-calendar',
+                    'roles' => array_merge($staff, ['housekeeper']),
                     'routes' => [
-                        ['name' => 'admin.guests.index', 'roles' => ['admin', 'owner', 'company']],
+                        ['name' => 'calendar.index', 'roles' => array_merge($staff, ['housekeeper'])],
+                    ],
+                    'active' => [
+                        'calendar.*',
+                        'manage.sessions.*',
+                        'admin.properties.availability.*',
+                    ],
+                ],
+                [
+                    'label' => 'Guest Registrations',
+                    'icon' => 'users',
+                    'routes' => [
+                        ['name' => 'admin.guests.index', 'roles' => $staff],
                     ],
                     'active' => ['admin.guests.*'],
                 ],
                 [
+                    // Not in your written nav list, but your spec has a main
+                    // Properties page. Remove this item if that was intentional.
                     'label' => 'Properties',
                     'icon' => 'properties',
                     'tour' => 'nav-properties',
                     'routes' => [
-                        ['name' => 'admin.properties.index', 'roles' => ['admin', 'owner', 'company']],
+                        ['name' => 'admin.properties.index', 'roles' => $staff],
                     ],
                     'active' => [
                         'admin.properties.*',
                         'admin.instructions.*',
                         'admin.guest-guide.*',
+                        'properties.*',
                     ],
-                    'collapsible' => true,
-                    'property_children' => [
-                        'route' => 'admin.properties.index',
-                        'roles' => ['admin', 'owner', 'company'],
-                        'actions' => [
-                            [
-                                'label' => 'Check In/Out Details',
-                                'route' => 'admin.instructions.show',
-                                'active' => ['admin.instructions.*'],
-                            ],
-                            [
-                                'label' => 'Guest Guide',
-                                'route' => 'admin.guest-guide.show',
-                                'active' => ['admin.guest-guide.*'],
-                            ],
-                            [
-                                'label' => 'Availability',
-                                'route' => 'admin.properties.availability.index',
-                                'active' => ['admin.properties.availability.*'],
-                            ],
-                            [
-                                'label' => 'Rooms',
-                                'route' => 'properties.rooms.index',
-                                'active' => ['properties.rooms.*'],
-                            ],
-                            [
-                                'label' => 'Tasks',
-                                'route' => 'properties.property-tasks.index',
-                                'active' => ['properties.property-tasks.*', 'properties.tasks.*'],
-                            ],
-                            [
-                                'label' => 'Notifications',
-                                'route' => 'properties.notifications.index',
-                                'active' => ['properties.notifications.*'],
-                            ],
-                        ],
-                    ],
+                    // No property_children: properties are no longer expanded in the menu.
                 ],
-            ],
-        ],
-        [
-            'label' => 'Settings',
-            'items' => [
                 [
-                    'label' => 'Settings',
-                    'icon' => 'settings',
-                    'tour' => 'nav-settings',
-                    'routes' => [
-                        ['name' => 'admin.settings.edit', 'roles' => ['admin']],
-                    ],
-                    'active' => ['admin.settings.*', 'admin.payments.*', 'admin.notices.*'],
+                    'label' => 'Communications',
+                    'icon' => 'contact-guest-services',
+                    'roles' => ['admin', 'owner', 'company', 'manager'],
                     'collapsible' => true,
+                    'active' => ['admin.notifications.*', 'admin.notices.*'],
                     'children' => [
-                        [
-                            'label' => 'General',
-                            'routes' => [
-                                ['name' => 'admin.settings.edit', 'roles' => ['admin']],
-                            ],
-                            'active' => ['admin.settings.edit'],
-                        ],
-                        [
-                            'label' => 'Legal',
-                            'routes' => [
-                                ['name' => 'admin.settings.legal.edit', 'roles' => ['admin']],
-                            ],
-                            'active' => ['admin.settings.legal.*'],
-                        ],
                         [
                             'label' => 'Notifications',
                             'routes' => [
-                                ['name' => 'admin.settings.notifications.edit', 'roles' => ['admin']],
+                                ['name' => 'admin.notifications.index', 'roles' => ['admin', 'owner', 'company', 'manager']],
                             ],
-                            'active' => ['admin.settings.notifications.*'],
-                        ],
-                        [
-                            'label' => 'Payments',
-                            'routes' => [
-                                ['name' => 'admin.payments.index', 'roles' => ['admin', 'manager']],
-                            ],
-                            'active' => ['admin.payments.*'],
+                            'active' => ['admin.notifications.*'],
                         ],
                         [
                             'label' => 'Guest Notices',
@@ -125,113 +90,100 @@ return [
                         ],
                     ],
                 ],
-            ],
-        ],
-        [
-            'label' => 'Cleaning Ops',
-            'items' => [
                 [
-                    'label' => 'Cleaning',
-                    'icon' => 'assignment',
-                    'roles' => ['admin', 'owner', 'company'],
-                    'active' => [
-                        'dashboard',
-                        'assignments.*',
-                        'calendar.*',
-                        'manage.sessions.*',
-                        'sessions.*',
-                        'properties.*',
-                        'resources.*',
-                        'admin.videos.*',
-                        'users.*',
-                        'rooms.*',
-                        'tasks.*',
-                        'training.*',
-                        'reports.training.*',
-                        'reports.familiarity.*',
-                    ],
+                    'label' => 'Media',
+                    'icon' => 'folder',
+                    'roles' => $staff,
                     'collapsible' => true,
+                    'active' => ['admin.media.*', 'admin.categories.*'],
                     'children' => [
                         [
-                            'label' => 'Cleaning Dashboard',
+                            'label' => 'Media Library',
                             'routes' => [
-                                ['name' => 'dashboard', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.media.index', 'roles' => $staff],
                             ],
-                            'active' => ['dashboard'],
+                            'active' => ['admin.media.*'],
                         ],
                         [
-                            'label' => 'Jobs',
+                            'label' => 'Categories',
                             'routes' => [
-                                ['name' => 'manage.sessions.index', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.categories.index', 'roles' => $staff],
                             ],
-                            'active' => ['manage.sessions.index'],
-                        ],
-                        [
-                            'label' => 'New Job',
-                            'routes' => [
-                                ['name' => 'manage.sessions.create', 'roles' => ['admin', 'owner', 'company']],
-                            ],
-                            'active' => ['manage.sessions.create'],
-                        ],
-                        [
-                            'label' => 'Rooms',
-                            'icon' => 'properties',
-                            'routes' => [
-                                ['name' => 'rooms.index', 'roles' => ['admin', 'owner', 'company']],
-                            ],
-                            'active' => ['rooms.*'],
-                        ],
-                        [
-                            'label' => 'Tasks',
-                            'icon' => 'assignment',
-                            'routes' => [
-                                ['name' => 'tasks.index', 'roles' => ['admin', 'owner', 'company']],
-                            ],
-                            'active' => ['tasks.*'],
+                            'active' => ['admin.categories.*'],
                         ],
                     ],
                 ],
                 [
-                    'label' => 'Training',
-                    'icon' => 'guide',
-                    'roles' => ['admin', 'owner', 'company', 'manager', 'staff', 'viewer', 'housekeeper'],
-                    'routes' => [
-                        ['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']],
-                        ['name' => 'training.index', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['admin.videos.*', 'training.*', 'reports.training.*', 'reports.familiarity.*'],
+                    'label' => 'Administration',
+                    'icon' => 'logs',
+                    'roles' => ['admin', 'owner', 'company', 'manager'],
                     'collapsible' => true,
+                    'active' => [
+                        'admin.users.*',
+                        'users.*',
+                        'admin.early-access-leads.*',
+                        'admin.logs.*',
+                        'activity.*',
+                        'admin.security',
+                        'admin.guide',
+                        'reports.training.*',
+                        'reports.familiarity.*',
+                    ],
                     'children' => [
                         [
-                            'label' => 'Videos',
+                            'label' => 'Users',
                             'routes' => [
-                                ['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']],
-                                ['name' => 'resources.videos', 'roles' => ['housekeeper']],
+                                ['name' => 'admin.users.index', 'roles' => ['admin']],
                             ],
-                            'active' => ['admin.videos.*', 'resources.videos'],
+                            'active' => ['admin.users.*', 'users.*'],
                         ],
                         [
-                            'label' => 'Training Hub',
+                            'label' => 'Early Access Signups',
                             'routes' => [
-                                ['name' => 'training.index', 'roles' => ['housekeeper']],
+                                ['name' => 'admin.early-access-leads.index', 'roles' => ['admin']],
                             ],
-                            'active' => ['training.*'],
+                            'active' => ['admin.early-access-leads.*'],
                         ],
                         [
-                            'label' => 'Training Report',
+                            'label' => 'Activity Logs',
                             'routes' => [
-                                ['name' => 'reports.training.index', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.logs.index', 'roles' => ['admin', 'manager', 'owner']],
                             ],
-                            'active' => ['reports.training.*'],
+                            'active' => ['admin.logs.*', 'activity.*'],
                         ],
                         [
-                            'label' => 'Familiarity Report',
+                            'label' => 'Security',
                             'routes' => [
-                                ['name' => 'reports.familiarity.index', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.security', 'roles' => ['admin', 'owner', 'company']],
                             ],
-                            'active' => ['reports.familiarity.*'],
+                            'active' => ['admin.security'],
+                        ],
+                        [
+                            'label' => 'Admin Guide',
+                            'routes' => [
+                                ['name' => 'admin.guide', 'roles' => $staff],
+                            ],
+                            'active' => ['admin.guide'],
                         ],
                     ],
+                ],
+            ],
+        ],
+
+        // Housekeeper-only menu (unchanged behavior). Admin-facing Cleaning,
+        // Training, Jobs, New Job, Reports links were removed per the spec.
+        [
+            'label' => 'My Work',
+            'items' => [
+                [
+                    'label' => 'Dashboard',
+                    'icon' => 'dashboard',
+                    'roles' => ['housekeeper'],
+                    'exclude_roles' => ['admin'],
+                    'routes' => [
+                        ['name' => 'dashboard', 'roles' => ['housekeeper']],
+                    ],
+                    'active' => ['dashboard'],
                 ],
                 [
                     'label' => 'My Jobs',
@@ -244,24 +196,24 @@ return [
                     'active' => ['assignments.*', 'sessions.*'],
                 ],
                 [
-                    'label' => 'Calendar',
-                    'icon' => 'calendar',
+                    'label' => 'Training',
+                    'icon' => 'guide',
                     'roles' => ['housekeeper'],
                     'exclude_roles' => ['admin'],
                     'routes' => [
-                        ['name' => 'calendar.index', 'roles' => ['housekeeper']],
+                        ['name' => 'training.index', 'roles' => ['housekeeper']],
                     ],
-                    'active' => ['calendar.*'],
+                    'active' => ['training.*'],
                 ],
                 [
-                    'label' => 'Sessions',
-                    'icon' => 'assignment',
+                    'label' => 'Videos',
+                    'icon' => 'guide',
                     'roles' => ['housekeeper'],
                     'exclude_roles' => ['admin'],
                     'routes' => [
-                        ['name' => 'sessions.index', 'roles' => ['housekeeper']],
+                        ['name' => 'resources.videos', 'roles' => ['housekeeper']],
                     ],
-                    'active' => ['sessions.*'],
+                    'active' => ['resources.videos'],
                 ],
                 [
                     'label' => 'Photos',
@@ -283,71 +235,43 @@ return [
                     ],
                     'active' => ['resources.guides'],
                 ],
-            ],
-        ],
-        [
-            'label' => 'Account',
-            'items' => [
                 [
                     'label' => 'My Account',
                     'icon' => 'users',
+                    'roles' => ['housekeeper', 'manager', 'staff', 'viewer'],
+                    'exclude_roles' => ['admin'],
                     'routes' => [
-                        ['name' => 'profile.edit', 'roles' => ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper']],
+                        ['name' => 'profile.edit', 'roles' => ['housekeeper', 'manager', 'staff', 'viewer']],
                     ],
-                    'active' => ['profile.*', 'admin.security'],
+                    'active' => ['profile.*'],
                 ],
             ],
         ],
+
+        // Settings gear: put this section last / pinned to the bottom in the sidebar Blade.
         [
-            'label' => 'Administration',
+            'label' => '',
             'items' => [
                 [
-                    'label' => 'Manage Categories',
-                    'icon' => 'categories',
+                    'label' => 'Settings',
+                    'icon' => 'settings',
+                    'tour' => 'nav-settings',
                     'routes' => [
-                        ['name' => 'admin.categories.index', 'roles' => ['admin', 'owner', 'company']],
+                        ['name' => 'admin.settings.edit', 'roles' => ['admin']],
                     ],
-                    'active' => ['admin.categories.*'],
-                ],
-                [
-                    'label' => 'Media Library',
-                    'icon' => 'folder',
-                    'routes' => [
-                        ['name' => 'admin.media.index', 'roles' => ['admin', 'owner', 'company']],
+                    'active' => ['admin.settings.*', 'admin.payments.*', 'admin.videos.*', 'rooms.*', 'tasks.*', 'resources.*'],
+
+                    // TEMPORARY: remove once the tabbed Settings page exists.
+                    'collapsible' => true,
+                    'children' => [
+                        ['label' => 'General', 'routes' => [['name' => 'admin.settings.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.edit']],
+                        ['label' => 'Cleaning Rooms', 'routes' => [['name' => 'rooms.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['rooms.*']],
+                        ['label' => 'Cleaning Tasks', 'routes' => [['name' => 'tasks.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['tasks.*']],
+                        ['label' => 'Video Library', 'routes' => [['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['admin.videos.*']],
+                        ['label' => 'Notification Settings', 'routes' => [['name' => 'admin.settings.notifications.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.notifications.*']],
+                        ['label' => 'Payments', 'routes' => [['name' => 'admin.payments.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.payments.*']],
+                        ['label' => 'Legal', 'routes' => [['name' => 'admin.settings.legal.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.legal.*']],
                     ],
-                    'active' => ['admin.media.*'],
-                ],
-                [
-                    'label' => 'Users',
-                    'icon' => 'users',
-                    'routes' => [
-                        ['name' => 'admin.users.index', 'roles' => ['admin']],
-                    ],
-                    'active' => ['admin.users.*'],
-                ],
-                [
-                    'label' => 'Early Access Signups',
-                    'icon' => 'users',
-                    'routes' => [
-                        ['name' => 'admin.early-access-leads.index', 'roles' => ['admin']],
-                    ],
-                    'active' => ['admin.early-access-leads.*'],
-                ],
-                [
-                    'label' => 'Activity Logs',
-                    'icon' => 'logs',
-                    'routes' => [
-                        ['name' => 'admin.logs.index', 'roles' => ['admin', 'manager', 'owner']],
-                    ],
-                    'active' => ['admin.logs.*', 'activity.*'],
-                ],
-                [
-                    'label' => 'Admin Guide',
-                    'icon' => 'guide',
-                    'routes' => [
-                        ['name' => 'admin.guide', 'roles' => ['admin', 'owner', 'company']],
-                    ],
-                    'active' => ['admin.guide'],
                 ],
             ],
         ],

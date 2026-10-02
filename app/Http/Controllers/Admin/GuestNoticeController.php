@@ -23,7 +23,7 @@ class GuestNoticeController extends Controller
     {
         return view('admin.notices.form', [
             'notice' => new GuestNotice(['active' => true, 'once_per_booking' => true, 'type' => 'popup', 'phase' => 'checkin', 'day_scope' => 'any']),
-            'properties' => Property::orderBy('name')->get(),
+            'properties' => Property::visibleTo(auth()->user())->orderBy('name')->get(),
         ]);
     }
 
@@ -44,7 +44,7 @@ class GuestNoticeController extends Controller
     {
         return view('admin.notices.form', [
             'notice' => $notice,
-            'properties' => Property::orderBy('name')->get(),
+            'properties' => Property::visibleTo(auth()->user())->orderBy('name')->get(),
         ]);
     }
 
@@ -83,6 +83,11 @@ class GuestNoticeController extends Controller
             'requires_parking' => ['nullable', 'in:any,yes,no'],
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:1000'],
         ]);
+
+        if (! empty($data['property_id']) && ! auth()->user()->hasRole('admin')
+            && ! Property::visibleTo(auth()->user())->whereKey($data['property_id'])->exists()) {
+            abort(403, 'You cannot create notices for that property.');
+        }
 
         $data['active'] = $request->boolean('active');
         $data['once_per_booking'] = $request->boolean('once_per_booking');

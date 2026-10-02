@@ -76,6 +76,9 @@ class MediaController extends Controller
 
     public function destroyFile(MediaFile $file)
     {
+if ($this->isInUse($file->path)) {
+            return back()->with('error', 'This image is in use in a category, amenity, instruction step, property or setting, so it was not deleted.');
+        }
         \Illuminate\Support\Facades\Storage::disk('public')->delete($file->path);
         $file->delete();
 
@@ -121,6 +124,15 @@ class MediaController extends Controller
         if (!empty($data['folder_ids'])) {
             // Prevent moving a folder into itself
             $folderIds = array_filter($data['folder_ids'], fn ($id) => $id != $targetFolderId);
+            if ($targetFolderId) {
+                $blocked = [];
+                $cursor = MediaFolder::find($targetFolderId);
+                while ($cursor) {
+                    $blocked[] = $cursor->id;
+                    $cursor = $cursor->parent_id ? MediaFolder::find($cursor->parent_id) : null;
+                }
+                $folderIds = array_filter($folderIds, fn ($id) => ! in_array((int) $id, $blocked, true));
+            }
             MediaFolder::whereIn('id', $folderIds)->update(['parent_id' => $targetFolderId]);
         }
 
@@ -137,18 +149,46 @@ class MediaController extends Controller
         ]);
 
         if (!empty($data['file_ids'])) {
+            $kept = 0;
             $files = MediaFile::whereIn('id', $data['file_ids'])->get();
             foreach ($files as $file) {
+                if ($this->isInUse($file->path)) {
+                    $kept++;
+                    continue;
+                }
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($file->path);
+                $file->delete();
             }
-            MediaFile::whereIn('id', $data['file_ids'])->delete();
         }
 
         if (!empty($data['folder_ids'])) {
             MediaFolder::whereIn('id', $data['folder_ids'])->get()->each->delete();
         }
 
-        return back()->with('success', 'Selected items deleted.');
+        return back()->with('success', 'Selected items deleted.' . (! empty($kept) ? " {$kept} image(s) in use were kept." : ''));
+    }
+
+    private function isInUse(string $path): bool
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $checks = [
+            ['categories', ['icon', 'guest_icon', 'header_image']],
+            ['category_pages', ['image_1', 'image_2', 'image_3']],
+            ['instruction_steps', ['image_path']],
+            ['instruction_step_images', ['image_path']],
+            ['properties', ['header_image', 'photo_path']],
+            ['settings', ['value']],
+        ];
+        foreach ($checks as [$table, $cols]) {
+            foreach ($cols as $col) {
+                if ($db::table($table)->where($col, $path)->exists()) {
+                    return true;
+                }
+            }
+        }
+
+        return $db::table('amenities')->where('images', 'like', '%' . str_replace('/', '\\/', $path) . '%')->exists()
+            || $db::table('amenities')->where('images', 'like', '%' . $path . '%')->exists();
     }
 
     private function breadcrumb(?MediaFolder $folder): array

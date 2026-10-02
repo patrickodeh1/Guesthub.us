@@ -32,6 +32,11 @@ class NotificationLog extends Model
         return $this->belongsTo(Property::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function cleaningSession(): BelongsTo
     {
         return $this->belongsTo(CleaningSession::class);

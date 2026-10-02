@@ -134,23 +134,28 @@ class PropertyNotificationSettingsController extends Controller
         abort_unless($log->property_id === $property->id, 404);
 
         try {
-            \Illuminate\Support\Facades\Log::channel('stack')->info("[SMS RESENT] To: {$log->recipient_phone}\n{$log->message_content}");
+            $result = \App\Services\SmsNotificationService::deliver($log->recipient_phone, $log->message_content, 'cleaning');
 
             $newLog = NotificationLog::create([
                 'property_id' => $property->id,
+                'user_id' => $log->user_id,
                 'cleaning_session_id' => $log->cleaning_session_id,
                 'notification_type' => $log->notification_type,
                 'recipient_phone' => $log->recipient_phone,
                 'message_content' => $log->message_content,
-                'delivery_status' => 'sent',
+                'delivery_status' => $result['status'],
+                'error_message' => $result['error'],
                 'sent_at' => now(),
             ]);
 
+            $ok = $result['status'] === 'sent';
+            $msg = $ok ? 'Notification resent.' : 'Resend failed: '.$result['error'];
+
             if ($request->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'Notification resent.', 'log' => $newLog]);
+                return response()->json(['success' => $ok, 'message' => $msg, 'log' => $newLog], $ok ? 200 : 422);
             }
 
-            return back()->with('success', 'Notification resent.');
+            return $ok ? back()->with('success', $msg) : back()->withErrors(['resend' => $msg]);
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'Resend failed: ' . $e->getMessage()], 500);

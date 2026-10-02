@@ -73,8 +73,20 @@ class SessionController extends Controller
     /**
      * Get session data as JSON for API requests
      */
+    private function assertSessionAccess(CleaningSession $session): void
+    {
+        $u = auth()->user();
+        $ok = $u && (
+            $u->hasRole('admin')
+            || (int) $session->housekeeper_id === (int) $u->id
+            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+        );
+        abort_unless($ok, 403, 'You do not have access to this cleaning session.');
+    }
+
     public function getData(CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         if (!$session->property) {
             return response()->json(['success' => false, 'message' => 'Property not found.'], 404);
         }
@@ -775,6 +787,7 @@ class SessionController extends Controller
 
     public function show(CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         // Ensure report token exists for shareable report URLs (safe if method is missing)
         if (method_exists($session, 'ensureReportToken')) {
             $session->ensureReportToken();
@@ -951,6 +964,7 @@ class SessionController extends Controller
 
     public function completeOnboarding(Request $request, CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         $completion = ResourceCompletion::firstOrCreate(
             ['user_id' => auth()->id(), 'property_id' => $session->property_id]
         );
@@ -988,6 +1002,7 @@ class SessionController extends Controller
 
     public function start(StartSessionRequest $request, CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         $lat = (float) $request->validated('latitude');
         $lng = (float) $request->validated('longitude');
 
@@ -1259,6 +1274,7 @@ class SessionController extends Controller
      */
     public function advanceStage(Request $request, CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         try {
             // Simple authorization check
             if (!Auth::check()) {
@@ -1400,6 +1416,7 @@ class SessionController extends Controller
      */
     public function goBackStage(Request $request, CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         try {
             if (!Auth::check()) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -1707,6 +1724,7 @@ class SessionController extends Controller
      */
     public function saveNote(Request $request, CleaningSession $session)
     {
+        $this->assertSessionAccess($session);
         try {
             // Authorize - only the assigned housekeeper can save notes
             // if ($session->housekeeper_id !== auth()->id()) {

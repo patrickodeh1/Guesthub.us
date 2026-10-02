@@ -99,10 +99,10 @@ class InstructionStepController extends Controller
     {
         $propertyParam = $request->get('property_id');
         $type = $request->get('type', 'checkin');
-        $selectedProperty = Property::findOrFail($propertyParam);
+        $selectedProperty = Property::visibleTo($request->user())->findOrFail($propertyParam);
 
         return view('admin.instructions.form', [
-            'properties' => Property::orderBy('name')->get(),
+            'properties' => Property::visibleTo(auth()->user())->orderBy('name')->get(),
             'selectedProperty' => $selectedProperty,
             'type' => $type,
             'step' => new InstructionStep(['type' => $type, 'property_id' => $selectedProperty->id]),
@@ -127,8 +127,9 @@ class InstructionStepController extends Controller
 
     public function edit(InstructionStep $instruction)
     {
+        abort_unless(auth()->user()->hasRole('admin') || \App\Models\Property::visibleTo(auth()->user())->whereKey($instruction->property_id)->exists(), 403, 'You do not have access to this property.');
         return view('admin.instructions.form', [
-            'properties' => Property::orderBy('name')->get(),
+            'properties' => Property::visibleTo(auth()->user())->orderBy('name')->get(),
             'selectedProperty' => $instruction->property,
             'type' => $instruction->type,
             'step' => $instruction->load('images'),
@@ -137,6 +138,7 @@ class InstructionStepController extends Controller
 
     public function update(Request $request, InstructionStep $instruction)
     {
+        abort_unless(auth()->user()->hasRole('admin') || \App\Models\Property::visibleTo(auth()->user())->whereKey($instruction->property_id)->exists(), 403, 'You do not have access to this property.');
         $data = $this->validated($request, $instruction);
 
         $instruction->update($data);
@@ -150,6 +152,7 @@ class InstructionStepController extends Controller
 
     public function destroy(InstructionStep $instruction)
     {
+        abort_unless(auth()->user()->hasRole('admin') || \App\Models\Property::visibleTo(auth()->user())->whereKey($instruction->property_id)->exists(), 403, 'You do not have access to this property.');
         $propertyId = $instruction->property_id;
         $type = $instruction->type;
 
@@ -164,13 +167,15 @@ class InstructionStepController extends Controller
     {
         $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['integer']]);
         foreach ($request->ids as $order => $id) {
-            InstructionStep::where('id', $id)->update(['sort_order' => $order]);
+            InstructionStep::where('id', $id)->when(! auth()->user()->hasRole('admin'), fn ($q) => $q->whereIn('property_id', \App\Models\Property::visibleTo(auth()->user())->select('id')))->update(['sort_order' => $order]);
         }
         return response()->json(['ok' => true]);
     }
 
     public function destroyImage(InstructionStepImage $image)
     {
+        $stepProperty = $image->instructionStep?->property_id;
+        abort_unless(auth()->user()->hasRole('admin') || ($stepProperty && \App\Models\Property::visibleTo(auth()->user())->whereKey($stepProperty)->exists()), 403, 'You do not have access to this property.');
         \Illuminate\Support\Facades\Storage::disk('public')->delete($image->image_path);
         $image->delete();
         return response()->json(['ok' => true]);
@@ -226,6 +231,13 @@ class InstructionStepController extends Controller
         ]);
 
         $data['property_id'] = $data['property_id'] ?: null;
+        if (! $data['property_id'] && ! auth()->user()->hasRole('admin')) {
+            abort(403, 'Only administrators can create steps that apply to every property.');
+        }
+        if ($data['property_id'] && ! auth()->user()->hasRole('admin')
+            && ! \App\Models\Property::visibleTo(auth()->user())->whereKey($data['property_id'])->exists()) {
+            abort(403, 'You do not have access to this property.');
+        }
 
         if ($request->hasFile('image_path')) {
             $originalFile = $request->file('image_path');

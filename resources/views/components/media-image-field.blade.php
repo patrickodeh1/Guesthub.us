@@ -13,10 +13,7 @@
 @endphp
 
 <div>
-    <span class="field-label mb-1 block">{{ $label }}</span>
-    @if($help)
-        <p class="field-help mb-2">{{ $help }}</p>
-    @endif
+    <span class="field-label mb-1 block">{{ $label }}@if($help)<x-help-tip :text="$help" />@endif</span>
 
     <img id="{{ $previewId }}" src="{{ $previewUrl }}" alt="" class="{{ $previewClass }} {{ $previewUrl ? '' : 'hidden' }}">
 

@@ -12,8 +12,20 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
 {
+    private function assertSessionAccess(CleaningSession $session): void
+    {
+        $u = auth()->user();
+        $ok = $u && (
+            $u->hasRole('admin')
+            || (int) $session->housekeeper_id === (int) $u->id
+            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+        );
+        abort_unless($ok, 403, 'You do not have access to this cleaning session.');
+    }
+
     public function store(Request $request, CleaningSession $session, $roomId)
     {
+        $this->assertSessionAccess($session);
         $request->validate([
             'photos.*' => ['required', 'image'],
         ]);
@@ -100,6 +112,7 @@ class PhotoController extends Controller
 
     public function destroy(CleaningSession $session, RoomPhoto $photo)
     {
+        $this->assertSessionAccess($session);
         // Verify the photo belongs to this session
         if ($photo->session_id !== $session->id) {
             return response()->json(['success' => false, 'message' => 'Photo not found'], 404);

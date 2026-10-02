@@ -38,9 +38,7 @@ class PropertyStoreRequest extends FormRequest
             'longitude'    => ['nullable', 'numeric', 'between:-180,180'],
             'geo_radius_m' => ['nullable', 'integer', 'min:50'],
             'photo'        => ['nullable', 'image'],
-            'ical_url'     => ['nullable', 'url', 'max:1000'],
             'airbnb_ical_url' => ['nullable', 'url', 'max:1000'],
-            'vrbo_ical_url'   => ['nullable', 'url', 'max:1000'],
 
             'timezone'     => ['required', 'string', 'timezone:all'],
 

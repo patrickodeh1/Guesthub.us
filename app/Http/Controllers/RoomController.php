@@ -17,8 +17,11 @@ class RoomController extends Controller
         // We hide property-specific cloned rooms to prevent the admin list from being flooded.
         $rooms = Room::withCount('tasks')
             ->withCount('properties')
-            ->with(['properties' => function ($query) {
+            ->with(['properties' => function ($query) use ($request) {
                 $query->select('properties.id', 'properties.name', 'properties.address');
+                if (! $request->user()->hasRole('admin')) {
+                    $query->whereIn('properties.id', \App\Models\Property::visibleTo($request->user())->select('id'));
+                }
             }])
             ->where(function ($q) {
                 // Show it if it's explicitly a default template

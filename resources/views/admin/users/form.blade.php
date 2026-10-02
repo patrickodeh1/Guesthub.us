@@ -38,10 +38,10 @@
                     </div>
                     <div>
                         <label class="field-label" for="phone">Phone number</label>
-                        <input id="phone" name="phone" type="tel"
-                               value="{{ old('phone', $user->phone) }}"
+                        <input id="phone" name="phone_number" type="tel"
+                               value="{{ old('phone_number', $user->phone_number ?: $user->phone) }}"
                                class="input" placeholder="+1 555 000 0000">
-                        @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                        @error('phone_number') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="field-label" for="role">Role <span class="text-red-500">*</span></label>
@@ -66,6 +66,70 @@
                     <textarea id="notes" name="notes" rows="3"
                               class="textarea" placeholder="Optional notes about this team member…">{{ old('notes', $user->notes) }}</textarea>
                     @error('notes') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
+            {{-- Training --}}
+            <div class="card card-pad">
+                <h3 class="section-title">Training</h3>
+                <p class="section-copy">Applies to housekeepers: how many times they must view an instruction before they count as familiar with it.</p>
+                <div class="mt-4 max-w-xs">
+                    <label class="field-label" for="required_instruction_views">Required instruction views</label>
+                    <input id="required_instruction_views" name="preferences[required_instruction_views]" type="number" min="1" max="100"
+                           value="{{ old('preferences.required_instruction_views', $user->preferences['required_instruction_views'] ?? 3) }}" class="input">
+                    @error('preferences.required_instruction_views') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+            </div>
+
+            {{-- Assignments --}}
+            @php
+                $assignOwners = \App\Models\User::whereHas('roles', fn ($q) => $q->whereIn('name', ['owner', 'company']))
+                    ->when($user->exists, fn ($q) => $q->where('id', '!=', $user->id))
+                    ->orderBy('name')->get();
+                $assignProperties = \App\Models\Property::active()->orderBy('name')->get();
+                $selectedProperties = array_map('strval', (array) old('property_ids', $user->exists ? $user->properties->pluck('id')->all() : []));
+                $selectedOwners = array_map('strval', (array) old('owner_ids', $user->exists ? $user->managedOwners->pluck('id')->all() : []));
+            @endphp
+            <div class="card card-pad">
+                <h3 class="section-title">Assignments</h3>
+                <p class="section-copy">Cleaners can only be scheduled on the properties ticked here. Owner links apply to housekeepers and companies.</p>
+                <input type="hidden" name="assignments_submitted" value="1">
+                <div class="mt-5">
+                    <label class="field-label" for="owner_id">Belongs to (owner or company)</label>
+                    <select id="owner_id" name="owner_id" class="input">
+                        <option value="">None / direct</option>
+                        @foreach($assignOwners as $o)
+                            <option value="{{ $o->id }}" @selected((string) old('owner_id', $user->owner_id) === (string) $o->id)>{{ $o->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('owner_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                @if($assignOwners->isNotEmpty())
+                    <div class="mt-4">
+                        <p class="field-label">Also works for</p>
+                        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach($assignOwners as $o)
+                                <label class="flex items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" name="owner_ids[]" value="{{ $o->id }}" class="rounded border-slate-300" @checked(in_array((string) $o->id, $selectedOwners, true))>
+                                    {{ $o->name }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+                <div class="mt-4">
+                    <p class="field-label">Assigned properties</p>
+                    <div class="mt-2 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+                        @forelse($assignProperties as $p)
+                            <label class="flex items-center gap-2 text-sm text-slate-700">
+                                <input type="checkbox" name="property_ids[]" value="{{ $p->id }}" class="rounded border-slate-300" @checked(in_array((string) $p->id, $selectedProperties, true))>
+                                {{ $p->name }}
+                            </label>
+                        @empty
+                            <p class="text-sm text-slate-500">No active properties yet.</p>
+                        @endforelse
+                    </div>
+                    @error('property_ids.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
             </div>
 
@@ -99,14 +163,15 @@
                 </button>
                 <a href="{{ route('admin.users.index') }}" class="btn-ghost">Cancel</a>
                 @if($editing && $user->id !== auth()->id() && ! $user->isAdmin())
-                    <form method="post" action="{{ route('admin.users.destroy', $user) }}" class="ml-auto"
-                          onsubmit="return confirm('Delete this account permanently? This cannot be undone.')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn-danger">Delete account</button>
-                    </form>
+                    <button type="submit" form="delete-user-form" class="btn-danger ml-auto" onclick="return confirm('Delete this account permanently? This cannot be undone.')">Delete account</button>
                 @endif
             </div>
         </form>
+        @if($editing && $user->id !== auth()->id() && ! $user->isAdmin())
+            <form id="delete-user-form" method="post" action="{{ route('admin.users.destroy', $user) }}" class="hidden">
+                @csrf @method('DELETE')
+            </form>
+        @endif
 
         {{-- Sidebar info --}}
         <aside class="grid gap-4 self-start">

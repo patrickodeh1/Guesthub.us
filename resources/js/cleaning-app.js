@@ -73,19 +73,8 @@ document.addEventListener('alpine:init', () => {
             })
         }
 
-        const setTheme = (value) => {
-            window.localStorage.setItem('dark', value)
-        }
-        const isDarkMode = document.documentElement.classList.contains('dark')
         return {
             init,
-            isDarkMode,
-            toggleTheme() {
-                this.isDarkMode = !this.isDarkMode
-                setTheme(this.isDarkMode)
-                document.documentElement.classList.toggle('dark', this.isDarkMode)
-                document.documentElement.style.colorScheme = this.isDarkMode ? 'dark' : 'light'
-            },
             isSidebarOpen: window.innerWidth > 1024,
             _sidebarManuallyOpened: false,
             _lastWindowHeight: window.innerHeight,
