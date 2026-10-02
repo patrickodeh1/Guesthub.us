@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ConflictsDetected;
 use App\Http\Controllers\Controller;
 use App\Models\CleaningSession;
 use App\Models\Property;
@@ -22,6 +23,7 @@ class CalendarAssignController extends Controller
             'housekeeper_id' => ['required', 'integer', 'exists:users,id'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'session_id' => ['nullable', 'integer', 'exists:cleaning_sessions,id'],
+            'confirm_conflicts' => ['nullable', 'boolean'],
         ]);
 
         $actor = $request->user();
@@ -40,8 +42,17 @@ class CalendarAssignController extends Controller
             abort_unless($session, 404, 'That cleaning job no longer exists.');
         }
 
+        $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
+        $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $session) : [];
+
         try {
-            $saved = $cleaningJobService->quickAssign($actor, $data, $session);
+            $saved = $cleaningJobService->quickAssign($actor, $data, $session, $confirmed);
+        } catch (ConflictsDetected $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'needs_confirmation' => true,
+                'conflicts' => $e->conflicts(),
+            ], 409);
         } catch (ValidationException|HttpExceptionInterface $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -62,6 +73,7 @@ class CalendarAssignController extends Controller
                 'subject_id' => $saved->id,
                 'severity' => 'success',
                 'new_values' => [
+                    'conflicts_overridden' => array_column($overridden, 'message'),
                     'housekeeper_id' => $saved->housekeeper_id,
                     'scheduled_date' => $saved->scheduled_date->toDateString(),
                     'scheduled_time' => $saved->scheduled_time?->toDateTimeString(),

@@ -264,7 +264,7 @@
                                                 <div class="mt-0.5 flex flex-wrap items-center gap-1 text-gray-500">
                                                     <span>{{ $b['property'] }}</span>
                                                     @hasanyrole('admin|owner|company')<button type="button" class="rounded border border-gray-300 px-1 text-[10px] text-gray-700 hover:bg-gray-100" @click="$dispatch('open-guest', @js(['url' => route('admin.guests.show', $b['id']).'?embed=1', 'title' => $b['guest']]))">Edit</button>@endhasanyrole
-                                                    @if ($b['conflict'])<span class="rounded bg-red-600 px-1 text-[10px] font-bold text-white">Conflict</span>@endif
+                                                    @if ($b['conflict'])<span title="{{ collect($b['conflict_with'] ?? [])->map(fn ($c) => 'Clashes with '.$c['guest'].' ('.$c['stay'].'), shared '.$c['shared'])->implode('; ') }}" class="rounded bg-red-600 px-1 text-[10px] font-bold text-white">Conflict</span>@endif
                                                     @if ($b['turnover'])<span class="rounded bg-amber-100 px-1 text-[10px] font-semibold text-amber-800">Back-to-back</span>@endif
                                                 </div>
                                             </div>
@@ -386,7 +386,7 @@
                                         <div class="mt-0.5 truncate text-xs text-gray-500">{{ $item['booking']->property?->name }}</div>
                                         @hasanyrole('admin|owner|company')<button type="button" class="mt-1 rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-100" @click="$dispatch('open-guest', @js(['url' => route('admin.guests.show', $item['booking']).'?embed=1', 'title' => $item['booking']->guest_name ?: 'Guest']))">Edit</button>@endhasanyrole
                                         <div class="text-xs text-gray-500">{{ $item['booking']->check_in_date->format('M j') }}@if ($item['in_time']) &middot; {{ $item['in_time'] }}@endif &rarr; {{ $item['booking']->check_out_date->format('M j') }}@if ($item['out_time']) &middot; {{ $item['out_time'] }}@endif</div>
-                                        @if ($item['conflict'])<div class="mt-1 text-xs font-bold text-red-700">Overlaps another booking on this property</div>@endif
+                                        @if ($item['conflict'])<div class="mt-1 text-xs font-bold text-red-700">Overlaps another booking on this property</div>@foreach (($item['conflict_with'] ?? []) as $cw)<div class="text-xs text-red-700">Clashes with {{ $cw['guest'] }} ({{ $cw['stay'] }}). Shared: {{ $cw['shared'] }}</div>@endforeach @endif
                                         @if ($item['turnover'] && !$item['conflict'])<div class="mt-1 text-xs font-semibold text-amber-700">Back-to-back: same-day turnover on this property</div>@endif
                                     </li>
                                 @endforeach
@@ -503,10 +503,20 @@
                 <label for="cal-assign-time" class="field-label">Scheduled time</label>
                 <input id="cal-assign-time" type="time" class="input mt-1 w-full" x-model="form.scheduled_time">
             </div>
+            <div x-show="conflictsActive" x-cloak role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p class="font-semibold">This assignment has conflicts:</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    <template x-for="c in conflicts" :key="c.message"><li x-text="c.message"></li></template>
+                </ul>
+                <p class="mt-2 text-amber-800">Review them, then choose Assign anyway or change the cleaner, date or time.</p>
+            </div>
             <p x-show="error" x-text="error" role="alert" class="text-sm font-medium text-red-700"></p>
             <div class="flex justify-end gap-3">
                 <button type="button" class="btn-secondary" @click="closeAssign()" :disabled="saving">Cancel</button>
-                <button type="submit" class="btn-primary" :disabled="saving || !form.housekeeper_id || form.cleaners.length === 0">
+                <button type="button" class="btn-primary" x-show="conflictsActive" @click="submit(true)" :disabled="saving">
+                    <span x-text="saving ? 'Saving...' : 'Assign anyway'"></span>
+                </button>
+                <button type="submit" class="btn-primary" x-show="!conflictsActive" :disabled="saving || !form.housekeeper_id || form.cleaners.length === 0">
                     <span x-text="saving ? 'Saving...' : 'Save assignment'"></span>
                 </button>
             </div>
@@ -735,6 +745,10 @@
                             el.disabled = false;
                         }
                     },
+                    conflicts: [],
+                    conflictKey: '',
+                    conflictFormKey() { return JSON.stringify([this.form.property_id, this.form.date, this.form.housekeeper_id, this.form.scheduled_time || '']); },
+                    get conflictsActive() { return this.conflicts.length > 0 && this.conflictKey === this.conflictFormKey(); },
                     async refresh() {
                         const response = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
                         const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
@@ -743,9 +757,10 @@
                         if (!fresh || !current) { window.location.reload(); return; }
                         current.innerHTML = fresh.innerHTML;
                     },
-                    async submit() {
+                    async submit(confirm = false) {
                         this.saving = true;
                         this.error = '';
+                        this.conflicts = [];
                         try {
                             const response = await fetch('{{ route('admin.cleaning-jobs.calendar-assign') }}', {
                                 method: 'POST',
@@ -760,10 +775,16 @@
                                     scheduled_date: this.form.date,
                                     session_id: this.form.session_id,
                                     housekeeper_id: this.form.housekeeper_id,
-                                    scheduled_time: this.form.scheduled_time || null
+                                    scheduled_time: this.form.scheduled_time || null,
+                                    confirm_conflicts: confirm
                                 })
                             });
                             const result = await response.json();
+                            if (response.status === 409 && result.needs_confirmation) {
+                                this.conflicts = result.conflicts || [];
+                                this.conflictKey = this.conflictFormKey();
+                                return;
+                            }
                             if (!response.ok) {
                                 const first = result.errors ? Object.values(result.errors).flat()[0] : null;
                                 throw new Error(first || result.message || 'The cleaner could not be assigned.');

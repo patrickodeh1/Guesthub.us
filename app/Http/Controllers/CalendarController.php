@@ -202,6 +202,7 @@ class CalendarController extends Controller
         $bookingMarks = [];
         $dayBookings = collect();
         $conflictIds = [];
+        $conflictWith = [];
 
         if ($acting !== 'housekeeper') {
             $bq = Booking::query()
@@ -227,6 +228,16 @@ class CalendarController extends Controller
                             && $a->check_out_date->gt($b->check_in_date)) {
                             $conflictIds[$a->getKey()] = true;
                             $conflictIds[$b->getKey()] = true;
+                            $from = $a->check_in_date->gt($b->check_in_date) ? $a->check_in_date : $b->check_in_date;
+                            $to = $a->check_out_date->lt($b->check_out_date) ? $a->check_out_date : $b->check_out_date;
+                            $nights = (int) abs($from->diffInDays($to));
+                            foreach ([[$a, $b], [$b, $a]] as [$me, $other]) {
+                                $conflictWith[$me->getKey()][] = [
+                                    'guest' => $other->guest_name ?: 'Unnamed guest',
+                                    'stay' => $other->check_in_date->format('M j') . ' - ' . $other->check_out_date->format('M j'),
+                                    'shared' => $from->format('M j') . ' - ' . $to->format('M j') . ' (' . $nights . ' ' . ($nights === 1 ? 'night' : 'nights') . ')',
+                                ];
+                            }
                         }
                     }
                 }
@@ -280,6 +291,7 @@ class CalendarController extends Controller
                             : ($gb->check_out_date->toDateString() === $selectedDay ? 'departing' : 'staying'),
                         'conflict' => isset($conflictIds[$gb->getKey()]),
                         'turnover' => isset($turnoverIds[$gb->getKey()]),
+                        'conflict_with' => $conflictWith[$gb->getKey()] ?? [],
                         'in_time' => \App\Support\BookingTimes::label($gb->checkin_time_status, $gb->checkin_time_preference, $gb->property?->checkin_time),
                         'out_time' => \App\Support\BookingTimes::label($gb->checkout_time_status, $gb->checkout_time_preference, $gb->property?->checkout_time),
                     ])->values();

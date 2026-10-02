@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ConflictsDetected;
 use App\Http\Controllers\Controller;
 use App\Models\CleaningSession;
 use App\Services\ActivityLogService;
@@ -23,6 +24,7 @@ class QuickAssignController extends Controller
             'housekeeper_id' => ['required', 'integer', 'exists:users,id'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'session_id' => ['nullable', 'integer', 'exists:cleaning_sessions,id'],
+            'confirm_conflicts' => ['nullable', 'boolean'],
         ]);
 
         $actor = $request->user();
@@ -40,8 +42,17 @@ class QuickAssignController extends Controller
             'The cleaning job changed. Refresh the dashboard and try again.'
         );
 
+        $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
+        $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $row['session']) : [];
+
         try {
-            $session = $cleaningJobService->quickAssign($actor, $data, $row['session']);
+            $session = $cleaningJobService->quickAssign($actor, $data, $row['session'], $confirmed);
+        } catch (ConflictsDetected $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'needs_confirmation' => true,
+                'conflicts' => $e->conflicts(),
+            ], 409);
         } catch (\Illuminate\Validation\ValidationException|\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -62,6 +73,7 @@ class QuickAssignController extends Controller
                 'subject_id' => $session->id,
                 'severity' => 'success',
                 'new_values' => [
+                    'conflicts_overridden' => array_column($overridden, 'message'),
                     'housekeeper_id' => $session->housekeeper_id,
                     'scheduled_date' => $session->scheduled_date->toDateString(),
                     'scheduled_time' => $session->scheduled_time?->toDateTimeString(),

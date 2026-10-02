@@ -22,18 +22,24 @@
     quickAssignOpen: false,
     quickAssignSaving: false,
     quickAssignError: '',
+    quickAssignConflicts: [],
+    quickAssignConflictKey: '',
+    quickAssignKey() { return JSON.stringify([this.form.property_id, this.form.date, this.form.housekeeper_id, this.form.scheduled_time || '']); },
+    get quickAssignConfirmable() { return this.quickAssignConflicts.length > 0 && this.quickAssignConflictKey === this.quickAssignKey(); },
     form: { property_id: '', property_name: '', date: '', session_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [] },
     openQuickAssign(data) {
         this.form = { ...data, housekeeper_id: data.housekeeper_id ?? '' };
         this.quickAssignError = '';
+        this.quickAssignConflicts = [];
         this.quickAssignOpen = true;
     },
     closeQuickAssign() {
         if (!this.quickAssignSaving) this.quickAssignOpen = false;
     },
-    async submitQuickAssign() {
+    async submitQuickAssign(confirm = false) {
         this.quickAssignSaving = true;
         this.quickAssignError = '';
+        this.quickAssignConflicts = [];
         try {
             const response = await fetch('{{ route('admin.cleaning-jobs.quick-assign') }}', {
                 method: 'POST',
@@ -48,10 +54,16 @@
                     scheduled_date: this.form.date,
                     session_id: this.form.session_id,
                     housekeeper_id: this.form.housekeeper_id,
-                    scheduled_time: this.form.scheduled_time || null
+                    scheduled_time: this.form.scheduled_time || null,
+                    confirm_conflicts: confirm
                 })
             });
             const result = await response.json();
+            if (response.status === 409 && result.needs_confirmation) {
+                this.quickAssignConflicts = result.conflicts || [];
+                this.quickAssignConflictKey = this.quickAssignKey();
+                return;
+            }
             if (!response.ok) {
                 const firstError = result.errors ? Object.values(result.errors).flat()[0] : null;
                 throw new Error(firstError || result.message || 'The cleaner could not be assigned.');
@@ -144,10 +156,20 @@
                 <label for="quick-assign-time" class="field-label">Scheduled time</label>
                 <input id="quick-assign-time" type="time" class="input mt-1 w-full" x-model="form.scheduled_time">
             </div>
+            <div x-show="quickAssignConfirmable" x-cloak role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p class="font-semibold">This assignment has conflicts:</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    <template x-for="c in quickAssignConflicts" :key="c.message"><li x-text="c.message"></li></template>
+                </ul>
+                <p class="mt-2 text-amber-800">Review them, then choose Assign anyway or change the cleaner, date or time.</p>
+            </div>
             <p x-show="quickAssignError" x-text="quickAssignError" role="alert" class="text-sm font-medium text-red-700"></p>
             <div class="flex justify-end gap-3">
                 <button type="button" class="btn-secondary" @click="closeQuickAssign()" :disabled="quickAssignSaving">Cancel</button>
-                <button type="submit" class="btn-primary" :disabled="quickAssignSaving || !form.housekeeper_id || form.cleaners.length === 0">
+                <button type="button" class="btn-primary" x-show="quickAssignConfirmable" @click="submitQuickAssign(true)" :disabled="quickAssignSaving">
+                    <span x-text="quickAssignSaving ? 'Saving…' : 'Assign anyway'"></span>
+                </button>
+                <button type="submit" class="btn-primary" x-show="!quickAssignConfirmable" :disabled="quickAssignSaving || !form.housekeeper_id || form.cleaners.length === 0">
                     <span x-text="quickAssignSaving ? 'Saving…' : 'Save assignment'"></span>
                 </button>
             </div>
