@@ -68,6 +68,15 @@ return [
                     // No property_children: properties are no longer expanded in the menu.
                 ],
                 [
+                    'label' => 'Jobs',
+                    'icon' => 'logs',
+                    'tour' => 'nav-jobs',
+                    'routes' => [
+                        ['name' => 'manage.sessions.index', 'roles' => $staff],
+                    ],
+                    'active' => ['manage.sessions.*'],
+                ],
+                [
                     'label' => 'Communications',
                     'icon' => 'contact-guest-services',
                     'roles' => ['admin', 'owner', 'company', 'manager'],

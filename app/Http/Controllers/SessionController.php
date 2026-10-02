@@ -515,7 +515,7 @@ class SessionController extends Controller
             
             // Time-based early access check
             if ($session->scheduled_date && $session->status === 'pending') {
-                $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date, $propertyTz);
+                $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
                 if ($session->scheduled_time) {
                     $time = \Carbon\Carbon::parse($session->scheduled_time, $propertyTz);
                     $scheduledDateTime->setTime($time->hour, $time->minute, $time->second);
