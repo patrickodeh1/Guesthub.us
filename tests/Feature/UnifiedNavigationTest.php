@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Property;
 use App\Models\User;
+use App\Support\Navigation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -12,6 +13,51 @@ use Tests\TestCase;
 class UnifiedNavigationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_jobs_and_media_collapsibles_contain_their_cleaning_links(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $admin = User::factory()->create([
+            'email_verified_at' => now(),
+            'must_change_password' => false,
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $admin->assignRole('admin');
+
+        $sections = app(Navigation::class)->forUser($admin);
+        $items = collect($sections)->flatMap(fn (array $section) => $section['items'])->keyBy('label');
+        $jobs = $items->get('Jobs');
+        $media = $items->get('Media');
+        $settings = $items->get('Settings');
+
+        $this->assertTrue($jobs['collapsible']);
+        $this->assertSame(route('manage.sessions.index'), $jobs['href']);
+        $this->assertSame(
+            ['Cleaning Rooms', 'Cleaning Tasks'],
+            collect($jobs['children'])->pluck('label')->all()
+        );
+        $this->assertSame(route('rooms.index'), $jobs['children'][0]['href']);
+        $this->assertSame(route('tasks.index'), $jobs['children'][1]['href']);
+
+        $this->assertSame(
+            ['Media Library', 'Video Library', 'Categories'],
+            collect($media['children'])->pluck('label')->all()
+        );
+        $this->assertSame(route('admin.videos.index'), $media['children'][1]['href']);
+        $this->assertNotContains(
+            'Video Library',
+            collect($settings['children'])->pluck('label')->all()
+        );
+        $this->assertNotContains(
+            'Cleaning Rooms',
+            collect($settings['children'])->pluck('label')->all()
+        );
+        $this->assertNotContains(
+            'Cleaning Tasks',
+            collect($settings['children'])->pluck('label')->all()
+        );
+    }
 
     public function test_sidebar_links_follow_existing_visibility_for_all_seven_roles(): void
     {
@@ -204,13 +250,29 @@ class UnifiedNavigationTest extends TestCase
         preg_match('/<details\b[^>]*>.*?data-tour="nav-cleaning".*?<\/details>/s', $navContent, $cleaningGroup);
         $this->assertNotEmpty($cleaningGroup);
         $this->assertStringContainsString(route('dashboard'), $cleaningGroup[0]);
-        $this->assertStringContainsString(route('manage.sessions.index'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('assignments.index'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('sessions.index'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('training.index'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('resources.photos'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('resources.videos'), $cleaningGroup[0]);
         $this->assertStringNotContainsString(route('resources.guides'), $cleaningGroup[0]);
+
+        preg_match('/<div data-nav-dropdown>.*?data-tour="nav-jobs".*?<div id="nav-jobs-submenu".*?<\/div>\s*<\/div>/s', $navContent, $jobsGroup);
+        $this->assertNotEmpty($jobsGroup);
+        $this->assertStringContainsString(route('manage.sessions.index'), $jobsGroup[0]);
+        $this->assertStringContainsString(route('rooms.index'), $jobsGroup[0]);
+        $this->assertStringContainsString(route('tasks.index'), $jobsGroup[0]);
+
+        preg_match('/<details\b[^>]*>.*?data-tour="nav-media".*?<\/details>/s', $navContent, $mediaGroup);
+        $this->assertNotEmpty($mediaGroup);
+        $this->assertStringContainsString(route('admin.media.index'), $mediaGroup[0]);
+        $this->assertStringContainsString(route('admin.videos.index'), $mediaGroup[0]);
+
+        preg_match('/<details\b[^>]*>.*?data-tour="nav-settings".*?<\/details>/s', $navContent, $settingsGroup);
+        $this->assertNotEmpty($settingsGroup);
+        $this->assertStringNotContainsString(route('admin.videos.index'), $settingsGroup[0]);
+        $this->assertStringNotContainsString(route('rooms.index'), $settingsGroup[0]);
+        $this->assertStringNotContainsString(route('tasks.index'), $settingsGroup[0]);
 
         $this->assertSubmenuRendersBelowParent($navContent, 'nav-properties-submenu');
         $this->assertSubmenuRendersBelowParent($navContent, 'nav-settings-submenu');

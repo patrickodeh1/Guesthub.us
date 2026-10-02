@@ -71,10 +71,27 @@ return [
                     'label' => 'Jobs',
                     'icon' => 'logs',
                     'tour' => 'nav-jobs',
+                    'collapsible' => true,
                     'routes' => [
                         ['name' => 'manage.sessions.index', 'roles' => $staff],
                     ],
-                    'active' => ['manage.sessions.*'],
+                    'active' => ['manage.sessions.*', 'rooms.*', 'tasks.*'],
+                    'children' => [
+                        [
+                            'label' => 'Cleaning Rooms',
+                            'routes' => [
+                                ['name' => 'rooms.index', 'roles' => $staff],
+                            ],
+                            'active' => ['rooms.*'],
+                        ],
+                        [
+                            'label' => 'Cleaning Tasks',
+                            'routes' => [
+                                ['name' => 'tasks.index', 'roles' => $staff],
+                            ],
+                            'active' => ['tasks.*'],
+                        ],
+                    ],
                 ],
                 [
                     'label' => 'Communications',
@@ -104,7 +121,7 @@ return [
                     'icon' => 'folder',
                     'roles' => $staff,
                     'collapsible' => true,
-                    'active' => ['admin.media.*', 'admin.categories.*'],
+                    'active' => ['admin.media.*', 'admin.categories.*', 'admin.videos.*'],
                     'children' => [
                         [
                             'label' => 'Media Library',
@@ -112,6 +129,13 @@ return [
                                 ['name' => 'admin.media.index', 'roles' => $staff],
                             ],
                             'active' => ['admin.media.*'],
+                        ],
+                        [
+                            'label' => 'Video Library',
+                            'routes' => [
+                                ['name' => 'admin.videos.index', 'roles' => $staff],
+                            ],
+                            'active' => ['admin.videos.*'],
                         ],
                         [
                             'label' => 'Categories',
@@ -268,15 +292,12 @@ return [
                     'routes' => [
                         ['name' => 'admin.settings.edit', 'roles' => ['admin']],
                     ],
-                    'active' => ['admin.settings.*', 'admin.payments.*', 'admin.videos.*', 'rooms.*', 'tasks.*', 'resources.*'],
+                    'active' => ['admin.settings.*', 'admin.payments.*', 'resources.*'],
 
                     // TEMPORARY: remove once the tabbed Settings page exists.
                     'collapsible' => true,
                     'children' => [
                         ['label' => 'General', 'routes' => [['name' => 'admin.settings.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.edit']],
-                        ['label' => 'Cleaning Rooms', 'routes' => [['name' => 'rooms.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['rooms.*']],
-                        ['label' => 'Cleaning Tasks', 'routes' => [['name' => 'tasks.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['tasks.*']],
-                        ['label' => 'Video Library', 'routes' => [['name' => 'admin.videos.index', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['admin.videos.*']],
                         ['label' => 'Notification Settings', 'routes' => [['name' => 'admin.settings.notifications.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.notifications.*']],
                         ['label' => 'Payments', 'routes' => [['name' => 'admin.payments.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.payments.*']],
                         ['label' => 'Legal', 'routes' => [['name' => 'admin.settings.legal.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.legal.*']],
