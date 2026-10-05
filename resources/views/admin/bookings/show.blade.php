@@ -144,10 +144,12 @@
 
         <div class="mt-3 grid content-start gap-3 lg:col-span-3 order-3 lg:order-none">
             {{-- Guest Details --}}
-            <section class="card card-pad">
-                <div class="flex items-center justify-between">
-                    <h2 class="section-title">Guest Details</h2>
-                </div>
+            <details class="card card-pad group" @if($errors->any()) open @endif>
+                <summary class="flex cursor-pointer list-none items-center justify-between">
+                    <h2 class="section-title">Guest Details<x-help text="Charges are auto-calculated from approved times. Expand to edit or override any amount." /></h2>
+                    <span class="text-xs font-semibold text-slate-500 group-open:hidden">Show / edit</span>
+                    <span class="hidden text-xs font-semibold text-slate-500 group-open:inline">Hide</span>
+                </summary>
                 <dl class="mt-4 grid gap-x-10 text-sm sm:grid-cols-2">
                     @foreach([
                         ['receipt', 'Incidentals Charge', $booking->effectiveIncidentalsCharge() !== null ? '$'.number_format($booking->effectiveIncidentalsCharge(), 2) : 'Not set', 'The refundable hold charged to the guest before check-in. Uses this booking\'s override if set below, otherwise the property\'s default hold amount.'],
@@ -307,7 +309,7 @@
                         <p class="mt-1 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $booking->notes }}</p>
                     </div>
                 @endif
-            </section>
+            </details>
 
             {{-- Ledger: what's actually held vs. what's actually owed, so
                  admin can see at a glance what to refund from the
@@ -334,10 +336,24 @@
                         <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-400" />Incidentals hold (refundable)<x-help text="The refundable portion of the amount above. This is what the deductions below come out of." /></span>
                         <span class="font-semibold text-slate-950 sm:text-right">${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}</span>
                     </div>
+                    @if(($booking->effectiveParkingCharge() ?? 0) > 0)
+                    <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="parking" class="h-4 w-4 shrink-0 text-slate-400" />Parking</span>
+                        <span class="font-semibold text-slate-950 sm:text-right">${{ number_format($booking->effectiveParkingCharge(), 2) }}</span>
+                    </div>
+                    @endif
+                    @if(! $booking->earlyCheckinIsDeductedFromHold() && ($booking->effectiveEarlyCheckinCharge() ?? 0) > 0)
+                    <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="calendar" class="h-4 w-4 shrink-0 text-slate-400" />Early check-in</span>
+                        <span class="font-semibold text-slate-950 sm:text-right">${{ number_format($booking->effectiveEarlyCheckinCharge(), 2) }}</span>
+                    </div>
+                    @endif
+                    @if(($booking->effectiveLateCheckoutCharge() ?? 0) > 0 || $booking->late_checkout_type)
                     <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />Late checkout deduction<x-help text="Never billed to the guest separately -- this comes out of their incidentals hold instead, reducing what you refund after checkout." /></span>
                         <span class="font-semibold text-slate-950 sm:text-right">-${{ number_format($booking->effectiveLateCheckoutCharge() ?? 0, 2) }}</span>
                     </div>
+                    @endif
                     @if($booking->earlyCheckinIsDeductedFromHold())
                     <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="calendar" class="h-4 w-4 shrink-0 text-slate-400" />Early check-in deduction<x-help text="This booking's early check-in is set to be deducted from the incidentals hold at checkout (not billed upfront)." /></span>

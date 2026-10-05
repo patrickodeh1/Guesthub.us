@@ -379,16 +379,21 @@ class BookingController extends Controller
         if ($data['photo_id_received'] && empty($booking->approved_at) && empty($data['approved_at'])) {
             $data['approved_at'] = now();
         }
+        $timesChanged = false;
         foreach ([
             'checkin_time_preference' => 'checkin_time_status',
             'checkout_time_preference' => 'checkout_time_status',
         ] as $timeField => $statusField) {
             if (array_key_exists($timeField, $data) && $data[$timeField] !== $booking->{$timeField}) {
                 $data[$statusField] = filled($data[$timeField]) ? 'approved' : null;
+                $timesChanged = true;
             }
         }
         $booking->update($data);
         $booking->recalculateParkingCharge();
+        if ($timesChanged) {
+            $booking->syncFeesFromApprovedTimes();
+        }
 
         ActivityLogService::admin('booking_updated', auth()->user()->name." updated booking for {$booking->guest_name}.", 'guests', [
             'subject_type' => Booking::class,
@@ -789,9 +794,9 @@ class BookingController extends Controller
      */
     /**
      * Approve or deny a guest's requested non-standard check-in/check-out
-     * time (task 0). Approving does not itself set a charge, admin still
-     * fills in the task 26 billing fields (early_checkin_tier /
-     * late_checkout_type etc.) as needed. The guest is notified of the
+     * time (task 0). Approving auto-selects the early check-in window or
+     * authorized late checkout hours via syncFeesFromApprovedTimes(); admin
+     * can still adjust them in the ledger. The guest is notified of the
      * decision either way, via the checkin_time_approved/denied or
      * checkout_time_approved/denied alert events.
      */
@@ -812,6 +817,11 @@ class BookingController extends Controller
         ]);
 
         $booking->refresh();
+
+        // Approval auto-selects the early check-in window / authorized late
+        // checkout hours; denial clears them. The alert below already tells
+        // the guest, so don't send a second one from the sync.
+        $booking->syncFeesFromApprovedTimes(notify: false);
 
         $requestedTime = $type === 'checkin'
             ? $booking->checkinTimePreferenceFormatted()

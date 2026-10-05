@@ -820,6 +820,97 @@ class Booking extends Model
         return "Checking out {$outPhrase}";
     }
 
+    /**
+     * Early check-in window implied by the approved check-in time, or null
+     * when nothing applies (not approved, not earlier than the standard
+     * time, or before 8 AM, which is left for manual handling).
+     */
+    public function earlyCheckinTierForApprovedTime(): ?string
+    {
+        $approved = \App\Support\BookingTimes::approved($this->checkin_time_status, $this->checkin_time_preference);
+        if ($approved === null) {
+            return null;
+        }
+
+        $requested = $this->timeMinutes($approved);
+        if ($requested >= $this->timeMinutes($this->standardCheckinTime()) || $requested < 8 * 60) {
+            return null;
+        }
+
+        return match (true) {
+            $requested < 12 * 60 => '8am_12pm',
+            $requested < 14 * 60 => '12pm_2pm',
+            default => '2pm_4pm',
+        };
+    }
+
+    /** Hours past the standard checkout implied by the approved checkout time, or null. */
+    public function lateCheckoutHoursForApprovedTime(): ?float
+    {
+        $approved = \App\Support\BookingTimes::approved($this->checkout_time_status, $this->checkout_time_preference);
+        if ($approved === null) {
+            return null;
+        }
+
+        $diff = $this->timeMinutes($approved) - $this->timeMinutes($this->standardCheckoutTime());
+
+        return $diff > 0 ? round($diff / 60, 2) : null;
+    }
+
+    /**
+     * Sets or clears early_checkin_tier and authorized late checkout from the
+     * approved times. Call it only when a time or its status changed, so
+     * manual ledger edits aren't overwritten on ordinary saves. Skips
+     * checked-out bookings and never touches an Unauthorized late checkout.
+     */
+    public function syncFeesFromApprovedTimes(bool $notify = true): void
+    {
+        if ($this->checked_out_at) {
+            return;
+        }
+
+        $updates = [];
+        $newFee = false;
+
+        $tier = $this->earlyCheckinTierForApprovedTime();
+        if ($tier !== $this->early_checkin_tier) {
+            $updates['early_checkin_tier'] = $tier;
+            if ($tier === null) {
+                $updates['early_checkin_charge_override'] = null;
+            } else {
+                $newFee = true;
+            }
+        }
+
+        if ($this->late_checkout_type !== 'unauthorized') {
+            $hours = $this->lateCheckoutHoursForApprovedTime();
+            if ($hours !== null) {
+                $sameHours = $this->late_checkout_hours !== null && abs((float) $this->late_checkout_hours - $hours) < 0.001;
+                if ($this->late_checkout_type !== 'authorized' || ! $sameHours) {
+                    if ($this->late_checkout_type !== 'authorized') {
+                        $newFee = true;
+                    }
+                    $updates['late_checkout_type'] = 'authorized';
+                    $updates['late_checkout_hours'] = $hours;
+                }
+            } elseif ($this->late_checkout_type === 'authorized') {
+                $updates['late_checkout_type'] = null;
+                $updates['late_checkout_hours'] = null;
+                $updates['late_checkout_charge_override'] = null;
+            }
+        }
+
+        if ($updates === []) {
+            return;
+        }
+
+        $this->update($updates);
+
+        if ($notify && $newFee) {
+            \App\Services\GuestAlertService::send('reservation_updated', $this->fresh());
+        }
+    }
+
     public function isPriorityGuest(): bool
     {
         return $this->needsIdApproval()

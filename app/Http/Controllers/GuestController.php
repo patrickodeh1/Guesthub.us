@@ -213,7 +213,14 @@ class GuestController extends Controller
             $updates['terms_accepted_version'] = \App\Models\Setting::getValue('terms_version', '1');
         }
 
+        $timesChanged = $newCheckinPreference !== $booking->checkin_time_preference
+            || $newCheckoutPreference !== $booking->checkout_time_preference;
+
         $booking->update($updates);
+
+        if ($timesChanged) {
+            $booking->syncFeesFromApprovedTimes();
+        }
 
         if ($request->boolean('sms_consent')) {
             SmsConsentService::recordOptIn($booking, $booking->phone, [
