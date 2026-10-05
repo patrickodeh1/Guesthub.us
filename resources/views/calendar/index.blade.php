@@ -532,8 +532,9 @@
                 </div>
                 <div>
                     <label for="cal-ag-platform" class="field-label">Booking platform</label>
-                    <input id="cal-ag-platform" type="text" class="input mt-1 w-full" list="cal-platform-options" x-model="form.booking_platform" placeholder="Airbnb, Vrbo, Booking.com…">
-                    <datalist id="cal-platform-options"><option value="Airbnb"></option><option value="Vrbo"></option><option value="Booking.com"></option><option value="Expedia"></option><option value="Direct"></option></datalist>
+                    <select id="cal-ag-platform" class="input mt-1 w-full" x-model="form.booking_platform">
+                        @foreach(\App\Models\Booking::PLATFORMS as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
+                    </select>
                 </div>
                 <div>
                     <label for="cal-ag-name" class="field-label">Guest name <span class="text-red-600">*</span></label>
@@ -628,7 +629,7 @@
                 error: '',
                 form: {},
                 blank() {
-                    return { reservation_id: '', booking_platform: '', guest_name: '', check_in_date: '', check_out_date: '', property_id: '', id_type: 'state_id', photo_id_received: false, notes: '' };
+                    return { reservation_id: '', booking_platform: 'Airbnb', guest_name: '', check_in_date: '', check_out_date: '', property_id: '', id_type: 'state_id', photo_id_received: false, notes: '' };
                 },
                 openAdd() {
                     this.form = this.blank();

@@ -13,6 +13,14 @@ use Illuminate\Support\Str;
 
 class Booking extends Model
 {
+    /** Booking platforms offered in the guest forms: stored value => label. */
+    public const PLATFORMS = [
+        'Airbnb'      => 'Airbnb',
+        'Vrbo'        => 'VRBO',
+        'Booking.com' => 'Booking.com',
+        'Direct'      => 'Direct booking',
+    ];
+
     use HasFactory;
 
     protected $fillable = [

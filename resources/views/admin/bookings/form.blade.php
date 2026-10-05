@@ -14,7 +14,7 @@
             <h2 class="section-title">Guest and stay details</h2>
             <div class="mt-6 grid gap-5 md:grid-cols-2">
                 <label class="field-label">Reservation ID (Airbnb/VRBO) <span class="text-red-600">*</span><input name="reservation_id" value="{{ old('reservation_id', $booking->reservation_id) }}" placeholder="Required, from Airbnb/VRBO" required class="input"></label>
-                <label class="field-label">Booking platform<input name="booking_platform" list="booking-platform-options" value="{{ old('booking_platform', $booking->booking_platform) }}" placeholder="Airbnb, Vrbo, Booking.com…" class="input"><datalist id="booking-platform-options"><option value="Airbnb"></option><option value="Vrbo"></option><option value="Booking.com"></option><option value="Expedia"></option><option value="Direct"></option></datalist><span class="field-help">Shown to the guest on the payment screen ("Pay on …"). Filled automatically for channel-manager bookings.</span></label>
+                @include('admin.bookings._platform-select', ['booking' => $booking])
                 <label class="field-label">Guest name <span class="text-red-600">*</span><input name="guest_name" value="{{ old('guest_name', $booking->guest_name) }}" required placeholder="Jordan Taylor" class="input"></label>
                 @if($booking->exists)
                 <div class="field-label">

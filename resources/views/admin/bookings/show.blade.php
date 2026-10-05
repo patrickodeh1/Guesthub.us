@@ -99,7 +99,7 @@
                 @csrf @method('put')
                 <div class="grid gap-5 md:grid-cols-2">
                     <label class="field-label">Reservation ID (Airbnb/VRBO) <span class="text-red-600">*</span><input name="reservation_id" value="{{ old('reservation_id', $booking->reservation_id) }}" required class="input">@error('reservation_id')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
-                    <label class="field-label">Booking platform<input name="booking_platform" list="booking-platform-options" value="{{ old('booking_platform', $booking->booking_platform) }}" placeholder="Airbnb, Vrbo, Booking.com…" class="input"><datalist id="booking-platform-options"><option value="Airbnb"></option><option value="Vrbo"></option><option value="Booking.com"></option><option value="Expedia"></option><option value="Direct"></option></datalist><span class="field-help">Shown to the guest on the payment screen ("Pay on …"). Auto-filled for channel-manager bookings.</span></label>
+                    @include('admin.bookings._platform-select', ['booking' => $booking])
                     <label class="field-label">Guest name <span class="text-red-600">*</span><input name="guest_name" value="{{ old('guest_name', $booking->guest_name) }}" required class="input">@error('guest_name')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
                     <div class="field-label">
                         <span>Phone</span>
@@ -529,26 +529,10 @@
                 @endif
             </div>
 
-            {{-- Communication --}}
+            {{-- Open the guest portal as the guest --}}
             <section class="card card-pad">
-                <div>
-                    <div>
-                        <h2 class="section-title">Communication</h2>
-                        <p class="section-copy">Share the guest's secure link.</p>
-                    </div>
-                </div>
-
-                <div class="mt-5">
-                    <div class="grid gap-6">
-                        <div id="guest-link-card" class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                            <p class="text-sm font-semibold text-slate-700">Secure guest URL</p>
-                            <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-                                <input id="guest-url" readonly value="{{ $booking->publicUrl() }}" class="input mt-0 min-w-0 flex-1">
-                                <button type="button" data-copy="#guest-url" class="btn-primary w-full justify-center gap-2 sm:w-auto"><x-icon name="copy" class="h-4 w-4" />Copy URL</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <h2 class="section-title">Guest portal</h2>
+                <a href="{{ $booking->publicUrl() }}" target="_blank" rel="noopener" class="btn-primary mt-4 w-full justify-center gap-2 sm:w-auto"><x-icon name="external-link" class="h-4 w-4" />Open as guest</a>
             </section>
 
         </div>
@@ -653,50 +637,9 @@
                 </div>
             </section>
 
-            <section class="card card-pad order-5 lg:order-none">
-                <h2 class="section-title">Preview Guest Flow</h2>
-                <p class="section-copy">Open any guest state without changing the real status.</p>
-                <div class="mt-4 grid gap-2">
-                    @foreach(['identity' => 'Pre Check-In', 'waiting' => 'Waiting', 'arrival' => 'Check-In Day', 'guide' => 'Welcome Guide', 'checkout' => 'Checkout Day'] as $state => $label)
-                        <a class="btn-secondary justify-start" href="{{ route('admin.guests.preview', [$booking, $state]) }}" target="_blank">{{ $label }}</a>
-                    @endforeach
-                </div>
-            </section>
         </aside>
     </div>
 
-    {{-- Guest progress timeline (always last, full width) --}}
-    <section class="mt-6 card card-pad">
-        <h2 class="section-title">Guest Progress Timeline</h2>
-        @php
-            $timelineSteps = [
-                ['properties', 'Guest Created', $booking->created_at, true],
-                ['mail', 'Email Submitted', $booking->updated_at, filled($booking->email)],
-                ['upload', 'Photo ID Uploaded', $booking->updated_at, filled($booking->photo_id_path)],
-                ['security', 'Photo ID Approval', $booking->approved_at, $booking->isApproved()],
-                ['shield-alert', \App\Models\Setting::getValue('background_check_step_name', 'Background Check'), $booking->background_check_completed_at, $booking->isBackgroundCheckComplete()],
-                ['lock', 'Deposit Verified', $booking->deposit_verified_at, $booking->isDepositVerified()],
-                ['map', 'GPS Verified', $booking->checked_in_at, $booking->gps_verified],
-                ['contact-guest-services', 'Currently Hosting', $booking->checked_in_at, $booking->isCheckedIn()],
-                ['contact-guest-services', 'Checked Out', $booking->checked_out_at, filled($booking->checked_out_at)],
-            ];
-        @endphp
-        <div class="mt-8 flex items-start overflow-x-auto pb-2">
-            @foreach($timelineSteps as $i => [$icon, $label, $time, $done])
-                @if($i > 0)
-                    <div class="mt-7 h-px w-10 flex-shrink-0 sm:w-16 {{ $done ? 'bg-emerald-400' : 'border-t-2 border-dashed border-amber-300 bg-transparent' }}"></div>
-                @endif
-                <div class="flex w-28 flex-shrink-0 flex-col items-center text-center sm:w-32">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 {{ $done ? 'border-emerald-400 bg-emerald-50 text-emerald-600' : 'border-amber-300 bg-amber-50 text-amber-500' }}">
-                        <x-icon :name="$icon" class="h-5 w-5" />
-                    </span>
-                    <p class="mt-3 text-sm font-semibold text-slate-950">{{ $label }}</p>
-                    <p class="mt-1 text-xs text-slate-500">{{ $done ? ($time ? $booking->localTimestamp($time)->format('M j, Y g:i A') : 'Completed') : 'Pending' }}</p>
-                    <span class="mt-2 badge {{ $done ? 'badge-active' : 'badge-pending' }}">{{ $done ? 'Done' : 'Open' }}</span>
-                </div>
-            @endforeach
-        </div>
-    </section>
 
     {{-- Media Picker Modal (for editor image insert) --}}
     <div id="media-picker-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-950/40 p-4" style="z-index:2147483000;">
