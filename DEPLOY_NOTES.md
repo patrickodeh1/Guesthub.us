@@ -25,7 +25,7 @@ Message wording and toggles live in the DATABASE, so they do not arrive with the
 ## C. After deploy: manual actions in the admin UI
 1. Properties: set Guest name (shown to guests) and Internal name (shown to admin/cleaners) for every property. Both start equal to Name.
 2. Settings > Notifications: read through the new wording and adjust it. Confirm that only the intended events are checked.
-   Confirm "Admin" recipients (contact desk, admin, owner) are the people he wants.
+   Confirm "Admin" recipients (contact desk + users with the superadmin role) are right. Owner is NOT included.
 3. Every cleaner user needs a phone number, or assignment texts and YES/NO replies cannot work.
 4. Each property's Notifications page: add the owner/manager phone numbers as recipients. Cleaner arrived / almost finished / complete texts go to these numbers.
 5. Dashboard: confirm the new unassigned checkout cleans appear as needing a cleaner.
@@ -51,3 +51,10 @@ Message wording and toggles live in the DATABASE, so they do not arrive with the
   The six old events are turned off by `notifications:apply-client-defaults` (deploy step B3).
 - Background-check message now uses {result}; it is "approved" on the existing mark-complete button.
 - Admin session page has a "Guest for this cleaning" dropdown (reassign guest / No guest).
+
+## Update: admin audience
+- "Admin" messages go to the contact desk (Settings > General) and every user with the `superadmin` role.
+  Owner is a separate role and is not notified unless toggled manually.
+- Make sure the superadmin users have a phone number set, or they get no texts.
+- Cleaner arrived / almost finished / complete texts still go to each property's Recipients list.
+- Email alerts show clickable link text; SMS shows the raw URL.

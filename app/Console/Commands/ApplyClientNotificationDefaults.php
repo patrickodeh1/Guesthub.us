@@ -15,7 +15,7 @@ class ApplyClientNotificationDefaults extends Command
     {
         $c = GuestAlertService::config();
         $sources = GuestAlertService::RECIPIENT_SOURCES;
-        $staff = ['contact', 'admin', 'owner']; // "admin" audience = contact desk + admin + owner
+        $staff = ['contact', 'admin']; // "admin" audience = contact desk + admin role (owner is a different role)
 
         $timeMsg = 'Your reservation details have been updated. Check in {check_in_time} {check_in_date}. Check out {check_out_time} {check_out_date}.';
 

@@ -6,7 +6,7 @@
 <div id="checkout-row-{{ $b->property_id }}-{{ $row['date']->format('Ymd') }}" class="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center {{ $row['covered'] ? '' : 'border-l-4 border-red-400 bg-red-50/50' }}">
     {{-- Property / guest / checkout --}}
     <div class="min-w-0 flex-1">
-        <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $row['property']?->name }}</p>
+        <p class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $row['property']?->internal_display_name }}</p>
         <a href="{{ route('admin.guests.show', $b) }}" class="mt-0.5 block truncate font-semibold text-slate-950 hover:underline">{{ $b->guest_name }}</a>
         @if($row['overlap'])
             <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800" title="{{ implode(', ', $row['guest_names']) }}">Overlapping bookings ({{ count($row['guest_names']) }})</span>
@@ -15,6 +15,9 @@
             Checkout {{ $row['date']->format('D, M j') }}
             @if($row['checkout_time']) &middot; {{ $row['checkout_time'] }} @endif
         </p>
+        @if($session)
+            <p class="text-xs text-slate-500">Cleaning tagged to: <span class="font-semibold">{{ $session->no_guest ? 'No guest' : ($session->booking?->guest_name ?? 'Untagged') }}</span></p>
+        @endif
     </div>
 
     {{-- Next guest --}}
@@ -43,7 +46,11 @@
                     @if($session->scheduled_time) &middot; {{ $session->scheduled_time->format('g:i A') }} @endif
                 </p>
             </div>
-            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Covered</span>
+            @if(($session->assignment_status ?? null) === 'pending_confirmation')
+                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">Awaiting reply</span>
+            @else
+                <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Covered</span>
+            @endif
             <button type="button" class="btn-secondary text-sm"
                 @click="openQuickAssign(@js([
                     'property_id' => $b->property_id,

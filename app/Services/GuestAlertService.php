@@ -437,6 +437,10 @@ class GuestAlertService
                 continue;
             }
 
+            if (! \Spatie\Permission\Models\Role::where('name', $role)->exists()) {
+                continue; // role not created on this install
+            }
+
             $users = User::role($role)->get(['phone', 'email']);
 
             if ($smsOn) {
