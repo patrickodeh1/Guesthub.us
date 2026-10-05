@@ -443,15 +443,20 @@ class BookingController extends Controller
         // let the guest know via their existing portal link so they can pay
         // for it -- they won't otherwise know to check back, since granting
         // it is an admin-initiated action.
+        $notifyReservationUpdated = false;
         if ($booking->early_checkin_tier && $booking->early_checkin_tier !== $oldEarlyCheckinTier) {
-            \App\Services\GuestAlertService::send('early_checkin_granted', $booking);
+            $notifyReservationUpdated = true;
         }
 
         // Same idea for late checkout: only fire when it's newly marked
         // authorized (not on every ledger re-save), same guard shape as
         // early_checkin_tier above.
         if ($booking->late_checkout_type === 'authorized' && $oldLateCheckoutType !== 'authorized') {
-            \App\Services\GuestAlertService::send('late_checkout_granted', $booking);
+            $notifyReservationUpdated = true;
+        }
+
+        if ($notifyReservationUpdated) {
+            \App\Services\GuestAlertService::send('reservation_updated', $booking->fresh());
         }
 
         // Same idea for late checkout / incidentals, but only once the guest
@@ -657,7 +662,7 @@ class BookingController extends Controller
             'background_check_completed_at' => now(),
             'status' => 'awaiting_deposit',
         ]);
-        \App\Services\GuestAlertService::send('background_check_complete', $booking);
+        \App\Services\GuestAlertService::send('background_check_complete', $booking, ['result' => 'approved']);
 
         ActivityLogService::admin('background_check_completed', auth()->user()->name." marked background check complete for {$booking->guest_name}.", 'guests', [
             'subject_type' => Booking::class,
@@ -806,9 +811,7 @@ class BookingController extends Controller
 
         $event = $type.'_time_'.$data['decision'];
 
-        \App\Services\GuestAlertService::send($event, $booking, [
-            'requested_time' => $requestedTime,
-        ]);
+        \App\Services\GuestAlertService::send('reservation_updated', $booking);
 
         $label = $type === 'checkin' ? 'check-in' : 'check-out';
 

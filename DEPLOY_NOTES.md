@@ -45,3 +45,9 @@ Message wording and toggles live in the DATABASE, so they do not arrive with the
 - Reservation-updated events share identical wording, so two firing together send two texts.
 - SMS links are raw URLs. Clickable link text works only in email, and that is not built yet.
 - No guest-tag dropdown in the UI yet (route exists: cleaning-sessions.guest.update).
+
+## Update: reservation_updated and background-check wording
+- Early check-in, late check-out and requested-time approve/deny now send ONE `reservation_updated` text.
+  The six old events are turned off by `notifications:apply-client-defaults` (deploy step B3).
+- Background-check message now uses {result}; it is "approved" on the existing mark-complete button.
+- Admin session page has a "Guest for this cleaning" dropdown (reassign guest / No guest).

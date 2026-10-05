@@ -207,8 +207,9 @@ class CleaningFlowService
             $booking = Booking::where('property_id', $session->property_id)
                 ->whereDate('check_in_date', $today)->whereNull('cancelled_at')
                 ->where('status', 'guest_approved')->first();
-            if ($booking) {
-                self::sendUnitReady($booking);
+            // Heads-up only: no link, because the guest's pages stay locked until the admin marks the unit ready.
+            if ($booking && \Illuminate\Support\Facades\Cache::add('cleaning_complete_guest_'.$booking->id, 1, now()->addDays(2))) {
+                GuestAlertService::send('cleaning_complete', $booking);
             }
         } catch (\Throwable $e) {
             Log::error('CleaningFlow onCleaningCompleted failed: '.$e->getMessage());

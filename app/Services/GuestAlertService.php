@@ -127,6 +127,16 @@ class GuestAlertService
             'default_guest_message' => '', // guest not notified for this event; see defaultToggleOverrides()
             'default_staff_message' => 'The booking for {guest_name} at {property_name} was updated via the channel manager -- now {check_in_date} to {check_out_date}. Review it in the admin panel.',
         ],
+        'cleaning_complete' => [
+            'label' => 'Cleaning complete (same-day check-in guest)',
+            'default_guest_message' => 'Hi {guest_first_name}, the cleaning at {property_name} is complete. We are doing a final check and will message you as soon as your unit is ready for check-in.',
+            'default_staff_message' => '',
+        ],
+        'reservation_updated' => [
+            'label' => 'Reservation details updated (times)',
+            'default_guest_message' => 'Your reservation details have been updated. Check in {check_in_time} {check_in_date}. Check out {check_out_time} {check_out_date}.',
+            'default_staff_message' => '',
+        ],
         'photo_id_resubmitted' => [
             'label' => 'Photo ID re-uploaded (2nd+ attempt)',
             'default_guest_message' => '',

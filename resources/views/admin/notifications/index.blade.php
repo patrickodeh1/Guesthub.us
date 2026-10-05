@@ -51,7 +51,7 @@
                         </div>
                         <div class="flex flex-wrap gap-1.5">
                             <span class="field-help w-full">Click a variable to insert it at the cursor:</span>
-                            @foreach(['guest_name','guest_first_name','property_name','property_guest_name','property_internal_name','check_in_date','check_in_time','check_out_date','check_out_time','parking_status','step_name','guest_link','admin_link','id_side','decline_reason','pending_text'] as $tok)
+                            @foreach(['guest_name','guest_first_name','property_name','property_guest_name','property_internal_name','check_in_date','check_in_time','check_out_date','check_out_time','parking_status','step_name','guest_link','admin_link','id_side','decline_reason','pending_text','result'] as $tok)
                                 <button type="button" data-token="{{ '{'.$tok.'}' }}" class="rounded-full border border-slate-300 px-2.5 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">{{ '{'.$tok.'}' }}</button>
                             @endforeach
                         </div>

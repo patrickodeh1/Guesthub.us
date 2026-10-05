@@ -22,7 +22,7 @@ class ApplyClientNotificationDefaults extends Command
         // key => [guest on, admin on, guest message|null, admin message|null]
         $plan = [
             'registration_received'     => [1, 1, 'Thank you for your pre-check-in details. We will reach out soon.', '{guest_name} has completed pre check-in for {property_internal_name}. View: {admin_link}'],
-            'background_check_complete' => [1, 0, "Your {step_name} for {property_name} is complete. Here's what needs to be done next: {guest_link}", null],
+            'background_check_complete' => [1, 0, "Your {step_name} was {result}. Here's what needs to be done next: {guest_link}", null],
             'checkin_ready'             => [1, 0, 'Your unit at {property_name} is ready. Check in now: {guest_link}', null],
             'checkin_completed'         => [0, 1, null, '{guest_name} has checked into {property_internal_name}.'],
             'checkout_reminder'         => [1, 0, null, null],
@@ -32,10 +32,9 @@ class ApplyClientNotificationDefaults extends Command
             'photo_id_resubmitted'      => [0, 1, null, null],
             'registration_reminder'     => [1, 0, null, null],
             'arrival_soon'              => [0, 1, null, null],
+            'cleaning_complete'         => [1, 0, 'Hi {guest_first_name}, the cleaning at {property_name} is complete. We are doing a final check and will message you as soon as your unit is ready for check-in.', null],
         ];
-        foreach (['early_checkin_granted', 'late_checkout_granted', 'checkin_time_approved', 'checkin_time_denied', 'checkout_time_approved', 'checkout_time_denied'] as $k) {
-            $plan[$k] = [1, 0, $timeMsg, null];
-        }
+        $plan['reservation_updated'] = [1, 0, $timeMsg, null];
 
         if (! $this->option('dry-run')) {
             $backup = storage_path('app/guest_alerts_config_backup_'.now()->format('Ymd_His').'.json');

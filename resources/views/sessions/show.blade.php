@@ -87,6 +87,29 @@
     @endif
     class="space-y-6"
 >
+        @if(!empty($is_admin) && $is_admin)
+            @php
+                $tagDate = $session->scheduled_date;
+                $tagBookings = \App\Models\Booking::where('property_id', $session->property_id)
+                    ->whereNull('cancelled_at')
+                    ->whereDate('check_in_date', '<=', $tagDate->copy()->addDay())
+                    ->whereDate('check_out_date', '>=', $tagDate->copy()->subDays(3))
+                    ->orderBy('check_in_date')->get();
+            @endphp
+            <form method="post" action="{{ route('cleaning-sessions.guest.update', $session) }}" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-wrap items-center gap-3">
+                @csrf @method('put')
+                <label for="tag_booking" class="text-sm font-semibold text-gray-700 dark:text-gray-300">Guest for this cleaning</label>
+                <select id="tag_booking" name="booking_id" class="text-sm rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                    <option value="" @selected(!$session->booking_id)>No guest</option>
+                    @foreach($tagBookings as $tb)
+                        <option value="{{ $tb->id }}" @selected($session->booking_id == $tb->id)>{{ $tb->guest_name }} ({{ $tb->check_in_date->format('M j') }} - {{ $tb->check_out_date->format('M j') }})</option>
+                    @endforeach
+                </select>
+                <button class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Save</button>
+                <span class="text-xs text-gray-500">Auto-tagged to the departing guest. Change it, or choose No guest, for special cases.</span>
+            </form>
+        @endif
+
         {{-- Notification Toast --}}
         <div
             x-show="success || error"
