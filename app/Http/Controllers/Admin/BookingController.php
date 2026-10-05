@@ -43,14 +43,7 @@ class BookingController extends Controller
         // exactly this). Splitting these into separate cards was the bug:
         // the client asked for one "Today" section with internal priority
         // ordering, not multiple labeled sections.
-        $today = Booking::with('property')
-            ->notArchived()
-            ->where(fn ($q) => $q
-                ->whereDate('check_in_date', today())
-                ->orWhereDate('check_out_date', today()))
-            ->get()
-            ->sortBy(fn ($b) => $b->weekCardSortTier())
-            ->values();
+        $today = $this->todayTabBookings();
         $todayTotal = $today->count();
         $todayIds = $today->pluck('id');
         $today = $today->take(5)->values();
@@ -112,6 +105,28 @@ class BookingController extends Controller
         return view('admin.bookings.index', compact('bookings', 'today', 'todayTotal', 'thisWeek', 'thisWeekTotal', 'upcoming', 'upcomingTotal', 'upcomingLimit', 'properties', 'showArchived', 'stats'));
     }
 
+    /**
+     * Single source of truth for the guest list "Today" tab, used by
+     * index() and both Show More endpoints so paging never drifts.
+     * Includes check-ins/check-outs today plus every guest whose stay
+     * covers today (checked in or not), ordered by todayTabSortKey().
+     */
+    private function todayTabBookings()
+    {
+        return Booking::with('property')
+            ->notArchived()
+            ->where(fn ($q) => $q
+                ->whereDate('check_in_date', today())
+                ->orWhereDate('check_out_date', today())
+                ->orWhere(fn ($s) => $s
+                    ->whereDate('check_in_date', '<=', today())
+                    ->whereDate('check_out_date', '>', today())
+                    ->whereNull('checked_out_at')))
+            ->get()
+            ->sortBy(fn ($b) => $b->todayTabSortKey())
+            ->values();
+    }
+
     public function todayMore(Request $request)
     {
         $offset = max(0, (int) $request->query('offset', 0));
@@ -121,12 +136,7 @@ class BookingController extends Controller
         // weekCardSortTier() in PHP, not a DB-level orderBy) so "Show More"
         // continues in the same priority order as the initial page load
         // rather than falling back to plain check_in_date ordering.
-        $bookings = Booking::with('property')
-            ->notArchived()
-            ->where(fn ($q) => $q->whereDate('check_in_date', today())->orWhereDate('check_out_date', today()))
-            ->get()
-            ->sortBy(fn ($b) => $b->weekCardSortTier())
-            ->values();
+        $bookings = $this->todayTabBookings();
 
         $total = $bookings->count();
         $batch = $bookings->slice($offset, $limit);
@@ -145,9 +155,7 @@ class BookingController extends Controller
 
         $bookings = Booking::with('property')
             ->notArchived()
-            ->whereNotIn('id', Booking::notArchived()
-                ->where(fn ($q) => $q->whereDate('check_in_date', today())->orWhereDate('check_out_date', today()))
-                ->pluck('id'))
+            ->whereNotIn('id', $this->todayTabBookings()->pluck('id'))
             ->whereNull('checked_out_at')
             ->whereDate('check_in_date', '<=', today()->addDays(6))
             ->get()

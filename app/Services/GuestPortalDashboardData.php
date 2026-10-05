@@ -31,12 +31,13 @@ class GuestPortalDashboardData
             ->sortBy(fn (Booking $booking) => $this->sortKey($booking, $today))
             ->values();
 
-        $todayIds = $todayGuests->pluck('id')->all();
-        $needsAttentionGuests = Booking::with('property')
+        // Priority guests (need approval / host intervention) are pinned into
+        // the Today card regardless of their dates until resolved, after
+        // which they drop into the normal Today/Tomorrow/Upcoming bucket.
+        $priorityGuests = Booking::with('property')
             ->notArchived()
             ->whereHas('property', fn ($query) => $query->visibleTo($user))
             ->whereNull('checked_out_at')
-            ->whereNotIn('id', $todayIds)
             ->get()
             ->filter(fn (Booking $booking) => $booking->isPriorityGuest())
             ->sortBy(fn (Booking $booking) => $booking->check_in_date?->toDateString())
@@ -71,7 +72,7 @@ class GuestPortalDashboardData
             })
             ->groupBy('property.name');
 
-        return compact('todayGuests', 'upcomingGuests', 'needsAttentionGuests', 'today', 'propertyLocks');
+        return compact('todayGuests', 'upcomingGuests', 'priorityGuests', 'today', 'propertyLocks');
     }
 
     private function sortKey(Booking $booking, string $today): string

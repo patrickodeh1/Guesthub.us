@@ -6,9 +6,11 @@
     $todayStr = $dates['today']->toDateString();
     $tomorrowStr = $dates['tomorrow']->toDateString();
 
-    $arrivalsToday = collect($todayGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() === $todayStr)->values();
-    $arrivalsTomorrow = collect($upcomingGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() === $tomorrowStr)->values();
-    $arrivalsLater = collect($upcomingGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() > $tomorrowStr)->values();
+    $priorityGuests = collect($priorityGuests ?? []);
+    $priorityIds = $priorityGuests->pluck('id');
+    $arrivalsToday = $priorityGuests->concat(collect($todayGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() === $todayStr && ! $priorityIds->contains($b->id)))->values();
+    $arrivalsTomorrow = collect($upcomingGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() === $tomorrowStr && ! $priorityIds->contains($b->id))->values();
+    $arrivalsLater = collect($upcomingGuests ?? [])->filter(fn ($b) => $b->check_in_date?->toDateString() > $tomorrowStr && ! $priorityIds->contains($b->id))->values();
     $laterShown = $arrivalsLater->take(10);
 
     $cards = [
@@ -120,7 +122,7 @@
                     <p class="bg-slate-50 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">Arrivals</p>
                     <div class="divide-y divide-slate-100">
                         @foreach($card['arrivals'] as $booking)
-                            @include('dashboard-arrival-row', ['booking' => $booking, 'today' => $today])
+                            @include('dashboard-arrival-row', ['booking' => $booking, 'today' => $today, 'context' => $key, 'pinned' => $key === 'today' && $priorityIds->contains($booking->id)])
                         @endforeach
                         @if($key === 'upcoming' && $arrivalsLater->count() > $laterShown->count())
                             <a href="{{ route('admin.guests.index') }}" class="block px-4 py-3 text-sm font-semibold text-[var(--theme-primary)] hover:bg-slate-50">

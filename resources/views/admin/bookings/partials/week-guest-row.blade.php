@@ -6,6 +6,9 @@
     <div class="min-w-0 pr-[45%]">
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
+        @if($context === 'today')
+            <p class="text-sm font-medium text-slate-700">{{ $booking->todayTabLabel() }}</p>
+        @else
         <p class="text-sm text-slate-600">
             {{ $booking->dateRangeOnly() }}
             @if($booking->nightsLabel())
@@ -20,6 +23,7 @@
                 &middot; {{ $booking->weekCardDynamicLabel() }}
             @endif
         </p>
+        @endif
         <p class="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
             <x-icon name="clock" class="h-3.5 w-3.5 shrink-0 text-slate-400" />
             @if($checkinToday && ! $checkoutToday)

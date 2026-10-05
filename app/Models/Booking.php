@@ -767,6 +767,59 @@ class Booking extends Model
         return $this->isCheckedIn() || $this->manually_checked_in || $this->status === 'currently_hosting';
     }
 
+    /**
+     * Guest-list "Today" tab grouping: 0 = checking in today (not yet
+     * checked in), 1 = mid-stay but not checked in yet, 2 = checked in /
+     * currently hosting, 3 = already checked out.
+     */
+    public function todayTabGroup(): int
+    {
+        if ($this->checked_out_at) {
+            return 3;
+        }
+
+        if (! $this->isMarkedCheckedIn()) {
+            return $this->check_in_date?->toDateString() === today()->toDateString() ? 0 : 1;
+        }
+
+        return 2;
+    }
+
+    public function todayTabSortKey(): string
+    {
+        $group = $this->todayTabGroup();
+        $date = $group === 0 ? $this->check_in_date : $this->check_out_date;
+
+        return sprintf('%d|%s|%s', $group, $date?->toDateString(), $this->guest_name);
+    }
+
+    public function todayTabLabel(): string
+    {
+        if ($this->checked_out_at) {
+            return 'Checked out';
+        }
+
+        $nights = max(0, (int) $this->check_in_date->copy()->startOfDay()->diffInDays($this->check_out_date->copy()->startOfDay()));
+        $nightsText = $nights.' '.($nights === 1 ? 'night' : 'nights');
+
+        $out = $this->daysUntilCheckOut(today());
+        $outPhrase = match (true) {
+            $out <= 0 => 'today',
+            $out === 1 => 'tomorrow',
+            default => "in {$out} days",
+        };
+
+        if (! $this->isMarkedCheckedIn()) {
+            if ($this->check_in_date->toDateString() === today()->toDateString()) {
+                return "Checking in today for {$nightsText}";
+            }
+
+            return "Not checked in yet · checks out {$outPhrase}";
+        }
+
+        return "Checking out {$outPhrase}";
+    }
+
     public function isPriorityGuest(): bool
     {
         return $this->needsIdApproval()
