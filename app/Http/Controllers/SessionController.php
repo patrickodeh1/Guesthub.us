@@ -1247,6 +1247,7 @@ class SessionController extends Controller
         // Trigger SMS notification for cleaning finished
         try {
             CleaningSmsNotificationService::sendCleaningFinished($session);
+            \App\Services\CleaningFlowService::onCleaningCompleted($session);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('SMS notification failed for session complete: ' . $e->getMessage());
         }

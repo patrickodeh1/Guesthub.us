@@ -28,6 +28,10 @@ class CleaningSession extends Model
         'report_token',
         'stage',
         'checkout_id',
+        'booking_id',
+        'no_guest',
+        'assignment_status',
+        'cleaner_notified_at',
         'sporadic_tasks',
         'gps_override_enabled',
         'gps_override_approved_by',
@@ -45,6 +49,8 @@ class CleaningSession extends Model
         'sporadic_tasks' => 'array',
         'gps_override_enabled' => 'boolean',
         'gps_override_timestamp' => 'datetime',
+        'no_guest' => 'boolean',
+        'cleaner_notified_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -120,6 +126,11 @@ class CleaningSession extends Model
     public function gpsOverrideApprovedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'gps_override_approved_by');
+    }
+
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Booking::class);
     }
 
     public function assignmentTrainingSnapshots(): HasMany

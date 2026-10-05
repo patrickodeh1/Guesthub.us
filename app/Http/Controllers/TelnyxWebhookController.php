@@ -41,6 +41,10 @@ class TelnyxWebhookController extends Controller
             return response()->json(['ok' => false], 400);
         }
 
+        if (\App\Services\CleaningFlowService::handleCleanerReply($phone, $body)) {
+            return response()->json(['ok' => true]);
+        }
+
         SmsConsentService::handleInboundKeyword($phone, $body);
 
         return response()->json(['ok' => true]);

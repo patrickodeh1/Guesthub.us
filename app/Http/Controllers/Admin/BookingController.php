@@ -756,7 +756,7 @@ class BookingController extends Controller
 
         $booking->update(['checkin_approved_at' => now()]);
 
-        \App\Services\GuestAlertService::send('checkin_ready', $booking);
+        \App\Services\CleaningFlowService::sendUnitReady($booking);
 
         ActivityLogService::admin('checkin_approved', auth()->user()->name." marked the unit ready and approved check-in for {$booking->guest_name}.", 'guests', [
             'subject_type' => Booking::class,

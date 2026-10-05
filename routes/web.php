@@ -698,3 +698,5 @@ Route::middleware('auth')->group(function () {
     // Cleaner API endpoint for property videos
     Route::get('api/property-videos', [\App\Http\Controllers\ResourcesController::class, 'getPropertyVideos'])->name('api.property-videos');
 });
+
+Route::middleware(['auth', 'role:admin,owner,company,manager'])->put('cleaning-sessions/{cleaningSession}/guest', [\App\Http\Controllers\CleaningSessionGuestController::class, 'update'])->name('cleaning-sessions.guest.update');

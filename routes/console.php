@@ -45,3 +45,6 @@ Schedule::command('bookings:send-registration-reminders')->dailyAt('10:00')->tim
 
 // Admin heads-up ~1 hour before an approved guest's check-in time.
 Schedule::command('bookings:send-arrival-soon')->everyTenMinutes();
+
+// Safety net: one unassigned checkout clean per upcoming booking (PMS imports may skip model events).
+Schedule::command('cleaning:sync-checkout-sessions')->hourly();

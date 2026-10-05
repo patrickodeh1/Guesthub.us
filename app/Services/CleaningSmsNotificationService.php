@@ -290,4 +290,26 @@ class CleaningSmsNotificationService
 
         self::dispatchToCleaner($session, 'training_blocked', $message);
     }
+
+    /**
+     * Send "Cleaning almost finished" (session reached the photos stage).
+     */
+    public static function sendAlmostDone(CleaningSession $session): void
+    {
+        if (self::alreadySent($session, 'almost_done')) {
+            return;
+        }
+
+        $property = $session->property;
+        $housekeeper = $session->housekeeper;
+        $guest = $session->booking?->guest_name ?? ($session->no_guest ? 'No guest' : 'N/A');
+
+        $message = "Cleaning is almost finished at {$property->internal_display_name}.\n"
+            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
+            . "Guest: {$guest}\n"
+            . "Time: " . TimezoneHelper::format(now(), $property) . "\n"
+            . "Job ID: #{$session->id}";
+
+        self::dispatch($session, 'almost_done', $message);
+    }
 }

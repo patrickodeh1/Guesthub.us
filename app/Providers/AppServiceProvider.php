@@ -35,6 +35,27 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Cleaning <-> Guest Hub flow.
+        \App\Models\Booking::saved(function (\App\Models\Booking $b) {
+            if ($b->wasRecentlyCreated || $b->wasChanged(['check_out_date', 'cancelled_at', 'status', 'property_id'])) {
+                \App\Services\CleaningFlowService::syncForBooking($b);
+            }
+        });
+        \App\Models\CleaningSession::created(function (\App\Models\CleaningSession $s) {
+            \App\Services\CleaningFlowService::autoTag($s);
+            if ($s->housekeeper_id) {
+                \App\Services\CleaningFlowService::notifyAssigned($s);
+            }
+        });
+        \App\Models\CleaningSession::updated(function (\App\Models\CleaningSession $s) {
+            if ($s->wasChanged('housekeeper_id') && $s->housekeeper_id) {
+                \App\Services\CleaningFlowService::notifyAssigned($s);
+            }
+            if ($s->wasChanged('stage') && $s->stage === 'photos') {
+                try { \App\Services\CleaningSmsNotificationService::sendAlmostDone($s); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::error('almost_done failed: '.$e->getMessage()); }
+            }
+        });
+
         // Admin alert when a guest replaces an ID side that was already uploaded or declined (2nd+ attempt).
         \App\Models\Booking::updated(function (\App\Models\Booking $b) {
             foreach ([['photo_id_path', 'photo_id_front_declined_reason', 'front'], ['photo_id_back_path', 'photo_id_back_declined_reason', 'back']] as [$path, $reason, $side]) {
