@@ -854,27 +854,6 @@ class GuestController extends Controller
         return back()->with('success', 'Parking preference saved.');
     }
 
-    /**
-     * Records that the guest read and accepted the arrival-day disclaimer, so
-     * the address/arrival details are revealed and it doesn't show again.
-     */
-    public function agreeToArrival(string $bookingId, string $token)
-    {
-        $booking = $this->booking($bookingId, $token);
-
-        $booking->update(['checkin_disclaimer_agreed_at' => now()]);
-
-        ActivityLogService::guest('arrival_disclaimer_agreed', "Guest {$booking->guest_name} agreed to the arrival instructions disclaimer.", 'check', [
-            'booking_id'  => $booking->id,
-            'property_id' => $booking->property_id,
-            'actor_name'  => $booking->guest_name,
-            'actor_email' => $booking->email,
-            'severity'    => 'success',
-        ]);
-
-        return back();
-    }
-
     public function rentalAgreement(string $bookingId, string $token)
     {
         $booking = $this->booking($bookingId, $token);

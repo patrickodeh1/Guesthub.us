@@ -108,7 +108,6 @@ Route::post('/checkin/verify', [GuestController::class, 'verifyReservationLogin'
 Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/', [GuestController::class, 'show'])->name('show');
     Route::post('/identity', [GuestController::class, 'submitIdentity'])->name('identity');
-    Route::post('/arrival-agree', [GuestController::class, 'agreeToArrival'])->name('arrival-agree');
     Route::get('/rental-agreement', [GuestController::class, 'rentalAgreement'])->name('rental-agreement');
     Route::get('/rental-agreement/download', [GuestController::class, 'rentalAgreementPdf'])->name('rental-agreement.pdf');
     Route::post('/vehicle-info', [GuestController::class, 'submitVehicleInfo'])->name('vehicle-info');

@@ -271,11 +271,6 @@ class Booking extends Model
         return filled($this->identity_confirmed_at);
     }
 
-    public function hasAgreedToArrivalDisclaimer(): bool
-    {
-        return filled($this->checkin_disclaimer_agreed_at);
-    }
-
     public function isCheckedIn(): bool
     {
         return !is_null($this->checked_in_at);

@@ -2004,16 +2004,7 @@
                 </div>
             </div>
         @elseif($state === 'arrival')
-            @php
-                $arrivalAgreed = $booking->hasAgreedToArrivalDisclaimer();
-                $arrivalDisclaimer = \App\Models\Setting::getValue(
-                    'arrival_disclaimer',
-                    "<p><strong>Before you start navigating to the property, please read your arrival instructions.</strong> Guests who arrive without reading them often end up waiting outside and messaging us for entry. Please go through every step first, then type <strong>agree</strong> below to continue.</p>"
-                );
-            @endphp
-            @if($arrivalAgreed)
-                <div data-poll-gps-status="{{ route('guest.gps-status', [$booking->booking_id, $booking->token]) }}"></div>
-            @endif
+            <div data-poll-gps-status="{{ route('guest.gps-status', [$booking->booking_id, $booking->token]) }}"></div>
             <div class="guest-portal-card">
                 <div class="guest-status-bar">
                     <div>
@@ -2048,23 +2039,7 @@
                     </div>
                 </div>
 
-                @if(! $arrivalAgreed)
-                    <div class="mt-5 rounded-xl border-2 border-amber-300 bg-amber-50 p-5 text-left">
-                        <div class="flex items-center gap-2 text-amber-900">
-                            <x-icon name="alert-triangle" class="h-5 w-5 shrink-0" />
-                            <p class="font-bold">Please read this before you travel</p>
-                        </div>
-                        <div class="mt-3 text-sm leading-6 text-amber-900">{!! $arrivalDisclaimer !!}</div>
-                        <div class="mt-5">
-                            <label class="block text-sm font-semibold text-amber-900" for="arrival-agree-input">Type <span class="font-mono font-bold">agree</span> to continue</label>
-                            <input id="arrival-agree-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled placeholder="agree" class="guest-input mt-2">
-                        </div>
-                        <form id="arrival-agree-form" method="post" action="{{ route('guest.arrival-agree', [$booking->booking_id, $booking->token]) }}" class="mt-4">
-                            @csrf
-                            <button type="submit" id="arrival-agree-btn" class="guest-primary-btn w-full" disabled>Continue (<span id="arrival-agree-countdown">20</span>s)</button>
-                        </form>
-                    </div>
-                @elseif($booking->canViewAddress())
+                @if($booking->canViewAddress())
                     <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm">
                         <p class="font-semibold text-slate-800">Property Address</p>
                         <p class="mt-1 text-slate-600">{{ $property->shortAddress() }}</p>
@@ -2095,7 +2070,7 @@
             </div>
             </div>
 
-            @if($arrivalAgreed && $booking->canViewAddress())
+            @if($booking->canViewAddress())
             <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-center">
                 <p class="text-base font-bold text-slate-950">{!! $gpsVerifyMessage !!}</p>
                 <div id="gps-ajax-message" class="hidden"></div>
@@ -2104,42 +2079,6 @@
             </div>
             @endif
 
-            @if(! $arrivalAgreed)
-            <script>
-            (function () {
-                var input = document.getElementById('arrival-agree-input');
-                var btn = document.getElementById('arrival-agree-btn');
-                var countdownEl = document.getElementById('arrival-agree-countdown');
-                var form = document.getElementById('arrival-agree-form');
-                if (!input || !btn || !form) return;
-
-                var seconds = 20;
-                var ready = false;
-
-                function refresh() {
-                    var typed = (input.value || '').trim().toLowerCase() === 'agree';
-                    btn.disabled = !(ready && typed);
-                }
-
-                var timer = window.setInterval(function () {
-                    seconds -= 1;
-                    if (seconds <= 0) {
-                        window.clearInterval(timer);
-                        ready = true;
-                        if (countdownEl) countdownEl.textContent = '0';
-                        input.disabled = false;
-                        input.focus();
-                        btn.textContent = 'Continue';
-                        refresh();
-                        return;
-                    }
-                    if (countdownEl) countdownEl.textContent = String(seconds);
-                }, 1000);
-
-                input.addEventListener('input', refresh);
-            })();
-            </script>
-            @endif
         @elseif($state === 'awaiting_deposit')
             <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="deposit_verified"></div>
             <div class="guest-portal-card">
