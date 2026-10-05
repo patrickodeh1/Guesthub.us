@@ -179,7 +179,7 @@
     // screen (the guide on arrival, the thank-you page at checkout).
     function autoTransitionIfNeeded(lockedNow) {
         var wantCheckin = lockedNow === false && btn.dataset.autoCheckin === "true";
-        var wantCheckout = lockedNow === true && btn.dataset.autoCheckout === "true";
+        var wantCheckout = false; // hotfix: locking the door must never close the stay
         if (!wantCheckin && !wantCheckout) return false;
 
         var url = wantCheckin ? btn.dataset.confirmCheckinUrl : btn.dataset.confirmCheckoutUrl;

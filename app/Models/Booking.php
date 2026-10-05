@@ -1406,18 +1406,6 @@ class Booking extends Model
         return $now->toDateString() > $this->check_out_date->toDateString();
     }
 
-    public function isCheckoutDayBeforeNoon(?CarbonInterface $now = null): bool
-    {
-        $timezone = $this->property?->timezone ?? 'America/New_York';
-        $now = ($now ?? now())->setTimezone($timezone);
-
-        if ($now->toDateString() !== $this->check_out_date->copy()->subDay()->toDateString()) {
-            return false;
-        }
-
-        return $now->hour >= 12;
-    }
-
     /**
      * The check-out time actually in effect for this booking. Same approval
      * gate as effectiveCheckinTime() — a guest's requested preference only
@@ -1449,6 +1437,20 @@ class Booking extends Model
         [$hour, $minute] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
 
         return $now->hour > $hour || ($now->hour === $hour && $now->minute >= $minute);
+    }
+
+    /**
+     * Guest self-checkout is only allowed on checkout day, from $hoursBefore
+     * hours before the checkout time (property-local), or any time after.
+     */
+    public function checkoutWindowOpen(?CarbonInterface $now = null): bool
+    {
+        $timezone = $this->property?->timezone ?? 'America/New_York';
+        $now = ($now ?? now())->setTimezone($timezone);
+
+        $opensAt = \Carbon\Carbon::parse($this->check_out_date->toDateString(), $timezone)->subDay()->setTime(13, 0);
+
+        return $now->greaterThanOrEqualTo($opensAt);
     }
 
     public function isPastCheckoutGracePeriod(int $graceMinutes = 30, ?CarbonInterface $now = null): bool

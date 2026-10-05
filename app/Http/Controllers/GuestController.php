@@ -49,7 +49,7 @@ class GuestController extends Controller
         // and what pop-ups / wizard steps apply right now.
         $noticePhase = ! $booking->isMarkedCheckedIn()
             ? 'checkin'
-            : ($booking->isCheckoutDay() ? 'checkout' : 'guide');
+            : ($booking->checkoutWindowOpen() ? 'checkout' : 'guide');
 
         $checkinSteps = ($state === 'guide' && ! $booking->instructionsCompleted()) ? $this->checkinSteps($booking) : [];
         if ($noticePhase === 'checkin') {
@@ -309,6 +309,22 @@ class GuestController extends Controller
     public function confirmCheckout(string $bookingId, string $token)
     {
         $booking = $this->booking($bookingId, $token);
+
+        if (! $booking->checked_out_at && ! $booking->checkoutWindowOpen()) {
+            ActivityLogService::guest('checkout_blocked_early', "Blocked early checkout attempt by {$booking->guest_name}.", 'check', [
+                'booking_id'  => $booking->id,
+                'property_id' => $booking->property_id,
+                'actor_name'  => $booking->guest_name,
+                'severity'    => 'warning',
+            ]);
+
+            $msg = 'Checkout opens at 1:00 PM the day before your checkout.';
+            if (request()->isJson() || request()->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $msg], 422);
+            }
+
+            return redirect()->back()->with('error', $msg);
+        }
 
         $this->completeCheckout($booking);
 
@@ -999,7 +1015,7 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         $booking->load(['property.categories', 'property.amenities']);
         $state = $this->state($booking);
-        if (! in_array($state, ['checkout_notice', 'checkout_available', 'guide'], true)) {
+        if (! in_array($state, ['checkout_available', 'guide'], true)) {
             return redirect()->route('guest.show', [$booking->booking_id, $booking->token]);
         }
 
@@ -1037,7 +1053,7 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
         $state = $this->state($booking);
-        if (! in_array($state, ['checkout_notice', 'checkout_available', 'guide'], true)) {
+        if (! in_array($state, ['checkout_available', 'guide'], true)) {
             abort(403);
         }
         $categories = $this->availableCategories($booking);
@@ -1339,8 +1355,8 @@ class GuestController extends Controller
             return $booking->isPastCheckoutTime() ? 'checkout_locked' : 'checkout_available';
         }
 
-        if ($booking->isCheckoutDayBeforeNoon()) {
-            return 'checkout_notice';
+        if ($booking->checkoutWindowOpen()) {
+            return 'checkout_available';
         }
 
         return 'guide';

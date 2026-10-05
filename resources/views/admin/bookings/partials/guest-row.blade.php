@@ -28,7 +28,7 @@
                 @if(! $booking->gps_verified)
                     <form method="post" action="{{ route('admin.guests.override-gps', $booking) }}">@csrf<button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="map" class="h-4 w-4" />Override GPS Verification</button></form>
                 @endif
-                @if(! $booking->isCheckedIn())
+                @if(! $booking->isCheckedIn() || $booking->checked_out_at)
                     <form method="post" action="{{ route('admin.guests.override', $booking) }}">@csrf<button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked In</button></form>
                 @endif
                 @if($booking->isCheckedIn() && ! $booking->checked_out_at)

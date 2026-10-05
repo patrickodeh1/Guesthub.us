@@ -555,6 +555,7 @@ class BookingController extends Controller
         $booking->update([
             'manually_checked_in' => true,
             'checked_in_at'       => now(),
+            'checked_out_at'      => null,
             'status'              => 'currently_hosting',
         ]);
 

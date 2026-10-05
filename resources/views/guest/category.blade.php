@@ -78,7 +78,7 @@
     @php
         // No time-window check needed here: GuestController::category() already
         // redirects the guest away before this view ever renders unless $state
-        // is guide/checkout_notice/checkout_available, so the guest is always
+        // is guide/checkout_available, so the guest is always
         // checked in and pre-checkout by the time this page loads.
         $hasArticleContent = ($category->action === 'door_lock' && $locks->isNotEmpty())
             || $category->action === 'local_events'

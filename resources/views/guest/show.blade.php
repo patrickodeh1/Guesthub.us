@@ -2477,66 +2477,6 @@
                     </script>
                 </div>
             </div>
-        @elseif($state === 'checkout_notice')
-            <div class="guest-portal-card">
-                <div class="guest-status-bar">
-                    <div>
-                        @if($siteLogo)
-                            <img src="{{ url('/img/'.$siteLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
-                        @endif
-                    </div>
-                    <span class="guest-status-pill is-checked">
-                        <x-icon name="check" class="h-4 w-4" />
-                        Checked in
-                    </span>
-                </div>
-                <div class="p-6">
-                    <h1 class="guest-status-title">Check-out is coming up</h1>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Your check-out time is {{ $booking->effectiveCheckoutTimeFormatted() }} tomorrow. You'll still have full access to the guide until then.</p>
-                    <a href="#guide-grid" class="guest-primary-btn w-full mt-4">View Guide</a>
-                </div>
-                {{-- Late checkout is deducted from the incidentals hold at
-                     checkout, not billed to the guest separately here —
-                     billing it again on top of the hold double-charges
-                     the guest. See admin-side ledger for the actual
-                     charge amount. --}}
-                @if($locks->isNotEmpty())
-                    <div class="px-6 pb-2">
-                        <div class="grid gap-6 {{ $locks->count() > 1 ? 'sm:grid-cols-2' : '' }}">
-                            @foreach($locks as $entry)
-                                <x-lock-card
-                                    :booking-id="$booking->booking_id"
-                                    :token="$booking->token"
-                                    :lock-id="$entry['lock']->id"
-                                    :lock-label="$locks->count() > 1 ? $entry['lock']->label : null"
-                                    :lock-status="$entry['status']"
-                                    :auto-checkin="! $booking->isMarkedCheckedIn()"
-                                    :auto-checkout="$booking->isCheckoutDay()"
-                                />
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-                <div id="guide-grid" class="guest-guide-grid p-6 pt-0">
-                    @foreach($guideCats as $category)
-                        @php
-                            $colors = $categoryColor;
-                            $displayTitle = $category->pivot->custom_title ?: $category->title;
-                            $displayDescription = $category->pivot->custom_description ?: $category->description;
-                        @endphp
-                        <x-guide-panel
-                            :href="route('guest.category', [$booking->booking_id, $booking->token, $category])"
-                            :icon="$category->slug"
-                            :guest-icon="$category->guest_icon"
-                            :title="$displayTitle"
-                            :description="$displayDescription"
-                            :tone="$colors[0]"
-                            :accent="$colors[1]"
-                            :wide="$category->slug === 'checkout-instructions'"
-                        />
-                    @endforeach
-                </div>
-            </div>
         @elseif($state === 'checkout_available')
             <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="checked_out" class="hidden"></div>
             @if(count($checkoutSteps) > 0)

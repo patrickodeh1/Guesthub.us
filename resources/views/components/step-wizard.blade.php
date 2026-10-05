@@ -59,6 +59,25 @@
             @endforeach
         </div>
 
+        @if($type === 'checkout')
+        <div id="checkout-final-warning" style="display:none" class="checkout-flash mx-6 mb-3 rounded-2xl border-2 border-red-600 p-4 text-center">
+            <p class="text-lg font-extrabold uppercase text-red-700">STOP. This is your last chance.</p>
+            <p class="mt-1 text-sm font-bold text-red-800">Only press Check out when you are physically walking out of the building. Checking out ends your access to the guest guide, door codes and the unit. Do not check out early. We will not be able to reactivate your access once this process has started.</p>
+        </div>
+        <div id="checkout-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-red-900/80 p-4">
+            <div class="checkout-flash w-full max-w-md rounded-2xl border-4 border-red-600 p-6 text-center">
+                <h2 class="text-2xl font-extrabold uppercase text-red-700">Final warning</h2>
+                <p class="mt-3 text-base font-bold text-red-900">Only continue if you are physically walking out of the building right now. If you are checking out early, do not check out.</p>
+                <p class="mt-3 text-sm font-bold text-red-800">You will lose access to the guest guide, door codes and the unit. We will not be able to reactivate your access once this process has started.</p>
+                <div class="mt-6 flex gap-3">
+                    <button type="button" id="checkout-confirm-cancel" class="guest-outline-btn flex-1">Not Yet</button>
+                    <button type="button" id="checkout-confirm-proceed" class="guest-primary-btn is-go flex-1" disabled style="opacity:.5">Check me out</button>
+                </div>
+            </div>
+        </div>
+        <p id="checkout-gate-status" class="px-6 pb-2 text-center text-sm font-semibold text-slate-500"></p>
+        <style>@keyframes checkoutFlash{0%,100%{background:#fef2f2}50%{background:#fecaca}}.checkout-flash{animation:checkoutFlash 1s infinite}</style>
+        @endif
         <div class="wizard-nav">
             <button type="button" id="wizard-prev-{{ $type }}" class="guest-outline-btn flex-1" style="display:none">Previous</button>
             <button type="button" id="wizard-next-{{ $type }}" class="guest-primary-btn flex-1" @if($total === 1) style="display:none" @endif>Next</button>
@@ -70,19 +89,6 @@
     </div>
 </div>
 
-@if($type === 'checkout')
-{{-- Checkout confirmation modal --}}
-<div id="checkout-confirm-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6">
-        <h2 class="text-lg font-bold text-slate-900">Ready to check out?</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-600">This marks your stay as checked out and locks further access to the guide. It also alerts the cleaning staff that it's OK to come in. Make sure you've completely checked out before continuing.</p>
-        <div class="mt-6 flex gap-3">
-            <button type="button" id="checkout-confirm-cancel" class="guest-outline-btn flex-1">Not Yet</button>
-            <button type="button" id="checkout-confirm-proceed" class="guest-primary-btn is-go flex-1">Yes, I'm Checked Out</button>
-        </div>
-    </div>
-</div>
-@endif
 
 <script>
 (function() {
@@ -115,9 +121,39 @@
         document.getElementById("wizard-done-" + type).style.display = current === total - 1 ? "" : "none";
         var scrollEl = document.querySelector("#step-wizard-" + type + " .wizard-scroll");
         if (scrollEl) scrollEl.scrollTo({top: 0, behavior: "smooth"});
+        armStep();
     }
 
     document.getElementById("wizard-next-" + type).addEventListener("click", function() { if (current < total - 1) goTo(current + 1); });
+
+    var stepTimer = null;
+    function armStep() {
+        if (type !== "checkout") return;
+        if (stepTimer) clearInterval(stepTimer);
+        var isLast = current === total - 1;
+        var btn = document.getElementById(isLast ? "wizard-done-" + type : "wizard-next-" + type);
+        var status = document.getElementById("checkout-gate-status");
+        var warn = document.getElementById("checkout-final-warning");
+        var scrollEl = document.querySelector("#step-wizard-" + type + " .wizard-scroll");
+        var left = isLast ? 10 : 8;
+        function atBottom() { return !scrollEl || scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 24; }
+        function refresh() {
+            var ok = left <= 0 && atBottom();
+            btn.disabled = !ok;
+            btn.style.opacity = ok ? "1" : ".5";
+            if (status) status.textContent = ok ? "" : (left > 0 ? "Please read this step. You can continue in " + left + "s." : "Scroll to the bottom to continue.");
+        }
+        if (warn) warn.style.display = isLast ? "" : "none";
+        if (scrollEl) scrollEl.onscroll = refresh;
+        refresh();
+        stepTimer = setInterval(function() {
+            var root = document.getElementById("step-wizard-" + type);
+            if (root && root.offsetParent !== null && left > 0) left--;
+            refresh();
+            if (left <= 0) clearInterval(stepTimer);
+        }, 1000);
+    }
+    armStep();
     document.getElementById("wizard-prev-" + type).addEventListener("click", function() { if (current > 0) goTo(current - 1); });
 
     var backLink = document.getElementById("wizard-back-to-guide-" + type);
@@ -137,6 +173,30 @@
         });
     }
 
+    var confirmTimer = null;
+    function openFinalConfirm() {
+        var modal = document.getElementById("checkout-confirm-modal");
+        var proceed = document.getElementById("checkout-confirm-proceed");
+        if (!modal || !proceed) return;
+        var left = 5;
+        modal.classList.remove("hidden");
+        proceed.disabled = true;
+        proceed.style.opacity = ".5";
+        proceed.textContent = "Check me out (" + left + ")";
+        if (confirmTimer) clearInterval(confirmTimer);
+        confirmTimer = setInterval(function() {
+            left--;
+            if (left <= 0) {
+                clearInterval(confirmTimer);
+                proceed.disabled = false;
+                proceed.style.opacity = "1";
+                proceed.textContent = "Check me out";
+            } else {
+                proceed.textContent = "Check me out (" + left + ")";
+            }
+        }, 1000);
+    }
+
     function runConfirm() {
         var confirmUrl = type === "checkin"
             ? "{{ route('guest.confirm-checkin', [$bookingId, $token]) }}"
@@ -148,7 +208,11 @@
             headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Content-Type": "application/json" }
         }).then(function(response) {
             if (!response.ok) {
-                throw new Error("Request failed with status " + response.status);
+                return response.json().catch(function() { return {}; }).then(function(d) {
+                    var e = new Error("Request failed with status " + response.status);
+                    e.serverMessage = d.message || null;
+                    throw e;
+                });
             }
             if (type === "checkout") {
                 // Reload so the server recomputes state and serves the real
@@ -166,7 +230,9 @@
             var next = document.getElementById("{{ $nextSection }}-wrapper") || document.getElementById("{{ $nextSection }}");
             if (next) next.style.display = "";
             window.scrollTo({top: 0, behavior: "smooth"});
-        }).catch(function() {
+        }).catch(function(err) {
+            var modalEl = document.getElementById("checkout-confirm-modal");
+            if (modalEl) modalEl.classList.add("hidden");
             doneBtn.disabled = false;
             var proceedBtn = document.getElementById("checkout-confirm-proceed");
             if (proceedBtn) proceedBtn.disabled = false;
@@ -177,14 +243,13 @@
                 errEl.className = "mt-3 text-sm font-semibold text-red-600 text-center";
                 doneBtn.insertAdjacentElement("afterend", errEl);
             }
-            errEl.textContent = "Something went wrong. Please check your connection and try again, or refresh the page.";
+            errEl.textContent = (err && err.serverMessage) ? err.serverMessage : "Something went wrong. Please check your connection and try again, or refresh the page.";
         });
     }
 
     document.getElementById("wizard-done-" + type).addEventListener("click", function() {
         if (type === "checkout") {
-            var modal = document.getElementById("checkout-confirm-modal");
-            if (modal) modal.classList.remove("hidden");
+            openFinalConfirm();
             return;
         }
         if (type === "checkin") {
@@ -202,6 +267,13 @@
     if (type === "checkout") {
         var cancelBtn = document.getElementById("checkout-confirm-cancel");
         var proceedBtn = document.getElementById("checkout-confirm-proceed");
+        var tickBox = document.getElementById("checkout-confirm-tick");
+        if (tickBox && proceedBtn) {
+            tickBox.addEventListener("change", function() {
+                proceedBtn.disabled = !tickBox.checked;
+                proceedBtn.style.opacity = tickBox.checked ? "1" : ".5";
+            });
+        }
         if (cancelBtn) {
             cancelBtn.addEventListener("click", function() {
                 document.getElementById("checkout-confirm-modal").classList.add("hidden");
