@@ -41,7 +41,7 @@
                         @foreach($onboardingVideos as $index => $video)
                             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden min-w-0 flex flex-col">
                                 <div class="bg-black relative flex items-center justify-center w-full" style="aspect-ratio: 16 / 9;">
-                                    <video id="video-{{ $video->id }}" src="{{ $video->video_url }}#t=0.1" class="w-full h-full object-contain" preload="metadata" playsinline controls></video>
+                                    <video playsinline webkit-playsinline id="video-{{ $video->id }}" src="{{ $video->video_url }}#t=0.1" class="w-full h-full object-contain" preload="metadata" controls></video>
                                 </div>
                                 <div class="p-4 flex items-start justify-between gap-3">
                                     <div>

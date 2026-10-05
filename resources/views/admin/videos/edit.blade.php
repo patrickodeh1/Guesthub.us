@@ -266,7 +266,28 @@
                                         <input type="checkbox" name="tasks[]" value="{{ $task->id }}"
                                             class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
                                             @checked(in_array($task->id, old('tasks', $attachedTaskIds)))>
-                                        <span class="truncate">{{ $task->name }}</span>
+                                        
+                                          @php
+                                              $ctx = [];
+                                              if ($task->is_default) $ctx[] = "Global";
+                                              if (isset($task->properties) && $task->properties->count()) {
+                                                  foreach($task->properties as $p) $ctx[] = $p->name;
+                                              }
+                                              if (isset($task->rooms) && $task->rooms->count()) {
+                                                  foreach($task->rooms as $r) {
+                                                      if (isset($r->properties) && $r->properties->count()) {
+                                                          foreach($r->properties as $rp) {
+                                                              $ctx[] = $rp->name . " - " . $r->name;
+                                                          }
+                                                      } else {
+                                                          $ctx[] = $r->name;
+                                                      }
+                                                  }
+                                              }
+                                              $ctxStr = empty($ctx) ? "" : " (" . implode(", ", $ctx) . ")";
+                                          @endphp
+                                          <span class="truncate">{{ $task->name }}{{ $ctxStr }}</span>
+
                                     </label>
                                 @endforeach
                             </div>

@@ -2719,7 +2719,7 @@
                                                 </div>
                                             </div>
                                             <div class="pair-footer">
-                                                <div class="pair-room">{{ $roomName }} - {{ $item->task?->name ?? 'Verify' }}</div>
+                                                <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
                                                 <div class="pair-time">
                                                     <span style="color: var(--danger);">Required Verification Missing</span>
                                                 </div>
@@ -2732,9 +2732,8 @@
                                                 $localCapturedAt = $photo->captured_at ? \App\Helpers\TimezoneHelper::toLocal($photo->captured_at, $propertyTz) : null;
                                                 $timestamp = $localCapturedAt ? $localCapturedAt->format('m/d/Y g:i:s A (T)') : 'No timestamp';
                                                 $downloadUrl = $photo->download_url ?? $photoUrl;
-                                                $fullMeta = "Captured: {$timestamp}<br>Cleaner: {$cleanerNameStr}";
-                                                if ($gpsStr) $fullMeta .= "<br>{$gpsStr}";
-                                                $fullTitle = $propNameStr . " &mdash; " . $roomName;
+                                                $fullTitle = "";
+                                                $fullMeta = ""; // Verify photos should display nothing underneath
                                             @endphp
                                             @if($photoUrl)
                                                 <article class="pair-card">
@@ -2742,7 +2741,7 @@
                                                         <img src="{{ $photoUrl }}" alt="Required Photo" loading="lazy">
                                                     </button>
                                                     <div class="pair-footer">
-                                                        <div class="pair-room">{{ $roomName }} - {{ $item->task?->name ?? 'Verify' }}</div>
+                                                        <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
                                                         <div class="pair-time">
                                                             <span>Required Verification</span>
                                                         </div>
@@ -2978,10 +2977,10 @@
                                             <tbody>
                                                 @foreach($propertyItems as $item)
                                                     <tr>
-                                                        <td style="font-size: 10pt; color: {{ $item->checked ? 'var(--ok)' : 'var(--danger)' }};">
-                                                            <span style="display: inline-block; width: 16px; font-weight: bold;">{!! $item->checked ? '&#10003;' : '&#10007;' !!}</span> {{ $item->task?->name ?? 'Task' }}
-                                                        </td>
-                                                        <td style="width: 220px; text-align: right; white-space: nowrap; padding-right: 28px; color: var(--text-soft);">
+                                                          <td style="font-size: 9pt; color: {{ $item->checked ? 'var(--ok)' : 'var(--danger)' }};">
+                                                              <span style="display: inline-block; width: 14px; font-weight: bold;">{!! $item->checked ? '&#10003;' : '&#10007;' !!}</span> {{ $item->task?->name ?? 'Task' }}
+                                                          </td>
+                                                          <td style="text-align: right; white-space: nowrap; padding-right: 8px; font-size: 8.5pt; color: var(--text-soft);">
                                                             {{ $item->checked && $item->checked_at ? \App\Helpers\TimezoneHelper::toLocal($item->checked_at, $propertyTz)?->format('m/d/Y - g:i A (T)') ?? '--' : '--' }}
                                                         </td>
                                                     </tr>
@@ -3001,10 +3000,10 @@
                                                 <tbody>
                                                     @foreach($section['items'] as $item)
                                                         <tr>
-                                                            <td style="font-size: 10pt; color: {{ $item->checked ? 'var(--ok)' : 'var(--danger)' }};">
-                                                                <span style="display: inline-block; width: 16px; font-weight: bold;">{!! $item->checked ? '&#10003;' : '&#10007;' !!}</span> {{ $item->task?->name ?? 'Task' }}
+                                                            <td style="font-size: 9pt; color: {{ $item->checked ? 'var(--ok)' : 'var(--danger)' }};">
+                                                                <span style="display: inline-block; width: 14px; font-weight: bold;">{!! $item->checked ? '&#10003;' : '&#10007;' !!}</span> {{ $item->task?->name ?? 'Task' }}
                                                             </td>
-                                                            <td style="width: 220px; text-align: right; white-space: nowrap; padding-right: 28px; color: var(--text-soft);">
+                                                            <td style="text-align: right; white-space: nowrap; padding-right: 8px; font-size: 8.5pt; color: var(--text-soft);">
                                                                 {{ $item->checked && $item->checked_at ? \App\Helpers\TimezoneHelper::toLocal($item->checked_at, $propertyTz)?->format('m/d/Y - g:i A (T)') ?? '--' : '--' }}
                                                             </td>
                                                         </tr>
@@ -3180,7 +3179,7 @@
             if (url) {
                 galleryItems.push({
                     url: url,
-                    title: el.getAttribute('data-title') || 'Photo',
+                    title: el.getAttribute('data-title') || '',
                     meta: el.getAttribute('data-meta') || '',
                     download: el.getAttribute('data-download') || url,
                     el: el,
@@ -3195,7 +3194,12 @@
             currentGalleryIndex = index;
             const item = galleryItems[index];
             lightboxImage.src = item.url;
-            lightboxCaption.innerHTML = '<strong>' + item.title + '</strong><br>' + item.meta;
+            
+            let captionHtml = '';
+            if (item.title) captionHtml += '<strong>' + item.title + '</strong>';
+            if (item.meta) captionHtml += (captionHtml ? '<br>' : '') + item.meta;
+            lightboxCaption.innerHTML = captionHtml;
+
             lightboxDownload.href = item.download;
             lightboxCounter.textContent = (index + 1) + ' / ' + galleryItems.length;
             lightboxPrev.style.display = index > 0 ? '' : 'none';
@@ -3251,7 +3255,7 @@
         document.querySelectorAll('.js-photo-open').forEach((el) => {
             el.addEventListener('click', () => {
                 const url = el.getAttribute('data-url');
-                const title = el.getAttribute('data-title') || 'Photo';
+                const title = el.getAttribute('data-title') || '';
                 const meta = el.getAttribute('data-meta') || '';
                 const download = el.getAttribute('data-download') || url;
 

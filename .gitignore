@@ -102,8 +102,7 @@ Thumbs.db
 ##########################
 *.bat
 *.ps1
-docker-compose.yml
-Dockerfile
+
 render.yaml
 
 ##########################

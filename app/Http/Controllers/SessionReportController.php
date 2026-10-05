@@ -318,6 +318,8 @@ class SessionReportController extends Controller
 
         $hasPhotoZip = $completionPhotosCount > 0;
 
+        // Override the raw checklistItems with our deduplicated array so that the filter doesn't return duplicate items
+        $session->setRelation('checklistItems', $checklistItems);
         $filter = new \App\Services\ReportItemFilter();
         $issues = $filter->getIssues($session);
         $complianceItems = $filter->getComplianceItems($session);
@@ -397,6 +399,7 @@ class SessionReportController extends Controller
     {
         $session = CleaningSession::query()
             ->where('report_token', $token)
+            ->with(['photos', 'checklistItems.photos'])
             ->firstOrFail();
 
         $normalizedPath = $this->normalizeStoragePath($path);
@@ -405,7 +408,24 @@ class SessionReportController extends Controller
         $blob = PersistentPhotoStorage::read($normalizedPath);
         abort_if($blob === null, 404);
 
-        return response($blob['content'], 200, [
+        $content = $blob['content'];
+        if (str_starts_with($blob['mime_type'] ?? '', 'image/')) {
+            try {
+                $meta = $this->classifyPhotoForWatermark($session, $normalizedPath);
+                $content = \App\Services\PhotoWatermarkService::applyWatermark(
+                    $content, 
+                    $session, 
+                    $meta['photoType'],
+                    $meta['roomName'],
+                    $meta['capturedAt'],
+                    $meta['taskName']
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Watermark failed in photo: ' . $e->getMessage());
+            }
+        }
+
+        return response($content, 200, [
             'Content-Type' => $blob['mime_type'] ?? 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="' . basename($normalizedPath) . '"',
             'Cache-Control' => 'public, max-age=86400',
@@ -420,6 +440,7 @@ class SessionReportController extends Controller
                 'photos',
                 'checklistItems.photos',
                 'property.rooms',
+                'housekeeper:id,name'
             ])
             ->firstOrFail();
 
@@ -429,52 +450,34 @@ class SessionReportController extends Controller
         $blob = PersistentPhotoStorage::read($normalizedPath);
         abort_if($blob === null, 404);
 
-        $roomName = 'Property';
-        $imageNumber = 1;
-        $capturedAt = null;
-
-        $matchedSessionPhoto = $session->photos->first(fn($p) => $this->normalizeStoragePath($p->path) === $normalizedPath);
-        if ($matchedSessionPhoto) {
-            $capturedAt = $matchedSessionPhoto->captured_at;
-            $roomId = $matchedSessionPhoto->room_id;
-            if ($roomId) {
-                $room = $session->property->rooms->firstWhere('id', $roomId);
-                $roomName = $room->name ?? 'Room';
-            }
-            $roomPhotos = $session->photos->where('room_id', $roomId)->values();
-            $index = $roomPhotos->search(fn($p) => $p->id === $matchedSessionPhoto->id);
-            $imageNumber = $index !== false ? $index + 1 : 1;
-        } else {
-            $allChecklistPhotos = $session->checklistItems->flatMap->photos;
-            $matchedChecklistPhoto = $allChecklistPhotos->first(fn($p) => $this->normalizeStoragePath($p->path) === $normalizedPath);
-            if ($matchedChecklistPhoto) {
-                $capturedAt = $matchedChecklistPhoto->captured_at;
-                $checklistItem = $session->checklistItems->firstWhere('id', $matchedChecklistPhoto->checklist_item_id);
-                $roomId = $checklistItem ? $checklistItem->room_id : null;
-                if ($roomId) {
-                    $room = $session->property->rooms->firstWhere('id', $roomId);
-                    $roomName = $room->name ?? 'Room';
-                }
-                $roomTaskPhotos = $allChecklistPhotos->filter(function($p) use ($session, $roomId) {
-                    $item = $session->checklistItems->firstWhere('id', $p->checklist_item_id);
-                    return $item && $item->room_id === $roomId;
-                })->values();
-                $index = $roomTaskPhotos->search(fn($p) => $p->id === $matchedChecklistPhoto->id);
-                $imageNumber = $index !== false ? $index + 1 : 1;
-            }
-        }
+        $meta = $this->classifyPhotoForWatermark($session, $normalizedPath);
 
         $extension = \App\Services\PhotoFilenameService::extensionFromPath($normalizedPath);
         $filename = \App\Services\PhotoFilenameService::generateFilename(
-            roomName: $roomName,
+            roomName: $meta['roomName'] ?? 'Property',
             cleanerName: $session->housekeeper?->name ?? 'Unassigned',
-            dateTime: $capturedAt ?? $session->scheduled_date,
-            sequenceNumber: $imageNumber,
+            dateTime: $meta['capturedAt'] ?? $session->scheduled_date,
+            sequenceNumber: 1, // Simplified for now
             extension: $extension,
         );
 
-        return response()->streamDownload(function () use ($blob) {
-            echo $blob['content'];
+        return response()->streamDownload(function () use ($blob, $session, $meta) {
+            $content = $blob['content'];
+            if (str_starts_with($blob['mime_type'] ?? '', 'image/')) {
+                try {
+                    $content = \App\Services\PhotoWatermarkService::applyWatermark(
+                        $content, 
+                        $session, 
+                        $meta['photoType'],
+                        $meta['roomName'],
+                        $meta['capturedAt'],
+                        $meta['taskName']
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Watermark failed in photoDownload: ' . $e->getMessage());
+                }
+            }
+            echo $content;
         }, $filename, [
             'Content-Type' => $blob['mime_type'] ?? 'application/octet-stream',
         ]);
@@ -489,6 +492,7 @@ class SessionReportController extends Controller
             ->with([
                 'photos:id,session_id,room_id,path,captured_at',
                 'property.rooms:id,name',
+                'housekeeper:id,name'
             ])
             ->firstOrFail();
 
@@ -554,7 +558,23 @@ class SessionReportController extends Controller
                 extension: $extension,
             );
 
-            $zip->addFromString($entryName, $blob['content']);
+            $content = $blob['content'];
+            if (str_starts_with($blob['mime_type'] ?? '', 'image/')) {
+                try {
+                    // ZIP currently only includes room photos (finished), no verify photos
+                    $content = \App\Services\PhotoWatermarkService::applyWatermark(
+                        $content, 
+                        $session, 
+                        'finished',
+                        $entry['room_name'], 
+                        $entry['captured_at'],
+                        null
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Watermark failed in photosZip: ' . $e->getMessage());
+                }
+            }
+            $zip->addFromString($entryName, $content);
         }
 
         $zip->close();
@@ -1312,13 +1332,11 @@ class SessionReportController extends Controller
             return null;
         }
 
-        if (is_file(storage_path('app/public/' . $normalizedPath))) {
-            return url('file/' . $normalizedPath);
-        }
-
+        // ALWAYS route through the watermarking pipeline for session reports.
+        // Bypassing this for local files causes the lightbox to miss the dynamically generated watermark.
         return route('reports.sessions.photo', [
             'token' => $token,
-            'path' => $normalizedPath,
+            'path' => ltrim($normalizedPath, '/'),
         ]);
     }
 
@@ -1386,4 +1404,56 @@ class SessionReportController extends Controller
 
         return $normalized;
     }
+
+
+    private function classifyPhotoForWatermark(CleaningSession $session, string $normalizedPath): array
+    {
+        $meta = [
+            'photoType' => 'finished', // Default to finished
+            'roomName' => 'Property',
+            'taskName' => null,
+            'capturedAt' => null,
+        ];
+
+        // 1. Check if it's a room photo (Finished Photo)
+        $matchedSessionPhoto = $session->photos->first(fn($p) => $this->normalizeStoragePath($p->path) === $normalizedPath);
+        if ($matchedSessionPhoto) {
+            $meta['photoType'] = 'finished';
+            $meta['capturedAt'] = $matchedSessionPhoto->captured_at;
+            $roomId = $matchedSessionPhoto->room_id;
+            if ($roomId) {
+                $room = $session->property->rooms->firstWhere('id', $roomId);
+                $meta['roomName'] = $room->name ?? 'Room';
+            }
+            return $meta;
+        }
+
+        // 2. Check if it's a checklist/task photo (Verify Photo)
+        $allChecklistPhotos = $session->checklistItems->flatMap->photos;
+        $matchedChecklistPhoto = $allChecklistPhotos->first(fn($p) => $this->normalizeStoragePath($p->path) === $normalizedPath);
+        if ($matchedChecklistPhoto) {
+            $meta['photoType'] = 'verify';
+            $meta['capturedAt'] = $matchedChecklistPhoto->captured_at;
+            $checklistItem = $session->checklistItems->firstWhere('id', $matchedChecklistPhoto->checklist_item_id);
+            
+            if ($checklistItem) {
+                if ($checklistItem->task) {
+                    $meta['taskName'] = $checklistItem->task->name;
+                } else {
+                    $fallbackTask = \App\Models\Task::find($checklistItem->task_id);
+                    $meta['taskName'] = $fallbackTask ? $fallbackTask->name : 'Verify Task';
+                }
+
+                $roomId = $checklistItem->room_id;
+                if ($roomId) {
+                    $room = $session->property->rooms->firstWhere('id', $roomId);
+                    $meta['roomName'] = $room->name ?? 'Room';
+                }
+            }
+            return $meta;
+        }
+
+        return $meta;
+    }
+
 }

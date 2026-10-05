@@ -284,7 +284,7 @@
                             <img :src="p.url" class="w-full h-32 object-cover" />
                         </template>
                         <template x-if="p.type==='video'">
-                            <video :src="p.url" class="w-full h-32 object-cover" muted></video>
+                            <video playsinline webkit-playsinline :src="p.url" class="w-full h-32 object-cover" muted></video>
                         </template>
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <button

@@ -457,7 +457,8 @@ Route::get('/file/{path}', function (string $path) {
         'Content-Type' => $mimeType,
         'Accept-Ranges' => 'bytes'
     ]);
-})->where('path', '.*');
+})->where('path', '.*')
+  ->withoutMiddleware([\App\Http\Middleware\EnsureUserIsActive::class, \App\Http\Middleware\ForcePasswordChange::class]);
 // Serve storage files through Laravel (bypasses symlink issues on shared hosting)
 Route::get('/storage/{path}', function (string $path) {
     if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
@@ -484,7 +485,8 @@ Route::get('/storage/{path}', function (string $path) {
         'Content-Type' => $mimeType,
         'Accept-Ranges' => 'bytes'
     ]);
-})->where('path', '.*')->name('storage.serve');
+})->where('path', '.*')->name('storage.serve')
+  ->withoutMiddleware([\App\Http\Middleware\EnsureUserIsActive::class, \App\Http\Middleware\ForcePasswordChange::class]);
 
 Route::get('/reports/sessions/{token}', [CleaningSessionReportController::class, 'show'])
     ->where('token', '[0-9a-z]+')

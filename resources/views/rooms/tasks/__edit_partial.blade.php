@@ -140,7 +140,7 @@
                                             <img :src="m.thumbnail" :alt="m.caption" class="w-full h-32 object-cover" />
                                         </template>
                                         <template x-if="m.type === 'video'">
-                                            <video :src="m.url" class="w-full h-32 object-cover" controls muted></video>
+                                            <video playsinline webkit-playsinline :src="m.url" class="w-full h-32 object-cover" controls muted></video>
                                         </template>
                                         <div class="p-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                                             <span class="text-xs truncate mr-2" :title="m.caption" x-text="m.caption"></span>

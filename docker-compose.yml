@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: guesthub_app
+    volumes:
+      - .:/var/www
+    ports:
+      - "8001:8001"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=guesthub
+      - DB_USERNAME=guesthub
+      - DB_PASSWORD=secret
+
+  db:
+    image: mysql:8.0
+    container_name: guesthub_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: guesthub
+      MYSQL_USER: guesthub
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: rootsecret
+    ports:
+      - "3307:3306"
+    volumes:
+      - guesthub_db_data:/var/lib/mysql
+
+volumes:
+  guesthub_db_data:

@@ -63,7 +63,7 @@
                             <img src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         @else
                             {{-- Fallback: Use the video itself to show the first frame --}}
-                            <video src="{{ $video->video_url }}#t=0.1" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" preload="metadata" muted playsinline></video>
+                            <video playsinline webkit-playsinline src="{{ $video->video_url }}#t=0.1" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" preload="metadata" muted></video>
                         @endif
 
                         {{-- Category Badge --}}

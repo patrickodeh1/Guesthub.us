@@ -12,6 +12,7 @@
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "pbmedia/laravel-ffmpeg": "^8.9",
         "sabre/vobject": "^5.0",
         "seamapi/seam": "^2.145",
         "spatie/laravel-activitylog": "^4.10",

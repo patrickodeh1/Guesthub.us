@@ -418,7 +418,7 @@
                                 <img :src="media.url" class="w-full h-32 object-cover" />
                             </template>
                             <template x-if="media.type==='video'">
-                                <video :src="media.url" class="w-full h-32 object-cover" controls></video>
+                                <video playsinline webkit-playsinline :src="media.url" class="w-full h-32 object-cover" controls></video>
                             </template>
                             <div class="absolute top-0 right-0 p-1">
                                 <button type="button" class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm" @click="if(confirm('Are you sure?')) { fetch(`/tasks/${taskId}/media/${media.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } }).then(() => { existingMedia = existingMedia.filter(m => m.id !== media.id) }) }">
@@ -471,7 +471,7 @@
                             <img :src="p.url" class="w-full h-32 object-cover" />
                         </template>
                         <template x-if="p.type==='video'">
-                            <video :src="p.url" class="w-full h-32 object-cover" muted></video>
+                            <video playsinline webkit-playsinline :src="p.url" class="w-full h-32 object-cover" muted></video>
                         </template>
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <button

@@ -111,7 +111,7 @@
                  @click.self="closePlayer()"
                  @keydown.escape.window="closePlayer()">
                 <div class="w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl relative flex flex-col border border-gray-800">
-                    <video x-ref="videoPlayer" :src="activeVideo.video_url" controls playsinline preload="metadata"
+                    <video playsinline webkit-playsinline x-ref="videoPlayer" :src="activeVideo.video_url" controls preload="metadata"
                            class="w-full h-full object-contain focus:outline-none"></video>
                     <button type="button" @click="closePlayer()"
                             class="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 hover:scale-105 transition-all shadow-md z-50 focus:outline-none"

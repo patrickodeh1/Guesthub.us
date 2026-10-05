@@ -64,7 +64,7 @@ class InstructionalVideoController extends Controller
         }
         $properties = $propertiesQuery->orderBy('name')->get();
 
-        $tasks = \App\Models\Task::orderBy('name')->get();
+        $tasks = \App\Models\Task::with(['properties:id,name', 'rooms:id,name', 'rooms.properties:id,name'])->orderBy('name')->get();
 
         return view('admin.videos.create', compact('properties', 'tasks'));
     }
@@ -193,7 +193,7 @@ class InstructionalVideoController extends Controller
         $properties = $propertiesQuery->orderBy('name')->get();
         $attachedPropertyIds = $video->properties->pluck('id')->toArray();
 
-        $tasks = \App\Models\Task::orderBy('name')->get();
+        $tasks = \App\Models\Task::with(['properties:id,name', 'rooms:id,name', 'rooms.properties:id,name'])->orderBy('name')->get();
         $attachedTaskIds = $video->tasks->pluck('id')->toArray();
 
         return view('admin.videos.edit', compact('video', 'properties', 'attachedPropertyIds', 'tasks', 'attachedTaskIds'));
@@ -290,6 +290,12 @@ class InstructionalVideoController extends Controller
                 ->toArray();
         }
         $video->properties()->sync($propertyIds);
+
+        if ($request->filled('tasks')) {
+            $video->tasks()->sync($request->tasks);
+        } else {
+            $video->tasks()->detach();
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'redirect' => route('admin.videos.index')]);

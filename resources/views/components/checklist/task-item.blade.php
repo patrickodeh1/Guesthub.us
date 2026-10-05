@@ -207,7 +207,7 @@
                                                      loading="lazy" />
                                             </button>
                                         @else
-                                            <video src="{{ $media->url }}" class="w-full h-24 object-cover" controls muted></video>
+                                            <video playsinline webkit-playsinline src="{{ $media->url }}" class="w-full h-24 object-cover" controls muted></video>
                                         @endif
                                         @if($media->caption)
                                             <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
