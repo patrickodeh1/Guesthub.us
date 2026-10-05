@@ -316,54 +316,6 @@ class BookingController extends Controller
         return view('admin.bookings.show', compact('booking', 'guestLogs', 'properties'));
     }
 
-    public function preview(Booking $booking, string $state)
-    {
-        abort_unless(in_array($state, ['identity', 'waiting', 'arrival', 'guide', 'checkout'], true), 404);
-        $booking->load(['property.categories', 'property.amenities']);
-
-        ActivityLogService::admin('booking_previewed', auth()->user()->name." previewed guest page (state: {$state}) for {$booking->guest_name}.", 'guests', [
-            'subject_type' => Booking::class,
-            'subject_id'   => $booking->id,
-            'booking_id'   => $booking->id,
-            'property_id'  => $booking->property_id,
-            'metadata'     => ['preview_state' => $state],
-        ]);
-
-        $checkinSteps = \App\Models\InstructionStep::where('property_id', $booking->property_id)
-            ->where('type', 'checkin')->where('active', true)
-            ->where($booking->parking_needed ? fn($q) => $q->where('visibility', '!=', 'non_parkers_only') : fn($q) => $q->where('visibility', '!=', 'parkers_only'))
-            ->orderBy('sort_order')->get()
-            ->map(fn($s) => ['title' => $s->title, 'content' => $s->renderContent($booking), 'image' => $s->imageUrl()])
-            ->values()->toArray();
-        $parkingSteps = $booking->parking_needed ? \App\Models\InstructionStep::where('property_id', $booking->property_id)
-            ->where('type', 'parking')->where('active', true)->orderBy('sort_order')->get()
-            ->map(fn($s) => ['title' => $s->title, 'content' => $s->renderContent($booking), 'image' => $s->imageUrl()])
-            ->values()->toArray() : [];
-        $checkoutSteps = \App\Models\InstructionStep::where('property_id', $booking->property_id)
-            ->where('type', 'checkout')->where('active', true)
-            ->where($booking->parking_needed ? fn($q) => $q->where('visibility', '!=', 'non_parkers_only') : fn($q) => $q->where('visibility', '!=', 'parkers_only'))
-            ->orderBy('sort_order')->get()
-            ->map(fn($s) => ['title' => $s->title, 'content' => $s->renderContent($booking), 'image' => $s->imageUrl()])
-            ->values()->toArray();
-
-        return view('guest.show', [
-            'booking'        => $booking,
-            'property'       => $booking->property,
-            'state'          => $state,
-            'categories'     => $booking->property->categories->filter(fn ($c) => $c->active && $c->pivot->active)->values(),
-            'locks'          => $this->resolveLocks($booking),
-            'gpsRadius'      => (int) Setting::getValue('gps_radius_meters', 150),
-            'previewMode'    => true,
-            'welcomeMessage' => $booking->welcome_message ?: Setting::getValue('default_intro', 'We are glad to have you. Please complete the following details prior to check-in.'),
-            'gpsVerifyMessage' => Setting::getValue('gps_verify_message', "It's Go Time!"),
-            'checkinSteps'   => $checkinSteps,
-            'parkingSteps'   => $parkingSteps,
-            'checkoutSteps'  => $checkoutSteps,
-            'checkinTimeOptions' => $this->checkinTimeOptions(),
-            'checkoutTimeOptions' => $this->checkoutTimeOptions(),
-        ]);
-    }
-
     public function update(Request $request, Booking $booking)
     {
         $this->guardNotCancelled($booking);

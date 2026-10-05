@@ -462,6 +462,10 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
 
+        if ($booking->isDirectBooking()) {
+            return response()->json(['ok' => false, 'message' => 'Payment is by card on this page.'], 422);
+        }
+
         if (! $booking->platformPaymentSelected()) {
             $booking->update(['platform_payment_selected_at' => now()]);
 

@@ -2143,7 +2143,7 @@
 
                         <div id="deposit-payment-choice" class="mt-5">
                             <button type="button" id="deposit-pay-here-btn" class="guest-primary-btn w-full">Pay Here with Card</button>
-                            <button type="button" id="deposit-pay-airbnb-btn" class="guest-outline-btn w-full mt-3 js-select-platform" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">Pay on {{ $platformLabel }}</button>
+                            <button type="button" id="deposit-pay-airbnb-btn" class="guest-outline-btn w-full mt-3 js-select-platform {{ $booking->isDirectBooking() ? 'hidden' : '' }}" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">Pay on {{ $platformLabel }}</button>
                         </div>
 
                         <div id="deposit-card-section" class="hidden">
@@ -2437,13 +2437,21 @@
                         <h2 class="text-xl font-extrabold text-slate-950">Pre-check in completed!</h2>
                         <p class="mt-3 text-sm leading-6 text-slate-600">Please submit your required incidentals hold payment on the booking platform. This hold is refundable after check out.</p>
                         </div>
+                        @if($booking->isDirectBooking())
+                        <p class="mt-5 text-center text-sm leading-6 text-slate-600">We'll send you the details to complete your incidentals hold payment.</p>
+                        @else
                         <button type="button" class="guest-primary-btn mt-5 w-full js-select-platform" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">I'll pay on {{ $platformLabel }}</button>
+                        @endif
                     @else
                         <div class="text-center">
                         <h2 class="text-xl font-extrabold text-slate-950">Pending incidentals hold payment</h2>
                         <p class="mt-3 text-sm leading-6 text-slate-600">If you have already submitted the payment, please send us a message so that we can expedite this for you. It usually doesn't take that long.</p>
                         </div>
+                        @if($booking->isDirectBooking())
+                        <p class="mt-5 text-center text-sm leading-6 text-slate-600">We'll send you the details to complete your incidentals hold payment.</p>
+                        @else
                         <button type="button" class="guest-primary-btn mt-5 w-full js-select-platform" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">I'll pay on {{ $platformLabel }}</button>
+                        @endif
                     @endif
                     <script>
                     (function () {

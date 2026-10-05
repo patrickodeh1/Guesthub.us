@@ -1560,6 +1560,12 @@ class Booking extends Model
      * to "Airbnb" when nothing is on file, so bookings created before this
      * field existed keep their exact previous guest experience.
      */
+    /** Direct bookings pay by card on our site only; no off-platform option. */
+    public function isDirectBooking(): bool
+    {
+        return in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
+    }
+
     public function platformLabel(): string
     {
         $platform = trim((string) ($this->booking_platform ?? ''));

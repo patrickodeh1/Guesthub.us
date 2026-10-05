@@ -202,7 +202,6 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::resource('guests', BookingController::class)->parameters(['guests' => 'booking'])->except(['edit']);
     Route::put('guests/{booking}/ledger', [BookingController::class, 'updateLedger'])->name('guests.ledger.update');
     Route::put('guests/{booking}/damages', [BookingController::class, 'updateDamages'])->name('guests.damages.update');
-    Route::get('guests/{booking}/preview/{state}', [BookingController::class, 'preview'])->name('guests.preview');
     Route::post('guests/{booking}/override-checkin', [BookingController::class, 'overrideCheckin'])->name('guests.override');
     Route::post('guests/{booking}/override-checkout', [BookingController::class, 'overrideCheckout'])->name('guests.override-checkout');
     Route::post('guests/{booking}/override-gps', [BookingController::class, 'overrideGps'])->name('guests.override-gps');
