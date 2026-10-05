@@ -26,9 +26,10 @@ class SendRegistrationReminders extends Command
             ->get();
 
         foreach ($bookings as $booking) {
+            $pn = $booking->property?->guest_display_name ?? 'your stay';
             $pending = filled($booking->registration_notified_at)
-                ? 'you still have an item waiting on you before check-in, open your link to see what is pending'
-                : 'please finish your registration';
+                ? "we still need something from you before check-in at {$pn}. Open your link to see what's pending:"
+                : "this is a friendly reminder to finish your registration for {$pn} so we can get everything ready for your stay.";
 
             GuestAlertService::send('registration_reminder', $booking, ['pending_text' => $pending]);
             Booking::whereKey($booking->id)->update(['last_registration_reminder_at' => now()]);

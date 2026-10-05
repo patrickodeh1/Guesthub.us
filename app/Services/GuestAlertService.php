@@ -64,7 +64,7 @@ class GuestAlertService
         ],
         'checkout_reminder' => [
             'label' => 'Check-out reminder',
-            'default_guest_message' => 'Hi {guest_first_name}, check-out for {property_name} is available tomorrow at {check_out_time}. Please wait until you are fully ready before starting check-out.',
+            'default_guest_message' => "Hi {guest_first_name}, a quick reminder that check-out from {property_name} is tomorrow, {check_out_date}, at {check_out_time}. When you're ready to leave, you can complete check-out here: {guest_link}",
             'default_staff_message' => 'Reminder: {guest_name} checks out of {property_name} tomorrow at {check_out_time}.',
         ],
         'checkout_completed' => [
@@ -144,7 +144,7 @@ class GuestAlertService
         ],
         'registration_reminder' => [
             'label' => 'Daily registration reminder',
-            'default_guest_message' => 'Hi {guest_first_name}, reminder: {pending_text} for {property_name}. {guest_link}',
+            'default_guest_message' => 'Hi {guest_first_name}, {pending_text} {guest_link}',
             'default_staff_message' => '',
         ],
         'arrival_soon' => [
