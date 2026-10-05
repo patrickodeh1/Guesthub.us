@@ -127,6 +127,21 @@ class GuestAlertService
             'default_guest_message' => '', // guest not notified for this event; see defaultToggleOverrides()
             'default_staff_message' => 'The booking for {guest_name} at {property_name} was updated via the channel manager -- now {check_in_date} to {check_out_date}. Review it in the admin panel.',
         ],
+        'photo_id_resubmitted' => [
+            'label' => 'Photo ID re-uploaded (2nd+ attempt)',
+            'default_guest_message' => '',
+            'default_staff_message' => '{guest_name} re-uploaded their ID for {property_internal_name}. Review it: {admin_link}',
+        ],
+        'registration_reminder' => [
+            'label' => 'Daily registration reminder',
+            'default_guest_message' => 'Hi {guest_first_name}, reminder: {pending_text} for {property_name}. {guest_link}',
+            'default_staff_message' => '',
+        ],
+        'arrival_soon' => [
+            'label' => 'Guest arriving within the hour',
+            'default_guest_message' => '',
+            'default_staff_message' => '{guest_name} is due to arrive at {property_internal_name} around {check_in_time}. Be on standby.',
+        ],
         'photo_id_uploaded' => [
             'label' => 'Photo ID uploaded',
             'default_guest_message' => 'Hi {guest_first_name}, your photo ID for {property_name} was received and is being reviewed. No action needed for now.',
@@ -351,7 +366,7 @@ class GuestAlertService
         if ($row['guest_email']) {
             if ($booking->email) {
                 try {
-                    Mail::to($booking->email)->send(new GuestAlertMail($label, $guestMessage, $subject, $booking->property?->name));
+                    Mail::to($booking->email)->send(new GuestAlertMail($label, $guestMessage, $subject, $booking->property?->guest_display_name));
                     Log::info("Guest alert email sent (guest, {$event}) to {$booking->email}.");
                 } catch (\Throwable $e) {
                     Log::error("Guest alert email failed (guest, {$event}): ".$e->getMessage());
@@ -495,6 +510,30 @@ class GuestAlertService
         return $appName !== '' ? "{$appName}: {$message}" : $message;
     }
 
+    protected static function guestLink(Booking $booking): string
+    {
+        try {
+            if (\Illuminate\Support\Facades\Route::has('guest.show')) {
+                return route('guest.show', $booking->token);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('guestLink failed: '.$e->getMessage());
+        }
+        return url('/');
+    }
+
+    protected static function adminLink(Booking $booking): string
+    {
+        try {
+            if (\Illuminate\Support\Facades\Route::has('admin.bookings.show')) {
+                return route('admin.bookings.show', $booking);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('adminLink failed: '.$e->getMessage());
+        }
+        return url('/');
+    }
+
     protected static function render(string $template, Booking $booking, array $extraTokens = []): string
     {
         $parkingStatus = is_null($booking->parking_needed)
@@ -504,7 +543,11 @@ class GuestAlertService
         $tokens = [
             '{guest_name}' => $booking->guest_name,
             '{guest_first_name}' => trim(explode(' ', trim($booking->guest_name))[0] ?? '') ?: $booking->guest_name,
-            '{property_name}' => $booking->property?->name ?? 'your property',
+            '{property_name}' => $booking->property?->guest_display_name ?? 'your property',
+            '{property_guest_name}' => $booking->property?->guest_display_name ?? 'your property',
+            '{property_internal_name}' => $booking->property?->internal_display_name ?? 'the property',
+            '{guest_link}' => self::guestLink($booking),
+            '{admin_link}' => self::adminLink($booking),
             '{check_in_date}' => $booking->check_in_date?->format('M j, Y') ?? '',
             '{check_out_date}' => $booking->check_out_date?->format('M j, Y') ?? '',
             '{check_in_time}' => $booking->effectiveCheckinTimeFormatted(),

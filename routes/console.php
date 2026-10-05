@@ -39,3 +39,9 @@ Schedule::command('pms:sync')->everyMinute()->when(
 
 Schedule::command('photos:prune-old --days=14')->dailyAt('02:00');
 Schedule::command('training:send-reminders')->hourly();
+
+// Daily nudge for guests who haven't finished registration / have something pending.
+Schedule::command('bookings:send-registration-reminders')->dailyAt('10:00')->timezone(config('app.display_timezone'));
+
+// Admin heads-up ~1 hour before an approved guest's check-in time.
+Schedule::command('bookings:send-arrival-soon')->everyTenMinutes();

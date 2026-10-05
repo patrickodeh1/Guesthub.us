@@ -18,7 +18,7 @@ class CleaningSmsNotificationService
         $property = $session->property;
         
         $globalSetting = \App\Models\Setting::get('notify_cleaning_started_global', '1');
-        if ($globalSetting === '0' || !$property->notify_cleaning_started) {
+        if (in_array((string) $globalSetting, ['0', '', 'false'], true) || !$property->notify_cleaning_started) {
             return;
         }
 
@@ -27,7 +27,7 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Cleaning has started at {$property->name}.\n"
+        $message = "Cleaning has started at {$property->internal_display_name}.\n"
             . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
             . "Start Time: " . TimezoneHelper::format(now(), $property) . "\n"
             . "Job ID: #{$session->id}";
@@ -43,7 +43,7 @@ class CleaningSmsNotificationService
         $property = $session->property;
 
         $globalSetting = \App\Models\Setting::get('notify_cleaning_finished_global', '1');
-        if ($globalSetting === '0' || !$property->notify_cleaning_finished) {
+        if (in_array((string) $globalSetting, ['0', '', 'false'], true) || !$property->notify_cleaning_finished) {
             return;
         }
 
@@ -52,7 +52,7 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Cleaning has been completed at {$property->name}.\n"
+        $message = "Cleaning has been completed at {$property->internal_display_name}.\n"
             . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
             . "Completion Time: " . TimezoneHelper::format(now(), $property) . "\n"
             . "Job ID: #{$session->id}";
@@ -68,7 +68,7 @@ class CleaningSmsNotificationService
         $property = $session->property;
 
         $globalSetting = \App\Models\Setting::get('notify_photo_started_global', '1');
-        if ($globalSetting === '0' || !$property->notify_photo_started) {
+        if (in_array((string) $globalSetting, ['0', '', 'false'], true) || !$property->notify_photo_started) {
             return;
         }
 
@@ -77,7 +77,7 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Property photos are now being captured for {$property->name}.\n"
+        $message = "Property photos are now being captured for {$property->internal_display_name}.\n"
             . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
             . "Time: " . TimezoneHelper::format(now(), $property);
 
@@ -92,13 +92,13 @@ class CleaningSmsNotificationService
         $property = $session->property;
 
         $globalSetting = \App\Models\Setting::get('notify_task_notes_global', '1');
-        if ($globalSetting === '0' || !$property->notify_task_notes) {
+        if (in_array((string) $globalSetting, ['0', '', 'false'], true) || !$property->notify_task_notes) {
             return;
         }
 
         $housekeeper = $session->housekeeper;
         $message = "Task Note Added\n\n"
-            . "Property: {$property->name}\n"
+            . "Property: {$property->internal_display_name}\n"
             . "Task: {$task->name}\n"
             . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n\n"
             . "Note:\n'{$noteContent}'\n\n"
@@ -145,7 +145,7 @@ class CleaningSmsNotificationService
         $recipients = $property->notificationRecipients()->where('active', true)->get();
 
         if ($recipients->isEmpty()) {
-            Log::info("[SMS] No active recipients for property {$property->id} ({$property->name}). Skipping {$type} notification.");
+            Log::info("[SMS] No active recipients for property {$property->id} ({$property->internal_display_name}). Skipping {$type} notification.");
             return;
         }
 
@@ -245,7 +245,7 @@ class CleaningSmsNotificationService
         $date = TimezoneHelper::format($session->scheduled_date, $property, 'M j, Y');
         
         $message = "Pre-Arrival Training Assigned\n\n"
-            . "Property: {$property->name}\n"
+            . "Property: {$property->internal_display_name}\n"
             . "Date: {$date}\n\n"
             . "You have required training to complete before this assignment.\n"
             . "Videos: {$videosCount}\n"
@@ -267,7 +267,7 @@ class CleaningSmsNotificationService
         $timingLabel = $timing === '24h' ? 'Starts in 24 hours' : 'Starts Today';
         
         $message = "Training Reminder: {$timingLabel}\n\n"
-            . "Property: {$property->name}\n"
+            . "Property: {$property->internal_display_name}\n"
             . "Date: {$date}\n\n"
             . "You still have {$remainingItems} required training item(s) to complete before you can start.\n"
             . "Est. Time: {$estMinutes}m\n\n"
@@ -284,7 +284,7 @@ class CleaningSmsNotificationService
         $property = $session->property;
         
         $message = "Session Start Blocked\n\n"
-            . "Property: {$property->name}\n\n"
+            . "Property: {$property->internal_display_name}\n\n"
             . "You attempted to start this session but still have {$remainingItems} mandatory training item(s) to complete.\n\n"
             . "Complete Training:\n" . route('training.index');
 

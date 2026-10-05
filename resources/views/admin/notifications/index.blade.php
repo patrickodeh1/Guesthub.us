@@ -9,6 +9,7 @@
 
     <form method="post" action="{{ route('admin.settings.notifications.update') }}" class="card card-pad">
         @csrf @method('put')
+        @if($errors->any())<div class="mb-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800">Settings were NOT saved: {{ $errors->first() }}</div>@endif
 
         <section class="mb-6 rounded-xl border border-slate-200 p-4">
             <h2 class="font-bold text-slate-800">Global cleaning notifications</h2>
@@ -48,7 +49,12 @@
                                 <textarea name="alerts[{{ $key }}][staff_message]" rows="3" class="input">{{ old("alerts.$key.staff_message", $row['staff_message']) }}</textarea>
                             </label>
                         </div>
-                        <p class="field-help">Available tokens: {guest_name}, {guest_first_name}, {property_name}, {check_in_date}, {check_in_time}, {check_out_date}, {check_out_time}, {parking_status}, {step_name}@if($key === 'photo_id_declined'), {id_side}, {decline_reason}@endif</p>
+                        <div class="flex flex-wrap gap-1.5">
+                            <span class="field-help w-full">Click a variable to insert it at the cursor:</span>
+                            @foreach(['guest_name','guest_first_name','property_name','property_guest_name','property_internal_name','check_in_date','check_in_time','check_out_date','check_out_time','parking_status','step_name','guest_link','admin_link','id_side','decline_reason','pending_text'] as $tok)
+                                <button type="button" data-token="{{ '{'.$tok.'}' }}" class="rounded-full border border-slate-300 px-2.5 py-0.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">{{ '{'.$tok.'}' }}</button>
+                            @endforeach
+                        </div>
 
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
@@ -106,4 +112,14 @@
 
         <button class="btn-primary mt-6">Save notification settings</button>
     </form>
+<script>
+document.addEventListener('focusin', e => { if (e.target.matches && e.target.matches('textarea[name^="alerts"]')) window.__lastTa = e.target; });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-token]'); if (!b) return; e.preventDefault();
+  const box = b.closest('details');
+  const ta = (window.__lastTa && box.contains(window.__lastTa)) ? window.__lastTa : box.querySelector('textarea');
+  const start = ta.selectionStart ?? ta.value.length, end = ta.selectionEnd ?? start, t = b.dataset.token;
+  ta.value = ta.value.slice(0, start) + t + ta.value.slice(end); ta.focus(); ta.selectionStart = ta.selectionEnd = start + t.length;
+});
+</script>
 </x-admin-layout>

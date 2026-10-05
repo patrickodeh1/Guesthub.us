@@ -42,7 +42,7 @@ class Property extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
+        'name', 'guest_name', 'internal_name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
         'map_embed_url', 'map_directions_url', 'contact_phone', 'contact_email',
         'welcome_intro', 'checkin_instructions', 'lockbox_code', 'parking_instructions',
         'requires_vehicle_photo',
@@ -279,5 +279,15 @@ class Property extends Model
         return $this->header_image
             ? url('/img/'.$this->header_image)
             : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1400&q=80';
+    }
+
+    public function getGuestDisplayNameAttribute(): string
+    {
+        return $this->guest_name ?: $this->name;
+    }
+
+    public function getInternalDisplayNameAttribute(): string
+    {
+        return $this->internal_name ?: $this->name;
     }
 }

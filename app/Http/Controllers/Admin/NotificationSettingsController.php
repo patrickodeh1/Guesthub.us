@@ -28,8 +28,8 @@ class NotificationSettingsController extends Controller
     {
         $rules = [
             'alerts' => ['required', 'array'],
-            'alerts.*.guest_message' => ['required', 'string', 'max:1000'],
-            'alerts.*.staff_message' => ['required', 'string', 'max:1000'],
+            'alerts.*.guest_message' => ['nullable', 'string', 'max:1000'],
+            'alerts.*.staff_message' => ['nullable', 'string', 'max:1000'],
         ];
         foreach ([
             'notify_cleaning_started_global',
