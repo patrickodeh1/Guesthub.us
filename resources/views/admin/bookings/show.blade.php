@@ -311,6 +311,29 @@
                 @endif
             </details>
 
+            @if($booking->damagesEntryOpen())
+            <section class="card card-pad" x-data="{ rows: @js(old('damages', $booking->damages ?? [])) }">
+                <h2 class="section-title">Damages<x-help text="Itemize any damage found. Available from 1 day before checkout; the total is deducted from the guest's incidentals hold." /></h2>
+                <form method="POST" action="{{ route('admin.guests.damages.update', $booking) }}" class="mt-3 space-y-2">
+                    @csrf
+                    @method('PUT')
+                    <template x-for="(row, i) in rows" :key="i">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="text" :name="'damages[' + i + '][description]'" x-model="row.description" placeholder="Description" class="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-sm">
+                            <input type="number" step="0.01" min="0.01" :name="'damages[' + i + '][amount]'" x-model="row.amount" placeholder="0.00" class="w-28 rounded-lg border border-slate-200 px-3 py-1.5 text-sm">
+                            <button type="button" @click="rows.splice(i, 1)" class="text-xs font-semibold text-red-600">Remove</button>
+                        </div>
+                    </template>
+                    @error('damages.*.description')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                    @error('damages.*.amount')<p class="text-xs text-red-600">{{ $message }}</p>@enderror
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        <button type="button" @click="rows.push({description: '', amount: ''})" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">+ Add damage</button>
+                        <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">Save damages</button>
+                    </div>
+                </form>
+            </section>
+            @endif
+
             {{-- Ledger: what's actually held vs. what's actually owed, so
                  admin can see at a glance what to refund from the
                  incidentals hold after checkout. View-only -- adjust the
@@ -358,6 +381,12 @@
                     <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                         <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="calendar" class="h-4 w-4 shrink-0 text-slate-400" />Early check-in deduction<x-help text="This booking's early check-in is set to be deducted from the incidentals hold at checkout (not billed upfront)." /></span>
                         <span class="font-semibold text-slate-950 sm:text-right">-${{ number_format($booking->effectiveEarlyCheckinCharge() ?? 0, 2) }}</span>
+                    </div>
+                    @endif
+                    @if($booking->damagesTotal() > 0)
+                    <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                        <span class="flex items-center gap-2.5 text-slate-500"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-400" />Damages deduction<x-help text="Itemized damages recorded after checkout. Comes out of the incidentals hold." /></span>
+                        <span class="font-semibold text-slate-950 sm:text-right">-${{ number_format($booking->damagesTotal(), 2) }}</span>
                     </div>
                     @endif
                     <div class="flex flex-col gap-1 border-b border-slate-100 py-3 sm:col-span-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">

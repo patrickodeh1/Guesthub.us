@@ -496,6 +496,40 @@ class BookingController extends Controller
         return redirect()->route('admin.guests.show', $booking)->with('success', 'Ledger updated.');
     }
 
+    /** Itemized damages, entered by admin after checkout; deducted from the incidentals hold. */
+    public function updateDamages(Request $request, Booking $booking)
+    {
+        $this->guardNotCancelled($booking);
+        abort_unless($booking->damagesEntryOpen(), 422, 'Damages can be recorded from 1 day before checkout.');
+
+        $request->merge(['damages' => collect($request->input('damages', []))
+            ->filter(fn ($r) => filled($r['description'] ?? null) || filled($r['amount'] ?? null))
+            ->values()->all()]);
+
+        $data = $request->validate([
+            'damages'               => ['nullable', 'array', 'max:50'],
+            'damages.*.description' => ['required', 'string', 'max:255'],
+            'damages.*.amount'      => ['required', 'numeric', 'min:0.01'],
+        ]);
+
+        $rows = collect($data['damages'] ?? [])->map(fn ($r) => [
+            'description' => trim($r['description']),
+            'amount'      => round((float) $r['amount'], 2),
+        ])->all();
+
+        $booking->update(['damages' => $rows ?: null]);
+
+        ActivityLogService::admin('booking_damages_updated', auth()->user()->name." updated damages for {$booking->guest_name}.", 'guests', [
+            'subject_type' => Booking::class,
+            'subject_id'   => $booking->id,
+            'booking_id'   => $booking->id,
+            'property_id'  => $booking->property_id,
+            'severity'     => 'info',
+        ]);
+
+        return redirect()->route('admin.guests.show', $booking)->with('success', 'Damages saved.');
+    }
+
     public function updateWelcomeMessage(Request $request, Booking $booking)
     {
         $data = $request->validate([

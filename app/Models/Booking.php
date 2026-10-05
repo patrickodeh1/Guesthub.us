@@ -29,7 +29,7 @@ class Booking extends Model
         'photo_id_front_approved_at', 'photo_id_front_declined_reason',
         'photo_id_back_approved_at', 'photo_id_back_declined_reason',
         'parking_charge', 'parking_charge_override', 'incidentals_charge', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at',
-        'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at',
+        'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_name', 'id_scan_status', 'id_scanned_at',
     ];
@@ -73,6 +73,7 @@ class Booking extends Model
             'photo_id_back_approved_at' => 'datetime',
             'parking_charge' => 'decimal:2',
             'parking_charge_override' => 'decimal:2',
+            'damages' => 'array',
             'incidentals_charge' => 'decimal:2',
             'early_checkin_charge_override' => 'decimal:2',
             'late_checkout_charge_override' => 'decimal:2',
@@ -716,7 +717,53 @@ class Booking extends Model
     {
         $hold = $this->effectiveIncidentalsCharge() ?? 0;
 
-        return max(0.0, $hold - $this->holdDeductions());
+        return max(0.0, $hold - $this->holdDeductions() - $this->damagesTotal());
+    }
+
+    /** Damages can be recorded from 1 day before the checkout date, and after checkout. */
+    public function damagesEntryOpen(): bool
+    {
+        if ($this->checked_out_at || $this->status === 'checked_out') {
+            return true;
+        }
+        if (! $this->check_out_date) {
+            return false;
+        }
+
+        return now()->startOfDay()->gte($this->check_out_date->copy()->subDay()->startOfDay());
+    }
+
+    /** Sum of the itemized post-checkout damages (bookings.damages). */
+    public function damagesTotal(): float
+    {
+        return round((float) collect($this->damages ?? [])->sum(fn ($row) => (float) ($row['amount'] ?? 0)), 2);
+    }
+
+    /**
+     * True when pre-check-in charges including the early check-in fee would
+     * exceed the property's deposit cap. The charge itself is clamped to the
+     * cap, so this means part of the fee will not be collected.
+     */
+    public function earlyFeeExceedsCap(): bool
+    {
+        if ($this->earlyCheckinIsDeductedFromHold() || ! $this->property) {
+            return false;
+        }
+
+        $capCents = $this->property->deposit_cap_cents !== null
+            ? (int) $this->property->deposit_cap_cents
+            : (int) \App\Models\Setting::getValue('default_deposit_cap_cents', 0);
+        if ($capCents <= 0) {
+            return false;
+        }
+
+        $subtotal = (int) round((
+            ($this->effectiveParkingCharge() ?? 0)
+            + ($this->effectiveIncidentalsCharge() ?? 0)
+            + ($this->effectiveEarlyCheckinCharge() ?? 0)
+        ) * 100);
+
+        return $subtotal > $capCents;
     }
 
     /**
@@ -731,7 +778,7 @@ class Booking extends Model
     {
         $hold = $this->effectiveIncidentalsCharge() ?? 0;
 
-        return $this->holdDeductions() > $hold;
+        return ($this->holdDeductions() + $this->damagesTotal()) > $hold;
     }
 
     /**
@@ -905,6 +952,25 @@ class Booking extends Model
         }
 
         $this->update($updates);
+
+        if ($newFee && $this->early_checkin_tier && $this->earlyFeeExceedsCap()) {
+            try {
+                \App\Services\ActivityLogService::admin(
+                    'early_checkin_exceeds_cap',
+                    "Early check-in fee for {$this->guest_name} pushes pre-check-in charges past the deposit cap; part of it will not be collected.",
+                    'guests',
+                    [
+                        'subject_type' => self::class,
+                        'subject_id'   => $this->id,
+                        'booking_id'   => $this->id,
+                        'property_id'  => $this->property_id,
+                        'severity'     => 'warning',
+                    ]
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
 
         if ($notify && $newFee) {
             \App\Services\GuestAlertService::send('reservation_updated', $this->fresh());
