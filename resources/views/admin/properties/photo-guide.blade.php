@@ -6,7 +6,7 @@
         @if (session('status')) <p class="mt-3 text-sm font-semibold text-green-700">{{ session('status') }}</p> @endif
         @if ($errors->any()) <p class="mt-3 text-sm font-semibold text-red-700">{{ $errors->first() }}</p> @endif
 
-        <form method="POST" action="{{ route('photo-guide.store', $property) }}" enctype="multipart/form-data" class="mt-4 rounded-xl border p-4">
+        <form method="POST" action="{{ route('admin.photo-guide.store', $property) }}" enctype="multipart/form-data" class="mt-4 rounded-xl border p-4">
             @csrf
             <div id="rows">
                 <div class="mb-3 flex gap-2">
@@ -23,7 +23,7 @@
                 <div class="rounded-xl border p-2">
                     <img src="{{ $ref->imageUrl() }}" alt="" class="w-full rounded-lg">
                     <p class="mt-2 text-sm">{{ $ref->caption ?: '(no caption)' }}</p>
-                    <form method="POST" action="{{ route('photo-guide.destroy', $ref) }}" onsubmit="return confirm('Remove this photo?')">
+                    <form method="POST" action="{{ route('admin.photo-guide.destroy', $ref) }}" onsubmit="return confirm('Remove this photo?')">
                         @csrf @method('DELETE')
                         <button class="mt-1 text-xs font-semibold text-red-600 underline">Remove</button>
                     </form>
