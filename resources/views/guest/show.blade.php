@@ -228,6 +228,7 @@
             </div>
 
             <div class="guest-portal-card mt-4">
+                @vite('resources/js/id-barcode.js')
                 <form id="guest-booking-form" method="post" data-skip-loading enctype="multipart/form-data" action="{{ route('guest.identity', [$booking->booking_id, $booking->token]) }}" class="guest-booking-card">
                     @csrf
 
@@ -1515,7 +1516,7 @@
                             document.getElementById("back-preview-block").classList.remove("hidden");
                             img.onload = function() {
                                 var ok = checkBlur(img, document.getElementById("back-blur-warning"));
-                                if (ok) { document.getElementById("photo-id-back-data").value = dataUrl; idwSaveState({ photo_id_back: dataUrl }); }
+                                if (ok) { document.getElementById("photo-id-back-data").value = dataUrl; idwSaveState({ photo_id_back: dataUrl }); idwBackScan(dataUrl); }
                             };
                         }
                     }
@@ -1529,11 +1530,95 @@
                     });
 
                     document.getElementById("retake-back-btn").addEventListener("click", function() {
+                        window.__idwBarcodeRaw = ""; window.__idwBarcodeTried = false;
                         document.getElementById("back-preview-block").classList.add("hidden");
                         document.getElementById("photo-id-back-data").value = "";
                         startCamera("back");
                     });
                 }
+
+                // ── Back-of-ID barcode scanning (PDF417 / AAMVA) ──
+                window.__idwBarcodeRaw = "";
+                window.__idwBarcodeTried = false;
+                window.__idwBackFails = 0;
+                var __idwPoll = null, __idwBusy = false;
+
+                function idwStopPoll() { if (__idwPoll) { clearInterval(__idwPoll); __idwPoll = null; } }
+
+                function idwStartPoll() {
+                    idwStopPoll();
+                    __idwPoll = setInterval(function() {
+                        var video = document.getElementById("camera-stream");
+                        if (!video || !video.srcObject) { return; }
+                        if (currentSide !== "back" || video.paused || video.readyState < 2 || __idwBusy || !window.idwBarcode) { return; }
+                        __idwBusy = true;
+                        window.idwBarcode.decodeVideo(video).then(function(raw) {
+                            if (raw && video.srcObject && currentSide === "back") {
+                                window.__idwBarcodeRaw = raw;
+                                idwStopPoll();
+                                if (typeof performCapture === "function") performCapture();
+                            }
+                        }).catch(function() {}).then(function() { __idwBusy = false; });
+                    }, 600);
+                }
+
+                function idwHideTips() { var el = document.getElementById("idw-tips-modal"); if (el) el.remove(); }
+
+                function idwShowTips(mode) {
+                    idwHideTips();
+                    var manual = mode === "manual";
+                    var el = document.createElement("div");
+                    el.id = "idw-tips-modal";
+                    el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;";
+                    el.innerHTML = `<div style="background:#fff;color:#111;border-radius:16px;max-width:420px;width:100%;padding:20px;">
+                        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">${manual ? "We couldn't read the barcode" : "Let's try that again"}</div>
+                        <p style="margin:0 0 10px;font-size:14px;">${manual ? "No problem. You can continue and our team will review your ID manually." : "We couldn't read the barcode on the back of your ID. A few tips:"}</p>
+                        <ul style="margin:0 0 14px 18px;padding:0;font-size:14px;list-style:disc;line-height:1.5;">
+                            <li>Place the ID on a flat, dark surface</li>
+                            <li>Avoid overhead light and glare (tilt slightly if you see a reflection)</li>
+                            <li>Rest your elbows on the table to keep your hands steady</li>
+                            <li>Fill the frame with the barcode and wait for it to focus</li>
+                        </ul>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" id="idw-tips-retake" style="flex:1;padding:12px;border-radius:10px;background:#111;color:#fff;font-weight:600;">Retake photo</button>
+                            ${manual ? '<button type="button" id="idw-tips-close" style="flex:1;padding:12px;border-radius:10px;background:#e5e7eb;font-weight:600;">Continue</button>' : ""}
+                        </div>
+                    </div>`;
+                    document.body.appendChild(el);
+                    document.getElementById("idw-tips-retake").onclick = function() {
+                        idwHideTips();
+                        var b = document.getElementById("retake-back-btn");
+                        if (b) b.click();
+                    };
+                    var c = document.getElementById("idw-tips-close");
+                    if (c) c.onclick = idwHideTips;
+                }
+
+                function idwBackScan(dataUrl) {
+                    idwStopPoll();
+                    window.__idwBarcodeTried = true;
+                    if (window.__idwBarcodeRaw) { idwHideTips(); return Promise.resolve(true); }
+                    if (!window.idwBarcode) { return Promise.resolve(false); }
+                    return window.idwBarcode.decodeDataUrl(dataUrl).then(function(raw) {
+                        if (raw) { window.__idwBarcodeRaw = raw; idwHideTips(); return true; }
+                        window.__idwBackFails = (window.__idwBackFails || 0) + 1;
+                        idwShowTips(window.__idwBackFails >= 3 ? "manual" : "retry");
+                        return false;
+                    }).catch(function(e) { console.error("Barcode decode error", e); return false; });
+                }
+
+                try {
+                    var __idwOrigStart = startCamera;
+                    startCamera = function(side) {
+                        var r = __idwOrigStart.apply(this, arguments);
+                        if (side === "back" && !isPassport) {
+                            window.__idwBarcodeRaw = ""; window.__idwBarcodeTried = false;
+                            if (window.idwBarcode) window.idwBarcode.warm();
+                            idwStartPoll();
+                        }
+                        return r;
+                    };
+                } catch (e) { console.warn("Live barcode scan not attached; capture-time decode still works.", e); }
 
                 function resetIdCapture() {
                     var frontData = document.getElementById("photo-id-data");
@@ -1735,6 +1820,16 @@
                         if (idwFrontRequired && !frontBlur.classList.contains("hidden")) { alert("Front ID photo is blurry. Please retake."); return; }
                         if (!isPassport && idwBackRequired && !backBlur.classList.contains("hidden")) { alert("Back ID photo is blurry. Please retake."); return; }
                     }
+                    // Back-of-ID barcode gate: retry with tips up to 3 times, then let staff review manually
+                    if (photoIdRequired && !isPassport && idwBackRequired && window.idwBarcode && !window.__idwBarcodeRaw) {
+                        var __backData = document.getElementById("photo-id-back-data").value;
+                        if (__backData && !window.__idwBarcodeTried) {
+                            btn.disabled = true;
+                            idwBackScan(__backData).then(function(ok) { btn.disabled = false; if (ok) btn.click(); });
+                            return;
+                        }
+                        if ((window.__idwBackFails || 0) < 3) { idwShowTips("retry"); return; }
+                    }
                     function b64toBlob(b64) {
                         var arr = b64.split(","), mime = arr[0].match(/:(.*?);/)[1];
                         var bstr = atob(arr[1]), n = bstr.length, u8 = new Uint8Array(n);
@@ -1749,6 +1844,7 @@
                             fd.set("photo_id", b64toBlob(document.getElementById("photo-id-data").value), "front.jpg");
                         }
                         if (!isPassport && idwBackRequired) {
+                            fd.set("id_barcode_raw", window.__idwBarcodeRaw || "");
                             fd.set("photo_id_back", b64toBlob(document.getElementById("photo-id-back-data").value), "back.jpg");
                         }
                     }
@@ -1983,7 +2079,132 @@
                     <form method="post" enctype="multipart/form-data" action="{{ route('guest.vehicle-info', [$booking->booking_id, $booking->token]) }}" class="space-y-4">
                         @csrf
                         <div>
-                            <label for="license_plate_photo" class="guest-stay-tile-label block mb-1">License Plate Photo</label>
+                            <div id="plate-scan-fields" class="mb-4 space-y-3">
+                                <p class="text-sm text-slate-600">Take the plate photo below and we'll fill these in. Please check they match your plate exactly (zero vs. letter O is easy to mix up).</p>
+                                <div id="plate-scan-status" class="hidden rounded-lg border p-3 text-sm"></div>
+                                <div>
+                                    <label for="license_plate" class="guest-stay-tile-label block mb-1">Plate number</label>
+                                    <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" required class="w-full rounded-lg border border-slate-300 px-3 py-2 uppercase tracking-wider">
+                                    @error('license_plate')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="license_plate_state" class="guest-stay-tile-label block mb-1">State</label>
+                                    <select name="license_plate_state" id="license_plate_state" required class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                                        <option value="">Select state</option>
+                                        @foreach(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] as $st)
+                                            <option value="{{ $st }}" @selected(old('license_plate_state', $booking->license_plate_state) === $st)>{{ $st }}</option>
+                                        @endforeach
+                                        <option value="OT" @selected(old('license_plate_state', $booking->license_plate_state) === 'OT')>Other / not US</option>
+                                    </select>
+                                    @error('license_plate_state')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                            <script>
+                            (function () {
+                                var scanUrl = "{{ route('guest.scan-plate', [$booking->booking_id, $booking->token]) }}";
+                                var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                                var csrf = csrfMeta ? csrfMeta.content : "";
+                                function status(msg, tone) {
+                                    var el = document.getElementById("plate-scan-status");
+                                    if (!el) return;
+                                    el.className = "rounded-lg border p-3 text-sm " + (tone === "warn" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-slate-50 border-slate-200 text-slate-700");
+                                    el.textContent = msg;
+                                }
+                                function downscale(file, cb) {
+                                    var img = new Image();
+                                    var url = URL.createObjectURL(file);
+                                    img.onload = function () {
+                                        var max = 1600, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+                                        var c = document.createElement("canvas");
+                                        c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+                                        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+                                        URL.revokeObjectURL(url);
+                                        c.toBlob(function (b) { cb(b || file); }, "image/jpeg", 0.88);
+                                    };
+                                    img.onerror = function () { URL.revokeObjectURL(url); cb(file); };
+                                    img.src = url;
+                                }
+                                document.addEventListener("change", function (e) {
+                                    var el = e.target;
+                                    if (!el || el.id !== "license_plate_photo" || !el.files || !el.files[0]) return;
+                                    status("Reading your plate…");
+                                    downscale(el.files[0], function (blob) {
+                                        var fd = new FormData();
+                                        fd.append("frame", blob, "plate.jpg");
+                                        fd.append("_token", csrf);
+                                        fetch(scanUrl, { method: "POST", body: fd, headers: { "Accept": "application/json" } })
+                                            .then(function (r) { return r.json(); })
+                                            .then(function (res) {
+                                                if (res && res.state) { document.getElementById("license_plate_state").value = res.state; }
+                                                if (res && res.ok && res.plate) {
+                                                    document.getElementById("license_plate").value = res.plate;
+                                                    status("We read " + res.plate + (res.state ? " (" + res.state + ")" : "") + ". Please confirm it matches your plate exactly.", (res.confidence || 0) < 0.8 ? "warn" : "ok");
+                                                } else {
+                                                    status("We couldn't read the plate automatically. Try again with the whole plate in frame and no glare, or type it in below.", "warn");
+                                                }
+                                            })
+                                            .catch(function () { status("Plate scan is unavailable right now. Please type your plate below.", "warn"); });
+                                    });
+                                });
+                            })();
+                            </script>
+                            <button type="button" id="plate-cam-open" class="mb-3 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white">Take plate photo with camera</button>
+                            <div id="plate-cam-modal" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#000;flex-direction:column;">
+                                <div style="position:relative;flex:1;min-height:0;">
+                                    <video id="plate-cam-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;"></video>
+                                    <div style="position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);aspect-ratio:2/1;border:3px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;"></div>
+                                    <p style="position:absolute;left:0;right:0;top:16px;text-align:center;color:#fff;font-size:14px;padding:0 16px;">Fit the whole plate inside the frame. Avoid glare.</p>
+                                </div>
+                                <div style="display:flex;gap:12px;padding:16px;background:#000;">
+                                    <button type="button" id="plate-cam-cancel" style="flex:1;padding:14px;border-radius:12px;background:#374151;color:#fff;font-weight:600;">Cancel</button>
+                                    <button type="button" id="plate-cam-capture" style="flex:2;padding:14px;border-radius:12px;background:#fff;color:#111;font-weight:700;">Capture</button>
+                                </div>
+                            </div>
+                            <script>
+                            (function () {
+                                var modal = document.getElementById("plate-cam-modal");
+                                var video = document.getElementById("plate-cam-video");
+                                var openBtn = document.getElementById("plate-cam-open");
+                                var stream = null;
+                                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { openBtn.style.display = "none"; return; }
+                                function stop() {
+                                    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+                                    video.srcObject = null;
+                                    modal.classList.add("hidden"); modal.style.display = "";
+                                }
+                                openBtn.addEventListener("click", function () {
+                                    navigator.mediaDevices.getUserMedia({
+                                        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                                        audio: false
+                                    }).then(function (st) {
+                                        stream = st; video.srcObject = st;
+                                        modal.classList.remove("hidden"); modal.style.display = "flex";
+                                        video.play().catch(function () {});
+                                    }).catch(function () {
+                                        var el = document.getElementById("plate-scan-status");
+                                        if (el) { el.className = "rounded-lg border p-3 text-sm bg-amber-50 border-amber-200 text-amber-800"; el.textContent = "Camera isn't available. Use the photo option below or type your plate."; }
+                                    });
+                                });
+                                document.getElementById("plate-cam-cancel").addEventListener("click", stop);
+                                document.getElementById("plate-cam-capture").addEventListener("click", function () {
+                                    if (!video.videoWidth) return;
+                                    var sc = Math.min(1, 1920 / video.videoWidth);
+                                    var c = document.createElement("canvas");
+                                    c.width = Math.round(video.videoWidth * sc); c.height = Math.round(video.videoHeight * sc);
+                                    c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
+                                    c.toBlob(function (blob) {
+                                        stop();
+                                        if (!blob) return;
+                                        var file = new File([blob], "plate.jpg", { type: "image/jpeg" });
+                                        var input = document.getElementById("license_plate_photo");
+                                        var dt = new DataTransfer(); dt.items.add(file);
+                                        input.files = dt.files;
+                                        input.dispatchEvent(new Event("change", { bubbles: true }));
+                                    }, "image/jpeg", 0.9);
+                                });
+                            })();
+                            </script>
+                            <label for="license_plate_photo" class="guest-stay-tile-label block mb-1">Or choose a photo</label>
                             <input type="file" name="license_plate_photo" id="license_plate_photo"
                                    accept="image/*" class="guest-input w-full" required>
                             @error('license_plate_photo')

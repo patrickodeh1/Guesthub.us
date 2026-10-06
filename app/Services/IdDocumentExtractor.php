@@ -119,6 +119,24 @@ class IdDocumentExtractor
     }
 
     /**
+     * Raw Vision text for an image (used for passport MRZ parsing). Null on any failure.
+     */
+    public function readRawText(string $storagePath): ?string
+    {
+        if (blank($this->apiKey)) {
+            return null;
+        }
+
+        try {
+            return $this->extractRawText($storagePath);
+        } catch (\Throwable $e) {
+            Log::error('IdDocumentExtractor: readRawText failed.', ['error' => $this->redact($e->getMessage())]);
+
+            return null;
+        }
+    }
+
+    /**
      * Calls the Vision REST API directly (a plain API key is sufficient —
      * no service account JSON / google/cloud-vision SDK dependency needed).
      */

@@ -10,6 +10,7 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/cleaning.css',
                 'resources/js/cleaning-app.js',
+                'resources/js/id-barcode.js',
             ],
             refresh: true,
         }),

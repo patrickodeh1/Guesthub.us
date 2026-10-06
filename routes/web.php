@@ -111,6 +111,7 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/rental-agreement', [GuestController::class, 'rentalAgreement'])->name('rental-agreement');
     Route::get('/rental-agreement/download', [GuestController::class, 'rentalAgreementPdf'])->name('rental-agreement.pdf');
     Route::post('/vehicle-info', [GuestController::class, 'submitVehicleInfo'])->name('vehicle-info');
+    Route::post('/scan-plate', [GuestController::class, 'scanPlate'])->middleware('throttle:20,1')->name('scan-plate');
     Route::post('/login', [GuestController::class, 'login'])->name('login');
     Route::post('/sign-rental-agreement', [GuestController::class, 'signRentalAgreement'])->name('sign-rental-agreement');
     Route::post('/parking', [GuestController::class, 'parking'])->name('parking');

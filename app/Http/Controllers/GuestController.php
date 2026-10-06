@@ -606,6 +606,7 @@ class GuestController extends Controller
         $data = $request->validate([
             'photo_id' => [$frontRequired ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'photo_id_back' => [$backRequired ? 'required' : 'nullable', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'id_barcode_raw' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $advancedStatuses = ['guest_approved', 'awaiting_deposit', 'currently_hosting', 'checked_out'];
@@ -654,8 +655,12 @@ class GuestController extends Controller
         // review. This gates the rental agreement signature — see
         // signRentalAgreement() — the guest can no longer sign before the
         // ID they uploaded has actually been checked.
-        if (isset($updates['photo_id_path'])) {
-            $this->scanUploadedId($booking, $updates['photo_id_path']);
+        if (isset($updates['photo_id_path']) || isset($updates['photo_id_back_path'])) {
+            $this->scanIdentity(
+                $booking,
+                $updates['photo_id_path'] ?? $booking->photo_id_path,
+                $request->input('id_barcode_raw')
+            );
         }
 
         $frontUploaded = $request->hasFile('photo_id') && $booking->photo_id_path;
@@ -693,6 +698,100 @@ class GuestController extends Controller
 
         return back()
             ->with('success', 'All complete. Your arrival information has been received securely.');
+    }
+
+    /**
+     * Identity check. Priority: (1) back-of-ID barcode text posted by the browser,
+     * re-parsed here; (2) passport MRZ via Vision + check digits; (3) plain OCR,
+     * which can never reject on its own. Only an expired ID blocks the guest;
+     * anything uncertain goes to staff as manual_review.
+     */
+    private function scanIdentity(Booking $booking, ?string $frontPath, ?string $barcodeRaw): void
+    {
+        $fields = null;
+        $source = null;
+
+        if ($booking->id_type !== 'passport' && filled($barcodeRaw)) {
+            $parsed = \App\Services\AamvaParser::parse((string) $barcodeRaw);
+            if ($parsed && filled($parsed['last_name']) && filled($parsed['dob'])) {
+                $fields = $parsed;
+                $source = 'barcode';
+            }
+        }
+
+        if (! $fields && $booking->id_type === 'passport' && $frontPath) {
+            $text = app(IdDocumentExtractor::class)->readRawText($frontPath);
+            $parsed = $text ? \App\Services\MrzParser::parseFromText($text) : null;
+            if ($parsed) {
+                $fields = $parsed;
+                $source = 'mrz';
+            }
+        }
+
+        $first = $last = $name = $dob = $expires = null;
+        $nameMatch = 'unknown';
+        $reason = null;
+
+        if ($fields) {
+            $first = trim(($fields['first_name'] ?? '').' '.($fields['middle_name'] ?? ''));
+            $last = $fields['last_name'] ?? null;
+            $name = trim($first.' '.$last);
+            $dob = ! empty($fields['dob']) ? \Carbon\Carbon::parse($fields['dob']) : null;
+            $expires = ! empty($fields['expires_at']) ? \Carbon\Carbon::parse($fields['expires_at']) : null;
+            $nameMatch = PersonNameMatcher::compareParts($fields['first_name'] ?? null, $last, $booking->guest_name);
+            $booking->id_number = $fields['id_number'] ?? $booking->id_number;
+        } elseif ($frontPath) {
+            // Last resort: plain OCR of the front. Never allowed to produce a mismatch.
+            $ocr = app(IdDocumentExtractor::class)->extract($frontPath);
+            $source = 'ocr';
+            $name = $ocr->name;
+            $dob = $ocr->dateOfBirth;
+            $expires = $ocr->expiryDate;
+            $reason = $ocr->failureReason;
+            if ($ocr->hasUsableName() && PersonNameMatcher::matches($ocr->name, $booking->guest_name)) {
+                $nameMatch = 'match';
+            }
+        }
+
+        $expired = $expires !== null && $expires->copy()->endOfDay()->isPast();
+
+        if ($expired) {
+            $status = 'expired';
+        } elseif ($nameMatch === 'match' && $dob && $expires) {
+            $status = 'matched';
+        } else {
+            $status = 'manual_review';
+        }
+
+        $booking->update([
+            'id_name' => $name,
+            'id_first_name' => $first,
+            'id_last_name' => $last,
+            'id_date_of_birth' => $dob,
+            'id_age' => $dob?->age,
+            'id_expiry_date' => $expires,
+            'id_number' => $booking->id_number,
+            'id_scan_status' => $status,
+            'id_scan_source' => $source,
+            'id_name_match' => $nameMatch,
+            'id_scan_attempts' => ($booking->id_scan_attempts ?? 0) + 1,
+            'id_scanned_at' => now(),
+        ]);
+
+        ActivityLogService::guest('id_scanned', "ID scan for {$booking->guest_name}: {$status} via ".($source ?? 'none').", name {$nameMatch}".($reason ? " ({$reason})" : '').'.', 'photo_id', [
+            'booking_id'  => $booking->id,
+            'property_id' => $booking->property_id,
+            'actor_name'  => $booking->guest_name,
+            'severity'    => in_array($status, ['expired'], true) || $nameMatch === 'different' ? 'warning' : 'info',
+            'metadata'    => [
+                'id_scan_status' => $status,
+                'source'         => $source,
+                'name_match'     => $nameMatch,
+                'reason'         => $reason,
+                'dob_read'       => $dob !== null,
+                'expiry_read'    => $expires !== null,
+            ],
+        ]);
     }
 
     /**
@@ -819,6 +918,17 @@ class GuestController extends Controller
         return back()->with('success', 'Rental agreement signed.');
     }
 
+    /**
+     * Reads plate text + state from a photo. Stateless: nothing is stored.
+     */
+    public function scanPlate(Request $request, string $bookingId, string $token)
+    {
+        $this->booking($bookingId, $token);
+        $request->validate(['frame' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240']]);
+
+        return response()->json(app(\App\Services\PlateScanner::class)->scan($request->file('frame')->get()));
+    }
+
     public function submitVehicleInfo(Request $request, string $bookingId, string $token)
     {
         $booking = $this->booking($bookingId, $token);
@@ -837,6 +947,8 @@ class GuestController extends Controller
 
         $request->validate([
             'license_plate_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
+            'license_plate' => ['required', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \-]+$/'],
+            'license_plate_state' => ['required', 'string', 'size:2'],
         ]);
 
         $updates = [];
@@ -848,6 +960,8 @@ class GuestController extends Controller
             ]);
         }
         $updates['license_plate_photo_path'] = $storedPath;
+        $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate')));
+        $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state'));
 
         $booking->update($updates);
 

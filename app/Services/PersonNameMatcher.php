@@ -94,4 +94,61 @@ class PersonNameMatcher
         // on only one of them, compound surnames, etc.).
         return array_diff($b, $a) === [] || array_diff($a, $b) === [];
     }
+
+
+    /**
+     * Compares separately-known first/last names (from the barcode or MRZ)
+     * with the single typed name. Middle names on either side are ignored.
+     *
+     * @return string 'match' | 'close' | 'different' | 'unknown' (a part was missing, never a mismatch)
+     */
+    public static function compareParts(?string $first, ?string $last, ?string $typed): string
+    {
+        $strip = fn (array $t) => array_values(array_filter(
+            $t,
+            fn ($x) => $x !== '' && ! in_array($x, self::SUFFIXES, true)
+        ));
+
+        $firstT = $strip(explode(' ', self::normalize($first)));
+        $lastT = $strip(explode(' ', self::normalize($last)));
+        $typedT = $strip(explode(' ', self::normalize($typed)));
+
+        if ($firstT === [] || $lastT === [] || $typedT === []) {
+            return 'unknown';
+        }
+
+        $lastJoined = implode('', $lastT);
+        $typedJoined = implode('', $typedT);
+
+        $lastOk = array_diff($lastT, $typedT) === []
+            || in_array($lastJoined, $typedT, true)
+            || (strlen($lastJoined) >= 5 && str_ends_with($typedJoined, $lastJoined));
+        $firstOk = array_intersect($firstT, $typedT) !== [];
+
+        if ($lastOk && $firstOk) {
+            return 'match';
+        }
+
+        if ($lastOk) {
+            foreach ($typedT as $t) {
+                foreach ($firstT as $f) {
+                    if ((strlen($t) === 1 && $t === $f[0])
+                        || (strlen($f) === 1 && $f === $t[0])
+                        || (min(strlen($t), strlen($f)) >= 3 && levenshtein($t, $f) <= 1)) {
+                        return 'close';
+                    }
+                }
+            }
+        }
+
+        if ($firstOk && strlen($lastJoined) >= 5) {
+            foreach ($typedT as $t) {
+                if (levenshtein($t, $lastJoined) <= 1) {
+                    return 'close';
+                }
+            }
+        }
+
+        return 'different';
+    }
 }

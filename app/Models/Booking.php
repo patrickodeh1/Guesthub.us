@@ -40,6 +40,7 @@ class Booking extends Model
         'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_name', 'id_scan_status', 'id_scanned_at',
+        'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
     ];
 
     protected function casts(): array

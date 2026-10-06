@@ -27,7 +27,8 @@
     },
     "dependencies": {
         "dropzone": "^6.0.0-beta.2",
-        "sortablejs": "^1.15.6"
+        "sortablejs": "^1.15.6",
+        "zxing-wasm": "^2.2.4"
     },
     "allowScripts": {
         "esbuild@0.28.1": true

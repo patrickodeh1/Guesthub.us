@@ -418,6 +418,23 @@
                             };
                         @endphp
                         <div class="mt-3 rounded-lg border p-3 text-sm {{ $idwScanBadge[0] }}">
+                            @php
+                                $idwGlanceBadge = match($booking->id_name_match) {
+                                    'match' => ['bg-emerald-100 text-emerald-800', 'Name matches'],
+                                    'close' => ['bg-amber-100 text-amber-800', 'Name close, please check'],
+                                    'different' => ['bg-red-100 text-red-800', 'Name differs'],
+                                    default => ['bg-slate-100 text-slate-600', 'Name not verified'],
+                                };
+                                $idwGlanceAge = $booking->id_date_of_birth?->age ?? $booking->id_age;
+                                $idwGlanceExpired = $booking->id_expiry_date?->copy()->endOfDay()->isPast();
+                            @endphp
+                            <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                                <span class="text-base font-extrabold">{{ $booking->id_name ?: $booking->guest_name }}</span>
+                                <span class="font-bold">{{ $idwGlanceAge !== null ? $idwGlanceAge.' yrs' : 'Age not read' }}</span>
+                                <span>DOB {{ $booking->id_date_of_birth?->format('M j, Y') ?? 'not read' }}</span>
+                                <span class="{{ $idwGlanceExpired ? 'font-bold text-red-700' : '' }}">Exp {{ $booking->id_expiry_date?->format('M j, Y') ?? 'not read' }}{{ $idwGlanceExpired ? ' (expired)' : '' }}</span>
+                                <span class="rounded-full px-2 py-0.5 text-xs font-semibold {{ $idwGlanceBadge[0] }}">{{ $idwGlanceBadge[1] }}</span>
+                            </div>
                             <p class="font-semibold">ID scan: {{ $idwScanBadge[1] }}</p>
                             <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                                 <dt class="font-medium opacity-75">Name on ID</dt>
@@ -430,6 +447,10 @@
                                 <dd>{{ $booking->id_expiry_date?->format('M j, Y') ?? '— not read —' }}</dd>
                                 <dt class="font-medium opacity-75">Scanned</dt>
                                 <dd>{{ $booking->id_scanned_at ? $booking->localTimestamp($booking->id_scanned_at)->format('M j, Y g:i A') : '—' }}</dd>
+                                <dt class="font-medium opacity-75">Read via</dt>
+                                <dd>{{ match($booking->id_scan_source) { 'barcode' => 'Barcode (back of ID)', 'mrz' => 'Passport MRZ', 'ocr' => 'Photo text (less reliable)', default => '—' } }}</dd>
+                                <dt class="font-medium opacity-75">Scan attempts</dt>
+                                <dd>{{ $booking->id_scan_attempts ?? 0 }}</dd>
                             </dl>
                         </div>
                     @endif
@@ -514,6 +535,12 @@
                 <section class="card card-pad lg:col-span-2">
                     <h2 class="section-title">Vehicle</h2>
                     <p class="section-copy">Make/model and license plate photo, collected when the guest opted into parking.</p>
+                    @if($booking->license_plate)
+                        <div id="idwPlateGlance" class="mt-4 flex items-center gap-3">
+                            <span class="rounded-md border-2 border-slate-800 bg-white px-3 py-1 text-lg font-extrabold uppercase tracking-widest">{{ $booking->license_plate }}</span>
+                            <span class="text-sm font-bold">{{ $booking->license_plate_state }}</span>
+                        </div>
+                    @endif
                     @if($booking->license_plate_photo_path)
                         <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.license-plate-view', $booking) }}', 'License plate')" class="mt-4 block w-full text-left">
                             <img src="{{ route('admin.guests.license-plate-view', $booking) }}" alt="License plate" class="w-full max-h-64 rounded-lg border border-slate-200 object-contain bg-slate-50">

@@ -3,8 +3,18 @@
     "file": "assets/bootstrap-BcVDo3KE.js",
     "name": "bootstrap"
   },
+  "node_modules/zxing-wasm/dist/es/reader/index.js": {
+    "file": "assets/index-DprwgvvH.js",
+    "name": "index",
+    "src": "node_modules/zxing-wasm/dist/es/reader/index.js",
+    "isDynamicEntry": true
+  },
+  "node_modules/zxing-wasm/dist/reader/zxing_reader.wasm": {
+    "file": "assets/zxing_reader-EOacYbLr.wasm",
+    "src": "node_modules/zxing-wasm/dist/reader/zxing_reader.wasm"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-UkNWGZyp.css",
+    "file": "assets/app-BNxpeGaa.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -37,6 +47,18 @@
     "isEntry": true,
     "imports": [
       "_bootstrap-BcVDo3KE.js"
+    ]
+  },
+  "resources/js/id-barcode.js": {
+    "file": "assets/id-barcode-CxdOvWie.js",
+    "name": "id-barcode",
+    "src": "resources/js/id-barcode.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/zxing-wasm/dist/es/reader/index.js"
+    ],
+    "assets": [
+      "assets/zxing_reader-EOacYbLr.wasm"
     ]
   }
 }
