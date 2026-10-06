@@ -785,6 +785,20 @@ class SessionController extends Controller
         ];
     }
 
+    public function setParking(Request $request, CleaningSession $session)
+    {
+        $this->assertSessionAccess($session);
+        abort_unless(
+            (int) $session->housekeeper_id === (int) auth()->id() || auth()->user()->hasRole('admin'),
+            403
+        );
+
+        $data = $request->validate(['parking_needed' => ['required', 'boolean']]);
+        $session->update(['parking_needed' => (bool) $data['parking_needed']]);
+
+        return redirect()->to(route('sessions.show', $session) . '#getting-in');
+    }
+
     public function show(CleaningSession $session)
     {
         $this->assertSessionAccess($session);
@@ -872,6 +886,7 @@ class SessionController extends Controller
             'isViewOnly' => $data['is_view_only'],
             'isTooEarly' => $data['is_too_early'],
             'is_admin' => $data['is_admin'] ?? false,
+            'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
         ];
 
         // Check if onboarding is required

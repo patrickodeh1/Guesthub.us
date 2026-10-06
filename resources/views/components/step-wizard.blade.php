@@ -1,4 +1,4 @@
-@props(['steps', 'type' => 'checkin', 'nextSection' => 'guest-guide-section', 'bookingId' => 'PREVIEW', 'token' => 'preview', 'showBackLink' => false])
+@props(['steps', 'type' => 'checkin', 'nextSection' => 'guest-guide-section', 'bookingId' => 'PREVIEW', 'token' => 'preview', 'showBackLink' => false, 'kicker' => null, 'doneLabel' => null])
 @php $siteLogo = \App\Models\Setting::getValue('site_logo'); @endphp
 @php $total = count($steps); @endphp
 @if($total > 0)
@@ -20,7 +20,7 @@
                 Back to guide
             </button>
         @endif
-        <p class="guest-status-kicker">{{ $type === 'checkout' ? 'Check-out' : ($type === 'parking' ? 'Parking' : 'Check-in') }}</p>
+        <p class="guest-status-kicker">{{ $kicker ?? ($type === 'checkout' ? 'Check-out' : ($type === 'parking' ? 'Parking' : 'Check-in')) }}</p>
         <h1 class="guest-status-title" id="wizard-title-{{ $type }}">{{ $steps[0]['title'] }}</h1>
     </div>
 
@@ -83,7 +83,7 @@
             <button type="button" id="wizard-next-{{ $type }}" class="guest-primary-btn flex-1" @if($total === 1) style="display:none" @endif>Next</button>
             <button type="button" id="wizard-done-{{ $type }}" class="guest-primary-btn is-go flex-1" @if($total > 1) style="display:none" @endif>
                 <x-icon name="check" class="h-4 w-4" />
-                {{ $type === "checkout" ? "Check out" : ($type === "checkin" ? "I'm Checked In!" : "Continue to Guide") }}
+                {{ $doneLabel ?? ($type === "checkout" ? "Check out" : ($type === "checkin" ? "I'm Checked In!" : "Continue to Guide")) }}
             </button>
         </div>
     </div>

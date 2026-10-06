@@ -63,4 +63,23 @@ class InstructionStep extends Model
             $this->content
         );
     }
+
+    public function renderContentForProperty(Property $property): string
+    {
+        if (!$this->content) return '';
+
+        return str_replace(
+            [
+                '[[guest_name]]', '[[guest_first_name]]', '[[guest_last_name]]', '[[guest_phone]]',
+                '[[booking_id]]', '[[check_in_date]]', '[[check_out_date]]',
+                '[[property_name]]', '[[property_address]]', '[[lockbox_code]]',
+            ],
+            [
+                '', '', '', '',
+                '', '', '',
+                $property->name, $property->address, $property->lockbox_code ?? '',
+            ],
+            $this->content
+        );
+    }
 }

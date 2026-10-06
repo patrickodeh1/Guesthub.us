@@ -573,6 +573,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
+    Route::post('/sessions/{session}/parking', [CleaningSessionController::class, 'setParking'])->name('sessions.parking');
     Route::post('/sessions/{session}/complete-onboarding', [CleaningSessionController::class, 'completeOnboarding'])->name('sessions.complete-onboarding');
     Route::post('/sessions/{session}/gps-override', [CleaningSessionController::class, 'grantGpsOverride'])->name('sessions.gps-override');
     Route::post('/sessions/{session}/complete', [CleaningSessionController::class, 'complete'])->name('sessions.complete');

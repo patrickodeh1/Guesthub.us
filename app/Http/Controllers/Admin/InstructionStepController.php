@@ -223,7 +223,7 @@ class InstructionStepController extends Controller
             'image_path'           => ['nullable', 'image', 'max:10240'],
             'existing_image_path'  => ['nullable', 'string'],
             'active'               => ['nullable', 'boolean'],
-            'visibility'           => ['nullable', 'in:all,parkers_only,non_parkers_only'],
+            'visibility'           => ['nullable', 'in:all,parkers_only,non_parkers_only,cleaners_only'],
             'images'               => ['nullable', 'array'],
             'images.*'             => ['nullable', 'image', 'max:10240'],
             'gallery_library_paths'   => ['nullable', 'array'],

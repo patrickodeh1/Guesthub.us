@@ -33,6 +33,7 @@ class CleaningSession extends Model
         'assignment_status',
         'cleaner_notified_at',
         'sporadic_tasks',
+        'parking_needed',
         'gps_override_enabled',
         'gps_override_approved_by',
         'gps_override_reason',
@@ -50,6 +51,7 @@ class CleaningSession extends Model
         'gps_override_enabled' => 'boolean',
         'gps_override_timestamp' => 'datetime',
         'no_guest' => 'boolean',
+        'parking_needed' => 'boolean',
         'cleaner_notified_at' => 'datetime',
     ];
 

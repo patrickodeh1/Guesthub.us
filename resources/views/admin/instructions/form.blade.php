@@ -130,8 +130,9 @@
             <select name="visibility" class="input mt-1">
                 @php $currentVisibility = old('visibility', $step->visibility ?? 'all'); @endphp
                 <option value="all" @selected($currentVisibility === 'all')>Show to all guests</option>
-                <option value="parkers_only" @selected($currentVisibility === 'parkers_only')>Show to parking guests only</option>
-                <option value="non_parkers_only" @selected($currentVisibility === 'non_parkers_only')>Show to non-parking guests only</option>
+                <option value="parkers_only" @selected($currentVisibility === 'parkers_only')>Show to GUEST with parking</option>
+                <option value="non_parkers_only" @selected($currentVisibility === 'non_parkers_only')>Show to GUEST without parking</option>
+                <option value="cleaners_only" @selected($currentVisibility === 'cleaners_only')>Show to cleaners only</option>
             </select>
         </label>
 

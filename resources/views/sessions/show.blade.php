@@ -177,6 +177,11 @@
             </div>
         @endif
 
+        {{-- Getting in: parking question + access steps for the cleaner --}}
+        @if ($session->status !== 'completed')
+            @include('sessions.partials.getting-in')
+        @endif
+
         {{-- PENDING: Start gate --}}
         @if ($session->status === 'pending')
             <x-card class="p-8">
