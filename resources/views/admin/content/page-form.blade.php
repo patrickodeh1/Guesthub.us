@@ -34,6 +34,26 @@
             <label class="field-label mt-6">Title<input name="title" value="{{ old('title', $page->title) }}" required class="input"></label>
             <label class="field-label mt-5">Rich text content<textarea id="page-content-editor" name="content" rows="16" placeholder="Add guest-friendly instructions, recommendations, and helpful details." class="textarea">{{ old('content', $page->content) }}</textarea></label>
             <label class="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" name="active" value="1" @checked(old('active', $page->active ?? true)) class="rounded border-slate-300"> Active page</label>
+            @if(($otherProperties ?? collect())->isNotEmpty())
+            <div class="mt-8 border-t border-slate-100 pt-5">
+                <h3 class="text-sm font-bold text-slate-800">Also apply this section to other units (optional)</h3>
+                <p class="field-help">Leave everything unticked to save only this unit. Ticked units get this section when you save, and it replaces what they show for it now.</p>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                    @foreach($otherProperties as $other)
+                        <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                            <input type="checkbox" name="apply_to_property_ids[]" value="{{ $other->id }}" class="rounded border-slate-300">
+                            <span class="truncate">{{ $other->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                <label class="field-label mt-4">How should the other units get it?
+                    <select name="apply_mode" class="input">
+                        <option value="sync">Keep in sync (when I edit this, it changes there too)</option>
+                        <option value="once">Copy once (each unit can then edit its own)</option>
+                    </select>
+                </label>
+            </div>
+            @endif
             <button class="btn-primary mt-6">Save Page</button>
         </section>
 

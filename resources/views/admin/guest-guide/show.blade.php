@@ -14,10 +14,15 @@
     @if($allProperties->where('id', '!=', $property->id)->isNotEmpty())
     <details class="card card-pad mb-8">
         <summary class="cursor-pointer font-bold text-slate-800">Copy this guide to other properties</summary>
-        <p class="section-copy mt-3">Assigns every section below to the properties you pick. Sections stay shared and in sync with this guide, except any you mark to keep separate per unit (for example, Wi-Fi).</p>
+        <p class="section-copy mt-3">Choose which sections to copy and how. Nothing is copied unless you choose it.</p>
         <form method="post" action="{{ route('admin.guest-guide.copy', $property) }}" class="mt-4">
             @csrf
-            <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            @error('sections')
+                <p class="mb-3 text-sm text-red-600">{{ $message }}</p>
+            @enderror
+
+            <p class="text-sm font-semibold text-slate-700">1. Which properties?</p>
+            <div class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach($allProperties->where('id', '!=', $property->id) as $other)
                     <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
                         <input type="checkbox" name="target_property_ids[]" value="{{ $other->id }}" class="rounded border-slate-300 copy-guide-target">
@@ -27,25 +32,32 @@
             </div>
 
             <div class="mt-5 border-t border-slate-100 pt-4">
-                <p class="text-sm font-semibold text-slate-700">Keep these sections separate per unit</p>
-                <p class="field-help">These are copied once so each unit can edit its own — use this for Wi-Fi and anything else that differs per unit. Everything not checked is shared and stays in sync with this property.</p>
-                @if($property->categories->whereIn('id', $assignedIds)->isEmpty())
+                <p class="text-sm font-semibold text-slate-700">2. What should happen to each section?</p>
+                <p class="field-help">Nothing is copied unless you choose it. "Copy once" gives the unit its own editable copy (good for Wi-Fi). "Keep in sync" links the unit to this property, so edits here show there too.</p>
+                @php $guideCats = $property->categories->whereIn('id', $assignedIds); @endphp
+                @if($guideCats->isEmpty())
                     <p class="mt-3 text-sm text-slate-500">This guide has no sections yet.</p>
                 @else
-                    <div class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        @foreach($property->categories->whereIn('id', $assignedIds) as $cat)
-                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                                <input type="checkbox" name="separate_category_ids[]" value="{{ $cat->id }}" class="rounded border-slate-300">
+                    <div class="mt-3 grid gap-2">
+                        @foreach($guideCats as $cat)
+                            <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
                                 <span class="truncate">{{ $cat->pivot->custom_title ?: $cat->title }}</span>
+                                <select name="sections[{{ $cat->id }}]" class="rounded border-slate-300 text-sm">
+                                    <option value="skip" selected>Do not copy</option>
+                                    <option value="once">Copy once (separate)</option>
+                                    <option value="sync">Keep in sync</option>
+                                </select>
                             </label>
                         @endforeach
                     </div>
                 @endif
             </div>
 
+            <p class="mt-4 text-sm text-slate-500">Chosen sections replace what the selected properties already have for them. Sections set to "Do not copy" are never touched.</p>
+
             <div class="mt-4 flex flex-wrap items-center gap-3">
-                <button type="button" class="btn-secondary text-xs" onclick="document.querySelectorAll('.copy-guide-target').forEach(function (c) { c.checked = true; })">Select all</button>
-                <button class="btn-primary text-sm" onclick="return confirm('Copy this guide to the selected properties? Their sections will share and stay in sync with this guide.')">Copy guide</button>
+                <button type="button" class="btn-secondary text-xs" onclick="document.querySelectorAll('.copy-guide-target').forEach(function (c) { c.checked = true; })">Select all properties</button>
+                <button class="btn-primary text-sm" onclick="var n = Array.from(this.form.querySelectorAll('select')).filter(function (s) { return s.name.indexOf('sections[') === 0 && s.value !== 'skip'; }).length; if (!n) { return true; } return confirm('This will replace ' + n + ' section(s) on the selected properties with the content from this property. Sections set to Do not copy are not touched. Continue?')">Copy chosen sections</button>
             </div>
         </form>
     </details>

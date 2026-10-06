@@ -51,20 +51,28 @@ class PropertyController extends Controller
     }
 
     /**
-     * Bulk "copy this guide to other properties": assigns every category this
-     * property has (with its per-property title/description/header/active) to
-     * each selected property and links their category pages back to this
-     * property's pages, so the guide is written once and stays in sync. A
-     * single unit can still break away per section via "Customize locally".
+     * Copy chosen guide sections from this property to other properties.
+     * Nothing is copied unless a section is explicitly chosen. Each chosen
+     * section is either copied once (an independent copy the unit can edit)
+     * or synced (linked to this property's page). A unit's content
+     * is only replaced for the sections that were chosen.
      */
     public function copyGuide(Request $request, Property $property)
     {
         $data = $request->validate([
             'target_property_ids' => ['required', 'array', 'min:1'],
             'target_property_ids.*' => ['integer', 'exists:properties,id'],
-            'separate_category_ids' => ['nullable', 'array'],
-            'separate_category_ids.*' => ['integer', 'exists:categories,id'],
+            'sections' => ['required', 'array'],
+            'sections.*' => ['nullable', 'in:skip,once,sync'],
         ]);
+
+        $modes = collect($data['sections'])
+            ->filter(fn ($mode) => in_array($mode, ['once', 'sync'], true))
+            ->mapWithKeys(fn ($mode, $categoryId) => [(int) $categoryId => $mode]);
+
+        if ($modes->isEmpty()) {
+            return back()->withErrors(['sections' => 'Choose at least one section to copy or sync.']);
+        }
 
         $targetIds = collect($data['target_property_ids'])
             ->map(fn ($id) => (int) $id)
@@ -72,13 +80,10 @@ class PropertyController extends Controller
             ->unique()
             ->values();
 
-        $separateCategoryIds = collect($data['separate_category_ids'] ?? [])
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
         $property->load(['categories', 'pages']);
 
-        $count = 0;
+        $propertiesDone = 0;
+        $sectionsDone = 0;
 
         foreach ($targetIds as $targetId) {
             $target = Property::visibleTo($request->user())->find($targetId);
@@ -86,57 +91,72 @@ class PropertyController extends Controller
                 continue;
             }
 
-            $sync = $property->categories->mapWithKeys(fn (Category $category) => [
-                $category->id => [
-                    'active' => $category->pivot->active,
-                    'custom_title' => $category->pivot->custom_title,
-                    'custom_description' => $category->pivot->custom_description,
-                    'header_image' => $category->pivot->header_image,
-                ],
-            ])->all();
-            $target->categories()->syncWithoutDetaching($sync);
+            $touched = false;
 
-            foreach ($property->pages as $page) {
+            foreach ($modes as $categoryId => $mode) {
+                $category = $property->categories->firstWhere('id', $categoryId);
+                $page = $property->pages->firstWhere('category_id', $categoryId);
+                if (! $category || ! $page) {
+                    continue;
+                }
+
                 $source = $page->resolvedPage();
 
                 $targetPage = CategoryPage::firstOrNew([
                     'property_id' => $target->id,
-                    'category_id' => $page->category_id,
+                    'category_id' => $categoryId,
                 ]);
-                $targetPage->title = $targetPage->title ?: $page->title;
-                $targetPage->active = $page->active;
-                $targetPage->sort_order = $targetPage->sort_order ?: $page->sort_order;
 
-                if (in_array($page->category_id, $separateCategoryIds, true)) {
-                    // Sections flagged "keep separate" (e.g. Wi-Fi) are given
-                    // their own copy so each unit can edit it independently,
-                    // never following the original.
-                    if (! $targetPage->exists || blank($targetPage->content)) {
-                        $targetPage->content = $source->content;
-                        $targetPage->image_1 = $source->image_1;
-                        $targetPage->image_2 = $source->image_2;
-                        $targetPage->image_3 = $source->image_3;
-                    }
+                if ($targetPage->exists && $source->id === $targetPage->id) {
+                    continue;
+                }
+
+                $target->categories()->syncWithoutDetaching([
+                    $categoryId => [
+                        'active' => $category->pivot->active,
+                        'custom_title' => $category->pivot->custom_title,
+                        'custom_description' => $category->pivot->custom_description,
+                        'header_image' => $category->pivot->header_image,
+                    ],
+                ]);
+
+                $targetPage->title = $page->title;
+                $targetPage->sort_order = $targetPage->sort_order ?: $page->sort_order;
+                $targetPage->active = $page->active;
+
+                if ($mode === 'once') {
+                    $targetPage->content = $source->content;
+                    $targetPage->image_1 = $source->image_1;
+                    $targetPage->image_2 = $source->image_2;
+                    $targetPage->image_3 = $source->image_3;
                     $targetPage->linked_page_id = null;
                 } else {
                     $targetPage->linked_page_id = $source->id;
                 }
 
                 $targetPage->save();
+                $sectionsDone++;
+                $touched = true;
             }
 
-            $count++;
+            if ($touched) {
+                $propertiesDone++;
+            }
         }
+
+        $label = $propertiesDone === 1 ? 'property' : 'properties';
 
         ActivityLog::record(
             'property_guide_copied',
-            "Guide copied from {$property->name} to {$count} propert".($count === 1 ? 'y' : 'ies').'.',
+            "{$sectionsDone} section(s) copied from {$property->name} to {$propertiesDone} {$label}.",
             'content',
             $property
         );
 
-        return back()->with('success', "Guide copied to {$count} propert".($count === 1 ? 'y' : 'ies').'.');
+        $message = "{$sectionsDone} section(s) copied to {$propertiesDone} {$label}.";
+        return back()->with('success', $message);
     }
+
     public function index(Request $request)
     {
         $properties = Property::query()

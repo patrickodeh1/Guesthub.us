@@ -26,7 +26,12 @@ public function editPage(Property $property, Category $category)
         // copy that would silently be ignored.
         $source = $page->isLinked() ? $page->resolvedPage() : null;
 
-        return view('admin.content.page-form', compact('property', 'category', 'page', 'source'));
+        $otherProperties = Property::visibleTo(auth()->user())
+            ->where('id', '!=', $property->id)
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.content.page-form', compact('property', 'category', 'page', 'source', 'otherProperties'));
     }
 
     public function updatePage(Request $request, Property $property, Category $category)
@@ -36,6 +41,9 @@ public function editPage(Property $property, Category $category)
             'content' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer'],
             'active' => ['nullable', 'boolean'],
+            'apply_to_property_ids' => ['nullable', 'array'],
+            'apply_to_property_ids.*' => ['integer', 'exists:properties,id'],
+            'apply_mode' => ['nullable', 'in:once,sync'],
         ]);
 
         $page = CategoryPage::firstOrNew(['property_id' => $property->id, 'category_id' => $category->id]);
@@ -53,7 +61,60 @@ public function editPage(Property $property, Category $category)
 
         ActivityLog::record('category_content_updated', "{$category->title} content updated for {$property->name}.", 'content', $page);
 
-        return redirect()->route('admin.guest-guide.show', $property->id)->with('success', 'Category page saved.');
+        $applied = 0;
+        $mode = $data['apply_mode'] ?? 'sync';
+        $targetIds = collect($data['apply_to_property_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn ($id) => $id === $property->id)
+            ->unique();
+
+        foreach ($targetIds as $targetId) {
+            $target = Property::visibleTo($request->user())->find($targetId);
+            if (! $target) {
+                continue;
+            }
+
+            if (! $target->categories()->whereKey($category->id)->exists()) {
+                $sourcePivot = $property->categories()->whereKey($category->id)->first()?->pivot;
+                $target->categories()->attach($category->id, [
+                    'active' => $sourcePivot?->active ?? true,
+                    'custom_title' => $sourcePivot?->custom_title,
+                    'custom_description' => $sourcePivot?->custom_description,
+                    'header_image' => $sourcePivot?->header_image,
+                ]);
+            }
+
+            $targetPage = CategoryPage::firstOrNew([
+                'property_id' => $target->id,
+                'category_id' => $category->id,
+            ]);
+            $targetPage->title = $targetPage->title ?: $page->title;
+            $targetPage->sort_order = (int) ($targetPage->sort_order ?: ($page->sort_order ?? 0));
+            $targetPage->active = $page->active;
+
+            if ($mode === 'once') {
+                $targetPage->title = $page->title;
+                $targetPage->content = $page->content;
+                $targetPage->image_1 = $page->image_1;
+                $targetPage->image_2 = $page->image_2;
+                $targetPage->image_3 = $page->image_3;
+                $targetPage->linked_page_id = null;
+            } else {
+                $targetPage->linked_page_id = $page->id;
+            }
+
+            $targetPage->save();
+            $applied++;
+        }
+
+        $message = 'Category page saved.';
+        if ($applied > 0) {
+            $label = $mode === 'once' ? 'copied to' : 'synced with';
+            $message .= " {$category->title} {$label} {$applied} other ".($applied === 1 ? 'unit' : 'units').'.';
+            ActivityLog::record('category_content_applied', "{$category->title} from {$property->name} {$label} {$applied} other unit(s).", 'content', $page);
+        }
+
+        return redirect()->route('admin.guest-guide.show', $property->id)->with('success', $message);
     }
 
     /**
