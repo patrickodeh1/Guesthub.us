@@ -1,7 +1,6 @@
 <x-app-layout>
     <div class="mx-auto max-w-3xl p-4">
         <h1 class="text-xl font-bold">Expected finished photos: {{ $property->name }}</h1>
-        <p class="mt-1 text-sm text-gray-600">Cleaners must view every image below before they can take finished photos.</p>
 
         @if (session('status')) <p class="mt-3 text-sm font-semibold text-green-700">{{ session('status') }}</p> @endif
         @if ($errors->any()) <p class="mt-3 text-sm font-semibold text-red-700">{{ $errors->first() }}</p> @endif
