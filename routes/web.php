@@ -273,6 +273,10 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/fetch-rate-plans', [PropertyAvailabilityController::class, 'fetchRatePlans'])->name('properties.availability.fetch-rate-plans')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-rate-settings', [PropertyAvailabilityController::class, 'saveRateSettings'])->name('properties.availability.save-rate-settings')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/update-range', [PropertyAvailabilityController::class, 'updateRange'])->name('properties.availability.update-range')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/full-sync', [PropertyAvailabilityController::class, 'fullSync'])->name('properties.availability.full-sync')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company');
     Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company');
 

@@ -56,6 +56,8 @@ class Property extends Model
         'late_checkout_rate_authorized_per_30min', 'late_checkout_rate_unauthorized_per_30min',
         'channex_property_id',
         'channex_room_type_id',
+        'channex_rate_plan_id',
+        'rate_source',
         'airbnb_ical_url',
         'deposit_cap_cents',
         'required_incidentals_hold_amount',
@@ -68,6 +70,7 @@ class Property extends Model
     protected function casts(): array
     {
         return [
+            'channex_availability_seeded_at' => 'datetime',
             'active' => 'boolean', 'requires_vehicle_photo' => 'boolean', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7',
             'parking_rate_sunday' => 'decimal:2', 'parking_rate_monday' => 'decimal:2',
             'parking_rate_tuesday' => 'decimal:2', 'parking_rate_wednesday' => 'decimal:2',

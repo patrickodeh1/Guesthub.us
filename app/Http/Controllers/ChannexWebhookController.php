@@ -14,6 +14,11 @@ class ChannexWebhookController extends Controller
     {
         $secret = config('services.channex.webhook_secret');
 
+        if (! $secret && app()->environment('production')) {
+            Log::error('Channex webhook rejected: webhook secret is not configured');
+            return response()->json(['ok' => false, 'error' => 'Webhook not configured'], 503);
+        }
+
         if ($secret) {
             // Channex has no built-in HMAC signing. Per their docs, auth is
             // via a custom shared-secret header you configure on the

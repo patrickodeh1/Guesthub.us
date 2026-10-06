@@ -68,13 +68,42 @@ class AirbnbIcalImporter
                 continue;
             }
 
+            $summary = strtolower((string) ($event->SUMMARY ?? ''));
             $ranges[] = [
                 'from' => $start->getDateTime()->format('Y-m-d'),
                 'to' => $end->getDateTime()->format('Y-m-d'),
+                // Airbnb labels reservations "Reserved"; anything else is treated as an owner block.
+                'status' => str_contains($summary, 'reserved') ? 'booked' : 'blocked',
             ];
         }
 
         return $ranges;
+    }
+
+    /**
+     * date => 'booked'|'blocked' for every date in the ranges (booked wins on overlap).
+     *
+     * @return array<string,string>
+     */
+    public function expandToStatusMap(array $ranges): array
+    {
+        $map = [];
+
+        foreach ($ranges as $range) {
+            $status = $range['status'] ?? 'blocked';
+            $cursor = new \DateTimeImmutable($range['from']);
+            $end = new \DateTimeImmutable($range['to']);
+
+            while ($cursor < $end) {
+                $key = $cursor->format('Y-m-d');
+                if (($map[$key] ?? null) !== 'booked') {
+                    $map[$key] = $status;
+                }
+                $cursor = $cursor->modify('+1 day');
+            }
+        }
+
+        return $map;
     }
 
     /**

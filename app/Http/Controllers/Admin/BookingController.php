@@ -275,6 +275,8 @@ class BookingController extends Controller
         $booking            = Booking::create($data);
         $booking->recalculateParkingCharge();
 
+        app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
+
         ActivityLogService::admin('booking_created', "Guest booking created for {$booking->guest_name} ({$booking->booking_id}).", 'guests', [
             'subject_type' => Booking::class,
             'subject_id'   => $booking->id,
@@ -341,7 +343,9 @@ class BookingController extends Controller
                 $timesChanged = true;
             }
         }
+        $oldStay = ['property_id' => $booking->property_id, 'from' => $booking->check_in_date?->toDateString(), 'to' => $booking->check_out_date?->toDateString()];
         $booking->update($data);
+        app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking, $oldStay);
         $booking->recalculateParkingCharge();
         if ($timesChanged) {
             $booking->syncFeesFromApprovedTimes();
@@ -509,7 +513,9 @@ class BookingController extends Controller
             'metadata' => ['booking_id' => $booking->booking_id, 'guest_name' => $name],
         ]);
 
+        $stay = ['property_id' => $booking->property_id, 'from' => $booking->check_in_date?->toDateString(), 'to' => $booking->check_out_date?->toDateString()];
         $booking->delete();
+        app(\App\Services\Pms\AvailabilityLedger::class)->syncStay($stay);
 
         return redirect()->route('admin.guests.index')->with('success', "Booking for {$name} deleted.");
     }
@@ -713,6 +719,7 @@ class BookingController extends Controller
         }
 
         $booking->update($updates);
+        app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
 
         ActivityLogService::admin('status_manually_changed', auth()->user()->name." manually set status to \"".str($data['status'])->replace('_', ' ')->title()."\" for {$booking->guest_name}.", 'guests', [
             'subject_type' => Booking::class,

@@ -348,9 +348,13 @@ class ChannexProvider implements PmsProviderInterface
             return true;
         }
 
-        $response = $this->client()->post('/availability', [
-            'values' => $values,
-        ]);
+        $response = $this->client()
+            ->timeout(30)
+            ->retry([1000, 3000, 8000], throw: false, when: function ($e) {
+                return $e instanceof \Illuminate\Http\Client\ConnectionException
+                    || in_array(optional($e->response ?? null)->status(), [429, 500, 502, 503, 504], true);
+            })
+            ->post('/availability', ['values' => $values]);
 
         if (! $response->successful()) {
             Log::warning('Channex pushAvailability (availability) failed', [
@@ -364,5 +368,104 @@ class ChannexProvider implements PmsProviderInterface
         }
 
         return true;
+    }
+
+    /**
+     * Availability by date range (one object per range, one HTTP call).
+     *
+     * @param  array<int,array{0:string,1:string,2:int}>  $ranges  [date_from, date_to, availability]
+     */
+    public function pushAvailabilityRanges(string $externalPropertyId, string $roomTypeId, array $ranges): bool
+    {
+        $values = array_map(fn ($r) => [
+            'property_id' => $externalPropertyId,
+            'room_type_id' => $roomTypeId,
+            'date_from' => $r[0],
+            'date_to' => $r[1],
+            'availability' => (int) $r[2],
+        ], $ranges);
+
+        return $this->postAri('/availability', $values, $externalPropertyId);
+    }
+
+    /**
+     * Rates and restrictions by date range (one HTTP call). Only the keys
+     * present in each range's field array are sent; absent means "leave
+     * as is" on the Channex side.
+     *
+     * @param  array<int,array{0:string,1:string,2:array}>  $ranges  [date_from, date_to, fields]
+     */
+    public function pushRestrictions(string $externalPropertyId, string $ratePlanId, array $ranges): bool
+    {
+        $values = array_map(fn ($r) => array_merge([
+            'property_id' => $externalPropertyId,
+            'rate_plan_id' => $ratePlanId,
+            'date_from' => $r[0],
+            'date_to' => $r[1],
+        ], $r[2]), $ranges);
+
+        return $this->postAri('/restrictions', $values, $externalPropertyId);
+    }
+
+    private function postAri(string $path, array $values, string $externalPropertyId): bool
+    {
+        if (empty($values)) {
+            return true;
+        }
+
+        $response = $this->client()
+            ->timeout(30)
+            ->retry([1000, 3000, 8000], throw: false, when: function ($e) {
+                return $e instanceof \Illuminate\Http\Client\ConnectionException
+                    || in_array(optional($e->response ?? null)->status(), [429, 500, 502, 503, 504], true);
+            })
+            ->post($path, ['values' => $values]);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('Channex ARI push failed', [
+                'path' => $path,
+                'property_id' => $externalPropertyId,
+                'value_count' => count($values),
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Rate plans Channex has for a property.
+     *
+     * @return array<int,array{rate_plan_id:string,rate_plan_title:string,room_type_id:?string}>
+     */
+    public function getRatePlans(string $externalPropertyId): array
+    {
+        $response = $this->client()
+            ->timeout(30)
+            ->get('/rate_plans', ['filter[property_id]' => $externalPropertyId]);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('Channex rate plan fetch failed', [
+                'property_id' => $externalPropertyId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            return [];
+        }
+
+        return collect($response->json('data', []))
+            ->map(function ($item) {
+                $a = $item['attributes'] ?? [];
+                return [
+                    'rate_plan_id' => $a['id'] ?? $item['id'] ?? null,
+                    'rate_plan_title' => $a['title'] ?? 'Rate plan',
+                    'room_type_id' => $a['room_type_id'] ?? ($item['relationships']['room_type']['data']['id'] ?? null),
+                ];
+            })
+            ->filter(fn ($o) => ! empty($o['rate_plan_id']))
+            ->values()
+            ->all();
     }
 }

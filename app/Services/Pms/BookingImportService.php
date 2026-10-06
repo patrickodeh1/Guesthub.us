@@ -134,6 +134,7 @@ class BookingImportService
             }
 
             $booking = Booking::create($attributes);
+            app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
 
             if ($arrivesCancelled) {
                 // Don't tell staff "new booking" for something that was
@@ -184,6 +185,8 @@ class BookingImportService
                     // waiting for the checkout date to pass (archiveOverdue()).
                     'archived_at' => $feeApplies ? null : now(),
                 ]);
+
+                app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
 
                 Log::info('PMS booking marked cancelled', [
                     'booking_id' => $booking->id,
@@ -242,7 +245,9 @@ class BookingImportService
                 return $booking->fresh();
             }
 
+            $oldStay = ['property_id' => $booking->property_id, 'from' => $booking->check_in_date?->toDateString(), 'to' => $booking->check_out_date?->toDateString()];
             $booking->update($attributes);
+            app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking, $oldStay);
 
             Log::info('PMS booking updated from channel manager', [
                 'booking_id' => $booking->id,

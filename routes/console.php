@@ -48,3 +48,7 @@ Schedule::command('bookings:send-arrival-soon')->everyTenMinutes();
 
 // Safety net: one unassigned checkout clean per upcoming booking (PMS imports may skip model events).
 Schedule::command('cleaning:sync-checkout-sessions')->hourly();
+
+// Sends pending availability / rate / restriction changes to Channex.
+// The channex_outbox table is the queue; no queue worker is needed.
+Schedule::command('channex:push-outbox')->everyMinute()->withoutOverlapping(10);
