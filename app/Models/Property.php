@@ -281,6 +281,13 @@ class Property extends Model
             : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1400&q=80';
     }
 
+    public function ogImageUrl(): string
+    {
+        return $this->header_image
+            ? url('/og/'.$this->header_image)
+            : $this->heroImageUrl();
+    }
+
     public function getGuestDisplayNameAttribute(): string
     {
         return $this->guest_name ?: $this->name;

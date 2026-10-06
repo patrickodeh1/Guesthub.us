@@ -353,6 +353,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     })->name('search');
 });
 Route::get('/img/{path}', [ImageController::class, 'show'])->where('path', '.*');
+Route::get('/og/{path}', [ImageController::class, 'og'])->where('path', '.*');
 if (!function_exists('serveVideoStream')) {
     function serveVideoStream($fullPath, $mimeType) {
         $size = filesize($fullPath);

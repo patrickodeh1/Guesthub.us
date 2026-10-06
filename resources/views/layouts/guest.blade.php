@@ -15,6 +15,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @include('layouts.partials.theme-init')
     <title>{{ $title }} - {{ $property->name }} · {{ \App\Support\Branding::siteName() }}</title>
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ \App\Support\Branding::siteName() }}">
+    <meta property="og:title" content="{{ $property->guest_display_name }}">
+    <meta property="og:description" content="Check-in and stay details for {{ $property->guest_display_name }}">
+    <meta property="og:image" content="{{ $property->ogImageUrl() }}">
+    <meta property="og:image:alt" content="{{ $property->guest_display_name }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{{ $property->ogImageUrl() }}">
     @include('layouts.partials.brand-vars')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>:root { --brand: var(--theme-primary); }</style>
