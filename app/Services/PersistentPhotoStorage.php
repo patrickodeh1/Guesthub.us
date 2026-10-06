@@ -103,6 +103,7 @@ class PersistentPhotoStorage
 
     public static function delete(string $path): void
     {
+        \Log::warning('PHOTO DELETE', ['path' => $path, 'trace' => collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 8))->map(fn ($f) => ($f['class'] ?? '').'::'.$f['function'])->all()]);
         $normalized = self::normalizePath($path);
         if ($normalized === null) {
             return;

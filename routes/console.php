@@ -37,7 +37,7 @@ Schedule::command('pms:sync')->everyMinute()->when(
     fn () => now()->minute % max(1, (int) config('pms.poll_interval_minutes')) === 0
 );
 
-Schedule::command('photos:prune-old --days=14')->dailyAt('02:00');
+Schedule::command('photos:prune-old --days=15')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('training:send-reminders')->hourly();
 
 // Daily nudge for guests who haven't finished registration / have something pending.

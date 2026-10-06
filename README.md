@@ -160,7 +160,7 @@ locally or a cron entry in production:
 | `bookings:send-checkin-reminders` | daily 08:00 | "Time to check in" alert |
 | `bookings:send-checkout-reminders` | daily 18:00 | "Checkout available tomorrow" alert |
 | `pms:sync` | per `PMS_POLL_INTERVAL_MINUTES` | Poll active PMS for new/changed bookings |
-| `photos:prune-old --days=14` | daily 02:00 | Delete old cleaning-session photos |
+| `photos:prune-old --days=15` | daily 02:00 | Delete old cleaning-session photos |
 | `training:send-reminders` | hourly | Training reminder emails |
 
 ## Client Preview Screenshots & PDF
