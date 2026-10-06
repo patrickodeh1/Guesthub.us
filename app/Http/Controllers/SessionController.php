@@ -785,6 +785,17 @@ class SessionController extends Controller
         ];
     }
 
+    public function markPhotoTutorial(CleaningSession $session)
+    {
+        $this->assertSessionAccess($session);
+        abort_unless(
+            (int) $session->housekeeper_id === (int) auth()->id() || auth()->user()->hasRole('admin'),
+            403
+        );
+        $session->update(['photo_tutorial_viewed_at' => now()]);
+        return response()->json(['ok' => true]);
+    }
+
     public function setParking(Request $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);

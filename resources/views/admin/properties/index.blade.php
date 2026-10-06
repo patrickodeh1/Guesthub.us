@@ -47,6 +47,7 @@
                         <a href="{{ route('manage.sessions.index', ['property_id' => $property->id]) }}" class="block px-4 py-2 hover:bg-slate-50">Cleaning schedule</a>
                         <a href="{{ route('admin.guest-guide.show', $property) }}" class="block px-4 py-2 hover:bg-slate-50">Guest guide</a>
                         <a href="{{ route('admin.instructions.show', $property) }}" class="block px-4 py-2 hover:bg-slate-50">Check-in / check-out details</a>
+                        <a href="{{ route('admin.photo-guide.index', $property) }}" class="block px-4 py-2 hover:bg-slate-50">Photo guide (cleaner)</a>
                         <a href="{{ route('admin.properties.availability.index', $property) }}" class="block px-4 py-2 hover:bg-slate-50">Availability</a>
                         <a href="{{ route('properties.notifications.index', $property) }}" class="block px-4 py-2 hover:bg-slate-50">Notifications</a>
                         <div class="my-1 border-t border-slate-100"></div>

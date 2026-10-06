@@ -247,6 +247,9 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
 
     // ─── Instruction Steps ───────────────────────────────────────────────────────
     Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'index'])->name('photo-guide.index')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'store'])->name('photo-guide.store')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::delete('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company');
     Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder')->middleware('role:admin,owner,company');
     Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy')->middleware('role:admin,owner,company');
     Route::resource('instructions', InstructionStepController::class)->except(['show'])->middleware('role:admin,owner,company');
@@ -574,6 +577,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
     Route::post('/sessions/{session}/parking', [CleaningSessionController::class, 'setParking'])->name('sessions.parking');
+    Route::post('/sessions/{session}/photo-tutorial', [CleaningSessionController::class, 'markPhotoTutorial'])->name('sessions.photo-tutorial');
     Route::post('/sessions/{session}/complete-onboarding', [CleaningSessionController::class, 'completeOnboarding'])->name('sessions.complete-onboarding');
     Route::post('/sessions/{session}/gps-override', [CleaningSessionController::class, 'grantGpsOverride'])->name('sessions.gps-override');
     Route::post('/sessions/{session}/complete', [CleaningSessionController::class, 'complete'])->name('sessions.complete');

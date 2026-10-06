@@ -26,6 +26,11 @@ class PhotoController extends Controller
     public function store(Request $request, CleaningSession $session, $roomId)
     {
         $this->assertSessionAccess($session);
+        if (!auth()->user()->hasRole('admin')
+            && is_null($session->photo_tutorial_viewed_at)
+            && $session->property->photoReferences()->exists()) {
+            abort(403, 'Please review the photo guide before taking photos.');
+        }
         $request->validate([
             'photos.*' => ['required', 'image'],
         ]);

@@ -297,4 +297,9 @@ class Property extends Model
     {
         return $this->internal_name ?: $this->name;
     }
+
+    public function photoReferences()
+    {
+        return $this->hasMany(PropertyPhotoReference::class)->orderBy('sort_order')->orderBy('id');
+    }
 }

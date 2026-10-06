@@ -177,6 +177,8 @@
             </div>
         @endif
 
+        @include('sessions.partials.photo-tutorial')
+
         {{-- Getting in: parking question + access steps for the cleaner --}}
         @if ($session->status !== 'completed')
             @include('sessions.partials.getting-in')
