@@ -679,7 +679,6 @@
         box-shadow: 0 6px 16px rgb(15 23 42 / .06);
     }
     .guest-weather-card svg {
-        color: #f59e0b;
         flex-shrink: 0;
     }
 

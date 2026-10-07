@@ -21,7 +21,7 @@ ${s?'Expression: "'+s+`"
                         </div>
                         <button type="button" @click="const r = $el.closest('[x-data*=\\'checklistRenderer\\']')._x_dataStack[0]; r.viewOverride = null; r.renderChecklist(); window.scrollTo({top:0, behavior:'smooth'});" class="text-sm font-bold text-blue-700 dark:text-blue-300 hover:underline whitespace-nowrap bg-blue-100 dark:bg-blue-800/50 px-3 py-1.5 rounded-lg">Return to Active Stage</button>
                     </div>
-                `),t!=="photos"&&(this._showPhotoUpload=!1,this._showPhotoExtrasPrompt=!1),(this.sessionData.session?.status==="completed"||t==="summary")&&document.querySelectorAll("[data-status-badge]").forEach(c=>{c.innerHTML=`<span class="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                `),window.dispatchEvent(new CustomEvent("session-stage",{detail:{stage:t}})),t!=="photos"&&(this._showPhotoUpload=!1,this._showPhotoExtrasPrompt=!1),(this.sessionData.session?.status==="completed"||t==="summary")&&document.querySelectorAll("[data-status-badge]").forEach(c=>{c.innerHTML=`<span class="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                         <svg class="-ml-1 mr-1.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                         </svg>

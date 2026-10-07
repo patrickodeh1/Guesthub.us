@@ -6,7 +6,7 @@
 @endphp
 
 @if ($refs->count() && $isCleaner && $active)
-<div id="photo-tutorial" class="{{ $viewed ? 'hidden' : '' }} fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
+<div id="photo-tutorial" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
     <div class="guest-portal-card guest-portal-card--wizard w-full max-w-md" style="max-height:95vh;overflow:auto">
         <div class="guest-status-bar">
             <button type="button" id="pt-close" class="text-sm font-semibold text-slate-500 hover:text-slate-800" style="display:none">&times; Close</button>
@@ -30,7 +30,11 @@
     </div>
 </div>
 
-<button type="button" id="pt-reopen" class="guest-primary-btn" style="position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:40;width:auto;padding:.75rem 1rem;box-shadow:0 4px 14px rgba(0,0,0,.25);{{ $viewed ? '' : 'display:none' }}">Photo guide</button>
+<button type="button" id="pt-reopen" aria-label="Photo guide" title="Photo guide"
+    class="flex items-center justify-center w-14 h-14 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 hover:scale-110 active:scale-95"
+    style="position:fixed;right:1.5rem;bottom:10.5rem;z-index:45;display:none">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+</button>
 
 <script>
 (function () {
@@ -67,6 +71,12 @@
     $("pt-close").onclick = function () { modal.classList.add("hidden"); };
     updateClose();
     show(0);
+    window.addEventListener('session-stage', function (e) {
+        var onPhotos = e.detail.stage === 'photos';
+        $("pt-reopen").style.display = onPhotos ? '' : 'none';
+        if (onPhotos && !viewed) { modal.classList.remove('hidden'); }
+        if (!onPhotos) { modal.classList.add('hidden'); }
+    });
 })();
 </script>
 @endif

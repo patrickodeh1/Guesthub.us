@@ -101,8 +101,9 @@
 ══════════════════════════════════════════════════════════════════════════ --}}
 <main class="lg:ml-60 lg:flex-1">
     {{-- Topbar --}}
+    @php $hasHeaderSlot = isset($header) && trim((string) $header) !== ''; @endphp
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white" data-tour="topbar">
-        <div class="flex min-h-[4rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 md:flex-nowrap md:py-0 lg:px-8">
+        <div class="flex min-h-[4rem] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 sm:px-6 {{ $hasHeaderSlot ? '' : 'md:flex-nowrap md:py-0' }} lg:px-8">
             {{-- Mobile menu --}}
             <button type="button"
                     id="admin-sidebar-open"
@@ -112,7 +113,7 @@
             </button>
 
             {{-- Page title --}}
-            <div class="min-w-0 {{ (isset($header) && trim((string) $header) !== '') ? 'order-last basis-full pb-1 md:order-none md:basis-auto md:pb-0' : '' }} md:flex-1">
+            <div class="min-w-0 {{ $hasHeaderSlot ? 'order-last basis-full pb-1' : 'md:flex-1' }}">
                 @if(isset($header) && trim((string) $header) !== '')
                     <div class="min-w-0">{{ $header }}</div>
                 @else
@@ -120,6 +121,10 @@
                 @endif
             </div>
 
+
+            @if($hasHeaderSlot)
+                <div class="flex-1"></div>
+            @endif
 
             {{-- Global Search --}}
             <div class="relative hidden sm:block" data-tour="global-search">

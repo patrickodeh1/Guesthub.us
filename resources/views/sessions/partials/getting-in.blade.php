@@ -2,9 +2,16 @@
     $accessSteps = $accessSteps ?? [];
     $canAnswerParking = auth()->check()
         && ((int) $session->housekeeper_id === (int) auth()->id() || auth()->user()->hasRole('admin'));
+    $isAssignedCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+    $adminView = ! $isAssignedCleaner;
 @endphp
 
 <div id="getting-in" class="mb-4">
+@if ($adminView)
+<details class="guest-portal-card p-4">
+    <summary class="cursor-pointer text-sm font-semibold text-slate-600">Cleaner directions (what the cleaner sees)</summary>
+    <div class="mt-4">
+@endif
     @if (is_null($session->parking_needed))
         <div class="guest-portal-card p-6">
             <p class="guest-status-kicker">Getting in</p>
@@ -57,7 +64,19 @@
             var reopen = document.getElementById("getting-in-reopen");
             var btn = document.getElementById("getting-in-reopen-btn");
             if (!done || !reopen || !btn) return;
-            done.addEventListener("click", function () { reopen.style.display = ""; });
+            var key = "getting_in_ack_{{ $session->id }}_{{ (int) $session->parking_needed }}";
+            function collapse() {
+                var root = document.getElementById("step-wizard-parking");
+                var wrap = document.getElementById("step-wizard-parking-wrapper");
+                if (root) root.style.display = "none";
+                if (wrap) wrap.style.display = "none";
+                reopen.style.display = "";
+            }
+            try { if (localStorage.getItem(key)) collapse(); } catch (e) {}
+            done.addEventListener("click", function () {
+                reopen.style.display = "";
+                try { localStorage.setItem(key, "1"); } catch (e) {}
+            });
             btn.addEventListener("click", function () {
                 var root = document.getElementById("step-wizard-parking");
                 var wrap = document.getElementById("step-wizard-parking-wrapper");
@@ -68,4 +87,8 @@
         })();
         </script>
     @endif
+@if ($adminView)
+    </div>
+</details>
+@endif
 </div>

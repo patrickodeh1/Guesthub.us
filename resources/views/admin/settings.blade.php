@@ -77,9 +77,6 @@
                         @endforeach
                     </select>
                 </label>
-                <label class="field-label">GPS radius meters
-                    <input type="number" name="gps_radius_meters" min="25" max="5000" value="{{ old('gps_radius_meters', $settings['gps_radius_meters']) }}" class="input">
-                </label>
                 <label class="flex items-center gap-3 text-sm font-semibold text-slate-800">
                     <input type="hidden" name="auto_save_enabled" value="0">
                     <input type="checkbox" name="auto_save_enabled" value="1" @checked($settings['auto_save_enabled'])>

@@ -381,10 +381,6 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         $service = app(\App\Services\Payments\PaymentService::class);
 
-        if (! $booking->pay_by_cc) {
-            return response()->json(['ok' => false, 'error' => 'Card payment is not enabled for this booking.'], 403);
-        }
-
         if ($booking->isDepositCaptured() || $booking->deposit_verified_at) {
             return response()->json(['ok' => false, 'error' => 'Deposit already paid.'], 422);
         }
@@ -947,8 +943,8 @@ class GuestController extends Controller
 
         $request->validate([
             'license_plate_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
-            'license_plate' => ['required', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \-]+$/'],
-            'license_plate_state' => ['required', 'string', 'size:2'],
+            'license_plate' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \-]+$/'],
+            'license_plate_state' => ['nullable', 'string', 'size:2'],
         ]);
 
         $updates = [];
@@ -960,8 +956,8 @@ class GuestController extends Controller
             ]);
         }
         $updates['license_plate_photo_path'] = $storedPath;
-        $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate')));
-        $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state'));
+        $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate'))) ?: null;
+        $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state')) ?: null;
 
         $booking->update($updates);
 

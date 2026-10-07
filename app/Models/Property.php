@@ -215,6 +215,11 @@ class Property extends Model
         return $this->hasMany(PropertyLock::class);
     }
 
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'property_user', 'property_id', 'user_id');
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');

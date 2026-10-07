@@ -251,6 +251,7 @@ export default function checklistRenderer(config = {}) {
                 `;
             }
 
+            window.dispatchEvent(new CustomEvent('session-stage', { detail: { stage: stage } }));
             // Reset photo prompt when re-rendering (unless we're on photos stage and user already clicked Yes)
             if (stage !== 'photos') {
                 this._showPhotoUpload = false;
