@@ -407,6 +407,68 @@ class ChannexProvider implements PmsProviderInterface
         return $this->postAri('/restrictions', $values, $externalPropertyId);
     }
 
+    /** Read-only: availability per room type per date. Returns null if the call failed. */
+    public function getAvailabilityRange(string $externalPropertyId, string $from, string $to): ?array
+    {
+        $response = $this->client()->timeout(30)->get('/availability', [
+            'filter[property_id]' => $externalPropertyId,
+            'filter[date][gte]' => $from,
+            'filter[date][lte]' => $to,
+        ]);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('Channex availability read failed', ['status' => $response->status(), 'body' => mb_substr($response->body(), 0, 500)]);
+            return null;
+        }
+
+        return (array) $response->json('data');
+    }
+
+    /** Read-only: rates and restrictions per rate plan per date. Returns null if the call failed. */
+    public function getRestrictionsRange(string $externalPropertyId, string $from, string $to, array $fields): ?array
+    {
+        $response = $this->client()->timeout(30)->get('/restrictions', [
+            'filter[property_id]' => $externalPropertyId,
+            'filter[date][gte]' => $from,
+            'filter[date][lte]' => $to,
+            'filter[restrictions]' => implode(',', $fields),
+        ]);
+
+        if (! $response->successful()) {
+            \Illuminate\Support\Facades\Log::warning('Channex restrictions read failed', ['status' => $response->status(), 'body' => mb_substr($response->body(), 0, 500)]);
+            return null;
+        }
+
+        return (array) $response->json('data');
+    }
+
+    /** Keeps a log of each ARI push (with Channex's task ID) for the certification form. Never throws. */
+    private function recordPush(string $path, array $values, string $externalPropertyId, $response): void
+    {
+        try {
+            $ok = $response->successful();
+            $ids = $ok ? array_filter((array) $response->json('data.*.id')) : [];
+
+            \Illuminate\Support\Facades\DB::table('channex_push_logs')->insert([
+                'channex_property_id' => $externalPropertyId,
+                'path' => ltrim($path, '/'),
+                'value_count' => count($values),
+                'status' => $response->status(),
+                'success' => $ok,
+                'task_ids' => $ids ? mb_substr(implode(', ', $ids), 0, 500) : null,
+                'payload' => json_encode(array_slice($values, 0, 20)),
+                'error' => $ok ? null : mb_substr((string) $response->body(), 0, 500),
+                'created_at' => now(),
+            ]);
+
+            if (random_int(1, 50) === 1) {
+                \Illuminate\Support\Facades\DB::table('channex_push_logs')->where('created_at', '<', now()->subDays(30))->delete();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Channex push log failed: '.$e->getMessage());
+        }
+    }
+
     private function postAri(string $path, array $values, string $externalPropertyId): bool
     {
         if (empty($values)) {
@@ -420,6 +482,8 @@ class ChannexProvider implements PmsProviderInterface
                     || in_array(optional($e->response ?? null)->status(), [429, 500, 502, 503, 504], true);
             })
             ->post($path, ['values' => $values]);
+
+        $this->recordPush($path, $values, $externalPropertyId, $response);
 
         if (! $response->successful()) {
             \Illuminate\Support\Facades\Log::warning('Channex ARI push failed', [

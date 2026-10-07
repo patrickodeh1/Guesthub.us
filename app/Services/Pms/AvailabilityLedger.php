@@ -45,7 +45,12 @@ class AvailabilityLedger
 
         $now = now();
 
-        DB::transaction(function () use ($property, $dates, $values, $source, $now) {
+        // Rate/restriction writes from PriceLabs or the rate editor record who owns them.
+        $rateOwner = (in_array($source, ['pricelabs', 'manual'], true)
+            && array_intersect(array_keys($values), self::RESTRICTION_FIELDS))
+            ? ['rates_source' => $source] : [];
+
+        DB::transaction(function () use ($property, $dates, $values, $source, $now, $rateOwner) {
             $existing = $property->availabilities()
                 ->whereIn('date', $dates)
                 ->pluck('date')
@@ -55,13 +60,13 @@ class AvailabilityLedger
             if ($existing) {
                 $property->availabilities()
                     ->whereIn('date', $existing)
-                    ->update($values + (array_key_exists('is_available', $values) ? ['source' => $source] : []) + ['updated_at' => $now]);
+                    ->update($values + $rateOwner + (array_key_exists('is_available', $values) ? ['source' => $source] : []) + ['updated_at' => $now]);
             }
 
             $missing = array_values(array_diff($dates, $existing));
             if ($missing) {
                 $defaults = ['is_available' => true, 'status' => 'available'];
-                $rows = array_map(fn ($d) => array_merge($defaults, $values, [
+                $rows = array_map(fn ($d) => array_merge($defaults, $values, $rateOwner, [
                     'property_id' => $property->id,
                     'date' => $d,
                     'source' => $source,

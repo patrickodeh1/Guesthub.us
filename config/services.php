@@ -69,6 +69,10 @@ return [
         'debug' => (bool) env('GOOGLE_VISION_DEBUG_LOG', false),
     ],
 
+    'pricelabs' => [
+        'api_key' => env('PRICELABS_API_KEY'),
+    ],
+
     'channex' => [
         'api_key' => env('CHANNEX_API_KEY'),
         'base_url' => env('CHANNEX_BASE_URL', 'https://staging.channex.io/api/v1'),

@@ -52,3 +52,18 @@ Schedule::command('cleaning:sync-checkout-sessions')->hourly();
 // Sends pending availability / rate / restriction changes to Channex.
 // The channex_outbox table is the queue; no queue worker is needed.
 Schedule::command('channex:push-outbox')->everyMinute()->withoutOverlapping(10);
+
+// Pulls PriceLabs prices; only changed dates reach the Channex outbox.
+// PriceLabs refreshes about daily, so unchanged pulls exit early.
+Schedule::command('pricelabs:sync')->everySixHours()->withoutOverlapping(30);
+
+// Safety net: closes any night covered by a booking that the ledger shows open
+// (bookings written outside the controller/import paths) and queues the push.
+Schedule::command('channex:sync-booking-nights')->everyFifteenMinutes()->withoutOverlapping(10);
+
+// Booking window: closes dates beyond each property's "close dates more than N
+// days ahead" setting and reopens only window-closed dates that roll inside it.
+Schedule::command('availability:apply-window')->dailyAt('00:30')->timezone(config('app.display_timezone'))->withoutOverlapping(30);
+
+// Read-only nightly check of Channex against the ledger. Sends nothing.
+\Illuminate\Support\Facades\Schedule::command('channex:compare')->dailyAt('03:30')->withoutOverlapping();

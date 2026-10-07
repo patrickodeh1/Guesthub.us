@@ -58,6 +58,7 @@ class Property extends Model
         'channex_room_type_id',
         'channex_rate_plan_id',
         'rate_source',
+        'pricelabs_listing_id', 'pricelabs_pms', 'pricelabs_last_refreshed_at', 'pricelabs_synced_at',
         'airbnb_ical_url',
         'deposit_cap_cents',
         'required_incidentals_hold_amount',

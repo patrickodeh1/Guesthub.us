@@ -80,6 +80,13 @@ class ChannexOutboxSender
             return;
         }
 
+        if (! $property->channex_property_id || ! $property->channex_room_type_id) {
+            // Not connected to Channex at all: nothing to send, and Full sync
+            // reads the ledger, so there is nothing to keep.
+            ChannexOutbox::whereIn('id', $rows->pluck('id'))->delete();
+            return;
+        }
+
         $ready = $property->channex_property_id
             && $property->channex_room_type_id
             && ($kind === 'availability' ? (bool) $property->channex_availability_seeded_at : (bool) $property->channex_rate_plan_id);
@@ -144,7 +151,7 @@ class ChannexOutboxSender
             $stats['failed'] += count($covered);
             ChannexOutbox::whereIn('id', $coveredIds)->update([
                 'attempts' => \DB::raw('attempts + 1'),
-                'next_attempt_at' => now()->addMinutes(2),
+                'next_attempt_at' => now()->addMinutes(min(60, 2 ** min(6, (int) $rows->whereIn('id', $coveredIds)->max('attempts') + 1))),
                 'last_error' => 'Channex rejected the update; see laravel.log.',
             ]);
         }
@@ -265,8 +272,8 @@ class ChannexOutboxSender
         }
 
         // ---- rates and restrictions ----
-        if ($property->rate_source !== 'guesthub' || ! $property->channex_rate_plan_id) {
-            $r['messages'][] = 'Rates skipped: rate source is not Guesthub or no rate plan is chosen.';
+        if (! $property->channex_rate_plan_id) {
+            $r['messages'][] = 'Rates skipped: no rate plan is chosen.';
         } else {
             $payloads = [];
             foreach ($rows as $row) {

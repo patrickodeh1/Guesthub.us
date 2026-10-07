@@ -347,28 +347,7 @@
                         @endif
                     @endif
 
-                                        @if ($acting !== 'housekeeper' && (!empty($dayBlocked) || !empty($availableNights)))
-                        <div class="mb-6">
-                            <h4 class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-                                Availability
-                            </h4>
-                            @if (!empty($dayBlocked))
-                                <p class="text-xs text-gray-600 dark:text-gray-300"><span class="font-semibold">Blocked this day:</span> {{ implode(', ', $dayBlocked) }}</p>
-                                <p class="mt-0.5 text-[11px] text-gray-500">Unavailable in the imported Airbnb calendar with no Guest Hub booking: an owner block, or a reservation not imported yet.</p>
-                            @endif
-                            @if (!empty($availableNights))
-                                <ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-300">
-                                    @foreach ($availableNights as $row)
-                                        <li class="flex items-center justify-between gap-2"><span class="truncate">{{ $row['name'] }}</span><span class="shrink-0">{{ $row['nights'] }} open nights in {{ $availabilityMonth }}</span></li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                            @if ($availabilityAsOf)
-                                <p class="mt-2 text-[11px] text-gray-400">Airbnb dates last imported {{ \Carbon\Carbon::parse($availabilityAsOf)->format('M j, g:i A') }}</p>
-                            @endif
-                        </div>
-                    @endif
+                                        
 
                     @if ($acting !== 'housekeeper' && ($dayBookings ?? collect())->isNotEmpty())
                         <div class="mb-6">

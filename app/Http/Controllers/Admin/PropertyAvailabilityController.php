@@ -42,6 +42,13 @@ class PropertyAvailabilityController extends Controller
             'availabilities' => $availabilities,
             'blockedCount' => $availabilities->where('is_available', false)->count(),
             'isMapped' => (bool) $property->channex_room_type_id,
+            'pendingCount' => \App\Models\ChannexOutbox::where('property_id', $property->id)->where('attempts', '<', 10)->count(),
+            'failedCount' => \App\Models\ChannexOutbox::where('property_id', $property->id)->where('attempts', '>=', 10)->count(),
+            'lastOutboxError' => \App\Models\ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
+            'priceLabsKeySet' => (bool) config('services.pricelabs.api_key'),
+            'pushLog' => \Illuminate\Support\Facades\DB::table('channex_push_logs')
+                ->where('channex_property_id', (string) $property->channex_property_id)
+                ->latest('id')->limit(30)->get(),
         ]);
     }
 
@@ -99,13 +106,83 @@ class PropertyAvailabilityController extends Controller
 
         $property->update($data);
 
-        ActivityLog::record('property_ical_url_updated', "{$property->name}'s Airbnb iCal URL was updated.", 'properties', $property);
+        ActivityLog::record('property_ical_url_updated', "{$property->name}'s calendar link was updated.", 'properties', $property);
 
-        return back()->with('success', 'Airbnb iCal URL saved.');
+        return back()->with('success', 'Calendar link saved.');
+    }
+
+    public function savePriceLabs(Request $request, Property $property)
+    {
+        $data = $request->validate([
+            'pricelabs_listing_id' => ['required', 'string', 'max:100'],
+            'pricelabs_pms' => ['required', 'string', 'max:50'],
+        ]);
+
+        $property->forceFill([
+            'pricelabs_listing_id' => trim($data['pricelabs_listing_id']),
+            'pricelabs_pms' => trim($data['pricelabs_pms']),
+            'pricelabs_last_refreshed_at' => null, // so the next pull is not skipped as "unchanged"
+        ])->save();
+
+        ActivityLog::record('property_pricelabs_linked', "{$property->name}: PriceLabs listing linked.", 'properties', $property);
+
+        return back()->with('success', 'PriceLabs listing saved. Use "Pull rates now" to test it.');
+    }
+
+    public function releaseManualRates(Property $property)
+    {
+        $n = $property->availabilities()
+            ->where('rates_source', 'manual')
+            ->update(['rates_source' => null]);
+
+        // Make sure the next PriceLabs pull is not skipped as "unchanged".
+        $property->forceFill(['pricelabs_last_refreshed_at' => null])->save();
+
+        return back()->with('success', $n
+            ? "Released {$n} night(s) to PriceLabs. Pull from PriceLabs to bring their rates back."
+            : 'No manually set nights to release.');
+    }
+
+    public function retryFailed(Property $property)
+    {
+        $n = \App\Models\ChannexOutbox::where('property_id', $property->id)
+            ->where('attempts', '>=', 10)
+            ->update(['attempts' => 0, 'next_attempt_at' => now(), 'last_error' => null]);
+
+        return back()->with('success', $n
+            ? "Retrying {$n} failed change(s). They go out within about a minute."
+            : 'No failed changes to retry.');
+    }
+
+    public function saveWindow(Request $request, Property $property)
+    {
+        $data = $request->validate([
+            'close_ahead_days' => ['nullable', 'integer', 'min:1', 'max:499'],
+        ]);
+
+        $property->forceFill(['close_ahead_days' => $data['close_ahead_days'] ?? null])->save();
+
+        \Illuminate\Support\Facades\Artisan::call('availability:apply-window', ['--property' => $property->id]);
+
+        ActivityLog::record('property_window_updated', "{$property->name}: booking window set to ".($property->close_ahead_days ? $property->close_ahead_days.' days' : 'off').'.', 'properties', $property);
+
+        return back()->with('success', $property->close_ahead_days
+            ? "Dates more than {$property->close_ahead_days} days ahead are now closed. Dates you open by hand stay open."
+            : 'Booking window turned off. Dates the window had closed are open again.');
+    }
+
+    public function syncPriceLabs(Property $property, \App\Services\Pms\PriceLabsSync $sync)
+    {
+        $r = $sync->sync($property, true);
+
+        return back()->with(
+            in_array($r['status'], ['ok', 'unchanged'], true) ? 'success' : 'error',
+            'PriceLabs: '.$r['message'].($r['status'] === 'ok' ? ' They go to Channex within about a minute.' : '')
+        );
     }
 
     /**
-     * The "Import from Airbnb" button. Fetches the property's stored iCal
+     * The "Import from the calendar link" button. Fetches the property's stored iCal
      * URL, parses blocked dates, and REPLACES PropertyAvailability's rows
      * for this property with exactly what Airbnb currently reports: every
      * date in the feed's range is written, either available or blocked, so
@@ -127,7 +204,7 @@ class PropertyAvailabilityController extends Controller
         }
 
         if (! $property->airbnb_ical_url) {
-            return back()->with('error', 'Set an Airbnb iCal URL for this property first.');
+            return back()->with('error', 'Set a calendar link for this property first.');
         }
 
         try {
@@ -164,7 +241,7 @@ class PropertyAvailabilityController extends Controller
         // Guard: if nearly everything is blocked, Airbnb may be blocking dates
         // because of $0 rates. Seeding that would make the blocks permanent.
         if ($blocked / max(1, count($rows)) > 0.8 && ! request()->boolean('confirm_high_block')) {
-            return back()->with('error', $blocked.' of '.count($rows).' dates look blocked. If Airbnb is blocking because of $0 rates, importing would lock that in. Check the feed first.');
+            return back()->with('error', $blocked.' of '.count($rows).' dates look blocked. If the calendar is blocking because of $0 rates, importing would lock that in. Check the feed first.');
         }
 
         DB::transaction(function () use ($property, $rows, $today) {
@@ -175,9 +252,9 @@ class PropertyAvailabilityController extends Controller
         $blockedCount = $blocked;
         $totalCount = count($rows);
 
-        ActivityLog::record('property_ical_imported', "{$property->name}: imported {$totalCount} date(s) from Airbnb iCal ({$blockedCount} blocked).", 'properties', $property);
+        ActivityLog::record('property_ical_imported', "{$property->name}: imported {$totalCount} date(s) from the calendar link ({$blockedCount} blocked).", 'properties', $property);
 
-        return back()->with('success', "{$totalCount} date(s) imported from Airbnb ({$blockedCount} blocked, ".($totalCount - $blockedCount)." available). Review below, then push to Channex when ready.");
+        return back()->with('success', "{$totalCount} date(s) imported from the calendar link ({$blockedCount} blocked, ".($totalCount - $blockedCount)." available). Review below, then push to Channex when ready.");
     }
 
     /**
@@ -198,7 +275,7 @@ class PropertyAvailabilityController extends Controller
         $rows = $property->availabilities()->get();
 
         if ($rows->isEmpty()) {
-            return back()->with('error', 'No availability data to push yet. Import from Airbnb first.');
+            return back()->with('error', 'No availability data to push yet. Import from the calendar link first.');
         }
 
         $availabilityMap = $rows->mapWithKeys(fn ($row) => [$row->date->format('Y-m-d') => $row->is_available])->all();
@@ -215,7 +292,7 @@ class PropertyAvailabilityController extends Controller
 
         ActivityLog::record('property_channex_pushed', "{$property->name}: pushed availability to Channex for {$rows->count()} date(s).", 'properties', $property);
 
-        return back()->with('success', 'Pushed to Channex successfully. It may take a few minutes to reflect on Airbnb.');
+        return back()->with('success', 'Pushed to Channex successfully. It may take a few minutes to reflect on your connected channels.');
     }
 
     /**
@@ -225,7 +302,6 @@ class PropertyAvailabilityController extends Controller
     public function saveRateSettings(Request $request, Property $property)
     {
         $data = $request->validate([
-            'rate_source' => ['required', 'in:guesthub,external'],
             'channex_rate_plan_id' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -235,15 +311,15 @@ class PropertyAvailabilityController extends Controller
 
         $planId = $data['channex_rate_plan_id'] ?? $property->channex_rate_plan_id;
 
-        if ($data['rate_source'] === 'guesthub' && (! $planId || ! $property->channex_room_type_id)) {
-            return back()->with('error', 'Map the Channex room type and choose a rate plan before letting Guesthub manage rates.');
+        if (! $planId || ! $property->channex_room_type_id) {
+            return back()->with('error', 'Map the Channex room type and choose a rate plan first.');
         }
 
-        $property->update($data);
+        $property->update($data + ['rate_source' => 'guesthub']);
 
-        ActivityLog::record('property_rate_settings_updated', "{$property->name}: rate source set to {$property->rate_source}.", 'properties', $property);
+        ActivityLog::record('property_rate_settings_updated', "{$property->name}: rate plan saved.", 'properties', $property);
 
-        return back()->with('success', 'Rate settings saved.');
+        return back()->with('success', 'Rate plan saved.');
     }
 
     /** Lists the rate plans Channex has for this property's mapped room type. */
@@ -314,10 +390,6 @@ class PropertyAvailabilityController extends Controller
             }
         }
 
-        if ($values && ($property->rate_source !== 'guesthub' || ! $property->channex_rate_plan_id)) {
-            return back()->withInput()->with('error', 'Set the rate source to Guesthub and choose a rate plan before changing rates or restrictions.');
-        }
-
         if (($data['availability'] ?? null) === 'block') {
             $values['status'] = 'blocked';
         } elseif (($data['availability'] ?? null) === 'open') {
@@ -331,6 +403,19 @@ class PropertyAvailabilityController extends Controller
         $dates = [];
         for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
             $dates[] = $d->format('Y-m-d');
+        }
+
+        if (($values['status'] ?? null) === 'blocked') {
+            $bookedNights = $property->availabilities()
+                ->whereIn('date', $dates)
+                ->where('status', 'booked')
+                ->pluck('date')
+                ->map(fn ($x) => substr((string) $x, 0, 10))
+                ->all();
+            $dates = array_values(array_diff($dates, $bookedNights));
+            if (! $dates) {
+                return back()->with('error', 'Those nights are booked and cannot be blocked.');
+            }
         }
 
         $ledger->setDates($property, $dates, $values, 'manual');

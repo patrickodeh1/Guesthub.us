@@ -277,6 +277,11 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::post('properties/{property}/availability/save-rate-settings', [PropertyAvailabilityController::class, 'saveRateSettings'])->name('properties.availability.save-rate-settings')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/update-range', [PropertyAvailabilityController::class, 'updateRange'])->name('properties.availability.update-range')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/full-sync', [PropertyAvailabilityController::class, 'fullSync'])->name('properties.availability.full-sync')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-pricelabs', [PropertyAvailabilityController::class, 'savePriceLabs'])->name('properties.availability.save-pricelabs')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/sync-pricelabs', [PropertyAvailabilityController::class, 'syncPriceLabs'])->name('properties.availability.sync-pricelabs')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-window', [PropertyAvailabilityController::class, 'saveWindow'])->name('properties.availability.save-window')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/retry-failed', [PropertyAvailabilityController::class, 'retryFailed'])->name('properties.availability.retry-failed')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/release-manual', [PropertyAvailabilityController::class, 'releaseManualRates'])->name('properties.availability.release-manual')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company');
     Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company');
 
