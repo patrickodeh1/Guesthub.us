@@ -27,7 +27,7 @@ class User extends Authenticatable
         'manager' => 'Manager',
         'staff'   => 'Staff',
         'viewer'  => 'Viewer',
-        'housekeeper' => 'Housekeeper',
+        'housekeeper' => 'Cleaner',
     ];
 
     public const ROLE_DESCRIPTIONS = [

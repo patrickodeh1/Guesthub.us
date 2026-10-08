@@ -1,4 +1,4 @@
-@props(['bookingId', 'token', 'lockId', 'lockLabel' => null, 'lockStatus' => null, 'autoCheckin' => false, 'autoCheckout' => false])
+@props(['bookingId' => null, 'token' => null, 'lockId', 'lockLabel' => null, 'lockStatus' => null, 'autoCheckin' => false, 'autoCheckout' => false, 'unlockUrl' => null, 'lockUrl' => null, 'statusUrl' => null])
 @php $uid = 'lockcard-' . \Illuminate\Support\Str::random(8); @endphp
 <div id="{{ $uid }}" class="guest-lock-card flex flex-col items-center gap-3 p-4">
     @if($lockLabel)
@@ -9,12 +9,12 @@
         class="lock-toggle-btn flex items-center justify-center rounded-full text-white transition-colors duration-150 shadow-lg"
         style="width: 128px; height: 128px; background-color: {{ $lockStatus === true ? '#dc2626' : ($lockStatus === false ? '#16a34a' : '#94a3b8') }};"
         data-locked="{{ $lockStatus === true ? 'true' : ($lockStatus === false ? 'false' : '') }}"
-        data-unlock-url="{{ route('guest.unlock-door', [$bookingId, $token, $lockId]) }}"
-        data-lock-url="{{ route('guest.lock-door', [$bookingId, $token, $lockId]) }}"
+        data-unlock-url="{{ $unlockUrl ?? route('guest.unlock-door', [$bookingId, $token, $lockId]) }}"
+        data-lock-url="{{ $lockUrl ?? route('guest.lock-door', [$bookingId, $token, $lockId]) }}"
         data-auto-checkin="{{ $autoCheckin ? 'true' : 'false' }}"
         data-auto-checkout="{{ $autoCheckout ? 'true' : 'false' }}"
-        data-confirm-checkin-url="{{ route('guest.confirm-checkin', [$bookingId, $token]) }}"
-        data-confirm-checkout-url="{{ route('guest.confirm-checkout', [$bookingId, $token]) }}"
+        data-confirm-checkin-url="{{ $bookingId ? route('guest.confirm-checkin', [$bookingId, $token]) : '' }}"
+        data-confirm-checkout-url="{{ $bookingId ? route('guest.confirm-checkout', [$bookingId, $token]) : '' }}"
     >
         <svg class="lock-toggle-icon" width="48" height="48" viewBox="0 0 48 48" fill="none">
             @if($lockStatus === false)
@@ -61,7 +61,7 @@
 (function() {
     var card = document.getElementById("{{ $uid }}");
     if (!card) return;
-    var statusUrl = "{{ route('guest.lock-status', [$bookingId, $token, $lockId]) }}";
+    var statusUrl = "{{ $statusUrl ?? route('guest.lock-status', [$bookingId, $token, $lockId]) }}";
     var btn = card.querySelector(".lock-toggle-btn");
     var label = card.querySelector(".lock-toggle-label");
     var icon = card.querySelector(".lock-toggle-icon");

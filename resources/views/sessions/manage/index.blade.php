@@ -19,7 +19,7 @@
                     </x-form.select>
                 </div>
                 <div class="w-full sm:w-auto sm:flex-1 sm:min-w-[140px]">
-                    <x-form.label value="Housekeeper" />
+                    <x-form.label value="Cleaner" />
                     <x-form.select name="housekeeper_id" class="!py-1 w-full rounded border-gray-300">
                         <option value="">All</option>
                         @foreach ($housekeepers as $hk)
@@ -146,7 +146,7 @@
                                             </p>
                                         @endif
                                         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                            <span class="font-medium">Housekeeper:</span> {{ $s->housekeeper?->name ?? '—' }}
+                                            <span class="font-medium">Cleaner:</span> {{ $s->housekeeper?->name ?? '—' }}
                                         </p>
                                     </div>
                                     <div class="flex-shrink-0">
@@ -191,7 +191,7 @@
                                         <th class="px-4 py-2 text-left">Date</th>
                                     @endif
                                     <th class="px-4 py-2 text-left">Property</th>
-                                    <th class="px-4 py-2 text-left">Housekeeper</th>
+                                    <th class="px-4 py-2 text-left">Cleaner</th>
                                     <th class="px-4 py-2">Status</th>
                                     <th class="px-4 py-2 w-56 text-right pr-6">Action</th>
                                 </tr>
@@ -363,7 +363,7 @@
             </div>
 
             <div>
-                <label class="block font-medium text-gray-700 dark:text-gray-200">Housekeeper</label>
+                <label class="block font-medium text-gray-700 dark:text-gray-200">Cleaner</label>
                 <select name="housekeeper_id" required class="mt-1 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800">
                     <option value="">Select housekeeper…</option>
                     <template x-for="h in hkOptions" :key="h.id">

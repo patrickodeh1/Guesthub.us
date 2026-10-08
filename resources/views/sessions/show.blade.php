@@ -182,10 +182,18 @@
         {{-- Getting in: parking question + access steps for the cleaner --}}
         @if ($session->status !== 'completed')
             @include('sessions.partials.getting-in')
+            @include('sessions.partials.door')
+            @include('sessions.partials.leaving')
+            @include('sessions.partials.lockbox')
         @endif
 
         {{-- PENDING: Start gate --}}
         @if ($session->status === 'pending')
+            @php
+            $gateCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+            $gateWait = $gateCleaner && ($session->parking_needed === null || count($accessSteps ?? []) > 0);
+        @endphp
+        <div id="pending-gate" @if ($gateWait) style="display:none" @endif>
             <x-card class="p-8">
                 <div class="max-w-2xl mx-auto text-center">
                     @if (isset($isViewOnly) && $isViewOnly)
@@ -222,6 +230,8 @@
                             </div>
                         @endif
 
+                        @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id(); @endphp
+                        @if ($locationVerified)
                         <form method="post" action="{{ route('sessions.start', $session) }}" id="gps-start">
                             @csrf
                             <x-form.input type="hidden" name="latitude" id="lat" />
@@ -235,6 +245,38 @@
                                 Checking location...
                             </p>
                         </form>
+                        @else
+                        <div id="verify-location-card">
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">Verify you are at the property to unlock your directions and the door. Then you can start your session.</p>
+                            <x-button type="button" id="verify-loc-btn" size="lg" class="w-full sm:w-auto">Verify my location</x-button>
+                            <p id="verify-loc-msg" class="mt-3 text-sm text-gray-500"></p>
+                        </div>
+                        <script>
+                        (function () {
+                            var btn = document.getElementById('verify-loc-btn');
+                            var msg = document.getElementById('verify-loc-msg');
+                            if (!btn) return;
+                            btn.addEventListener('click', function () {
+                                if (!navigator.geolocation) { msg.textContent = 'Location is not available in this browser.'; return; }
+                                btn.disabled = true; msg.textContent = 'Checking your location...';
+                                navigator.geolocation.getCurrentPosition(function (pos) {
+                                    fetch('{{ route('sessions.verify-location', $session) }}', {
+                                        method: 'POST',
+                                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                        body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy })
+                                    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok && d.ok, d: d }; }); })
+                                      .then(function (res) {
+                                        if (res.ok) { window.location.reload(); return; }
+                                        btn.disabled = false; msg.textContent = (res.d && res.d.message) || 'Could not verify. Try again.';
+                                      })
+                                      .catch(function () { btn.disabled = false; msg.textContent = 'Network error. Try again.'; });
+                                }, function () {
+                                    btn.disabled = false; msg.textContent = 'Location access is required. Please allow location and try again.';
+                                }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+                            });
+                        })();
+                        </script>
+                        @endif
 
                         @error('gps')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -250,6 +292,7 @@
                     @endif
                 </div>
             </x-card>
+        </div>
 
             @if ($is_admin)
                 <x-modal name="gps-override-modal" :show="false" maxWidth="md">
@@ -282,7 +325,7 @@
                 @include('sessions.partials.gps-script', [
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
-                    'propertyRadius' => $session->property->geo_radius_m ?? 100,
+                    'propertyRadius' => \App\Support\GpsRadius::base(),
                     'overrideEnabled' => $session->gps_override_enabled
                 ])
             @endif

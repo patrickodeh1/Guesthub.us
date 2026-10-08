@@ -223,7 +223,8 @@ class InstructionStepController extends Controller
             'image_path'           => ['nullable', 'image', 'max:10240'],
             'existing_image_path'  => ['nullable', 'string'],
             'active'               => ['nullable', 'boolean'],
-            'visibility'           => ['nullable', 'in:all,parkers_only,non_parkers_only,cleaners_only'],
+            'visibility'           => ['nullable', 'in:all,parkers_only,non_parkers_only,cleaners_only,guests_only'],
+            'show_before_gps'      => ['nullable', 'boolean'],
             'images'               => ['nullable', 'array'],
             'images.*'             => ['nullable', 'image', 'max:10240'],
             'gallery_library_paths'   => ['nullable', 'array'],
@@ -253,6 +254,11 @@ class InstructionStepController extends Controller
 
         $data['active'] = $request->boolean('active', true);
         $data['visibility'] = $request->input('visibility', 'all');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')) {
+            $data['show_before_gps'] = $request->boolean('show_before_gps');
+        } else {
+            unset($data['show_before_gps']);
+        }
         return $data;
     }
 }

@@ -317,6 +317,18 @@ export default function checklistRenderer(config = {}) {
                 tasks = Object.values(tasks);
             }
             const counts = this.sessionData.counts[phase] || { total: 0, checked: 0 };
+            const LB = window.GH_LOCKBOX;
+            const lockGate = phase === 'post_cleaning' && LB && !LB.done();
+            const lockHtml = (phase === 'post_cleaning' && LB) ? `
+                <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p class="font-semibold text-gray-900">Change the lockbox code</p>
+                    <p class="mt-1 text-sm text-gray-600">Set a new code on the lockbox, then enter it here so the next guest gets the right one.</p>
+                    <div class="mt-3 flex gap-2">
+                        <input type="text" id="gh-lockbox-input" maxlength="255" autocomplete="off" inputmode="numeric" placeholder="New code" class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <button type="button" onclick="window.ghSaveLockbox(this)" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white">Save code</button>
+                    </div>
+                    <p id="gh-lockbox-msg" class="mt-2 text-sm ${LB.done() ? 'text-emerald-700' : 'text-gray-500'}">${LB.done() ? 'Lockbox code saved.' : 'Required before you can continue.'}</p>
+                </div>` : '';
 
 
 
@@ -357,9 +369,9 @@ export default function checklistRenderer(config = {}) {
                     </div>
                     ${(() => {
                         return `
-                        <div class="mt-8 flex justify-end">
+                        ${lockHtml}<div class="mt-8 flex justify-end">
                             <button type="button"
-                                    @click="window.checklistHandler.saveProgress()"
+                                    id="gh-next-stage" ${lockGate ? 'disabled style="opacity:.5"' : ''} @click="window.checklistHandler.saveProgress()"
                                     class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto">
                                 Next Stage <span>→</span>
                             </button>

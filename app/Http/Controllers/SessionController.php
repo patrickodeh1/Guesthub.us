@@ -898,6 +898,7 @@ class SessionController extends Controller
             'isTooEarly' => $data['is_too_early'],
             'is_admin' => $data['is_admin'] ?? false,
             'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
+            'exitSteps' => \App\Services\CleanerAccessSteps::exitForSession($session),
         ];
 
         // Check if onboarding is required
@@ -1043,7 +1044,7 @@ class SessionController extends Controller
                 (float) $property->longitude
             );
 
-            if ($distance > (float) $property->geo_radius_m && !$session->gps_override_enabled) {
+            if ($distance > \App\Support\GpsRadius::base() && !$session->gps_override_enabled) {
                 return back()->withErrors(['gps' => 'GPS validation failed. You are too far from the property to start. Please contact an administrator.']);
             }
         }

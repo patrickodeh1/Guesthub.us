@@ -129,11 +129,19 @@
             Who should see this step?
             <select name="visibility" class="input mt-1">
                 @php $currentVisibility = old('visibility', $step->visibility ?? 'all'); @endphp
-                <option value="all" @selected($currentVisibility === 'all')>Show to all guests</option>
+                <option value="all" @selected($currentVisibility === 'all')>Show to all guests and cleaners (check-in and parking steps)</option>
                 <option value="parkers_only" @selected($currentVisibility === 'parkers_only')>Show to GUEST with parking</option>
                 <option value="non_parkers_only" @selected($currentVisibility === 'non_parkers_only')>Show to GUEST without parking</option>
+                <option value="guests_only" @selected($currentVisibility === 'guests_only')>Show to guests only (hidden from cleaners)</option>
                 <option value="cleaners_only" @selected($currentVisibility === 'cleaners_only')>Show to cleaners only</option>
             </select>
+        </label>
+
+        <label class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4 text-sm font-semibold">
+            <span>Show before GPS check
+                <span class="block text-xs font-normal text-slate-500">Visible before the guest or cleaner arrives, ahead of the "I have arrived" step.</span>
+            </span>
+            <input type="checkbox" name="show_before_gps" value="1" @checked(old('show_before_gps', $step->show_before_gps ?? false)) class="rounded border-slate-300">
         </label>
 
         <button class="btn-primary">{{ $step->exists ? 'Save Changes' : 'Add Step' }}</button>

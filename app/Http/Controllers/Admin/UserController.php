@@ -21,7 +21,12 @@ class UserController extends Controller
             ))
             ->when($request->role, fn ($q, $r) => $q->role($r))
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->when($request->status !== 'all', function ($q) use ($request) {
+                $inactive = $request->status === 'inactive';
+                $q->where(fn ($w) => $inactive
+                    ? $w->where('status', 'inactive')
+                    : $w->where('status', '<>', 'inactive')->orWhereNull('status'));
+            })
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();

@@ -34,13 +34,13 @@
             <div class="w-full sm:w-auto">
                 <label class="field-label">Status</label>
                 <select name="status" class="input mt-2 w-full">
-                    <option value="">All</option>
-                    <option value="active"   @selected(request('status') === 'active')>Active</option>
+                    <option value="active"   @selected(request('status', 'active') === 'active')>Active</option>
                     <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
+                    <option value="all"      @selected(request('status') === 'all')>All</option>
                 </select>
             </div>
             <button type="submit" class="btn-primary">Filter</button>
-            @if(request()->hasAny(['search', 'role', 'status']))
+            @if(request()->hasAny(['search', 'role']) || in_array(request('status'), ['inactive', 'all'], true))
                 <a href="{{ route('admin.users.index') }}" class="btn-secondary">Clear</a>
             @endif
         </div>

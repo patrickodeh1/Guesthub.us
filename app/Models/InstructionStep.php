@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InstructionStep extends Model
 {
     protected $fillable = [
-        'property_id', 'source_step_id', 'type', 'action', 'sort_order', 'title', 'content', 'image_path', 'active', 'visibility',
+        'property_id', 'source_step_id', 'type', 'action', 'sort_order', 'title', 'content', 'image_path', 'active', 'visibility', 'show_before_gps',
     ];
 
     protected function casts(): array
     {
-        return ['active' => 'boolean'];
+        return ['active' => 'boolean', 'show_before_gps' => 'boolean'];
     }
 
     public function property(): BelongsTo

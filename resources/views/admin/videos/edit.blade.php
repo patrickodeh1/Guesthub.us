@@ -140,7 +140,7 @@
                     <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Pre-Arrival Training Configuration</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                            Configure how this video behaves in the Housekeeper Pre-Arrival Training Hub.
+                            Configure how this video behaves in the Cleaner Pre-Arrival Training Hub.
                         </p>
 
                         <div class="space-y-4">

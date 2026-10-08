@@ -1,5 +1,9 @@
 <tr>
-    <td><a class="font-semibold text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a></td>
+    <td><a class="font-semibold text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
+        @php $acct = \App\Services\CleanerAccountability::forBooking($booking, now()->setTimezone(config('app.display_timezone'))->toDateString()); @endphp
+        @if($acct)
+            <p class="text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+        @endif</td>
     <td>{{ $booking->property->name }}</td>
     <td>{{ $booking->stayRangeLabel() }}</td>
     <td><span class="badge badge-{{ $booking->effectiveStatus() }}">{{ $booking->statusLabel() }}</span></td>

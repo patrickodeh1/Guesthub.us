@@ -21,6 +21,11 @@
         @else
             <p class="truncate text-sm text-slate-600">{!! $booking->dashboardArrivalLine($today) !!}</p>
         @endif
+        @php $acct = \App\Services\CleanerAccountability::forBooking($booking, $today); @endphp
+        @if($acct)
+            <p class="truncate text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+        @endif
+
     </a>
     @if($booking->phone)
         <a href="tel:{{ \App\Support\PhoneFormatter::toTelUri($booking->phone) }}" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700" title="Call guest" aria-label="Call {{ $booking->guest_name }}">

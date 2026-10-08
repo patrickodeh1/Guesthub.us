@@ -26,7 +26,16 @@ ${s?'Expression: "'+s+`"
                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                         </svg>
                         Completed
-                    </span>`}),t){case"pre_cleaning":l=this.renderPropertyTasks("pre_cleaning","Pre-Cleaning Tasks");break;case"rooms":case"rooms_first_half":case"rooms_second_half":l=this.renderRooms();break;case"during_cleaning":l=this.renderPropertyTasks("during_cleaning","Mid-Cleaning Tasks");break;case"photos":l=this.renderPhotosRoomByRoom();break;case"post_cleaning":l=this.renderPropertyTasks("post_cleaning","End-of-Cleaning Tasks");break;case"inventory":l=this.renderInventory();break;case"summary":l=this.renderSummary();break;default:l='<p class="text-gray-500">Unknown stage</p>'}this.renderedContent=l,setTimeout(()=>{this.setupEventHandlers()},100)},renderPropertyTasks(t,s){this.updateStepBtnVisibility(!0);let r=this.sessionData.property_tasks[t]||[];Array.isArray(r)||(r=Object.values(r));const i=this.sessionData.counts[t]||{total:0,checked:0};return`
+                    </span>`}),t){case"pre_cleaning":l=this.renderPropertyTasks("pre_cleaning","Pre-Cleaning Tasks");break;case"rooms":case"rooms_first_half":case"rooms_second_half":l=this.renderRooms();break;case"during_cleaning":l=this.renderPropertyTasks("during_cleaning","Mid-Cleaning Tasks");break;case"photos":l=this.renderPhotosRoomByRoom();break;case"post_cleaning":l=this.renderPropertyTasks("post_cleaning","End-of-Cleaning Tasks");break;case"inventory":l=this.renderInventory();break;case"summary":l=this.renderSummary();break;default:l='<p class="text-gray-500">Unknown stage</p>'}this.renderedContent=l,setTimeout(()=>{this.setupEventHandlers()},100)},renderPropertyTasks(t,s){this.updateStepBtnVisibility(!0);let r=this.sessionData.property_tasks[t]||[];Array.isArray(r)||(r=Object.values(r));const i=this.sessionData.counts[t]||{total:0,checked:0},o=window.GH_LOCKBOX,n=t==="post_cleaning"&&o&&!o.done(),a=t==="post_cleaning"&&o?`
+                <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p class="font-semibold text-gray-900">Change the lockbox code</p>
+                    <p class="mt-1 text-sm text-gray-600">Set a new code on the lockbox, then enter it here so the next guest gets the right one.</p>
+                    <div class="mt-3 flex gap-2">
+                        <input type="text" id="gh-lockbox-input" maxlength="255" autocomplete="off" inputmode="numeric" placeholder="New code" class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                        <button type="button" onclick="window.ghSaveLockbox(this)" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white">Save code</button>
+                    </div>
+                    <p id="gh-lockbox-msg" class="mt-2 text-sm ${o.done()?"text-emerald-700":"text-gray-500"}">${o.done()?"Lockbox code saved.":"Required before you can continue."}</p>
+                </div>`:"";return`
                 <div class="space-y-6">
                     <div class="pb-6">
                         <!-- Back Button -->
@@ -58,18 +67,18 @@ ${s?'Expression: "'+s+`"
                             </div>
                         </div>
                         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50 shadow-sm">
-                            ${r.length>0?r.map(o=>this.renderTaskItem(o,null)).join(""):`<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${s.toLowerCase()} defined.</p>`}
+                            ${r.length>0?r.map(l=>this.renderTaskItem(l,null)).join(""):`<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${s.toLowerCase()} defined.</p>`}
                         </div>
                     </div>
-                    
-                        <div class="mt-8 flex justify-end">
+                    ${`
+                        ${a}<div class="mt-8 flex justify-end">
                             <button type="button"
-                                    @click="window.checklistHandler.saveProgress()"
+                                    id="gh-next-stage" ${n?'disabled style="opacity:.5"':""} @click="window.checklistHandler.saveProgress()"
                                     class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto">
                                 Next Stage <span>→</span>
                             </button>
                         </div>
-                    
+                    `}
                 </div>
             `},renderRooms(){this.updateStepBtnVisibility(!0);let t=this.sessionData.rooms||[];return Array.isArray(t)||(t=Object.values(t)),t.forEach((s,r)=>{const n=(Array.isArray(s.tasks)?s.tasks:Object.values(s.tasks||{})).filter(a=>s.room_tasks.includes(a.id)).filter(a=>a.type!=="instructions");n.filter(a=>a.checklist_item?.checked).length,n.length}),`
                 <div class="space-y-8">

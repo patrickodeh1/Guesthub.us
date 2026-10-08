@@ -120,7 +120,7 @@ class SessionReportController extends Controller
         $propertyCompletedItems = $propertyItems->where('checked', true)->values();
 
         $roomNameMap = $roomSections->pluck('name', 'id');
-        $defaultUploader = $session->housekeeper?->name ?? 'Housekeeper';
+        $defaultUploader = $session->housekeeper?->name ?? 'Cleaner';
 
         $allRoomPhotos = $session->photos->map(function ($photo) use ($roomNameMap, $resolvePhotoUrl, $resolvePhotoDownloadUrl, $defaultUploader) {
             $photoPath = $photo->path ?? $photo->url ?? null;

@@ -6,6 +6,10 @@
     <div class="min-w-0 pr-[45%]">
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
+        @php $acct = \App\Services\CleanerAccountability::forBooking($booking, now()->setTimezone(config('app.display_timezone'))->toDateString()); @endphp
+        @if($acct)
+            <p class="text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+        @endif
         @if($context === 'today')
             <p class="text-sm font-medium text-slate-700">{{ $booking->todayTabLabel() }}</p>
         @else

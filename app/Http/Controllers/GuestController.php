@@ -77,6 +77,7 @@ class GuestController extends Controller
             'checkinSteps'  => $checkinSteps,
             'checkoutSteps' => $checkoutSteps,
             'parkingSteps'  => ($state === 'guide' && ! $booking->instructionsCompleted()) ? $this->parkingSteps($booking) : [],
+            'preGpsSteps'   => in_array($state, ['unit_not_ready', 'waiting', 'arrival'], true) ? $this->preGpsSteps($booking) : [],
             'guestNoticePopups' => \App\Services\GuestNoticeService::popups($booking, $noticePhase),
             'checkinTimeOptions' => $this->checkinTimeOptions(),
             'checkoutTimeOptions' => $this->checkoutTimeOptions(),
@@ -1472,6 +1473,41 @@ class GuestController extends Controller
         return 'guide';
     }
 
+    private function excludePreGps($q)
+    {
+        if (\Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')) {
+            $q->where(fn ($w) => $w->where('show_before_gps', false)->orWhere('action', 'door_lock'));
+        }
+        return $q;
+    }
+
+    /** Check-in / parking steps the admin ticked "Show before GPS check" (door-lock steps are never pre-GPS). */
+    private function preGpsSteps(Booking $booking): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')) {
+            return [];
+        }
+
+        return InstructionStep::where('property_id', $booking->property_id)
+            ->whereIn('type', $booking->parking_needed ? ['parking', 'checkin'] : ['checkin'])
+            ->where('active', true)
+            ->where('show_before_gps', true)
+            ->where(fn ($q) => $q->whereNull('action')->orWhere('action', '!=', 'door_lock'))
+            ->where($booking->parking_needed ? fn ($q) => $q->where('visibility', '!=', 'non_parkers_only') : fn ($q) => $q->where('visibility', '!=', 'parkers_only'))
+            ->where('visibility', '!=', 'cleaners_only')
+            ->orderByRaw("case when type = 'parking' then 0 else 1 end")
+            ->orderBy('sort_order')
+            ->with('images')
+            ->get()
+            ->map(function ($s) use ($booking) {
+                // The lockbox code must never appear before the GPS check.
+                $s->content = str_replace('[[lockbox_code]]', '(shown once you arrive)', (string) $s->content);
+                return ['title' => $s->title, 'content' => $s->renderContent($booking), 'image' => $s->imageUrl(), 'images' => $s->images->map(fn ($img) => $img->imageUrl())->values()->toArray(), 'action' => 'content'];
+            })
+            ->values()
+            ->toArray();
+    }
+
     private function checkinSteps(Booking $booking): array
     {
         $primaryLock = $booking->property->locks()->first();
@@ -1479,6 +1515,7 @@ class GuestController extends Controller
         return InstructionStep::where('property_id', $booking->property_id)
             ->where('type', 'checkin')
             ->where('active', true)
+            ->when(true, fn ($q) => $this->excludePreGps($q))
             ->where($booking->parking_needed ? fn($q) => $q->where('visibility', '!=', 'non_parkers_only') : fn($q) => $q->where('visibility', '!=', 'parkers_only'))
             ->where('visibility', '!=', 'cleaners_only')
             ->orderBy('sort_order')
@@ -1501,6 +1538,7 @@ class GuestController extends Controller
         return InstructionStep::where('property_id', $booking->property_id)
             ->where('type', 'parking')
             ->where('active', true)
+            ->when(true, fn ($q) => $this->excludePreGps($q))
             ->where('visibility', '!=', 'cleaners_only')
             ->orderBy('sort_order')
             ->with('images')

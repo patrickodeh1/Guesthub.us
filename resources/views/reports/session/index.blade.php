@@ -2417,7 +2417,7 @@
 </head>
 <body class="{{ $isPdfView ? 'pdf-mode' : '' }}">
     @php
-        $cleanerNameStr = $session->housekeeper?->name ?? 'Housekeeper';
+        $cleanerNameStr = $session->housekeeper?->name ?? 'Cleaner';
         $propNameStr = $session->property->name ?? 'Property';
         $lat = $session->start_latitude;
         $lng = $session->start_longitude;

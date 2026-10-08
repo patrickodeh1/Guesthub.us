@@ -34,13 +34,23 @@
         </div>
     @else
         <div id="step-wizard-parking-wrapper">
-            <x-step-wizard :steps="$accessSteps" type="parking" kicker="Getting in" done-label="Got it" next-section="getting-in-reopen" />
+            @php
+                $giVerified = \App\Services\CleanerAccessSteps::locationVerified($session);
+                $giPre = $isAssignedCleaner && $session->status === 'pending' && ! $giVerified;
+                $giKicker = $giPre ? 'Before you arrive' : 'Getting in';
+                $giDone = $giPre ? "I'm at the property" : ($isAssignedCleaner && $session->status === 'pending' ? 'Continue' : 'Got it');
+            @endphp
+            <x-step-wizard :steps="$accessSteps" type="parking" :kicker="$giKicker" :done-label="$giDone" next-section="getting-in-reopen" />
         </div>
 
         @if (count($accessSteps) === 0)
             <div class="guest-portal-card p-6">
                 <p class="guest-status-kicker">Getting in</p>
-                <p class="mt-2 text-sm italic text-slate-500">No access instructions have been added for this property yet.</p>
+                @if ($session->status === 'pending' && $isAssignedCleaner)
+                    <p class="mt-2 text-sm italic text-slate-500">Verify your location at the property and the rest of your directions will appear here.</p>
+                @else
+                    <p class="mt-2 text-sm italic text-slate-500">No access instructions have been added for this property yet.</p>
+                @endif
             </div>
         @endif
 
@@ -64,8 +74,10 @@
             var reopen = document.getElementById("getting-in-reopen");
             var btn = document.getElementById("getting-in-reopen-btn");
             if (!done || !reopen || !btn) return;
-            var key = "getting_in_ack_{{ $session->id }}_{{ (int) $session->parking_needed }}";
+            var key = "getting_in_ack_{{ $session->id }}_{{ (int) $session->parking_needed }}_{{ $session->status }}_{{ (int) \App\Services\CleanerAccessSteps::locationVerified($session) }}";
+            function reveal() { var g = document.getElementById("pending-gate"); if (g) g.style.display = ""; }
             function collapse() {
+                reveal();
                 var root = document.getElementById("step-wizard-parking");
                 var wrap = document.getElementById("step-wizard-parking-wrapper");
                 if (root) root.style.display = "none";
@@ -76,6 +88,7 @@
             done.addEventListener("click", function () {
                 reopen.style.display = "";
                 try { localStorage.setItem(key, "1"); } catch (e) {}
+                reveal();
             });
             btn.addEventListener("click", function () {
                 var root = document.getElementById("step-wizard-parking");

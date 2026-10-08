@@ -138,9 +138,6 @@
                     </select>
                     
                 </label>
-                <label class="field-label mt-4">Cleaning GPS radius (meters)
-                    <x-help-tip text="How close, in meters, a cleaner must be to the property to start a cleaning. Minimum 50." /><input type="number" min="50" name="geo_radius_m" value="{{ old('geo_radius_m', $property->geo_radius_m) }}" class="input">
-                </label>
             </div>
 
 
