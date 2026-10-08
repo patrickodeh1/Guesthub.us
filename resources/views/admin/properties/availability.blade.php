@@ -8,12 +8,14 @@
         <a href="{{ route('admin.properties.edit', $property) }}" class="btn-secondary">Back to property</a>
     </div>
 
-    @if(session('success'))
-        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
-    @endif
+    <div id="flash-area">
+        @if(session('success'))
+            <div data-flash="success" class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div data-flash="error" class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{{ session('error') }}</div>
+        @endif
+    </div>
 
     @php
         $seeded = (bool) $property->channex_availability_seeded_at;
@@ -26,10 +28,10 @@
         $bookedCount = $availabilities->where('status', 'booked')->count();
     @endphp
 
-    <div class="grid gap-6">
+    <div class="grid gap-6" data-avail-page>
 
         {{-- Sync status --}}
-        <section class="card card-pad">
+        <section id="sync-status" class="card card-pad">
             <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
                 <span><strong>{{ $pendingCount }}</strong> change(s) waiting to send to Channex</span>
                 <span class="{{ $failedCount ? 'font-semibold text-red-700' : '' }}"><strong>{{ $failedCount }}</strong> failed</span>
@@ -46,7 +48,7 @@
         </section>
 
         {{-- Calendar --}}
-        <section class="card card-pad" x-data="availCal(@js($days), '{{ now()->toDateString() }}')">
+        <section class="card card-pad" x-data="availCal(@js($days), '{{ now()->toDateString() }}')" @avail-refresh.window="days = $event.detail; clear()">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
                     <button type="button" class="btn-secondary" @click="prev()" :disabled="!canPrev()">&larr;</button>
@@ -60,7 +62,7 @@
                 </div>
             </div>
 
-            <p class="field-help mt-2">{{ $blockedCount }} blocked &middot; {{ $bookedCount }} booked in the synced period. Rates come from PriceLabs.</p>
+            <p id="cal-counts" class="field-help mt-2">{{ $blockedCount }} blocked &middot; {{ $bookedCount }} booked in the synced period. Rates come from PriceLabs.</p>
 
             <div class="mt-4 grid grid-cols-7 gap-1 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
                 <template x-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d"><div x-text="d"></div></template>
@@ -157,7 +159,7 @@
                     <thead class="text-slate-500">
                         <tr><th class="py-1 pr-4">Time</th><th class="py-1 pr-4">Type</th><th class="py-1 pr-4">Ranges</th><th class="py-1 pr-4">Result</th><th class="py-1">Task ID</th></tr>
                     </thead>
-                    <tbody>
+                    <tbody id="push-log-body">
                         @forelse($pushLog as $row)
                             <tr class="border-t border-slate-200 align-top">
                                 <td class="py-1 pr-4 whitespace-nowrap">{{ \Carbon\Carbon::parse($row->created_at)->format('M j, g:i:s a') }}</td>
@@ -175,10 +177,10 @@
         </details>
 
         {{-- Settings --}}
-        <details class="card card-pad" @if(session('mappingOptions') || session('ratePlanOptions')) open @endif>
+        <details id="settings" class="card card-pad" @if(session('mappingOptions') || session('ratePlanOptions')) open @endif>
             <summary class="section-title cursor-pointer">Settings</summary>
 
-            <div class="mt-5 grid gap-8">
+            <div id="settings-body" class="mt-5 grid gap-8">
 
                 {{-- Calendar link --}}
                 <div>
@@ -340,6 +342,10 @@
         </details>
     </div>
 
+    <script type="application/json" id="avail-days">@json($days)</script>
+
+    @include('admin.properties._availability-ajax')
+
     <script>
         function availCal(days, today) {
             const t = new Date(today + 'T00:00:00');
@@ -372,7 +378,7 @@
                 },
                 picked(d) { return this.start && (this.end ? d >= this.start && d <= this.end : d === this.start); },
                 clear() { this.start = null; this.end = null; },
-                go(mode, e) { const f = e.target.closest('form'); f.querySelector('[name=availability]').value = mode; f.submit(); },
+                go(mode, e) { const f = e.target.closest('form'); f.querySelector('[name=availability]').value = mode; f.requestSubmit(); },
                 label() {
                     const f = s => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     return this.end && this.end !== this.start ? f(this.start) + ' to ' + f(this.end) + ' (last night)' : f(this.start);
