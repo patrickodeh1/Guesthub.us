@@ -136,6 +136,7 @@
                 </div>
             </div>
 
+            <div class="ml-auto flex shrink-0 items-center gap-2">
             @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
             {{-- Notification Bell --}}
             <div class="relative" data-tour="notifications">
@@ -304,6 +305,7 @@
                             </button>
                         </form>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
