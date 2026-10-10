@@ -43,7 +43,7 @@ return [
                     ],
                 ],
                 [
-                    'label' => 'Guest Registrations',
+                    'label' => 'Guests',
                     'icon' => 'users',
                     'routes' => [
                         ['name' => 'admin.guests.index', 'roles' => $staff],

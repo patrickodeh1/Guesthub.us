@@ -24,6 +24,19 @@
                     <span class="h-2 w-2 shrink-0 rounded-full {{ is_null($lock->last_known_locked) ? 'bg-slate-300' : ($lock->last_known_locked ? 'bg-emerald-500' : 'bg-red-500') }}"></span>
                     <span class="font-semibold text-slate-950">{{ $lock->label }}</span>
                     <span class="text-slate-500">{{ $propertyName }} &middot; {{ is_null($lock->last_known_locked) ? 'Unknown' : ($lock->last_known_locked ? 'Locked' : 'Unlocked') }}</span>
+                    @php($batteryPercent = $lock->battery_level === null ? null : max(0, min(100, (int) $lock->battery_level)))
+                    <span class="inline-flex items-center gap-1 font-medium {{ $batteryPercent === null ? 'text-slate-400' : ($batteryPercent < 50 ? 'text-red-600' : 'text-emerald-600') }}"
+                          title="{{ $batteryPercent === null ? 'Battery level unavailable' : 'Battery level: '.$batteryPercent.'%' }}"
+                          aria-label="{{ $batteryPercent === null ? 'Battery level unavailable' : 'Battery level '.$batteryPercent.'%' }}">
+                        <svg class="h-3.5 w-5" viewBox="0 0 20 12" fill="none" aria-hidden="true">
+                            <rect x="0.75" y="1.25" width="16" height="9.5" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M18.25 4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            @if($batteryPercent !== null && $batteryPercent > 0)
+                                <rect x="3" y="3.5" width="{{ 11.5 * $batteryPercent / 100 }}" height="5" rx="1" fill="currentColor"/>
+                            @endif
+                        </svg>
+                        <span>{{ $batteryPercent !== null ? $batteryPercent.'%' : '—%' }}</span>
+                    </span>
                 </span>
             @endforeach
         @empty

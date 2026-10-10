@@ -87,12 +87,6 @@
 
     @include("layouts.partials.navigation")
 
-    @if(auth()->user()->hasAnyRole(["admin", "owner", "company"]))
-        <div class="mx-3 mt-2 rounded-md border border-white/10 bg-white/5 p-3 text-xs text-slate-200">
-            <p class="font-semibold">Client-ready demo</p>
-            <p class="mt-1 leading-5">Copy a guest URL from any booking to preview the full guest experience.</p>
-        </div>
-    @endif
     </div>
 </aside>
 
