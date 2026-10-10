@@ -3,7 +3,7 @@
     $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
     $dashTourSteps = [
         ['target' => 'dashboard-hero', 'title' => 'Your dashboard', 'body' => 'A quick greeting, one-tap Add Guest, and smart lock status at a glance.'],
-        ['target' => 'guests-today', 'title' => 'Your day', 'body' => 'Pick Today, Tomorrow or a later day. Arrivals and checkouts are in one list, with what you need to do.'],
+        ['target' => 'guests-today', 'title' => 'Your day', 'body' => 'Scroll down: Today first (needs attention, check-ins, currently hosting), then Tomorrow and later days.'],
     ];
 @endphp
 

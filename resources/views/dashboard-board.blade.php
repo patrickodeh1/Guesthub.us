@@ -1,6 +1,5 @@
 @php
-    $tabs = $dayBoard['tabs'];
-    $hosting = $dayBoard['hosting'];
+    $cards = $dayBoard['cards'];
     $chips = [
         'arrival' => ['label' => 'Check-in', 'class' => 'bg-emerald-100 text-emerald-800'],
         'checkout' => ['label' => 'Check-out', 'class' => 'bg-sky-100 text-sky-800'],
@@ -77,161 +76,30 @@
     }
 }">
 
-    {{-- Day tabs --}}
-    <div class="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
-        @foreach($tabs as $key => $t)
-            <button type="button" @click="setTab('{{ $key }}')"
-                :class="tab === '{{ $key }}' ? 'bg-[var(--theme-primary)] text-white shadow' : 'border border-slate-200 bg-white text-slate-800 hover:bg-slate-50'"
-                class="flex min-w-[8rem] shrink-0 flex-col items-center justify-center rounded-xl px-4 py-2.5 text-center transition md:min-w-0">
-                <span class="flex items-center gap-2 text-base font-bold">
-                    {{ $t['label'] }}
-                    @if($t['attention'] > 0)
-                        <span class="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">{{ $t['attention'] }}</span>
-                    @endif
-                </span>
-                <span class="text-sm" :class="tab === '{{ $key }}' ? 'text-white/80' : 'text-slate-500'">{{ $t['sub'] }}</span>
-            </button>
+    {{-- Stacked day cards: Today, Tomorrow, In 2 days, Upcoming --}}
+    <div class="flex flex-col gap-5">
+        @foreach($cards as $key => $c)
+            <section class="rounded-xl border border-slate-200 bg-white pb-2 shadow-sm" @if($key === 'today') data-tour="guests-today" @endif>
+                <h2 class="px-4 pb-1 pt-4 font-bold text-slate-950 md:px-5" style="font-size:20px;line-height:1.2">{{ $c['label'] }} <span class="ml-1 text-sm font-medium text-slate-500">{{ $c['range'] }}</span></h2>
+
+                @php $lastDate = null; $any = false; @endphp
+                @foreach($c['sections'] as $sec)
+                    @foreach($sec['rows'] as $row)
+                        @php $any = true; @endphp
+                        @if($c['grouped'] && $row['date'] !== $lastDate)
+                            @php $lastDate = $row['date']; @endphp
+                            <p class="px-4 pt-3 text-xs font-bold uppercase tracking-wide text-slate-500 md:px-5">{{ $row['date_long'] }}</p>
+                        @endif
+                        @include('dashboard-guest-row', ['row' => $row])
+                    @endforeach
+                @endforeach
+
+                @unless($any)
+                    <p class="px-5 py-8 text-center text-base text-slate-500">Nothing scheduled{{ $key === 'week' ? '' : ' for '.strtolower($c['label']) }}.</p>
+                @endunless
+            </section>
         @endforeach
     </div>
-
-    @foreach($tabs as $key => $t)
-        <div x-show="tab === '{{ $key }}'" x-cloak class="flex flex-col gap-5">
-            <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" @if($key === 'today') data-tour="guests-today" @endif>
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 md:px-5">
-                    <h2 class="text-xl font-bold text-slate-950">{{ $t['label'] }} <span class="ml-1 text-base font-medium text-slate-500">{{ $t['range'] }}</span></h2>
-                    <div class="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                        <span class="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">{{ $t['arrivals'] }} check-in{{ $t['arrivals'] === 1 ? '' : 's' }}</span>
-                        <span class="rounded-full bg-sky-100 px-3 py-1 text-sky-800">{{ $t['checkouts'] }} check-out{{ $t['checkouts'] === 1 ? '' : 's' }}</span>
-                        @if($t['attention'] > 0)
-                            <span class="rounded-full bg-slate-900 px-3 py-1 text-white">{{ $t['attention'] }} need{{ $t['attention'] === 1 ? 's' : '' }} action</span>
-                        @endif
-                    </div>
-                </div>
-
-                @if(count($t['items']))
-                    <div class="hidden md:block"><div class="{{ $grid }} border-b border-slate-200 bg-slate-50 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        <span>Time</span><span>Guest</span><span class="hidden md:block">Type</span><span class="hidden md:block">Property</span><span class="hidden md:block">Action</span><span></span>
-                    </div></div>
-                @endif
-
-                <div class="divide-y divide-slate-100">
-                    @php $lastDate = null; @endphp
-                    @forelse($t['items'] as $item)
-                        @if($key === 'week' && $item['date'] !== $lastDate)
-                            @php $lastDate = $item['date']; @endphp
-                            <p class="bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 md:px-5">{{ $item['date_long'] }}</p>
-                        @endif
-                        @php
-                            $hasAction = $item['todo'] || $item['ok'] || count($item['notes']);
-                            $openGuest = ['url' => route('admin.guests.show', $item['booking']).'?embed=1', 'title' => $item['guest']];
-                        @endphp
-                        <div>
-                            {{-- Desktop: table row --}}
-                            <div class="hidden md:block">
-                                <div class="{{ $grid }} py-4 md:items-center">
-                                    <p class="text-[15px] font-semibold text-slate-900">{{ $item['time'] ?: 'Anytime' }}</p>
-                                    <button type="button" class="break-words text-left text-base font-semibold text-slate-950 hover:underline" @click="$dispatch('open-guest', @js($openGuest))">{{ $item['guest'] }}</button>
-                                    <div><span class="inline-block rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide {{ $chips[$item['kind']]['class'] }}">{{ $chips[$item['kind']]['label'] }}</span></div>
-                                    <p class="break-words text-[15px] text-slate-600">{{ $item['property'] }}</p>
-                                    <div class="space-y-1">
-                                        @if($item['todo'])
-                                            <p class="text-[15px] font-semibold {{ $text[$item['todo']['tone']] ?? 'text-slate-800' }}">{{ $item['todo']['text'] }}</p>
-                                        @endif
-                                        @if($item['ok'])
-                                            <p class="text-[15px] text-slate-600">{{ $item['ok'] }}</p>
-                                        @endif
-                                        @foreach($item['notes'] as $note)
-                                            <p class="text-[15px] leading-snug">
-                                                <span class="font-semibold {{ $text[$note['tone']] ?? 'text-slate-700' }}">{{ $note['text'] }}</span>
-                                                @if(! empty($note['detail']))<span class="block text-slate-600">{{ $note['detail'] }}</span>@endif
-                                            </p>
-                                        @endforeach
-                                    </div>
-                                    <div class="flex items-center justify-end gap-2">
-                                        @if($item['assign'])
-                                            <button type="button" class="btn-primary justify-center whitespace-nowrap text-sm" @click="openQuickAssign(@js($item['assign']))">Assign cleaner</button>
-                                        @endif
-                                        <button type="button" class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50" @click="$dispatch('open-guest', @js($openGuest))">View</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Mobile: card --}}
-                            <div class="px-4 py-4 md:hidden">
-                                <div class="flex items-center justify-between gap-3">
-                                    <p class="text-[15px] font-bold text-slate-900">{{ $item['time'] ?: 'Anytime' }}</p>
-                                    <span class="inline-block rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide {{ $chips[$item['kind']]['class'] }}">{{ $chips[$item['kind']]['label'] }}</span>
-                                </div>
-                                <button type="button" class="mt-2 block w-full break-words text-left text-[17px] font-semibold text-slate-950" @click="$dispatch('open-guest', @js($openGuest))">{{ $item['guest'] }}</button>
-                                <p class="mt-0.5 break-words text-[15px] text-slate-600">{{ $item['property'] }}</p>
-
-                                @if($hasAction)
-                                    <div class="mt-3 space-y-1.5">
-                                        @if($item['todo'])
-                                            <p class="text-[15px] font-semibold {{ $text[$item['todo']['tone']] ?? 'text-slate-800' }}">{{ $item['todo']['text'] }}</p>
-                                        @endif
-                                        @if($item['ok'])
-                                            <p class="text-[15px] text-slate-600">{{ $item['ok'] }}</p>
-                                        @endif
-                                        @foreach($item['notes'] as $note)
-                                            <p class="text-[15px] leading-snug">
-                                                <span class="font-semibold {{ $text[$note['tone']] ?? 'text-slate-700' }}">{{ $note['text'] }}</span>
-                                                @if(! empty($note['detail']))<span class="block text-slate-600">{{ $note['detail'] }}</span>@endif
-                                            </p>
-                                        @endforeach
-                                    </div>
-                                @endif
-
-                                <div class="mt-3 flex gap-2 border-t border-slate-100 pt-3">
-                                    @if($item['assign'])
-                                        <button type="button" class="btn-primary flex-1 justify-center text-sm" @click="openQuickAssign(@js($item['assign']))">Assign cleaner</button>
-                                    @endif
-                                    <button type="button" class="inline-flex flex-1 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50" @click="$dispatch('open-guest', @js($openGuest))">View</button>
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <p class="px-5 py-10 text-center text-base text-slate-500">Nothing scheduled{{ $key === 'week' ? '' : ' for '.strtolower($t['label']) }}.</p>
-                    @endforelse
-                </div>
-            </section>
-
-            @if($key === 'today')
-                <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <h3 class="flex items-center justify-between border-b border-slate-200 px-4 py-4 text-base font-bold text-slate-950 md:px-5">
-                        Currently hosting
-                        <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-semibold text-slate-600">{{ count($hosting) }}</span>
-                    </h3>
-                    @if(count($hosting))
-                        <div class="hidden md:block"><div class="{{ $hgrid }} border-b border-slate-200 bg-slate-50 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                            <span>Guest</span><span class="hidden md:block">Property</span><span>Checks out</span>
-                        </div></div>
-                        <div class="divide-y divide-slate-100">
-                            @foreach($hosting as $h)
-                                @php $hostOpen = ['url' => route('admin.guests.show', $h['booking']).'?embed=1', 'title' => $h['guest']]; @endphp
-                                <div>
-                                    <div class="hidden md:block">
-                                        <div class="{{ $hgrid }} py-3 md:items-center">
-                                            <button type="button" class="break-words text-left text-base font-semibold text-slate-950 hover:underline" @click="$dispatch('open-guest', @js($hostOpen))">{{ $h['guest'] }}</button>
-                                            <p class="break-words text-[15px] text-slate-600">{{ $h['property'] }}</p>
-                                            <p class="text-[15px] font-semibold text-slate-800">Checks out {{ $h['when'] }}@if($h['time']) · {{ $h['time'] }}@endif</p>
-                                        </div>
-                                    </div>
-                                    <div class="px-4 py-4 md:hidden">
-                                        <button type="button" class="block w-full break-words text-left text-[17px] font-semibold text-slate-950" @click="$dispatch('open-guest', @js($hostOpen))">{{ $h['guest'] }}</button>
-                                        <p class="mt-0.5 break-words text-[15px] text-slate-600">{{ $h['property'] }}</p>
-                                        <p class="mt-2 text-[15px] font-semibold text-slate-800">Checks out {{ $h['when'] }}@if($h['time']) · {{ $h['time'] }}@endif</p>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="px-5 py-6 text-center text-[15px] text-slate-500">No guests staying right now.</p>
-                    @endif
-                </section>
-            @endif
-        </div>
-    @endforeach
 
     <div x-data="dashboardGuest()" @open-guest.window="openGuest($event.detail)">
         <x-drawer title="Guest" open="guestOpen" on-close="closeGuest()" id="dashboard-guest-drawer">
