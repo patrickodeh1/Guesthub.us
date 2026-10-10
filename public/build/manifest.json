@@ -14,7 +14,7 @@
     "src": "node_modules/zxing-wasm/dist/reader/zxing_reader.wasm"
   },
   "resources/css/app.css": {
-    "file": "assets/app-BAJ72jgF.css",
+    "file": "assets/app-Ct2fb09i.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",

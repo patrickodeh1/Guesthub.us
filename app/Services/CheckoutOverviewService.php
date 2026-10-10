@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 class CheckoutOverviewService
 {
     /** "Later This Week" = day after tomorrow through today + 6 (a rolling week). */
-    private const WINDOW_DAYS = 6;
+    private const WINDOW_DAYS = 10; // covers the "Next week" tab (days +4 to +10)
 
     /** Bookings in these statuses never need a cleaning. Harmless if a status is unused. */
     private const EXCLUDED_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];

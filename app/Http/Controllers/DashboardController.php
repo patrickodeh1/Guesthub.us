@@ -114,11 +114,15 @@ class DashboardController extends Controller
             ? $this->guestPortalDashboardData->get($u)
             : [];
 
+        $checkoutBoard = $canSeeGuestPortal ? app(CheckoutOverviewService::class)->get($u) : null;
+        $dayBoard = $checkoutBoard ? app(\App\Services\DashboardDayService::class)->get($u, $checkoutBoard) : null;
+
         return view('dashboard', array_merge($guestPanelData, [
             'canSeeCleaning'   => $canSeeCleaning,
             'canSeeGuestPortal' => $canSeeGuestPortal,
             'unscheduledCheckouts' => $unscheduledCheckouts,
-            'checkoutBoard' => $canSeeGuestPortal ? app(CheckoutOverviewService::class)->get($u) : null,
+            'checkoutBoard' => $checkoutBoard,
+            'dayBoard' => $dayBoard,
             // not used by the blade but handy for debugging/scope badges if needed
             'acting'           => $acting,
         ]));

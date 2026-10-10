@@ -1,10 +1,5 @@
 <x-admin-layout title="Dashboard">
-    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-            <p class="eyebrow">Overview</p>
-            <h1 class="page-title">Dashboard</h1>
-        </div>
-    </div>
+    <style>.page-shell { max-width: none; }</style>
 
 
     @if($canSeeGuestPortal ?? false)
