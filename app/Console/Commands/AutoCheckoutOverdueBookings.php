@@ -12,7 +12,7 @@ class AutoCheckoutOverdueBookings extends Command
      * before their booking is automatically marked checked_out. Client-
      * requested value for task 23; change here if that value ever changes.
      */
-    protected $signature = 'bookings:auto-checkout {--grace=30 : Grace period in minutes after checkout time}';
+    protected $signature = 'bookings:auto-checkout {--grace=90 : Grace period in minutes after checkout time}';
 
     protected $description = 'Automatically checks out bookings whose guests did not confirm checkout, after a grace period past their checkout time';
 

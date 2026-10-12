@@ -224,13 +224,23 @@
                         <p class="text-sm text-blue-700 dark:text-blue-300 mt-1">You can go back to the photos stage to upload additional images if needed.</p>
                     </div>
                     <button type="button" 
-                            onclick="if(!this.disabled){ this.disabled=true; this.textContent='Navigating...'; window.api.post('/sessions/{{ $session->id }}/go-back-stage', { current_stage: 'summary' }).then(res => window.location.reload()); }"
+                            onclick="var b=this; if(!b.disabled){ b.disabled=true; b.textContent='Navigating...'; window.api.post('/sessions/{{ $session->id }}/go-back-stage', { current_stage: 'summary', target_stage: 'photos' }).then(function(res){ if(res && res.success){ window.location.reload(); } else { b.disabled=false; b.textContent='Yes, add more pictures'; alert((res && res.message) || 'Could not go back.'); } }).catch(function(err){ b.disabled=false; b.textContent='Yes, add more pictures'; alert((err.response && err.response.data && err.response.data.message) || err.message || 'Could not go back.'); }); }"
                             class="px-5 py-2.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-700 font-medium transition-colors whitespace-nowrap">
                         Yes, add more pictures
                     </button>
                 </div>
             </x-card>
         
+            @php
+                $exitStepsFinal = \App\Services\CleanerAccessSteps::exitForSession($session);
+                $gateExit = false;
+            @endphp
+            @if ($gateExit)
+                <div id="leaving" class="mb-2">
+                    <x-step-wizard :steps="$exitStepsFinal" type="exit" kicker="Before you leave" done-label="Got it" next-section="complete-area" />
+                </div>
+            @endif
+            <div id="complete-area">
             {{-- Notes and Submission --}}
             <x-card class="p-6">
                 <form method="post" action="{{ route('sessions.complete', $session) }}" onsubmit="alert('All tasks complete!'); return true;">
@@ -248,7 +258,7 @@
                     </div>
                     
                     <div class="text-center">
-                        <x-button size="lg" class="w-full sm:w-auto text-lg px-8 py-3">
+                        <x-button id="submit-checklist-btn" size="lg" class="w-full sm:w-auto text-lg px-8 py-3">
                             Submit Checklist
                         </x-button>
                         <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
@@ -257,6 +267,19 @@
                     </div>
                 </form>
             </x-card>
+            </div>
+            @if ($gateExit)
+                <script>
+                document.addEventListener("DOMContentLoaded", function () {
+                    var btn = document.getElementById("submit-checklist-btn");
+                    var done = document.getElementById("wizard-done-exit");
+                    if (!btn || !done) return;
+                    btn.disabled = true;
+                    btn.title = "Finish the checkout steps first";
+                    done.addEventListener("click", function () { btn.disabled = false; btn.title = ""; });
+                });
+                </script>
+            @endif
         </div>
     @endif
 </div>

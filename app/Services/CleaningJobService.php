@@ -73,6 +73,15 @@ class CleaningJobService
         ?CleaningSession $session = null,
         bool $confirmConflicts = false
     ): CleaningSession {
+        $cleaner = User::find($data['housekeeper_id'] ?? null);
+        if ($cleaner && ! ($cleaner->phone_number ?: $cleaner->phone)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'housekeeper_id' => "{$cleaner->name} has no phone number on file, so they can't be texted this assignment. Add a phone number to their profile first.",
+            ]);
+        }
+
+        $checkout = $this->assertSchedulable($data);
+
         if (! $confirmConflicts) {
             $conflicts = $this->detectConflicts($data, $session);
             if ($conflicts) {
@@ -90,9 +99,82 @@ class CleaningJobService
             'sporadic_tasks' => $session?->sporadic_tasks ?? [],
         ];
 
-        return $session
+        $before = $session ? [
+            'hk' => (int) $session->housekeeper_id,
+            'date' => $session->scheduled_date?->toDateString(),
+            'time' => $session->scheduled_time?->format('H:i'),
+        ] : null;
+
+        $result = $session
             ? $this->update($actor, $session, $payload)
             : $this->create($actor, $payload);
+
+        $custom = $checkout
+            && ! empty($data['scheduled_time'])
+            && Carbon::parse($data['scheduled_date'].' '.$data['scheduled_time'])->ne($checkout);
+        $result->forceFill(['schedule_overridden' => (bool) $custom])->saveQuietly();
+
+        // Same cleaner, new date or time: the model hook only fires on a cleaner change, so re-text here.
+        if ($before && $before['hk'] === (int) $result->housekeeper_id && $before['hk'] > 0) {
+            $changed = $before['date'] !== $result->scheduled_date?->toDateString()
+                || $before['time'] !== $result->scheduled_time?->format('H:i');
+            if ($changed) {
+                \App\Services\CleaningFlowService::notifyAssigned($result->fresh(), true);
+            }
+        }
+
+        return $result;
+    }
+
+    public const MIN_TURNOVER_MINUTES = 240;
+
+    /**
+     * Hard rules, not overridable. Returns the departing guest's effective
+     * checkout, or null when no guest checks out that day at that property.
+     */
+    private function assertSchedulable(array $data): ?Carbon
+    {
+        $date = Carbon::parse($data['scheduled_date'])->toDateString();
+        $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+        $live = fn ($q) => $q->whereNull('cancelled_at')
+            ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
+        $fail = function (string $m) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['scheduled_time' => $m]);
+        };
+
+        $out = Booking::query()->where('property_id', (int) $data['property_id'])
+            ->whereDate('check_out_date', $date)->where($live)->first();
+        if (! $out) {
+            return null;
+        }
+
+        if ($out->checkout_time_status === 'pending') {
+            $fail("This guest's checkout time request is still pending. Approve or decline it before scheduling a cleaner.");
+        }
+
+        $checkout = Carbon::parse($date.' '.$out->effectiveCheckoutTime());
+        $start = ! empty($data['scheduled_time'])
+            ? Carbon::parse($date.' '.$data['scheduled_time'])
+            : $checkout->copy();
+
+        if ($start->lt($checkout)) {
+            $fail("A cleaning can't start before the guest's checkout at ".$checkout->format('g:i A').'.');
+        }
+
+        $in = Booking::query()->where('property_id', (int) $data['property_id'])
+            ->whereDate('check_in_date', $date)->where('id', '<>', $out->id)->where($live)->first();
+        if ($in) {
+            if ($in->checkin_time_status === 'pending') {
+                $fail("The next guest's check-in time request is still pending. Approve or decline it before scheduling a cleaner.");
+            }
+            $arrive = Carbon::parse($date.' '.$in->effectiveCheckinTime());
+            if ($start->diffInMinutes($arrive, false) < self::MIN_TURNOVER_MINUTES) {
+                $fail('The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
+                    .(self::MIN_TURNOVER_MINUTES / 60).' hours after a '.$start->format('g:i A').' start.');
+            }
+        }
+
+        return $checkout;
     }
 
     public const CLEANER_OVERLAP_MINUTES = 180;

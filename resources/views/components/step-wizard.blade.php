@@ -44,7 +44,7 @@
                 <div class="wizard-text-card">
                     <div class="prose-welcome text-base text-slate-700">{!! $step['content'] !!}</div>
                     @if(($step['action'] ?? 'content') === 'door_lock' && ($step['lock_id'] ?? null))
-                        <x-lock-card class="mt-5" :booking-id="$bookingId" :token="$token" :lock-id="$step['lock_id']" :lock-status="$step['lock_status'] ?? null" :auto-checkin="$type === 'checkin'" :auto-checkout="$type === 'checkout'" />
+                        <x-lock-card class="mt-5" :unlock-url="$step['unlock_url'] ?? null" :lock-url="$step['lock_url'] ?? null" :status-url="$step['status_url'] ?? null" :booking-id="$bookingId" :token="$token" :lock-id="$step['lock_id']" :lock-status="$step['lock_status'] ?? null" :auto-checkin="$type === 'checkin'" :auto-checkout="$type === 'checkout'" />
                     @elseif(($step['action'] ?? 'content') === 'door_lock')
                         <p class="mt-5 text-sm font-bold text-slate-500 text-center">No lock is configured for this property yet.</p>
                     @endif
@@ -126,6 +126,14 @@
 
     document.getElementById("wizard-next-" + type).addEventListener("click", function() { if (current < total - 1) goTo(current + 1); });
 
+    @php
+        $__wb = $type === 'checkout' ? \App\Models\Booking::where('booking_id', $bookingId)->first() : null;
+        $__earlySecs = $__wb ? $__wb->secondsUntilCheckoutNotEarly() : 999999;
+    @endphp
+    var __earlyLeft = {{ (int) $__earlySecs }};
+    var __loadedAt = Date.now();
+    function isEarly() { return type === "checkout" && (Date.now() - __loadedAt) / 1000 < __earlyLeft; }
+
     var stepTimer = null;
     function armStep() {
         if (type !== "checkout") return;
@@ -135,7 +143,8 @@
         var status = document.getElementById("checkout-gate-status");
         var warn = document.getElementById("checkout-final-warning");
         var scrollEl = document.querySelector("#step-wizard-" + type + " .wizard-scroll");
-        var left = isLast ? 10 : 8;
+        var early = isEarly();
+        var left = early ? (isLast ? 10 : 8) : 0;
         function atBottom() { return !scrollEl || scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 24; }
         function refresh() {
             var ok = left <= 0 && atBottom();
@@ -143,7 +152,7 @@
             btn.style.opacity = ok ? "1" : ".5";
             if (status) status.textContent = ok ? "" : (left > 0 ? "Please read this step. You can continue in " + left + "s." : "Scroll to the bottom to continue.");
         }
-        if (warn) warn.style.display = isLast ? "" : "none";
+        if (warn) warn.style.display = (isLast && early) ? "" : "none";
         if (scrollEl) scrollEl.onscroll = refresh;
         refresh();
         stepTimer = setInterval(function() {
@@ -180,6 +189,29 @@
         if (!modal || !proceed) return;
         var left = 5;
         modal.classList.remove("hidden");
+        if (!isEarly()) {
+            modal.classList.remove("bg-red-900/80");
+            modal.style.background = "rgba(15,23,42,.6)";
+            var box = modal.firstElementChild;
+            if (box) {
+                box.classList.remove("checkout-flash", "border-red-600");
+                box.style.animation = "none";
+                box.style.background = "#fff";
+                box.style.borderColor = "#cbd5e1";
+                box.querySelectorAll(".text-red-700,.text-red-800,.text-red-900").forEach(function(el) {
+                    el.classList.remove("text-red-700", "text-red-800", "text-red-900");
+                    el.style.color = "#0f172a";
+                });
+                var h = box.querySelector("h2");
+                if (h) { h.textContent = "Ready to check out?"; h.style.textTransform = "none"; }
+                var ps = box.querySelectorAll("p");
+                if (ps[0]) ps[0].textContent = "Only continue if you are leaving the building now.";
+            }
+            proceed.disabled = false;
+            proceed.style.opacity = "1";
+            proceed.textContent = "Check me out";
+            return;
+        }
         proceed.disabled = true;
         proceed.style.opacity = ".5";
         proceed.textContent = "Check me out (" + left + ")";

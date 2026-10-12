@@ -4,6 +4,7 @@
 @endphp
 
 <x-app-layout>
+    <div class="cleaner-skin-marker" hidden></div>
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
@@ -185,6 +186,57 @@
             @include('sessions.partials.door')
             @include('sessions.partials.leaving')
             @include('sessions.partials.lockbox')
+            @php
+                $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
+                $exitIsCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+            @endphp
+            @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
+                <div id="exit-wizard-panel" style="display:none" class="mb-4">
+                    <x-step-wizard :steps="$exitWiz" type="exit" kicker="Before you leave" done-label="Complete session" next-section="exit-wizard-panel" />
+                    <div class="mt-3 text-center"><button type="button" id="exit-wizard-back" class="guest-outline-btn">Back to photos</button></div>
+                </div>
+                <div id="exit-confirm-modal" style="display:none" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
+                    <div class="guest-portal-card w-full max-w-sm p-6 text-center">
+                        <p class="guest-status-kicker">Complete session</p>
+                        <h2 class="guest-status-title">Are you finished?</h2>
+                        <p class="mt-2 text-sm text-slate-600">Confirm that every task is done and you are ready to leave.</p>
+                        <div class="mt-5 flex gap-3">
+                            <button type="button" id="exit-confirm-cancel" class="guest-outline-btn flex-1">Cancel</button>
+                            <button type="button" id="exit-confirm-ok" class="guest-primary-btn is-go flex-1">Complete session</button>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    function renderer() { return document.querySelector('[x-data*="checklistRenderer"]'); }
+                    function panel() { return document.getElementById('exit-wizard-panel'); }
+                    function modal() { return document.getElementById('exit-confirm-modal'); }
+                    window.ghShowExitWizard = function () {
+                        var r = renderer(), p = panel(); if (!r || !p) return;
+                        r.style.display = 'none'; p.style.display = '';
+                        var root = document.getElementById('step-wizard-exit'); if (root) root.style.display = '';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    };
+                    function hideWizard() { var r = renderer(), p = panel(); if (r) r.style.display = ''; if (p) p.style.display = 'none'; }
+                    document.addEventListener('click', function (e) {
+                        var t = e.target;
+                        if (t.closest('#exit-wizard-back')) { hideWizard(); return; }
+                        if (t.closest('#exit-confirm-cancel')) { modal().style.display = 'none'; return; }
+                        if (t.closest('#exit-confirm-ok')) {
+                            modal().style.display = 'none';
+                            hideWizard();
+                            var r = renderer(); if (r && r._x_dataStack) { r._x_dataStack[0]._exitAcked = true; }
+                            if (window.checklistHandler) window.checklistHandler.saveProgress();
+                            return;
+                        }
+                        if (t.closest('#wizard-done-exit') && panel() && panel().contains(t)) {
+                            e.preventDefault(); e.stopImmediatePropagation();
+                            modal().style.display = '';
+                        }
+                    }, true);
+                })();
+                </script>
+            @endif
         @endif
 
         {{-- PENDING: Start gate --}}

@@ -3,7 +3,7 @@
 <div {{ $attributes->merge(['class' => '']) }}>
     <h1 class="guest-status-title">{{ $booking->isCheckoutDay() ? 'Checking out today' : 'Checking out tomorrow' }}</h1>
     @if(session('error'))<p class="mt-2 text-sm font-semibold text-red-600">{{ session('error') }}</p>@endif
-    <p class="mt-2 text-sm leading-6 text-slate-600">Check-out time is {{ $booking->effectiveCheckoutTimeFormatted() }}{{ $booking->isCheckoutDay() ? '' : ' tomorrow' }}. You can still use the guide until then.</p>
+    <p class="mt-2 text-sm leading-6 text-slate-600">Check-out time is {{ $booking->effectiveCheckoutTimeFormatted() }}{{ $booking->isCheckoutDay() ? '' : ' tomorrow' }}. You can keep using the guide until you check out.</p>
     @if($linkOnly)
         {{-- Category pages have no wizard, so this sends the guest to the main guide page, which starts checkout. --}}
         <a href="{{ route('guest.show', [$booking->booking_id, $booking->token]) }}?begin_checkout=1#checkout-guide-section" class="guest-primary-btn w-full is-go inline-flex items-center justify-center text-center">Thanks for staying. Time to check out. Click here to begin.</a>

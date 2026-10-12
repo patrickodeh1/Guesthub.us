@@ -480,7 +480,7 @@ class SessionController extends Controller
             // Safety: if status is not 'completed' but stage ended up as 'summary'
             // (e.g. status was changed back to in_progress without resetting the stage),
             // force it back to 'rooms' and fix the DB so it doesn't happen again.
-            if ($stage === 'summary' && $session->status !== 'completed') {
+            if ($stage === 'summary' && ! in_array($session->status, ['completed', 'in_progress'], true)) {
                 $stage = 'rooms';
                 $session->update(['stage' => 'rooms', 'ended_at' => null]);
             }
@@ -746,6 +746,8 @@ class SessionController extends Controller
                 })->values()->toArray(),
             ],
             'stage' => $stage, // This now comes from database, not auto-calculated
+            'first_stage' => $this->firstContentStage($session),
+            'exit_steps' => \App\Services\CleanerAccessSteps::exitForSession($session),
             'counts' => [
                 'pre_cleaning' => [
                     'total' => $preCleaningCount,
@@ -1030,6 +1032,10 @@ class SessionController extends Controller
     public function start(StartSessionRequest $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+
+        if ($session->assignment_status === 'pending_confirmation' && ! auth()->user()?->hasRole('admin')) {
+            return back()->withErrors(['session' => 'Reply YES to your assignment text before starting this cleaning.']);
+        }
         $lat = (float) $request->validated('latitude');
         $lng = (float) $request->validated('longitude');
 
@@ -1213,6 +1219,14 @@ class SessionController extends Controller
             return back()->with('error', 'Session is already completed.');
         }
 
+        if (!$isOverride && $session->stage !== 'summary' && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+            $msg = 'Finish all stages, including the checkout steps, before completing.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['stage' => $msg]);
+        }
+
         if (!$isOverride) {
             // Normal completion authorization: must be the assigned housekeeper or an admin/owner
             if (auth()->id() !== $session->housekeeper_id && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
@@ -1387,6 +1401,30 @@ class SessionController extends Controller
                             'message' => 'Please view all required instructions before advancing.'
                         ], 422);
                     }
+
+                    $stageKey = $stages[$currentIndex];
+                    $tasksIncomplete = false;
+                    if (in_array($stageKey, ['pre_cleaning', 'during_cleaning', 'post_cleaning'], true)) {
+                        $c = $sessionData['counts'][$stageKey] ?? ['total' => 0, 'checked' => 0];
+                        $tasksIncomplete = ($c['checked'] ?? 0) < ($c['total'] ?? 0);
+                    } elseif ($stageKey === 'rooms') {
+                        $skippedIds = $session->skipped_rooms ?? [];
+                        foreach (($sessionData['rooms'] ?? []) as $room) {
+                            if (in_array($room['id'], $skippedIds)) continue;
+                            $ids = $room['room_tasks'] ?? null;
+                            foreach (($room['tasks'] ?? []) as $t) {
+                                if ($ids !== null && ! in_array($t['id'], $ids)) continue;
+                                if (($t['type'] ?? null) === 'instructions') continue;
+                                if (empty($t['checklist_item']['checked'])) { $tasksIncomplete = true; break 2; }
+                            }
+                        }
+                    }
+                    if ($tasksIncomplete) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Please complete every task in this stage before moving on.'
+                        ], 422);
+                    }
                 }
 
                 $nextStage = $stages[$currentIndex + 1];
@@ -1468,7 +1506,8 @@ class SessionController extends Controller
             
             if ($currentIndex !== false && $currentIndex > 0) {
                 // Find PREVIOUS non-empty stage
-                for ($i = $currentIndex - 1; $i >= 0; $i--) {
+                $targetIdx = $request->filled('target_stage') ? array_search($request->input('target_stage'), $stages, true) : false;
+                for ($i = ($targetIdx !== false && $targetIdx < $currentIndex) ? $targetIdx : $currentIndex - 1; $i >= 0; $i--) {
                     $prevStage = $stages[$i];
                     if ($this->stageHasContent($session, $prevStage)) {
                         // If session was completed, revert to in_progress
@@ -1515,8 +1554,21 @@ class SessionController extends Controller
     /**
      * Check if a stage has any content (tasks or photos)
      */
+    private function firstContentStage(CleaningSession $session): ?string
+    {
+        foreach (['pre_cleaning', 'rooms', 'during_cleaning', 'photos', 'post_cleaning', 'summary'] as $st) {
+            if ($this->stageHasContent($session, $st)) {
+                return $st;
+            }
+        }
+        return null;
+    }
+
     private function stageHasContent(CleaningSession $session, string $stage): bool
     {
+        if ($stage === 'during_cleaning' && $session->status === 'in_progress' && filled($session->property->lockbox_code)) {
+            return true;
+        }
         $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];
         $sporadicTaskIds = collect($sporadics)->map(fn($item) => (int) explode('_', $item)[0])->unique()->filter()->toArray();
 
@@ -1608,12 +1660,6 @@ class SessionController extends Controller
 
             if ($this->stageHasContent($session, $stage)) {
                 $session->stage = $stage;
-                if ($stage === 'summary') {
-                    $session->status = 'completed';
-                    if (!$session->ended_at) {
-                        $session->ended_at = now();
-                    }
-                }
                 $session->save();
 
                 activity()

@@ -3,7 +3,7 @@
     $isAssignedCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
 @endphp
 
-@if ($isAssignedCleaner && count($exitSteps) > 0)
+@if (false && $isAssignedCleaner && count($exitSteps) > 0)
     <div id="leaving" class="mb-4">
         <x-step-wizard :steps="$exitSteps" type="exit" kicker="Before you leave" done-label="Got it" next-section="leaving" />
     </div>
@@ -15,7 +15,7 @@
                 @if (count($exitSteps) > 0)
                     <x-step-wizard :steps="$exitSteps" type="exit" kicker="Before you leave" done-label="Got it" next-section="leaving" />
                 @else
-                    <p class="text-sm italic text-slate-500">No cleaner exit steps yet. Add a Check-out step set to "Show to cleaners only".</p>
+                    <p class="text-sm italic text-slate-500">No cleaner exit steps yet. Add a Check-out step shown to cleaners or to both.</p>
                 @endif
             </div>
         </details>

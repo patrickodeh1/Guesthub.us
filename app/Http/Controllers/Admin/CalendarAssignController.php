@@ -83,4 +83,70 @@ class CalendarAssignController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    /** Admin override: confirm an assignment when the cleaner can't reply by text. */
+    public function confirm(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403);
+        $data = $request->validate(['session_id' => ['required', 'integer', 'exists:cleaning_sessions,id']]);
+        $session = CleaningSession::findOrFail($data['session_id']);
+        abort_unless(
+            Property::query()->visibleTo($request->user())->whereKey($session->property_id)->exists(),
+            403
+        );
+        if ($session->assignment_status !== 'pending_confirmation' || ! $session->housekeeper_id) {
+            return response()->json(['message' => 'This job is not waiting for a reply.'], 422);
+        }
+
+        $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
+
+        ActivityLogService::admin(
+            'cleaning_job_confirmed_manually',
+            'Assignment confirmed manually (cleaner did not reply by text).',
+            'cleaning',
+            [
+                'property_id' => $session->property_id,
+                'subject_type' => CleaningSession::class,
+                'subject_id' => $session->id,
+                'severity' => 'warning',
+                'new_values' => ['housekeeper_id' => $session->housekeeper_id, 'assignment_status' => 'confirmed'],
+            ]
+        );
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Data the guest-list / booking-page assign drawer needs for one booking. */
+    public function options(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403);
+        $bookingId = (int) $request->query('booking_id');
+        $booking = \App\Models\Booking::with('property')->findOrFail($bookingId);
+        abort_unless(
+            Property::query()->visibleTo($request->user())->whereKey($booking->property_id)->exists(),
+            403
+        );
+
+        $session = CleaningSession::query()->where('booking_id', $booking->id)->latest('id')->first();
+        $time = $session?->scheduled_time?->format('H:i')
+            ?? \Carbon\Carbon::parse($booking->effectiveCheckoutTime())->format('H:i');
+        $cleaners = \App\Models\User::query()->active()
+            ->whereIn('id', \Illuminate\Support\Facades\DB::table('property_user')->where('property_id', $booking->property_id)->pluck('user_id'))
+            ->orderBy('name')->get()
+            ->filter(fn ($u) => $u->hasAnyRole(['housekeeper']))
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'has_phone' => (bool) ($u->phone_number ?: $u->phone)])->values();
+
+        return response()->json([
+            'property_id' => $booking->property_id,
+            'property_name' => $booking->property?->name,
+            'guest' => $booking->guest_name,
+            'session_id' => $session?->id,
+            'housekeeper_id' => $session?->housekeeper_id,
+            'housekeeper_name' => $session?->housekeeper?->name,
+            'assignment_status' => $session?->assignment_status,
+            'date' => ($session?->scheduled_date ?? $booking->check_out_date)->toDateString(),
+            'time' => $time,
+            'cleaners' => $cleaners,
+        ]);
+    }
 }

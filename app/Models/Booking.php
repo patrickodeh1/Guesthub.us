@@ -36,7 +36,7 @@ class Booking extends Model
         'access_blocked_at', 'access_blocked_reason',
         'photo_id_front_approved_at', 'photo_id_front_declined_reason',
         'photo_id_back_approved_at', 'photo_id_back_declined_reason',
-        'parking_charge', 'parking_charge_override', 'incidentals_charge', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at',
+        'parking_charge', 'parking_charge_override', 'incidentals_charge', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at', 'checkout_source', 'late_checkout_deducted_at',
         'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_name', 'id_scan_status', 'id_scanned_at',
@@ -89,6 +89,7 @@ class Booking extends Model
             'ledger_published_at' => 'datetime',
             'checkin_reminder_sent_at' => 'datetime',
             'checkout_reminder_sent_at' => 'datetime',
+            'late_checkout_deducted_at' => 'datetime',
             'id_date_of_birth' => 'date',
             'id_age' => 'integer',
             'id_expiry_date' => 'date',
@@ -132,12 +133,24 @@ class Booking extends Model
     public function effectiveIncidentalsCharge(): ?float
     {
         if ($this->incidentals_charge !== null) {
-            return (float) $this->incidentals_charge;
+            return (float) $this->incidentals_charge; // admin typed a number: it wins
         }
 
-        return $this->property?->required_incidentals_hold_amount !== null
-            ? (float) $this->property->required_incidentals_hold_amount
-            : null;
+        return $this->suggestedIncidentalsCharge();
+    }
+
+    /**
+     * Suggested hold: parking + early check-in + a buffer ($100 by default),
+     * never below the property's default hold. Recalculates until admin types
+     * their own amount.
+     */
+    public function suggestedIncidentalsCharge(): float
+    {
+        $buffer = (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
+        $floor = (float) ($this->property?->required_incidentals_hold_amount ?? 0);
+        $fees = ($this->effectiveParkingCharge() ?? 0) + ($this->effectiveEarlyCheckinCharge() ?? 0);
+
+        return round(max($floor, $fees + $buffer), 2);
     }
 
     /**
@@ -186,17 +199,15 @@ class Booking extends Model
 
     public function calculatePreCheckinChargeCents(): int
     {
-        $parkingCents = (int) round(($this->effectiveParkingCharge() ?? 0) * 100);
+        // The guest is billed the incidentals hold only. Parking, early
+        // check-in and late checkout are deducted from it (see holdDeductions()).
         $incidentalsCents = (int) round(($this->effectiveIncidentalsCharge() ?? 0) * 100);
-        $earlyCheckinCents = $this->earlyCheckinIsDeductedFromHold()
-            ? 0
-            : (int) round(($this->effectiveEarlyCheckinCharge() ?? 0) * 100);
 
         $capCents = $this->property && $this->property->deposit_cap_cents !== null
             ? $this->property->deposit_cap_cents
             : (int) \App\Models\Setting::getValue('default_deposit_cap_cents', 0);
 
-        $subtotal = $parkingCents + $incidentalsCents + $earlyCheckinCents;
+        $subtotal = $incidentalsCents;
         if ($capCents > 0) {
             $subtotal = min($subtotal, $capCents);
         }
@@ -227,7 +238,7 @@ class Booking extends Model
      */
     public function unbilledIncidentalsCents(): int
     {
-        $currentCents = (int) round(($this->incidentals_charge ?? 0) * 100);
+        $currentCents = (int) round(($this->effectiveIncidentalsCharge() ?? 0) * 100);
 
         return max(0, $currentCents - ($this->incidentals_billed_cents ?? 0));
     }
@@ -241,9 +252,7 @@ class Booking extends Model
      */
     public function unbilledParkingCents(): int
     {
-        $currentCents = (int) round(($this->effectiveParkingCharge() ?? 0) * 100);
-
-        return max(0, $currentCents - ($this->parking_billed_cents ?? 0));
+        return 0; // covered by the incidentals hold
     }
 
     /**
@@ -253,9 +262,7 @@ class Booking extends Model
      */
     public function unbilledEarlyCheckinCents(): int
     {
-        $currentCents = (int) round(($this->effectiveEarlyCheckinCharge() ?? 0) * 100);
-
-        return max(0, $currentCents - ($this->early_checkin_billed_cents ?? 0));
+        return 0; // covered by the incidentals hold
     }
 
     public function scopeNotArchived($query)
@@ -617,14 +624,17 @@ class Booking extends Model
             return null;
         }
 
-        $standard = $this->standardCheckoutInstant();
-        if (!$standard) {
+        $instant = $this->effectiveCheckoutInstant();
+        if (!$instant) {
             return null;
         }
 
-        $minutesLate = $standard->diffInMinutes($this->late_checkout_actual_time, false);
+        $minutesLate = $instant->diffInMinutes($this->late_checkout_actual_time, false);
+        if ($minutesLate < 10) {
+            return 0.0; // grace: nothing is charged until 10 minutes late
+        }
 
-        return $minutesLate > 0 ? round($minutesLate / 60, 2) : 0.0;
+        return ceil($minutesLate / 30) * 0.5; // whole half-hour blocks
     }
 
     /**
@@ -702,13 +712,113 @@ class Booking extends Model
      * checkout plus, when configured, early check-in. This is the amount
      * the guest is not refunded.
      */
+    /** Hours of approved late checkout, in whole half-hour blocks (approved time minus standard time). */
+    public function authorizedLateCheckoutHours(): float
+    {
+        if ($this->checkout_time_status !== 'approved' || ! $this->checkout_time_preference) {
+            return 0.0;
+        }
+        $approved = $this->effectiveCheckoutInstant();
+        if (! $approved) {
+            return 0.0;
+        }
+        [$h, $m] = array_map('intval', explode(':', $this->standardCheckoutTime()));
+        $standard = $approved->copy()->setTime($h, $m);
+        if ($approved->lte($standard)) {
+            return 0.0;
+        }
+
+        return ceil($standard->diffInMinutes($approved) / 30) * 0.5;
+    }
+
+    public function authorizedLateCheckoutCharge(): float
+    {
+        if ($this->late_checkout_charge_override !== null) {
+            return (float) $this->late_checkout_charge_override;
+        }
+
+        return $this->authorizedLateCheckoutCalculated();
+    }
+
+    public function authorizedLateCheckoutCalculated(): float
+    {
+        $hours = $this->authorizedLateCheckoutHours();
+        $p = $this->property;
+        $rate = $p?->late_checkout_rate_authorized_per_30min ?? $p?->late_checkout_rate_authorized_hourly;
+        if ($hours <= 0 || $rate === null) {
+            return 0.0;
+        }
+
+        return $this->chargeForHoursInHalfHourBlocks($hours, (float) $rate);
+    }
+
+    /** Overstay past the effective (approved or standard) checkout time. */
+    public function unauthorizedLateCheckoutCharge(): float
+    {
+        $hours = $this->lateCheckoutHoursUnauthorized() ?? 0.0;
+        $p = $this->property;
+        $rate = $p?->late_checkout_rate_unauthorized_per_30min ?? $p?->late_checkout_rate_unauthorized_hourly;
+        if ($hours <= 0 || $rate === null) {
+            return 0.0;
+        }
+
+        return $this->chargeForHoursInHalfHourBlocks($hours, (float) $rate);
+    }
+
+    /** Authorized fee always comes off the hold; the unauthorized fee only once admin clicks Deduct. */
+    public function lateCheckoutDeduction(): float
+    {
+        return $this->authorizedLateCheckoutCharge()
+            + ($this->late_checkout_deducted_at ? $this->unauthorizedLateCheckoutCharge() : 0.0);
+    }
+
+    private function effectiveCheckoutInstant(): ?\Carbon\Carbon
+    {
+        if (! $this->check_out_date) {
+            return null;
+        }
+        $tz = $this->property?->timezone ?? 'America/New_York';
+        [$h, $m] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
+
+        return \Carbon\Carbon::parse($this->check_out_date->toDateString(), $tz)->setTime($h, $m);
+    }
+
+    /** Late fee is only worked out for a confirmed checkout (guest tap or lock), never the auto-close. */
+    private function applyLateCheckoutFee(string $source, \Carbon\Carbon $at): void
+    {
+        $auto = in_array($source, ['guest_auto_checkout', 'guest_auto_checkout_overdue'], true);
+        if (! $auto && ! in_array($source, ['guest_confirmed_checkout', 'guest_lock_checkout'], true)) {
+            return;
+        }
+        $instant = $this->effectiveCheckoutInstant();
+        if (! $instant) {
+            return;
+        }
+
+        if ($auto) {
+            $at = $instant->copy()->addMinutes(90); // charge up to the cutoff, not the cron's timing
+        }
+
+        if ($instant->diffInMinutes($at, false) >= 10) {
+            $this->update(['late_checkout_type' => 'unauthorized', 'late_checkout_actual_time' => $at]);
+
+            return;
+        }
+
+        $standard = $this->standardCheckoutInstant();
+        if ($standard && $instant->gt($standard) && $this->checkout_time_status === 'approved') {
+            $this->update([
+                'late_checkout_type' => 'authorized',
+                'late_checkout_hours' => round($standard->diffInMinutes($instant) / 60, 2),
+            ]);
+        }
+    }
+
     public function holdDeductions(): float
     {
-        $deduction = $this->effectiveLateCheckoutCharge() ?? 0;
-
-        if ($this->earlyCheckinIsDeductedFromHold()) {
-            $deduction += $this->effectiveEarlyCheckinCharge() ?? 0;
-        }
+        $deduction = $this->lateCheckoutDeduction()
+            + ($this->effectiveParkingCharge() ?? 0)
+            + ($this->effectiveEarlyCheckinCharge() ?? 0);
 
         return (float) $deduction;
     }
@@ -726,26 +836,7 @@ class Booking extends Model
     {
         $hold = $this->effectiveIncidentalsCharge() ?? 0;
 
-        return max(0.0, $hold - $this->holdDeductions() - $this->damagesTotal());
-    }
-
-    /** Damages can be recorded from 1 day before the checkout date, and after checkout. */
-    public function damagesEntryOpen(): bool
-    {
-        if ($this->checked_out_at || $this->status === 'checked_out') {
-            return true;
-        }
-        if (! $this->check_out_date) {
-            return false;
-        }
-
-        return now()->startOfDay()->gte($this->check_out_date->copy()->subDay()->startOfDay());
-    }
-
-    /** Sum of the itemized post-checkout damages (bookings.damages). */
-    public function damagesTotal(): float
-    {
-        return round((float) collect($this->damages ?? [])->sum(fn ($row) => (float) ($row['amount'] ?? 0)), 2);
+        return max(0.0, $hold - $this->holdDeductions());
     }
 
     /**
@@ -787,7 +878,7 @@ class Booking extends Model
     {
         $hold = $this->effectiveIncidentalsCharge() ?? 0;
 
-        return ($this->holdDeductions() + $this->damagesTotal()) > $hold;
+        return $this->holdDeductions() > $hold;
     }
 
     /**
@@ -996,7 +1087,7 @@ class Booking extends Model
             || ($this->isCheckinDay() && in_array($this->status, ['guest_approved', 'currently_hosting'], true) && ! $this->gps_verified)
             || $this->checkin_time_status === 'pending'
             || $this->checkout_time_status === 'pending'
-            || $this->id_scan_status === 'manual_review';
+            || ($this->id_scan_status === 'manual_review' && ! $this->isApproved());
     }
 
     /**
@@ -1008,7 +1099,7 @@ class Booking extends Model
     {
         return match (true) {
             $this->needsIdApproval() => 'ID needs approval',
-            $this->id_scan_status === 'manual_review' => 'ID scan needs manual review',
+            $this->id_scan_status === 'manual_review' && ! $this->isApproved() => 'ID scan needs manual review',
             $this->status === 'pre_checkin_complete' && ! $this->isApproved() => 'Awaiting approval',
             $this->status === 'awaiting_deposit' => 'Awaiting deposit',
             $this->isApproved() && ! $this->isBackgroundCheckComplete() => 'Background check pending',
@@ -1444,6 +1535,34 @@ class Booking extends Model
      * Guest self-checkout is only allowed on checkout day, from $hoursBefore
      * hours before the checkout time (property-local), or any time after.
      */
+    /** Seconds from now until 60 minutes before checkout time (0 once inside the last hour). */
+    public function secondsUntilCheckoutNotEarly(): int
+    {
+        $instant = $this->effectiveCheckoutInstant();
+        if (! $instant) {
+            return 999999;
+        }
+
+        return max(0, $instant->copy()->subMinutes(60)->timestamp - now()->timestamp);
+    }
+
+    /**
+     * True only while the guest is unlikely to be leaving yet: more than 60
+     * minutes before their effective checkout time (property timezone).
+     * Drives the red warning and the wait; inside the last hour and after
+     * checkout time only the plain confirmation shows.
+     */
+    public function checkoutLikelyEarly(?CarbonInterface $now = null): bool
+    {
+        $instant = $this->effectiveCheckoutInstant();
+        if (! $instant) {
+            return false;
+        }
+        $now = ($now ?? now())->copy()->setTimezone($instant->timezone);
+
+        return $now->lt($instant->copy()->subMinutes(60));
+    }
+
     public function checkoutWindowOpen(?CarbonInterface $now = null): bool
     {
         $timezone = $this->property?->timezone ?? 'America/New_York';
@@ -1498,10 +1617,13 @@ class Booking extends Model
             return false;
         }
 
+        $at = now();
         $this->update([
-            'status'         => 'checked_out',
-            'checked_out_at' => now(),
+            'status'          => 'checked_out',
+            'checked_out_at'  => $at,
+            'checkout_source' => $source,
         ]);
+        $this->applyLateCheckoutFee($source, $at);
 
         \App\Services\GuestAlertService::send('checkout_completed', $this);
 
@@ -1516,7 +1638,7 @@ class Booking extends Model
         return true;
     }
 
-    public static function autoCheckoutOverdue(int $graceMinutes = 30): int
+    public static function autoCheckoutOverdue(int $graceMinutes = 90): int
     {
         $count = 0;
         static::where('status', '!=', 'checked_out')->chunkById(100, function ($bookings) use (&$count, $graceMinutes) {

@@ -62,6 +62,16 @@ class GuestAlertService
             'default_guest_message' => 'Hi {guest_first_name}, your check-in at {property_name} is complete. Enjoy your stay.',
             'default_staff_message' => 'Check-in has been completed and {guest_name} is successfully checked into {property_name}.',
         ],
+        'checkout_soon' => [
+            'label' => 'Check-out in one hour',
+            'default_guest_message' => "Hi {guest_first_name}, check-out from {property_name} is at {check_out_time}, about an hour from now. Please be sure to fully check out here: {guest_link}. Late check-out fees apply after that time.",
+            'default_staff_message' => 'Reminder: {guest_name} checks out of {property_name} in about an hour, at {check_out_time}.',
+        ],
+        'checkout_overdue' => [
+            'label' => 'Check-out time passed',
+            'default_guest_message' => "Hi {guest_first_name}, check-out from {property_name} was at {check_out_time}. Late check-out fees now apply. If you have already left, please confirm your check-out here: {guest_link}",
+            'default_staff_message' => '{guest_name} has not checked out of {property_name}. The check-out time was {check_out_time} and late check-out fees now apply.',
+        ],
         'checkout_reminder' => [
             'label' => 'Check-out reminder',
             'default_guest_message' => "Hi {guest_first_name}, a quick reminder that check-out from {property_name} is tomorrow, {check_out_date}, at {check_out_time}. When you're ready to leave, you can complete check-out here: {guest_link}",

@@ -54,16 +54,13 @@
 </div>
 <div class="pl-11 sm:pl-[3.25rem]">
         @if($detail)
-            <p class="text-sm text-slate-500">{{ $detail }}</p>
+            <p class="flex items-center gap-1.5 text-sm text-slate-500">{{ $detail }}@if($kind === 'arrival' && ! empty($row['parking']))<span title="Parking needed" aria-label="Parking needed" class="inline-flex"><x-icon name="parking" class="h-4 w-4 text-indigo-600" /></span>@endif</p>
         @endif
         @if(! empty($row['hint']))
             <p class="text-sm font-semibold text-blue-700">{{ $row['hint'] }}</p>
         @endif
         @if($cl)
             <p class="text-sm {{ ($cl['tone'] ?? '') === 'red' ? 'font-semibold text-red-600' : 'text-slate-500' }}">{{ $cl['text'] }}</p>
-        @endif
-        @if($kind === 'arrival' && ! empty($row['parking']))
-            <span class="mt-1 inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold {{ $row['parking'] ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-600' }}">{{ $row['parking'] ? '🅿 Parking' : 'No parking' }}</span>
         @endif
 </div>
 </div>

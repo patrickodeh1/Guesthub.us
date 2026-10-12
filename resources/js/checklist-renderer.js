@@ -300,7 +300,45 @@ export default function checklistRenderer(config = {}) {
             }
 
             // Store in Alpine reactive property
-            this.renderedContent = renderedHtml;
+            let outHtml = renderedHtml;
+            try {
+                const curStage = this.viewOverride || this.sessionData.stage;
+                const btn = (needle) => new RegExp('<button\\b(?:(?!<\\/button>)[\\s\\S])*?' + needle + '(?:(?!<\\/button>)[\\s\\S])*?<\\/button>', 'g');
+
+                // no Go Back on the first stage
+                const first = this.sessionData.first_stage;
+                if (first && curStage === first) {
+                    outHtml = outHtml.replace(btn('navigateBack\\('), '');
+                }
+
+                // no skipping rooms
+                outHtml = outHtml.replace(btn('@click\\.stop="skipRoom\\('), '');
+
+                // Next Stage only when this stage's tasks are done
+                let incomplete = false;
+                const counts = this.sessionData.counts || {};
+                if (['pre_cleaning', 'during_cleaning', 'post_cleaning'].includes(curStage)) {
+                    const c = counts[curStage] || { total: 0, checked: 0 };
+                    incomplete = c.checked < c.total;
+                } else if (curStage === 'rooms') {
+                    let rms = this.sessionData.rooms || [];
+                    if (!Array.isArray(rms)) rms = Object.values(rms);
+                    const skipped = this.sessionData?.session?.skipped_rooms || [];
+                    incomplete = rms.some(room => {
+                        if (skipped.includes(room.id)) return false;
+                        const all = Array.isArray(room.tasks) ? room.tasks : Object.values(room.tasks || {});
+                        const t = all.filter(x => room.room_tasks.includes(x.id) && x.type !== 'instructions');
+                        return t.some(x => !x.checklist_item?.checked);
+                    });
+                }
+                if (incomplete) {
+                    outHtml = outHtml.replace(btn('saveProgress\\(\\)'), (m) => {
+                        if (!/Next Stage/.test(m) || /^<button[^>]*\\sdisabled/.test(m)) return m;
+                        return m.replace('<button', '<button disabled data-task-gate style="opacity:.5;cursor:not-allowed"');
+                    });
+                }
+            } catch (e) { console.error('stage gating failed', e); }
+            this.renderedContent = outHtml;
 
             // Use setTimeout to ensure Alpine processes the update and DOM is ready
             setTimeout(() => {
@@ -318,8 +356,8 @@ export default function checklistRenderer(config = {}) {
             }
             const counts = this.sessionData.counts[phase] || { total: 0, checked: 0 };
             const LB = window.GH_LOCKBOX;
-            const lockGate = phase === 'post_cleaning' && LB && !LB.done();
-            const lockHtml = (phase === 'post_cleaning' && LB) ? `
+            const lockGate = phase === 'during_cleaning' && LB && !LB.done();
+            const lockHtml = (phase === 'during_cleaning' && LB) ? `
                 <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
                     <p class="font-semibold text-gray-900">Change the lockbox code</p>
                     <p class="mt-1 text-sm text-gray-600">Set a new code on the lockbox, then enter it here so the next guest gets the right one.</p>
@@ -442,7 +480,7 @@ export default function checklistRenderer(config = {}) {
                                                 </span>
                                                 <button type="button" @click.stop="unskipRoom(${room.id})" class="text-[11px] text-blue-600 hover:text-blue-800 underline ml-2">Unskip</button>
                                             ` : `
-                                                <button type="button" @click.stop="skipRoom(${room.id})" class="text-[11px] text-gray-500 hover:text-gray-700 underline">Skip</button>
+                                                
                                             `}
                                         </div>
                                     </div>
@@ -592,8 +630,37 @@ export default function checklistRenderer(config = {}) {
             `;
         },
 
+        renderExitSteps() {
+            this.updateStepBtnVisibility(false);
+            const steps = this.sessionData.exit_steps || [];
+            const q = `document.querySelector('[x-data*=\\'checklistRenderer\\']')._x_dataStack[0]`;
+            return `
+                <div class="space-y-6">
+                    <div class="guest-portal-card p-6">
+                        <p class="guest-status-kicker">Before you leave</p>
+                        <h2 class="guest-status-title">Checkout steps</h2>
+                        <p class="mt-2 text-sm text-slate-600">Complete these before you finish the cleaning.</p>
+                        <div class="mt-5 space-y-6">
+                            ${steps.map((st, i) => `
+                                <div>
+                                    <p class="font-semibold text-slate-900">${i + 1}. ${this.escapeHtml(st.title || '')}</p>
+                                    <div class="mt-2 text-sm text-slate-700">${st.content || ''}</div>
+                                    ${(st.images || []).map(u => `<img src="${u}" alt="" class="mt-3 w-full rounded-lg border border-slate-200">`).join('')}
+                                </div>`).join('')}
+                        </div>
+                        <div class="mt-6 flex gap-3">
+                            <button type="button" class="guest-outline-btn flex-1"
+                                @click="const r = ${q}; r._showExitSteps = false; r._showPhotoExtrasPrompt = true; r.renderChecklist(); window.scrollTo({ top: 0, behavior: 'smooth' });">Back</button>
+                            <button type="button" class="guest-primary-btn flex-1"
+                                @click="const r = ${q}; r._exitAcked = true; r._showExitSteps = false; window.checklistHandler.saveProgress();">Got it</button>
+                        </div>
+                    </div>
+                </div>`;
+        },
+
         renderPhotosRoomByRoom() {
             this.updateStepBtnVisibility(false);
+            if (this._showExitSteps) { return this.renderExitSteps(); }
             
 
             let rooms = this.sessionData.rooms || [];

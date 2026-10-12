@@ -726,6 +726,14 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     {
         $this->assertRoomOnSessionProperty($room, $session);
 
+        // Cleaners may not skip rooms; only staff with elevated roles can.
+        if (! auth()->check() || ! auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Rooms cannot be skipped.'], 403);
+            }
+            abort(403, 'Rooms cannot be skipped.');
+        }
+
         $skipped = $session->skipped_rooms ?? [];
         if (!in_array($room->id, $skipped)) {
             $skipped[] = $room->id;

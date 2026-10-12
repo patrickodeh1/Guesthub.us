@@ -247,4 +247,5 @@
         });
     })();
     </script>
+@include('admin.bookings.partials.assign-drawer')
 </x-admin-layout>

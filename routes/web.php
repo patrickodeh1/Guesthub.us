@@ -108,6 +108,7 @@ Route::post('/checkin/verify', [GuestController::class, 'verifyReservationLogin'
 Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/', [GuestController::class, 'show'])->name('show');
     Route::post('/identity', [GuestController::class, 'submitIdentity'])->name('identity');
+    Route::post('/id-diag', [GuestController::class, 'logIdDiag'])->middleware('throttle:10,1')->name('id-diag');
     Route::get('/rental-agreement', [GuestController::class, 'rentalAgreement'])->name('rental-agreement');
     Route::get('/rental-agreement/download', [GuestController::class, 'rentalAgreementPdf'])->name('rental-agreement.pdf');
     Route::post('/vehicle-info', [GuestController::class, 'submitVehicleInfo'])->name('vehicle-info');
@@ -173,6 +174,10 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::post('cleaning-jobs/calendar-assign', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'store'])
         ->middleware('role:admin,owner,company')
         ->name('cleaning-jobs.calendar-assign');
+    Route::get('cleaning-jobs/assign-options', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'options'])
+        ->name('cleaning-jobs.assign-options');
+    Route::post('cleaning-jobs/confirm-manually', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'confirm'])
+        ->name('cleaning-jobs.confirm-manually');
 
     Route::post('cleaning-jobs/calendar-status', [\App\Http\Controllers\Admin\CalendarStatusController::class, 'store'])
         ->middleware('role:admin,owner,company,manager')
@@ -202,7 +207,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     // own page since there's no existing record to expand yet.
     Route::resource('guests', BookingController::class)->parameters(['guests' => 'booking'])->except(['edit']);
     Route::put('guests/{booking}/ledger', [BookingController::class, 'updateLedger'])->name('guests.ledger.update');
-    Route::put('guests/{booking}/damages', [BookingController::class, 'updateDamages'])->name('guests.damages.update');
+    Route::post('guests/{booking}/late-checkout-deduct', [BookingController::class, 'deductLateCheckout'])->name('guests.late-checkout.deduct');
     Route::post('guests/{booking}/override-checkin', [BookingController::class, 'overrideCheckin'])->name('guests.override');
     Route::post('guests/{booking}/override-checkout', [BookingController::class, 'overrideCheckout'])->name('guests.override-checkout');
     Route::post('guests/{booking}/override-gps', [BookingController::class, 'overrideGps'])->name('guests.override-gps');

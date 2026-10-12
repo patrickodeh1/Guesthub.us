@@ -1,4 +1,5 @@
 <x-app-layout>
+    <div class="cleaner-skin-marker" hidden></div>
     @php
         $dateFormat = \App\Models\Setting::get('date_format', 'M d, Y');
     @endphp

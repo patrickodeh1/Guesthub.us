@@ -17,20 +17,25 @@ class PhotoReferenceController extends Controller
         return view('admin.properties.photo-guide', [
             'property' => $property,
             'references' => $property->photoReferences,
+            'rooms' => $property->rooms()->orderBy('name')->get(),
         ]);
     }
 
     public function store(Request $request, Property $property)
     {
         $request->validate([
-            'images'   => ['required', 'array'],
-            'images.*' => ['image', 'max:15360'],
-            'captions' => ['nullable', 'array'],
-            'captions.*' => ['nullable', 'string', 'max:255'],
+            'images'       => ['required', 'array'],
+            'images.*'     => ['image', 'max:15360'],
+            'room_id'      => ['nullable', 'integer'],
+            'instructions' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $roomId = $request->input('room_id');
+        $roomId = ($roomId && $property->rooms()->whereKey($roomId)->exists()) ? (int) $roomId : null;
+        $instructions = trim((string) $request->input('instructions')) ?: null;
+
         $next = (int) $property->photoReferences()->max('sort_order') + 1;
-        foreach ($request->file('images') as $i => $file) {
+        foreach ($request->file('images') as $file) {
             $path = 'photo-references/' . uniqid() . '.jpg';
             try {
                 $img = (new ImageManager(new Driver()))->read($file->getRealPath())->scaleDown(width: 1600);
@@ -39,14 +44,15 @@ class PhotoReferenceController extends Controller
                 report($e);
                 $path = $file->store('photo-references', 'public');
             }
-            $property->photoReferences()->create([
+            $ref = $property->photoReferences()->create([
                 'image_path' => $path,
-                'caption'    => $request->input("captions.$i"),
+                'caption'    => null,
                 'sort_order' => $next++,
             ]);
+            $ref->forceFill(['room_id' => $roomId, 'instructions' => $instructions])->save();
         }
 
-        return back()->with('status', 'Photos added.');
+        return back()->with('status', count($request->file('images')) . ' photo(s) added.');
     }
 
     public function destroy(PropertyPhotoReference $reference)

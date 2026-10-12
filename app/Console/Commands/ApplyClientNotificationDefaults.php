@@ -35,6 +35,8 @@ class ApplyClientNotificationDefaults extends Command
             'cleaning_complete'         => [1, 0, 'Hi {guest_first_name}, the cleaning at {property_name} is complete. We are doing a final check and will message you as soon as your unit is ready for check-in.', null],
         ];
         $plan['reservation_updated'] = [1, 0, $timeMsg, null];
+        $plan['checkout_soon'] = [1, 0, null, null];
+        $plan['checkout_overdue'] = [1, 0, null, null];
 
         if (! $this->option('dry-run')) {
             $backup = storage_path('app/guest_alerts_config_backup_'.now()->format('Ymd_His').'.json');

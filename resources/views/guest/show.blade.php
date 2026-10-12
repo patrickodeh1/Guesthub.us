@@ -1450,6 +1450,8 @@
                 }
 
                 function stopCamera() {
+                    if (typeof idwStopPoll === "function") { idwStopPoll(); }
+                    if (window.__idwFallbackTimer) { clearTimeout(window.__idwFallbackTimer); window.__idwFallbackTimer = null; }
                     stopDetectionLoop();
                     if (idwCaptureTimer) { clearTimeout(idwCaptureTimer); idwCaptureTimer = null; }
                     if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
@@ -1488,6 +1490,24 @@
                 if (photoIdRequired) {
                     function performCapture() {
                         var video = document.getElementById("camera-stream");
+                        if (currentSide === "back" && !isPassport && !window.__idwBarcodeRaw && !window.__idwForceCapture) {
+                            var __waited = Date.now() - (window.__idwBackStartedAt || 0);
+                            if (__waited < 10000) {
+                                var __st = document.getElementById("idw-capture-status");
+                                if (__st) { __st.textContent = "Hold steady \u2014 reading the barcode\u2026"; }
+                                if (!window.__idwBlockedLogged) { window.__idwBlockedLogged = true; idwDiag("early_capture_blocked", { ms: __waited }); }
+                                if (!window.__idwFallbackTimer) {
+                                    window.__idwFallbackTimer = setTimeout(function () {
+                                        window.__idwFallbackTimer = null;
+                                        if (!stream || currentSide !== "back" || window.__idwBarcodeRaw) { return; }
+                                        idwDiag("fallback_capture");
+                                        window.__idwForceCapture = true;
+                                        try { performCapture(); } finally { window.__idwForceCapture = false; }
+                                    }, 10000 - __waited);
+                                }
+                                return;
+                            }
+                        }
                         var crop = __idwGetGuideCropRect(video);
                         var canvas = document.createElement("canvas");
                         canvas.width = crop.w;
@@ -1517,7 +1537,7 @@
                             document.getElementById("back-preview-block").classList.remove("hidden");
                             img.onload = function() {
                                 var ok = checkBlur(img, document.getElementById("back-blur-warning"));
-                                if (ok) { document.getElementById("photo-id-back-data").value = dataUrl; idwSaveState({ photo_id_back: dataUrl }); idwBackScan(dataUrl); }
+                                if (ok) { document.getElementById("photo-id-back-data").value = dataUrl; idwSaveState({ photo_id_back: dataUrl }); idwBackScan(dataUrl).then(function(scanned) { idwDiag("photo_scan", { ok: !!scanned, fails: window.__idwBackFails || 0 }); if (scanned) idwAutoNext(); }); }
                             };
                         }
                     }
@@ -1553,21 +1573,74 @@
                         if (!video || !video.srcObject) { return; }
                         if (currentSide !== "back" || video.paused || video.readyState < 2 || __idwBusy || !window.idwBarcode) { return; }
                         __idwBusy = true;
+                        if (!window.__idwVidLogged) { window.__idwVidLogged = true; idwDiag("video", { w: video.videoWidth, h: video.videoHeight }); }
                         window.idwBarcode.decodeVideo(video).then(function(raw) {
                             if (raw && video.srcObject && currentSide === "back") {
                                 window.__idwBarcodeRaw = raw;
                                 idwStopPoll();
-                                if (typeof performCapture === "function") performCapture();
+                                idwDiag("live_hit", { ms: Date.now() - (window.__idwBackStartedAt || Date.now()) }); if (typeof performCapture === "function") performCapture();
                             }
-                        }).catch(function() {}).then(function() { __idwBusy = false; });
+                        }).catch(function(e) { if (!window.__idwLiveErrLogged) { window.__idwLiveErrLogged = true; idwDiag("live_decode_error", { msg: String((e && e.message) || e).slice(0, 120) }); } }).then(function() { __idwBusy = false; });
                     }, 600);
                 }
+
+                function idwAutoNext() {
+                    if (!window.__idwBarcodeRaw) { return; }
+                    var nb = document.getElementById("id-capture-next-btn");
+                    if (!nb) { return; }
+                    setTimeout(function() {
+                        if (window.__idwBarcodeRaw && !nb.disabled) { nb.click(); }
+                    }, 900);
+                }
+
+                window.__idwDiagUrl = "{{ route('guest.id-diag', ['booking_id' => $booking->booking_id, 'token' => $booking->token]) }}";
+
+                function idwDiag(ev, extra) {
+                    try {
+                        var d = window.__idwDiag = window.__idwDiag || { t0: Date.now(), ev: [] };
+                        if (d.ev.length >= 40) { return; }
+                        var o = { t: Date.now() - d.t0, e: ev };
+                        if (extra) { for (var k in extra) { o[k] = extra[k]; } }
+                        d.ev.push(o);
+                    } catch (e) {}
+                }
+
+                function idwDiagJson() {
+                    try {
+                        var d = window.__idwDiag || { ev: [] };
+                        var j = JSON.stringify(d);
+                        if (j.length > 5500) { j = JSON.stringify({ t0: d.t0, ev: d.ev.slice(-25) }); }
+                        return j.length > 8000 ? "" : j;
+                    } catch (e) { return ""; }
+                }
+
+                function idwReport(reason) {
+                    try {
+                        var d = window.__idwDiag;
+                        if (!d || !d.ev.length || !window.__idwDiagUrl) { return; }
+                        if (d.ev.some(function (x) { return x.e === "submit"; })) { return; }
+                        window.__idwReported = window.__idwReported || {};
+                        var key = reason + ":" + d.ev.length;
+                        if (window.__idwReported[key]) { return; }
+                        window.__idwReported[key] = true;
+                        var fd = new FormData();
+                        var meta = document.querySelector('meta[name="csrf-token"]');
+                        fd.append("_token", meta ? meta.content : "");
+                        fd.append("reason", reason);
+                        fd.append("diag", idwDiagJson());
+                        if (navigator.sendBeacon) { navigator.sendBeacon(window.__idwDiagUrl, fd); }
+                        else { fetch(window.__idwDiagUrl, { method: "POST", body: fd, keepalive: true }); }
+                    } catch (e) {}
+                }
+                document.addEventListener("visibilitychange", function () {
+                    if (document.visibilityState === "hidden") { idwReport("left_page"); }
+                });
 
                 function idwHideTips() { var el = document.getElementById("idw-tips-modal"); if (el) el.remove(); }
 
                 function idwShowTips(mode) {
                     idwHideTips();
-                    var manual = mode === "manual";
+                    var manual = mode === "manual"; idwDiag("tips", { mode: mode, fails: window.__idwBackFails || 0 }); if (manual) { idwReport("manual_review_popup"); }
                     var el = document.createElement("div");
                     el.id = "idw-tips-modal";
                     el.style.cssText = "position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;";
@@ -1602,10 +1675,15 @@
                     if (!window.idwBarcode) { return Promise.resolve(false); }
                     return window.idwBarcode.decodeDataUrl(dataUrl).then(function(raw) {
                         if (raw) { window.__idwBarcodeRaw = raw; idwHideTips(); return true; }
-                        window.__idwBackFails = (window.__idwBackFails || 0) + 1;
+                        window.__idwBackFails = (window.__idwBackFails || 0) + 1; idwDiag("photo_decode_null", { fails: window.__idwBackFails });
                         idwShowTips(window.__idwBackFails >= 3 ? "manual" : "retry");
                         return false;
-                    }).catch(function(e) { console.error("Barcode decode error", e); return false; });
+                    }).catch(function(e) {
+                        console.error("Barcode decode error", e); idwDiag("photo_decode_error", { msg: String((e && e.message) || e).slice(0, 120) });
+                        window.__idwBackFails = 3;
+                        idwShowTips("manual");
+                        return false;
+                    });
                 }
 
                 try {
@@ -1614,7 +1692,7 @@
                         var r = __idwOrigStart.apply(this, arguments);
                         if (side === "back" && !isPassport) {
                             window.__idwBarcodeRaw = ""; window.__idwBarcodeTried = false;
-                            if (window.idwBarcode) window.idwBarcode.warm();
+                            window.__idwBackStartedAt = Date.now(); window.__idwVidLogged = false; window.__idwBlockedLogged = false; if (window.__idwFallbackTimer) { clearTimeout(window.__idwFallbackTimer); window.__idwFallbackTimer = null; } idwDiag("back_cam", { scanner: !!window.idwBarcode, scr: screen.width + "x" + screen.height }); if (window.idwBarcode) window.idwBarcode.warm();
                             idwStartPoll();
                         }
                         return r;
@@ -1846,6 +1924,8 @@
                         }
                         if (!isPassport && idwBackRequired) {
                             fd.set("id_barcode_raw", window.__idwBarcodeRaw || "");
+                            idwDiag("submit", { raw: !!window.__idwBarcodeRaw, fails: window.__idwBackFails || 0 });
+                            fd.set("id_client_diag", idwDiagJson());
                             fd.set("photo_id_back", b64toBlob(document.getElementById("photo-id-back-data").value), "back.jpg");
                         }
                     }

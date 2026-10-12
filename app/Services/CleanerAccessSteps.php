@@ -45,15 +45,15 @@ class CleanerAccessSteps
                 'content' => self::render($s, $property, $preStart),
                 'image'   => $s->imageUrl(),
                 'images'  => $s->images->map(fn ($img) => $img->imageUrl())->values()->all(),
-                'action'  => 'content', // cleaners get door-lock steps as plain instructions (no guest unlock button)
+                ...self::lockFields($s, $session),
             ])
             ->values()
             ->all();
     }
 
     /**
-     * Steps for leaving the unit: type 'checkout' set to "Cleaners only".
-     * Guest checkout steps (visibility 'all') never reach cleaners.
+     * Steps for leaving the unit: type 'checkout' shown to cleaners only or to both guests and cleaners.
+     * Guest-only checkout steps never reach cleaners.
      * Cleaners get them only while the session is in progress; none after completion.
      */
     public static function exitForSession(CleaningSession $session): array
@@ -70,7 +70,7 @@ class CleanerAccessSteps
 
         return InstructionStep::where('property_id', $session->property_id)
             ->where('type', 'checkout')
-            ->where('visibility', 'cleaners_only')
+            ->where(fn ($q) => $q->whereNull('visibility')->orWhereIn('visibility', ['all', 'cleaners_only']))
             ->where('active', true)
             ->orderBy('sort_order')
             ->with('images')
@@ -81,7 +81,7 @@ class CleanerAccessSteps
                 'content' => $s->renderContentForProperty($property),
                 'image'   => $s->imageUrl(),
                 'images'  => $s->images->map(fn ($img) => $img->imageUrl())->values()->all(),
-                'action'  => 'content',
+                ...self::lockFields($s, $session),
             ])
             ->values()
             ->all();
@@ -108,6 +108,39 @@ class CleanerAccessSteps
             $s->content = str_replace('[[lockbox_code]]', '(shown once you arrive and start)', (string) $s->content);
         }
         return $s->renderContentForProperty($property);
+    }
+
+    /** Door-lock steps get a working lock control for the assigned cleaner once they are at the property. */
+    private static function lockFields(InstructionStep $s, CleaningSession $session): array
+    {
+        $plain = ['action' => 'content'];
+        if (($s->action ?? 'content') !== 'door_lock') {
+            return $plain;
+        }
+        $isCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+        $open = $session->status === 'in_progress'
+            || ($session->status === 'pending' && self::locationVerified($session));
+        if (! $isCleaner || ! $open) {
+            return $plain;
+        }
+        $lock = $session->property->locks()->first();
+        if (! $lock) {
+            return ['action' => 'door_lock'];
+        }
+        try {
+            $status = app(SeamService::class)->getLockStatus($lock->seam_device_id);
+        } catch (\Throwable $e) {
+            $status = $lock->last_known_locked;
+        }
+
+        return [
+            'action' => 'door_lock',
+            'lock_id' => $lock->id,
+            'lock_status' => $status,
+            'unlock_url' => route('sessions.door.unlock', [$session, $lock]),
+            'lock_url' => route('sessions.door.lock', [$session, $lock]),
+            'status_url' => route('sessions.door.status', [$session, $lock]),
+        ];
     }
 
     /** Location counts as verified once the cleaner passed the check (or an admin granted a GPS override). */

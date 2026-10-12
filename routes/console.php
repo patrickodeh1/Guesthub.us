@@ -28,6 +28,7 @@ Schedule::command('bookings:send-checkin-reminders')->dailyAt('08:00');
 // before check-out (task 30). The whereNull(checkout_reminder_sent_at) guard
 // makes re-runs safe.
 Schedule::command('bookings:send-checkout-reminders')->dailyAt('18:00');
+Schedule::command('bookings:send-checkout-deadline-texts')->everyFiveMinutes()->withoutOverlapping(4);
 
 // Polls the active PMS provider (Channex now, NextPax later — see
 // App\Services\Pms) for new/changed bookings. Cadence follows Channex's own
@@ -48,6 +49,7 @@ Schedule::command('bookings:send-arrival-soon')->everyTenMinutes();
 
 // Safety net: one unassigned checkout clean per upcoming booking (PMS imports may skip model events).
 Schedule::command('cleaning:sync-checkout-sessions')->hourly();
+Schedule::command('cleaning:alert-unconfirmed')->everyFifteenMinutes()->withoutOverlapping(10);
 
 // Sends pending availability / rate / restriction changes to Channex.
 // The channex_outbox table is the queue; no queue worker is needed.

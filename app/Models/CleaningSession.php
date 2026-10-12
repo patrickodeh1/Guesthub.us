@@ -31,6 +31,7 @@ class CleaningSession extends Model
         'booking_id',
         'no_guest',
         'assignment_status',
+        'schedule_overridden',
         'cleaner_notified_at',
         'sporadic_tasks',
         'parking_needed',

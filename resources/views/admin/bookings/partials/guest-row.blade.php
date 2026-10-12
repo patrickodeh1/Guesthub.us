@@ -12,6 +12,9 @@
             <button type="button" class="btn-secondary gap-2" onclick="toggleRowMenu(this)"><x-icon name="more-vertical" class="h-4 w-4" />Actions</button>
             <div data-row-menu-panel class="hidden absolute right-0 z-10 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                 <a href="{{ route('admin.guests.show', $booking) }}" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><x-icon name="eye" class="h-4 w-4" />View / Edit</a>
+                @if(! $booking->isCancelled() && auth()->user()?->hasAnyRole(['admin', 'owner', 'company']))
+                    <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-assign', {detail: {booking_id: {{ $booking->id }}}}))" class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="users" class="h-4 w-4" />Assign cleaner</button>
+                @endif
                 <button type="button" onclick="copyGuestUrl(this, '{{ $booking->publicUrl() }}')" class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="copy" class="h-4 w-4" /><span data-copy-label>Copy Guest URL</span></button>
 
                 <div class="my-1 border-t border-slate-100"></div>

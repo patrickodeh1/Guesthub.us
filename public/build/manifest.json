@@ -14,7 +14,7 @@
     "src": "node_modules/zxing-wasm/dist/reader/zxing_reader.wasm"
   },
   "resources/css/app.css": {
-    "file": "assets/app-DvOXghGS.css",
+    "file": "assets/app-1AgvuuQp.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -23,7 +23,7 @@
     ]
   },
   "resources/css/cleaning.css": {
-    "file": "assets/cleaning-BYtKGRS8.css",
+    "file": "assets/cleaning-DI8ooMEz.css",
     "src": "resources/css/cleaning.css",
     "isEntry": true,
     "name": "cleaning",
@@ -41,7 +41,7 @@
     ]
   },
   "resources/js/cleaning-app.js": {
-    "file": "assets/cleaning-app-BJpS6FSu.js",
+    "file": "assets/cleaning-app-DIejONJz.js",
     "name": "cleaning-app",
     "src": "resources/js/cleaning-app.js",
     "isEntry": true,

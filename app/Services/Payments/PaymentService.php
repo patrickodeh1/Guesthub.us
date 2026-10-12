@@ -107,7 +107,7 @@ class PaymentService
             // and a standalone incidentals charge settles it in full. Either
             // way, unbilledIncidentalsCents() should return 0 right after.
             $charge->booking->update([
-                'incidentals_billed_cents' => (int) round(($charge->booking->incidentals_charge ?? 0) * 100),
+                'incidentals_billed_cents' => (int) round(($charge->booking->effectiveIncidentalsCharge() ?? 0) * 100),
             ]);
         }
 

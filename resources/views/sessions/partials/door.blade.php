@@ -1,6 +1,6 @@
 @php
     $isAssignedCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
-    $doorOpen = $isAssignedCleaner && ($session->status === 'in_progress' || ($session->status === 'pending' && \App\Services\CleanerAccessSteps::locationVerified($session)));
+    $doorOpen = false && $isAssignedCleaner && ($session->status === 'in_progress' || ($session->status === 'pending' && \App\Services\CleanerAccessSteps::locationVerified($session)));
     $doorLock = $doorOpen ? $session->property->locks()->first() : null;
     $doorStatus = null;
     if ($doorLock) {

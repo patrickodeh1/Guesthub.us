@@ -685,6 +685,14 @@ export default function checklist(config = {}) {
                 }
             }
 
+            if (currentStage === 'photos' && Array.isArray(sd.exit_steps) && sd.exit_steps.length > 0
+                && !renderer._exitAcked && sd.session?.status !== 'completed' && window.ghShowExitWizard) {
+                window.ghShowExitWizard();
+                return;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
             const sessionId = this.getSessionId();
             if (!sessionId) {
                 this.showError('Session ID not found');

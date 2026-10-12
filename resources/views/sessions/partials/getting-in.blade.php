@@ -6,6 +6,7 @@
     $adminView = ! $isAssignedCleaner;
 @endphp
 
+@if (! ($isAssignedCleaner && $session->status !== 'pending'))
 <div id="getting-in" class="mb-4">
 @if ($adminView)
 <details class="guest-portal-card p-4">
@@ -59,7 +60,7 @@
         </div>
 
         @if ($canAnswerParking)
-            <form method="POST" action="{{ route('sessions.parking', $session) }}" class="mt-3 text-center">
+            <form method="POST" action="{{ route('sessions.parking', $session) }}" class="mt-3 text-center" style="{{ $session->status === 'pending' ? '' : 'display:none' }}">
                 @csrf
                 <input type="hidden" name="parking_needed" value="{{ $session->parking_needed ? 0 : 1 }}">
                 <button type="submit" class="text-xs font-semibold text-slate-500 underline">
@@ -74,7 +75,7 @@
             var reopen = document.getElementById("getting-in-reopen");
             var btn = document.getElementById("getting-in-reopen-btn");
             if (!done || !reopen || !btn) return;
-            var key = "getting_in_ack_{{ $session->id }}_{{ (int) $session->parking_needed }}_{{ $session->status }}_{{ (int) \App\Services\CleanerAccessSteps::locationVerified($session) }}";
+            var key = "getting_in_ack_{{ $session->id }}_{{ (int) $session->parking_needed }}_{{ (int) \App\Services\CleanerAccessSteps::locationVerified($session) }}";
             function reveal() { var g = document.getElementById("pending-gate"); if (g) g.style.display = ""; }
             function collapse() {
                 reveal();
@@ -105,3 +106,4 @@
 </details>
 @endif
 </div>
+@endif

@@ -452,38 +452,13 @@ class BookingController extends Controller
         return redirect()->route('admin.guests.show', $booking)->with('success', 'Ledger updated.');
     }
 
-    /** Itemized damages, entered by admin after checkout; deducted from the incidentals hold. */
-    public function updateDamages(Request $request, Booking $booking)
+    /** Toggle: apply (or undo) the unauthorized late checkout fee against the incidentals hold. */
+    public function deductLateCheckout(Booking $booking)
     {
-        $this->guardNotCancelled($booking);
-        abort_unless($booking->damagesEntryOpen(), 422, 'Damages can be recorded from 1 day before checkout.');
+        abort_unless($booking->checked_out_at && $booking->unauthorizedLateCheckoutCharge() > 0, 422, 'No unauthorized late checkout fee to deduct.');
+        $booking->update(['late_checkout_deducted_at' => $booking->late_checkout_deducted_at ? null : now()]);
 
-        $request->merge(['damages' => collect($request->input('damages', []))
-            ->filter(fn ($r) => filled($r['description'] ?? null) || filled($r['amount'] ?? null))
-            ->values()->all()]);
-
-        $data = $request->validate([
-            'damages'               => ['nullable', 'array', 'max:50'],
-            'damages.*.description' => ['required', 'string', 'max:255'],
-            'damages.*.amount'      => ['required', 'numeric', 'min:0.01'],
-        ]);
-
-        $rows = collect($data['damages'] ?? [])->map(fn ($r) => [
-            'description' => trim($r['description']),
-            'amount'      => round((float) $r['amount'], 2),
-        ])->all();
-
-        $booking->update(['damages' => $rows ?: null]);
-
-        ActivityLogService::admin('booking_damages_updated', auth()->user()->name." updated damages for {$booking->guest_name}.", 'guests', [
-            'subject_type' => Booking::class,
-            'subject_id'   => $booking->id,
-            'booking_id'   => $booking->id,
-            'property_id'  => $booking->property_id,
-            'severity'     => 'info',
-        ]);
-
-        return redirect()->route('admin.guests.show', $booking)->with('success', 'Damages saved.');
+        return back()->with('success', $booking->late_checkout_deducted_at ? 'Late checkout fee deducted from the hold.' : 'Deduction removed.');
     }
 
     public function updateWelcomeMessage(Request $request, Booking $booking)
@@ -805,6 +780,42 @@ class BookingController extends Controller
         ]);
 
         $statusField = $type === 'checkin' ? 'checkin_time_status' : 'checkout_time_status';
+
+        if (($data['decision'] ?? null) === 'approved') {
+            $pref = $type === 'checkin' ? $booking->checkin_time_preference : $booking->checkout_time_preference;
+            $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+            $live = fn ($q) => $q->whereNull('cancelled_at')
+                ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
+            $min = \App\Services\CleaningJobService::MIN_TURNOVER_MINUTES;
+
+            if ($pref && $type === 'checkout') {
+                $date = \Carbon\Carbon::parse($booking->check_out_date)->toDateString();
+                $out = \Carbon\Carbon::parse($date.' '.$pref);
+                $next = Booking::where('property_id', $booking->property_id)->whereDate('check_in_date', $date)
+                    ->where('id', '<>', $booking->id)->where($live)->first();
+                if ($next) {
+                    $arrive = \Carbon\Carbon::parse($date.' '.$next->effectiveCheckinTime());
+                    if ($out->diffInMinutes($arrive, false) < $min) {
+                        $msg = 'Cannot approve: the next guest arrives at '.$arrive->format('g:i A').', which leaves less than '.($min / 60).' hours after a '.$out->format('g:i A').' checkout. Deny it to keep the standard time.';
+                        return back()->withErrors(['time' => $msg])->with('error', $msg);
+                    }
+                }
+            }
+
+            if ($pref && $type === 'checkin') {
+                $date = \Carbon\Carbon::parse($booking->check_in_date)->toDateString();
+                $arrive = \Carbon\Carbon::parse($date.' '.$pref);
+                $prev = Booking::where('property_id', $booking->property_id)->whereDate('check_out_date', $date)
+                    ->where('id', '<>', $booking->id)->where($live)->first();
+                if ($prev) {
+                    $leave = \Carbon\Carbon::parse($date.' '.$prev->effectiveCheckoutTime());
+                    if ($leave->diffInMinutes($arrive, false) < $min) {
+                        $msg = 'Cannot approve: the previous guest checks out at '.$leave->format('g:i A').', which leaves less than '.($min / 60).' hours before a '.$arrive->format('g:i A').' check-in. Deny it to keep the standard time.';
+                        return back()->withErrors(['time' => $msg])->with('error', $msg);
+                    }
+                }
+            }
+        }
 
         $booking->update([
             $statusField => $data['decision'],

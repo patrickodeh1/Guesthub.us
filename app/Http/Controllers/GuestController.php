@@ -359,7 +359,7 @@ class GuestController extends Controller
         // isPastCheckoutTime() already respects the property's timezone and
         // returns false before checkout day, so it covers "checkout day and
         // past the deadline" without a separate UTC-vs-local day comparison.
-        if (! $booking->isPastCheckoutTime()) {
+        if (! $booking->isPastCheckoutGracePeriod(90)) {
             return false;
         }
 
@@ -590,6 +590,47 @@ class GuestController extends Controller
         ]);
     }
 
+    private function sanitizeIdDiag($json): array
+    {
+        if (! is_string($json) || $json === '' || strlen($json) > 20000) {
+            return [];
+        }
+        $diag = json_decode($json, true);
+        $events = [];
+        foreach (array_slice(is_array($diag['ev'] ?? null) ? $diag['ev'] : [], 0, 40) as $ev) {
+            if (! is_array($ev)) { continue; }
+            $events[] = collect($ev)
+                ->filter(fn ($v) => is_scalar($v))
+                ->map(fn ($v) => \Illuminate\Support\Str::limit((string) $v, 120))
+                ->all();
+        }
+        return $events;
+    }
+
+    public function logIdDiag(Request $request, string $bookingId, string $token)
+    {
+        $booking = $this->booking($bookingId, $token);
+        $reason = preg_replace('/[^a-z_]/', '', strtolower((string) $request->input('reason', 'unknown'))) ?: 'unknown';
+        try {
+            ActivityLogService::guest('id_scan_client_report', "ID scan browser report for {$booking->guest_name}: {$reason}", 'photo_id', [
+                'booking_id'  => $booking->id,
+                'property_id' => $booking->property_id,
+                'actor_name'  => $booking->guest_name,
+                'actor_email' => $booking->email,
+                'severity'    => 'warning',
+                'metadata'    => [
+                    'booking_ref'   => $booking->booking_id,
+                    'reason'        => $reason,
+                    'user_agent'    => \Illuminate\Support\Str::limit((string) $request->userAgent(), 160),
+                    'client_events' => $this->sanitizeIdDiag($request->input('diag')),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+        return response()->json(['ok' => true]);
+    }
+
     public function submitIdentity(Request $request, string $bookingId, string $token)
     {
         $booking = $this->booking($bookingId, $token);
@@ -680,6 +721,43 @@ class GuestController extends Controller
         ]);
 
         $booking->refresh();
+
+        // Debug trail for the ID scan: outcome + browser events, never the barcode text or personal data.
+        try {
+            $rawBarcode = (string) $request->input('id_barcode_raw', '');
+            $parsedBarcode = filled($rawBarcode) ? \App\Services\AamvaParser::parse($rawBarcode) : null;
+            $scanPassed = $booking->idScanPassed();
+            ActivityLogService::guest(
+                'id_scan_result',
+                "ID scan for {$booking->guest_name}: ".($booking->id_scan_status ?? 'none').' via '.($booking->id_scan_source ?? 'none').($scanPassed ? '' : ' (blocked)'),
+                'photo_id',
+                [
+                    'booking_id'  => $booking->id,
+                    'property_id' => $booking->property_id,
+                    'actor_name'  => $booking->guest_name,
+                    'actor_email' => $booking->email,
+                    'severity'    => $scanPassed ? 'success' : 'warning',
+                    'metadata'    => [
+                        'booking_ref'           => $booking->booking_id,
+                        'scan_status'           => $booking->id_scan_status,
+                        'scan_source'           => $booking->id_scan_source,
+                        'name_match'            => $booking->id_name_match,
+                        'attempts'              => $booking->id_scan_attempts,
+                        'passed'                => $scanPassed,
+                        'blocking_reason'       => $booking->idScanBlockingReason(),
+                        'barcode_text_received' => filled($rawBarcode),
+                        'barcode_chars'         => strlen($rawBarcode),
+                        'barcode_parsed'        => (bool) ($parsedBarcode && filled($parsedBarcode['last_name'] ?? null) && filled($parsedBarcode['dob'] ?? null)),
+                        'front_uploaded'        => (bool) $frontUploaded,
+                        'back_uploaded'         => (bool) $backUploaded,
+                        'user_agent'            => \Illuminate\Support\Str::limit((string) $request->userAgent(), 160),
+                        'client_events'         => $this->sanitizeIdDiag($request->input('id_client_diag')),
+                    ],
+                ]
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -1463,7 +1541,7 @@ class GuestController extends Controller
         }
 
         if ($booking->isCheckoutDay()) {
-            return $booking->isPastCheckoutTime() ? 'checkout_locked' : 'checkout_available';
+            return $booking->isPastCheckoutGracePeriod(90) ? 'checkout_locked' : 'checkout_available';
         }
 
         if ($booking->checkoutWindowOpen()) {
