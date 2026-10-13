@@ -612,7 +612,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
             'phase' => ['required', Rule::in(['pre_cleaning', 'during_cleaning', 'post_cleaning'])],
             'is_sporadic' => ['nullable', 'boolean'],
             'is_default' => ['nullable', 'boolean'],
@@ -720,7 +720,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
             'phase' => ['required', Rule::in(['pre_cleaning', 'during_cleaning', 'post_cleaning'])],
             'is_sporadic' => ['nullable', 'boolean'],
             'is_default' => ['nullable', 'boolean'],

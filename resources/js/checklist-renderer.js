@@ -356,8 +356,9 @@ export default function checklistRenderer(config = {}) {
             }
             const counts = this.sessionData.counts[phase] || { total: 0, checked: 0 };
             const LB = window.GH_LOCKBOX;
-            const lockGate = phase === 'during_cleaning' && LB && !LB.done();
-            const lockHtml = (phase === 'during_cleaning' && LB) ? `
+            const lockTask = tasks.find(t => t.type === 'lockbox');
+            const lockGate = !!(lockTask && LB && !LB.done());
+            const lockHtml = (lockTask && LB) ? `
                 <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
                     <p class="font-semibold text-gray-900">Change the lockbox code</p>
                     <p class="mt-1 text-sm text-gray-600">Set a new code on the lockbox, then enter it here so the next guest gets the right one.</p>
@@ -402,7 +403,7 @@ export default function checklistRenderer(config = {}) {
                             </div>
                         </div>
                         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50 shadow-sm">
-                            ${tasks.length > 0 ? tasks.map(task => this.renderTaskItem(task, null)).join('') : `<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${title.toLowerCase()} defined.</p>`}
+                            ${tasks.filter(t => t.type !== 'lockbox').length > 0 ? tasks.filter(t => t.type !== 'lockbox').map(task => this.renderTaskItem(task, null)).join('') : `<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${title.toLowerCase()} defined.</p>`}
                         </div>
                     </div>
                     ${(() => {

@@ -14,6 +14,31 @@ use App\Models\User;
 class Property extends Model
 {
 
+    // gh-lockbox-log: record who changes the lockbox code, from any path. The code itself is never logged.
+    protected static function booted(): void
+    {
+        static::updated(function (self $property) {
+            if (! $property->wasChanged('lockbox_code')) {
+                return;
+            }
+            try {
+                $old = $property->getOriginal('lockbox_code');
+                $new = $property->lockbox_code;
+                $what = blank($new) ? 'cleared' : (blank($old) ? 'set' : 'changed');
+                $user = auth()->user();
+                $who = $user ? $user->name : 'System';
+                $where = request()->routeIs('sessions.lockbox') ? 'during a cleaning' : 'from the property settings';
+                \App\Services\ActivityLogService::admin('lockbox_' . $what, "{$who} {$what} the lockbox code for {$property->name} {$where}.", 'properties', [
+                    'subject_type' => self::class,
+                    'subject_id'   => $property->id,
+                    'severity'     => 'warning',
+                ]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+    }
+
     /**
      * Guest-facing short address: full street/city/state/zip in one line,
      * truncated immediately after the zip code (drops any trailing

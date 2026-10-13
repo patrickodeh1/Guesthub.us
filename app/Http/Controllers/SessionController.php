@@ -382,9 +382,9 @@ class SessionController extends Controller
 
         // Count property-level tasks (exclude type='instructions' — those are informational-only,
         // have no checkbox, and should not inflate the progress denominator)
-        $countablePreCleaning = $preCleaningTasks->where('type', '!=', 'instructions');
-        $countableDuringCleaning = $duringCleaningTasks->where('type', '!=', 'instructions');
-        $countablePostCleaning = $postCleaningTasks->where('type', '!=', 'instructions');
+        $countablePreCleaning = $preCleaningTasks->whereNotIn('type', ['instructions', 'lockbox']);
+        $countableDuringCleaning = $duringCleaningTasks->whereNotIn('type', ['instructions', 'lockbox']);
+        $countablePostCleaning = $postCleaningTasks->whereNotIn('type', ['instructions', 'lockbox']);
 
         $preCleaningCount = $countablePreCleaning->count();
         $duringCleaningCount = $countableDuringCleaning->count();
@@ -1574,7 +1574,7 @@ class SessionController extends Controller
 
     private function stageHasContent(CleaningSession $session, string $stage): bool
     {
-        if ($stage === 'during_cleaning' && $session->status === 'in_progress' && filled($session->property->lockbox_code)) {
+        if ($stage === 'during_cleaning' && $session->status === 'in_progress' && $session->property->propertyTasks()->where('phase', 'during_cleaning')->where('tasks.type', 'lockbox')->exists()) {
             return true;
         }
         $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];

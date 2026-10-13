@@ -23,17 +23,6 @@ class SessionLockboxController extends Controller
         $property = $session->property;
         $property->forceFill(['lockbox_code' => trim($data['lockbox_code'])])->save();
 
-        try {
-            // The code itself is never written to the log.
-            ActivityLogService::admin('lockbox_changed', "{$user->name} changed the lockbox code for {$property->name} during a cleaning.", 'properties', [
-                'subject_type' => \App\Models\Property::class,
-                'subject_id'   => $property->id,
-                'severity'     => 'warning',
-            ]);
-        } catch (\Throwable $e) {
-            report($e);
-        }
-
         if ($request->expectsJson()) { return response()->json(['ok' => true]); }
         return back()->with('success', 'Lockbox code updated.');
     }
