@@ -1419,7 +1419,7 @@
                     btnWrapper.classList.remove("hidden");
                     document.getElementById("idw-capture-status").textContent = "Loading camera…";
 
-                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
                         .then(function(s) {
                             stream = s;
                             document.getElementById("camera-stream").srcObject = s;

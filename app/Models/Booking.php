@@ -1641,7 +1641,9 @@ class Booking extends Model
     public static function autoCheckoutOverdue(int $graceMinutes = 90): int
     {
         $count = 0;
-        static::where('status', '!=', 'checked_out')->chunkById(100, function ($bookings) use (&$count, $graceMinutes) {
+        static::where('status', '!=', 'checked_out')
+            ->whereDate('check_out_date', '>=', now()->subDays(3)->toDateString())
+            ->chunkById(100, function ($bookings) use (&$count, $graceMinutes) {
             foreach ($bookings as $booking) {
                 if ($booking->isCancelled() || ! $booking->isPastCheckoutGracePeriod($graceMinutes)) {
                     continue;

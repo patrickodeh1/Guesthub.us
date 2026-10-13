@@ -7,7 +7,12 @@ function loadReader() {
     if (!readerPromise) {
         readerPromise = import('zxing-wasm/reader').then((m) => {
             const overrides = {
-                locateFile: (path, prefix) => (path.endsWith('.wasm') ? wasmUrl : prefix + path),
+                locateFile: (path, prefix) =>
+                    path.endsWith('.wasm')
+                        ? (import.meta.env.PROD
+                            ? new URL(wasmUrl.split('/').pop(), import.meta.url).href
+                            : wasmUrl)
+                        : prefix + path,
             };
             if (typeof m.setZXingModuleOverrides === 'function') {
                 m.setZXingModuleOverrides(overrides);

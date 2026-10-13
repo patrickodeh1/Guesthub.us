@@ -8,18 +8,20 @@ use Illuminate\Console\Command;
 
 class SendRegistrationReminders extends Command
 {
-    protected $signature = 'bookings:send-registration-reminders';
+    protected $signature = 'bookings:send-registration-reminders {--days=7 : Only guests checking in within this many days}';
 
     protected $description = 'Daily nudge to guests who have not finished registration or still have something pending';
 
     public function handle(): int
     {
         $today = now()->setTimezone(config('app.display_timezone'))->toDateString();
+        $until = now()->setTimezone(config('app.display_timezone'))->addDays(max(1, (int) $this->option('days')))->toDateString();
 
         $bookings = Booking::query()
             ->notArchived()
             ->whereNull('cancelled_at')
             ->whereDate('check_in_date', '>=', $today)
+            ->whereDate('check_in_date', '<=', $until)
             ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', ['guest_approved', 'checked_in', 'checked_out', 'cancelled']))
             ->where(fn ($q) => $q->whereNull('last_registration_reminder_at')->orWhere('last_registration_reminder_at', '<=', now()->subHours(20)))
             ->with('property')

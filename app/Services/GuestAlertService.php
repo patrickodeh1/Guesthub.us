@@ -35,11 +35,11 @@ class GuestAlertService
         'registration_received' => [
             'label' => 'Registration completed',
             'default_guest_message' => "Hi {guest_first_name}, thanks for registering for {property_name}. We're reviewing your details now and will let you know as soon as the next step is ready.",
-            'default_staff_message' => 'New registration submitted for {property_name} by {guest_name}. Review it in the admin panel.',
+            'default_staff_message' => 'New registration submitted for {property_name} by {guest_name}. Review it: {admin_link}',
         ],
         'background_check_complete' => [
             'label' => 'Background check complete',
-            'default_guest_message' => "Hi {guest_first_name}, your {step_name} for {property_name} is complete. Your incidentals hold is now ready. Visit your check-in link to see the amount and complete payment.",
+            'default_guest_message' => "Hi {guest_first_name}, your {step_name} for {property_name} is complete. Your incidentals hold is now ready. Visit your check-in link to see the amount and complete payment: {guest_link}",
             'default_staff_message' => "{guest_name}'s {step_name} for {property_name} came back complete.",
         ],
         'fully_approved' => [
@@ -54,7 +54,7 @@ class GuestAlertService
         ],
         'checkin_ready' => [
             'label' => 'Unit ready to check in',
-            'default_guest_message' => "Hi {guest_first_name}, your unit at {property_name} is ready. Visit your check-in link to complete check-in and unlock your guide.",
+            'default_guest_message' => "Hi {guest_first_name}, your unit at {property_name} is ready. Visit your check-in link to complete check-in and unlock your guide: {guest_link}",
             'default_staff_message' => "{guest_name}'s unit at {property_name} is ready and they have been approved to check in.",
         ],
         'checkin_completed' => [
@@ -89,7 +89,7 @@ class GuestAlertService
         ],
         'early_checkin_granted' => [
             'label' => 'Early check-in granted',
-            'default_guest_message' => 'Hi {guest_first_name}, your early check-in request for {property_name} has been approved. Please visit your check-in link to complete payment.',
+            'default_guest_message' => 'Hi {guest_first_name}, your early check-in request for {property_name} has been approved. Please visit your check-in link to complete payment: {guest_link}',
             'default_staff_message' => 'Early check-in was granted for {guest_name} at {property_name}.',
         ],
         'late_checkout_granted' => [
@@ -165,16 +165,16 @@ class GuestAlertService
         'photo_id_uploaded' => [
             'label' => 'Photo ID uploaded',
             'default_guest_message' => 'Hi {guest_first_name}, your photo ID for {property_name} was received and is being reviewed. No action needed for now.',
-            'default_staff_message' => '{guest_name} uploaded a photo ID for {property_name}. Please log in and review it.',
+            'default_staff_message' => '{guest_name} uploaded a photo ID for {property_name}. Review it: {admin_link}',
         ],
         'photo_id_declined' => [
             'label' => 'Photo ID declined',
-            'default_guest_message' => 'Hi {guest_first_name}, the {id_side} of your ID for {property_name} was not approved. Reason: {decline_reason}. Please log back in to re-upload it.',
+            'default_guest_message' => 'Hi {guest_first_name}, the {id_side} of your ID for {property_name} was not approved. Reason: {decline_reason}. Please re-upload it here: {guest_link}',
             'default_staff_message' => 'The {id_side} of {guest_name}\'s ID for {property_name} was declined. Reason: {decline_reason}. Guest has been asked to re-upload.',
         ],
         'photo_id_expired' => [
             'label' => 'Photo ID expired',
-            'default_guest_message' => 'Hi {guest_first_name}, the ID you uploaded for {property_name} appears to be expired. Please log back in and upload a current, unexpired government ID so we can finish your check-in.',
+            'default_guest_message' => 'Hi {guest_first_name}, the ID you uploaded for {property_name} appears to be expired. Please upload a current, unexpired government ID so we can finish your check-in: {guest_link}',
             'default_staff_message' => 'The ID {guest_name} uploaded for {property_name} appears to be expired. They have been asked to re-upload a valid ID.',
         ],
     ];
@@ -379,11 +379,11 @@ class GuestAlertService
         // shows the app name).
         $subject = trim($booking->guest_name.' '.$label);
 
-        if ($row['guest_sms'] && $booking->phone) {
+        if (trim($guestMessage) !== '' && $row['guest_sms'] && $booking->phone) {
             SmsNotificationService::guestAlert($booking->phone, self::withSenderPrefix($guestMessage, $appName), true);
         }
 
-        if ($row['guest_email']) {
+        if (trim($guestMessage) !== '' && $row['guest_email']) {
             if ($booking->email) {
                 try {
                     Mail::to($booking->email)->send(new GuestAlertMail($label, $guestMessage, $subject, $booking->property?->guest_display_name));
@@ -396,7 +396,7 @@ class GuestAlertService
             }
         }
 
-        [$staffPhones, $staffEmails] = self::staffRecipients($row);
+        [$staffPhones, $staffEmails] = trim($staffMessage) !== '' ? self::staffRecipients($row) : [[], []];
 
         foreach ($staffPhones as $phone) {
             SmsNotificationService::guestAlert($phone, self::withSenderPrefix($staffMessage, $appName), false);
@@ -411,7 +411,7 @@ class GuestAlertService
                     Log::error("Guest alert email failed (staff, {$event}, {$recipient}): ".$e->getMessage());
                 }
             }
-        } elseif (self::anyStaffEmailEnabled($row)) {
+        } elseif (trim($staffMessage) !== '' && self::anyStaffEmailEnabled($row)) {
             Log::warning("Guest alert staff email skipped ({$event}): a staff email toggle is enabled but none of the enabled recipients have an email on file.");
         }
     }
@@ -538,7 +538,7 @@ class GuestAlertService
     {
         try {
             if (\Illuminate\Support\Facades\Route::has('guest.show')) {
-                return route('guest.show', $booking->token);
+                return $booking->publicUrl();
             }
         } catch (\Throwable $e) {
             Log::warning('guestLink failed: '.$e->getMessage());
@@ -549,8 +549,8 @@ class GuestAlertService
     protected static function adminLink(Booking $booking): string
     {
         try {
-            if (\Illuminate\Support\Facades\Route::has('admin.bookings.show')) {
-                return route('admin.bookings.show', $booking);
+            if (\Illuminate\Support\Facades\Route::has('admin.guests.show')) {
+                return route('admin.guests.show', $booking);
             }
         } catch (\Throwable $e) {
             Log::warning('adminLink failed: '.$e->getMessage());
