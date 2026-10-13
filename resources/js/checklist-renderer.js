@@ -357,11 +357,12 @@ export default function checklistRenderer(config = {}) {
             const counts = this.sessionData.counts[phase] || { total: 0, checked: 0 };
             const LB = window.GH_LOCKBOX;
             const lockTask = tasks.find(t => t.type === 'lockbox');
+            const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             const lockGate = !!(lockTask && LB && !LB.done());
             const lockHtml = (lockTask && LB) ? `
-                <div class="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-                    <p class="font-semibold text-gray-900">Change the lockbox code</p>
-                    <p class="mt-1 text-sm text-gray-600">Set a new code on the lockbox, then enter it here so the next guest gets the right one.</p>
+                <div class="m-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p class="font-semibold text-gray-900">${esc(lockTask.name || 'Change the lockbox code')}</p>
+                    <p class="mt-1 text-sm text-gray-600">${esc(lockTask.instructions || 'Set a new code on the lockbox, then enter it here so the next guest gets the right one.')}</p>
                     <div class="mt-3 flex gap-2">
                         <input type="text" id="gh-lockbox-input" maxlength="255" autocomplete="off" inputmode="numeric" placeholder="New code" class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm">
                         <button type="button" onclick="window.ghSaveLockbox(this)" class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white">Save code</button>
@@ -403,12 +404,12 @@ export default function checklistRenderer(config = {}) {
                             </div>
                         </div>
                         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50 shadow-sm">
-                            ${tasks.filter(t => t.type !== 'lockbox').length > 0 ? tasks.filter(t => t.type !== 'lockbox').map(task => this.renderTaskItem(task, null)).join('') : `<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${title.toLowerCase()} defined.</p>`}
+                            ${tasks.length > 0 ? tasks.map(task => task === lockTask ? lockHtml : (task.type === 'lockbox' ? '' : this.renderTaskItem(task, null))).join('') : `<p class="text-center text-gray-500 dark:text-gray-400 py-8 text-sm">No ${title.toLowerCase()} defined.</p>`}
                         </div>
                     </div>
                     ${(() => {
                         return `
-                        ${lockHtml}<div class="mt-8 flex justify-end">
+                        <div class="mt-8 flex justify-end">
                             <button type="button"
                                     id="gh-next-stage" ${lockGate ? 'disabled style="opacity:.5"' : ''} @click="window.checklistHandler.saveProgress()"
                                     class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto">
