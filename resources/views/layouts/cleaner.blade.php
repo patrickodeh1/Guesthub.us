@@ -62,6 +62,11 @@
     </div>
 </section>
 </main>
+{{-- gh-cleaner-parity --}}
+@include('layouts.partials.cleaning-toasts')
+@include('layouts.partials.cleaning-modals')
+@stack('modals')
+
 
 <script>
         window.gtranslateSettings = {
@@ -74,5 +79,6 @@
         };
     </script>
 <script src="https://cdn.gtranslate.net/widgets/latest/dropdown.js"></script>
+@stack('scripts')
 </body>
 </html>
