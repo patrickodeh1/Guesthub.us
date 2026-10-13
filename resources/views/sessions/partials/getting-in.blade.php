@@ -18,12 +18,7 @@
         $giGate = $isAssignedCleaner && $session->status === 'pending' && count($accessSteps) > 0;
         $giVerifiedNow = \App\Services\CleanerAccessSteps::locationVerified($session);
     @endphp
-    @if ($giGate)
-        <div id="getting-in-start" class="guest-portal-card p-6 text-center">
-            <button type="button" id="getting-in-start-btn" class="guest-primary-btn w-full">{{ $giVerifiedNow ? 'Begin' : 'Start' }}</button>
-        </div>
-    @endif
-    <div id="step-wizard-parking-wrapper" @if ($giGate) style="display:none" @endif>
+    <div id="step-wizard-parking-wrapper">
             @php
                 $giVerified = \App\Services\CleanerAccessSteps::locationVerified($session);
                 $giPre = $isAssignedCleaner && $session->status === 'pending' && ! $giVerified;
@@ -61,7 +56,7 @@
                 if (startCard) startCard.style.display = "none";
                 wrap.style.display = "";
                 var root = el("step-wizard-parking"); if (root) root.style.display = "";
-                var g = el("pending-gate"); if (g && startCard) g.style.display = "none";
+                var g = el("pending-gate"); if (g) g.style.display = "none";
                 toTop();
             }
             function showGate() {
@@ -71,7 +66,7 @@
                 var g = el("pending-gate");
                 if (g) {
                     g.style.display = "";
-                    if (startCard && !el("gh-gate-back")) {
+                    if (!el("gh-gate-back")) {
                         var b = document.createElement("button");
                         b.type = "button"; b.id = "gh-gate-back";
                         b.className = "guest-outline-btn mb-3"; b.style.display = "block"; b.style.margin = "0 auto 12px";
