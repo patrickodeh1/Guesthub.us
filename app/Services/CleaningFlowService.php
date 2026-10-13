@@ -192,23 +192,25 @@ class CleaningFlowService
             }
 
             $cols = array_values(array_filter(['phone', 'phone_number'], fn ($c) => Schema::hasColumn('users', $c)));
-            $user = User::query()->get(array_merge(['id', 'name'], $cols))->first(
+            $users = User::query()->get(array_merge(['id', 'name'], $cols))->filter(
                 fn ($u) => in_array($digits, array_map(fn ($c) => SmsConsentService::normalizePhone($u->{$c}), $cols), true)
             );
-            if (! $user) {
+            if ($users->isEmpty()) {
                 Log::info('SMS-LOG in IGNORED: no user has the number '.SmsNotificationService::maskPhone($phone).' (check phone_number on the cleaner).');
                 return false;
             }
 
+            // Several users can share one phone number: look at all of their pending cleanings.
             $pending = CleaningSession::with('property')
-                ->where('housekeeper_id', $user->id)
+                ->whereIn('housekeeper_id', $users->pluck('id'))
                 ->where('assignment_status', 'pending_confirmation')
                 ->whereDate('scheduled_date', '>=', now()->toDateString())
                 ->orderBy('scheduled_date')->get();
             if ($pending->isEmpty()) {
-                Log::info("SMS-LOG in IGNORED: {$user->name} has no cleaning waiting for confirmation.");
+                Log::info('SMS-LOG in IGNORED: no cleaning waiting for confirmation for '.$users->pluck('name')->implode(', ').'.');
                 return false;
             }
+            $user = $users->firstWhere('id', $pending->first()->housekeeper_id) ?? $users->first();
 
             if (! $isAnswer) {
                 SmsNotificationService::deliver($phone, 'Please reply Y to confirm or N to decline your cleaning assignment.', 'cleaning');

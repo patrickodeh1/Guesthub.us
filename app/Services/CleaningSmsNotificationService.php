@@ -298,6 +298,19 @@ class CleaningSmsNotificationService
     }
 
     /**
+     * Tell the assigned cleaner their cleaning starts soon (about an hour). Once per job.
+     */
+    public static function sendStartReminder(CleaningSession $session, int $minutesAway): void
+    {
+        $property = $session->property;
+        $time = $session->scheduled_time ? $session->scheduled_time->format('g:i A') : '';
+        $lead = $minutesAway >= 50 ? '1 hour' : "{$minutesAway} minutes";
+        $message = "Reminder: your cleaning at {$property->internal_display_name} starts in {$lead}" . ($time ? " ({$time})." : '.');
+
+        self::dispatchToCleaner($session, 'start_reminder_1h', $message);
+    }
+
+    /**
      * Send "Cleaning almost finished" (session reached the photos stage).
      */
     public static function sendAlmostDone(CleaningSession $session): void

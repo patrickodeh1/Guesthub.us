@@ -51,6 +51,9 @@ Schedule::command('bookings:send-arrival-soon')->everyTenMinutes();
 Schedule::command('cleaning:sync-checkout-sessions')->hourly();
 Schedule::command('cleaning:alert-unconfirmed')->everyFifteenMinutes()->withoutOverlapping(10);
 
+// Texts the confirmed cleaner about an hour before their cleaning starts (once per job).
+Schedule::command('cleaning:send-start-reminders')->everyFiveMinutes()->withoutOverlapping(4);
+
 // Sends pending availability / rate / restriction changes to Channex.
 // The channex_outbox table is the queue; no queue worker is needed.
 Schedule::command('channex:push-outbox')->everyMinute()->withoutOverlapping(10);
