@@ -6,7 +6,7 @@
     $adminView = ! $isAssignedCleaner;
 @endphp
 
-@if (! ($isAssignedCleaner && $session->status !== 'pending'))
+@if ($isAssignedCleaner && $session->status === 'pending')
 <div id="getting-in" class="mb-4">
 @if ($adminView)
 <details class="guest-portal-card p-4">
@@ -47,7 +47,8 @@
 
 
         <script>
-        (function () {
+        /* gh-dom-ready */
+        document.addEventListener("DOMContentLoaded", function () {
             var startCard = document.getElementById("getting-in-start");
             var startBtn = document.getElementById("getting-in-start-btn");
             var wrap = document.getElementById("step-wizard-parking-wrapper");
@@ -87,7 +88,7 @@
                 showGate();
             });
             try { if (localStorage.getItem(key)) showGate(); } catch (e) {}
-        })();
+        });
         </script>
 @if ($adminView)
     </div>
