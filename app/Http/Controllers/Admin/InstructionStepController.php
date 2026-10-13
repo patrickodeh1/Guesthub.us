@@ -253,7 +253,22 @@ class InstructionStepController extends Controller
         unset($data['existing_image_path']);
 
         $data['active'] = $request->boolean('active', true);
-        $data['visibility'] = $request->input('visibility', 'all');
+        // Audience checkboxes: the admin ticks everyone who should see this step.
+        $gp = $request->boolean('for_guest_parking');
+        $gn = $request->boolean('for_guest_no_parking');
+        $cl = $request->boolean('for_cleaner');
+        $data['for_guest_parking'] = $gp;
+        $data['for_guest_no_parking'] = $gn;
+        $data['for_cleaner'] = $cl;
+        // Keep the legacy column roughly in sync (rollback safety only; nothing reads it any more).
+        $data['visibility'] = match (true) {
+            $gp && $gn && $cl   => 'all',
+            $gp && $gn          => 'guests_only',
+            $cl && ! $gp && ! $gn => 'cleaners_only',
+            $gp && ! $gn        => 'parkers_only',
+            $gn && ! $gp        => 'non_parkers_only',
+            default             => 'all',
+        };
         if (\Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')) {
             $data['show_before_gps'] = $request->boolean('show_before_gps');
         } else {

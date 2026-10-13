@@ -169,6 +169,13 @@
                                         <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
                                             Edit Schedule
                                         </x-dropdown-link>
+                                        {{-- gh-confirm-manually --}}
+                                        @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->housekeeper_id && $s->status === 'pending' && $s->assignment_status === 'pending_confirmation')
+                                        <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
+                                            @click="fetch('{{ route('admin.cleaning-jobs.confirm-manually') }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ session_id: {{ $s->id }} }) }).then(r => r.ok ? window.location.reload() : r.json().then(j => alert(j.message || 'Could not confirm this job.'))).catch(() => alert('Network error. Please try again.'))">
+                                            Confirm manually
+                                        </button>
+                                        @endif
                                         <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete assignment?')">
                                             @csrf @method('delete')
                                             <input type="hidden" name="_return_to" value="{{ $currentUrl }}">
@@ -237,6 +244,13 @@
                                                     <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
                                                         Edit Schedule
                                                     </x-dropdown-link>
+                                                    {{-- gh-confirm-manually --}}
+                                                    @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->housekeeper_id && $s->status === 'pending' && $s->assignment_status === 'pending_confirmation')
+                                                    <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
+                                                        @click="fetch('{{ route('admin.cleaning-jobs.confirm-manually') }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: JSON.stringify({ session_id: {{ $s->id }} }) }).then(r => r.ok ? window.location.reload() : r.json().then(j => alert(j.message || 'Could not confirm this job.'))).catch(() => alert('Network error. Please try again.'))">
+                                                        Confirm manually
+                                                    </button>
+                                                    @endif
                                                     <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete assignment?')">
                                                         @csrf @method('delete')
                                                         <input type="hidden" name="_return_to" value="{{ $currentUrl }}">

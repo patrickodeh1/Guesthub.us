@@ -231,15 +231,6 @@
                 </div>
             </x-card>
         
-            @php
-                $exitStepsFinal = \App\Services\CleanerAccessSteps::exitForSession($session);
-                $gateExit = false;
-            @endphp
-            @if ($gateExit)
-                <div id="leaving" class="mb-2">
-                    <x-step-wizard :steps="$exitStepsFinal" type="exit" kicker="Before you leave" done-label="Got it" next-section="complete-area" />
-                </div>
-            @endif
             <div id="complete-area">
             {{-- Notes and Submission --}}
             <x-card class="p-6">
@@ -268,18 +259,6 @@
                 </form>
             </x-card>
             </div>
-            @if ($gateExit)
-                <script>
-                document.addEventListener("DOMContentLoaded", function () {
-                    var btn = document.getElementById("submit-checklist-btn");
-                    var done = document.getElementById("wizard-done-exit");
-                    if (!btn || !done) return;
-                    btn.disabled = true;
-                    btn.title = "Finish the checkout steps first";
-                    done.addEventListener("click", function () { btn.disabled = false; btn.title = ""; });
-                });
-                </script>
-            @endif
         </div>
     @endif
 </div>

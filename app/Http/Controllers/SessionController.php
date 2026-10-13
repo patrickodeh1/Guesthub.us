@@ -1039,13 +1039,18 @@ class SessionController extends Controller
                 report($e);
             }
         }
+        // gh-verify-first: the assigned cleaner must have verified location before Begin.
+        if ((int) $session->housekeeper_id === (int) auth()->id()
+            && ! \App\Services\CleanerAccessSteps::locationVerified($session)) {
+            return back()->withErrors(['gps' => 'Please verify your location first.']);
+        }
         $lat = (float) $request->validated('latitude');
         $lng = (float) $request->validated('longitude');
 
         $property = $session->property;
 
         // Geofence (only if property has coordinates)
-        if ($property->latitude !== null && $property->longitude !== null) {
+        if (! \App\Services\CleanerAccessSteps::locationVerified($session) && $property->latitude !== null && $property->longitude !== null) {
             $distance = GpsService::distanceMeters(
                 $lat,
                 $lng,

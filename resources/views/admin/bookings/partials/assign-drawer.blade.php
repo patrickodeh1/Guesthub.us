@@ -19,10 +19,6 @@
                 <div><label class="field-label">Time</label><input type="time" class="input mt-1 w-full" x-model="form.scheduled_time"></div>
             </div>
             <p class="text-xs text-slate-500">The cleaner gets a text and is assigned once they reply YES.</p>
-            <div x-show="info.assignment_status === 'pending_confirmation'" x-cloak class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p><span class="font-semibold" x-text="info.housekeeper_name"></span> has not replied yet.</p>
-                <button type="button" class="btn-secondary mt-2" @click="confirmManually()" :disabled="saving">Confirm manually (text isn't working)</button>
-            </div>
             <div x-show="conflictsActive" x-cloak role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                 <p class="font-semibold">This assignment has conflicts:</p>
                 <ul class="mt-2 list-disc space-y-1 pl-5"><template x-for="c in conflicts" :key="c.message"><li x-text="c.message"></li></template></ul>
@@ -44,16 +40,6 @@ window.bookingAssign = function (cfg) {
         info: { property_id: null, property_name: '', guest: '', session_id: null, cleaners: [] },
         form: { housekeeper_id: '', scheduled_date: '', scheduled_time: '' },
         closeAssign() { if (!this.saving) this.assignOpen = false; },
-        async confirmManually() {
-            this.saving = true; this.error = '';
-            try {
-                const res = await fetch(cfg.confirmUrl, { method: 'POST', headers, body: JSON.stringify({ session_id: this.info.session_id }) });
-                const r = await res.json().catch(() => ({}));
-                if (!res.ok) { this.error = r.message || 'Could not confirm this job.'; return; }
-                window.location.reload();
-            } catch (e) { this.error = 'Network error. Please try again.'; }
-            finally { this.saving = false; }
-        },
         async openFor(detail) {
             this.assignOpen = true; this.loaded = false; this.error = ''; this.conflictsActive = false;
             this.info = { property_id: null, property_name: '', guest: '', session_id: null, cleaners: [] };

@@ -3,7 +3,10 @@
     use App\Models\ChecklistItem;
 @endphp
 
-<x-app-layout>
+@php
+    $cleanerLayout = ! (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']));
+@endphp
+<x-dynamic-component :component="$cleanerLayout ? 'cleaner-layout' : 'app-layout'">
     <div class="cleaner-skin-marker" hidden></div>
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -34,6 +37,30 @@
             </div>
         </div>
     </x-slot>
+
+    @php
+        $ghAwaitingConfirm = $cleanerLayout
+            && ! request()->has('edit_report')
+            && $session->status === 'pending'
+            && $session->assignment_status === 'pending_confirmation';
+    @endphp
+    @if ($ghAwaitingConfirm)
+        {{-- gh-confirm-gate --}}
+        <div class="guest-portal-card p-6 text-center">
+            @php
+                $ghLogo = \App\Support\Branding::logoUrl();
+                $ghSite = \App\Support\Branding::siteName();
+            @endphp
+            @if ($ghLogo)
+                <img src="{{ $ghLogo }}" alt="{{ $ghSite }}" class="mx-auto mb-3 h-9 w-auto object-contain">
+            @else
+                <p class="mb-3 text-sm font-semibold text-slate-700">{{ $ghSite }}</p>
+            @endif
+            <p class="guest-status-kicker">Job status</p>
+            <h2 class="mt-2 text-lg font-bold text-slate-900">Awaiting your confirmation</h2>
+            <p class="mt-2 text-sm text-slate-600">Reply to the text message to confirm this job. The details will appear here once it is confirmed.</p>
+        </div>
+    @else
 
 @php
     $queryParams = [];
@@ -191,7 +218,6 @@
         @if ($session->status !== 'completed')
             @include('sessions.partials.getting-in')
             @include('sessions.partials.door')
-            @include('sessions.partials.leaving')
             @include('sessions.partials.lockbox')
             @php
                 $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
@@ -271,18 +297,21 @@
                         <x-button disabled size="lg">Start Session</x-button>
                     @else
                         <div class="mb-6">
-                            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                                <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
+                            {{-- gh-ready-gate --}}
+                            @php
+                                $ghLogo = \App\Support\Branding::logoUrl();
+                                $ghSite = \App\Support\Branding::siteName();
+                            @endphp
+                            @if ($ghLogo)
+                                <img src="{{ $ghLogo }}" alt="{{ $ghSite }}" class="mx-auto mb-4 h-10 w-auto object-contain">
+                            @endif
                             <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Ready to Start</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">
-                                Please ensure you're at the property location. GPS will be used to verify your location.
-                            </p>
+                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id())
+                                <p class="text-gray-600 dark:text-gray-400 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
+                            @endif
                         </div>
 
-                        @if ($session->gps_override_enabled)
+                        @if ($session->gps_override_enabled && $is_admin)
                             <div class="mb-6 bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
                                 <svg class="w-4 h-4 inline-block mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
                                 <strong>GPS Override Active</strong> - Approved by {{ $session->gpsOverrideApprovedBy?->name ?? 'Admin' }}
@@ -296,13 +325,11 @@
                             <x-form.input type="hidden" name="latitude" id="lat" />
                             <x-form.input type="hidden" name="longitude" id="lng" />
                             @if(!empty($requiresOnboarding) && $requiresOnboarding)
-                                <x-button type="button" id="start-btn" size="lg" class="w-full sm:w-auto" x-data @click="$dispatch('open-modal', 'onboarding-modal')">Start Session</x-button>
+                                <x-button type="button" id="start-btn" size="lg" class="w-full justify-center" x-data @click="$dispatch('open-modal', 'onboarding-modal')">Begin</x-button>
                             @else
-                                <x-button id="start-btn" size="lg" class="w-full sm:w-auto">Start Session</x-button>
+                                <x-button id="start-btn" size="lg" class="w-full justify-center">Begin</x-button>
                             @endif
-                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400" id="location-status">
-                                Checking location...
-                            </p>
+                            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400" id="location-status"></p>
                         </form>
                         @else
                         <div id="verify-location-card">
@@ -380,7 +407,7 @@
             @endif
 
             {{-- GPS capture and location verification --}}
-            @if (!isset($isViewOnly) || !$isViewOnly)
+            @if ((!isset($isViewOnly) || !$isViewOnly) && (int) $session->housekeeper_id !== (int) auth()->id()) {{-- gh-no-gps-for-cleaner --}}
                 @include('sessions.partials.gps-script', [
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
@@ -745,4 +772,5 @@
 
 {{-- Task-Level Training Requirement Modal --}}
 @include('sessions.partials.training-modal')
-</x-app-layout>
+@endif
+</x-dynamic-component>

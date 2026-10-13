@@ -35,7 +35,7 @@
         locationCheckAttempts++;
 
         if (overrideEnabled) {
-            locationStatus.innerHTML = '<span class="text-green-600 dark:text-green-400">✓ GPS Override Active. You may start the session.</span>';
+            locationStatus.innerHTML = '';
             startBtn.disabled = false;
             return;
         }
@@ -56,9 +56,9 @@
 
         // Update status
         if (locationCheckAttempts === 1) {
-            locationStatus.textContent = 'Requesting location access...';
+            locationStatus.textContent = '';
         } else {
-            locationStatus.textContent = `Retrying location (${locationCheckAttempts}/${maxAttempts})...`;
+            locationStatus.textContent = '';
         }
 
         const options = {
@@ -87,14 +87,14 @@
                     const distance = R * c;
 
                     if (distance <= propertyRadius) {
-                        locationStatus.innerHTML = '<span class="text-green-600 dark:text-green-400">✓ Location verified. You\'re at the property.</span>';
+                        locationStatus.innerHTML = '';
                         startBtn.disabled = false;
                     } else {
                         locationStatus.innerHTML = '<span class="text-red-600 dark:text-red-400">⚠ GPS validation failed. You\'re ' + Math.round(distance) + 'm away from the property. <button type="button" onclick="checkLocation()" class="underline">Retry</button></span>';
                         startBtn.disabled = true;
                     }
                 } else {
-                    locationStatus.innerHTML = '<span class="text-green-600 dark:text-green-400">✓ Location captured. Property location not set, so verification skipped.</span>';
+                    locationStatus.innerHTML = '';
                     startBtn.disabled = false;
                 }
                 locationCheckAttempts = 0; // Reset on success

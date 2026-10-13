@@ -24,15 +24,13 @@ class CleanerAccessSteps
         $parking = false;
         $property = $session->property;
         $preStart = self::isPreStart($session);
+        if ($preStart) { return []; } // gh-verify-first: no access steps until location is verified
 
         return InstructionStep::where('property_id', $session->property_id)
             ->whereIn('type', $parking ? ['checkin', 'parking'] : ['checkin'])
             ->where('active', true)
             ->when($preStart, fn ($q) => $q->where('show_before_gps', true))
-            ->where(fn ($q) => $parking
-                ? $q->where('visibility', '!=', 'non_parkers_only')
-                : $q->where('visibility', '!=', 'parkers_only'))
-            ->where(fn ($q) => $q->whereNull('visibility')->orWhere('visibility', '!=', 'guests_only'))
+            ->where('for_cleaner', true)
             ->orderByRaw("case when type = 'checkin' then 0 else 1 end")
             ->orderBy('sort_order')
             ->with('images')
@@ -68,7 +66,7 @@ class CleanerAccessSteps
 
         return InstructionStep::where('property_id', $session->property_id)
             ->where('type', 'checkout')
-            ->where(fn ($q) => $q->whereNull('visibility')->orWhereIn('visibility', ['all', 'cleaners_only']))
+            ->where('for_cleaner', true)
             ->where('active', true)
             ->orderBy('sort_order')
             ->with('images')
