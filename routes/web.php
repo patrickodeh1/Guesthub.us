@@ -591,7 +591,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
-    Route::post('/sessions/{session}/parking', [CleaningSessionController::class, 'setParking'])->name('sessions.parking');
     Route::post('/sessions/{session}/lockbox', [\App\Http\Controllers\SessionLockboxController::class, 'update'])->name('sessions.lockbox');
     Route::post('/sessions/{session}/door/{lock}/unlock', [\App\Http\Controllers\SessionDoorController::class, 'unlock'])->name('sessions.door.unlock');
     Route::post('/sessions/{session}/door/{lock}/lock', [\App\Http\Controllers\SessionDoorController::class, 'lock'])->name('sessions.door.lock');

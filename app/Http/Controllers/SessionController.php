@@ -798,20 +798,6 @@ class SessionController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function setParking(Request $request, CleaningSession $session)
-    {
-        $this->assertSessionAccess($session);
-        abort_unless(
-            (int) $session->housekeeper_id === (int) auth()->id() || auth()->user()->hasRole('admin'),
-            403
-        );
-
-        $data = $request->validate(['parking_needed' => ['required', 'boolean']]);
-        $session->update(['parking_needed' => (bool) $data['parking_needed']]);
-
-        return redirect()->to(route('sessions.show', $session) . '#getting-in');
-    }
-
     public function show(CleaningSession $session)
     {
         $this->assertSessionAccess($session);
@@ -1033,8 +1019,25 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
 
-        if ($session->assignment_status === 'pending_confirmation' && ! auth()->user()?->hasRole('admin')) {
-            return back()->withErrors(['session' => 'Reply YES to your assignment text before starting this cleaning.']);
+        // gh-confirm-on-start: cleaners are never blocked; starting the job confirms it.
+        if ($session->assignment_status === 'pending_confirmation'
+            && $session->housekeeper_id
+            && (int) $session->housekeeper_id === (int) auth()->id()) {
+            $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
+            try {
+                \App\Services\ActivityLogService::admin(
+                    'cleaning_job_confirmed_on_start',
+                    (auth()->user()->name ?? 'Cleaner') . ' started the job without replying to the assignment text; marked confirmed.',
+                    'cleaning',
+                    [
+                        'property_id' => $session->property_id,
+                        'subject_type' => \App\Models\CleaningSession::class,
+                        'subject_id' => $session->id,
+                    ]
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
         $lat = (float) $request->validated('latitude');
         $lng = (float) $request->validated('longitude');

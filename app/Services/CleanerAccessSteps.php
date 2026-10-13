@@ -19,11 +19,9 @@ class CleanerAccessSteps
             return [];
         }
 
-        if ($session->parking_needed === null) {
-            return [];
-        }
-
-        $parking = (bool) $session->parking_needed;
+        // gh-no-parking-for-cleaners: cleaners park in the staff area, so they
+        // always get the same steps as guests without parking.
+        $parking = false;
         $property = $session->property;
         $preStart = self::isPreStart($session);
 

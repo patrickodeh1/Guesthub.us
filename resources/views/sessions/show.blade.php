@@ -22,9 +22,16 @@
                     @endif
                 </p>
             </div>
-            @if($session->status !== 'pending')
+            <div class="flex flex-col items-end gap-1" data-gh-assignment-chip>{{-- gh-assignment-chip --}}
+                @if($session->housekeeper_id && $session->status === 'pending' && $session->assignment_status === 'pending_confirmation')
+                    <span class="inline-flex items-center rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">{{ (auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()) ? 'Awaiting your confirmation' : 'Awaiting cleaner reply' }}</span>
+                @elseif($session->housekeeper_id && $session->status === 'pending' && $session->assignment_status === 'confirmed')
+                    <span class="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Confirmed</span>
+                @endif
+                @if($session->status !== 'pending')
                 <span data-status-badge><x-status-badge :status="$session->status" /></span>
             @endif
+            </div>
         </div>
     </x-slot>
 
@@ -243,7 +250,7 @@
         @if ($session->status === 'pending')
             @php
             $gateCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
-            $gateWait = $gateCleaner && ($session->parking_needed === null || count($accessSteps ?? []) > 0);
+            $gateWait = $gateCleaner && count($accessSteps ?? []) > 0;
         @endphp
         <div id="pending-gate" @if ($gateWait) style="display:none" @endif>
             <x-card class="p-8">
@@ -300,7 +307,7 @@
                         @else
                         <div id="verify-location-card">
                             <p class="text-gray-600 dark:text-gray-400 mb-4">Verify you are at the property to unlock your directions and the door. Then you can start your session.</p>
-                            <x-button type="button" id="verify-loc-btn" size="lg" class="w-full sm:w-auto">Verify my location</x-button>
+                            <div class="flex justify-center" data-gh-verify-center>{{-- gh-verify-center --}}<x-button type="button" id="verify-loc-btn" size="lg" class="mx-auto w-full sm:w-auto justify-center">Verify my location</x-button></div>
                             <p id="verify-loc-msg" class="mt-3 text-sm text-gray-500"></p>
                         </div>
                         <script>
