@@ -531,7 +531,7 @@ class GuestAlertService
     {
         $appName = trim($appName);
 
-        return $appName !== '' ? "{$appName}: {$message}" : $message;
+        return $message; // sender prefix removed on request
     }
 
     protected static function guestLink(Booking $booking): string

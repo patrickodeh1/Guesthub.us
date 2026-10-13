@@ -80,16 +80,17 @@ class CleaningFlowService
                 $changed = $session->scheduled_date?->toDateString() !== $date || $oldTime !== $newTime;
 
                 if ($changed && ! $session->schedule_overridden) {
+                    $oldWhen = $session->scheduled_date ? self::whenLabel($session->scheduled_date, $session->scheduled_time) : null;
                     $session->update(['scheduled_date' => $date, 'scheduled_time' => $time]);
                     if ($session->housekeeper_id) {
-                        self::notifyAssigned($session->fresh(), true);
+                        self::notifyAssigned($session->fresh(), true, $oldWhen);
                     }
                 } elseif ($changed && $session->schedule_overridden && $session->housekeeper_id && $newTime) {
                     $cleanStart = $session->scheduled_date->copy()->setTimeFromTimeString($oldTime ?? '00:00');
                     $checkout = \Carbon\Carbon::parse("{$date} {$newTime}");
                     $key = 'checkout_moved_alert_'.$session->id.'_'.$date.'_'.$newTime;
                     if ($cleanStart->lt($checkout) && \Illuminate\Support\Facades\Cache::add($key, 1, now()->addDay())) {
-                        self::alertAdmins("Checkout moved to {$checkout->format('D, M j g:i A')} but the cleaning at {$property->internal_display_name} is still set for {$cleanStart->format('D, M j g:i A')}. Please review.");
+                        // Checkout moved but the cleaning time was set by hand: no alert needed.
                     }
                 }
             }
@@ -127,7 +128,7 @@ class CleaningFlowService
     }
 
     /** Text the cleaner their assignment and wait for YES/NO. */
-    public static function notifyAssigned(CleaningSession $session, bool $changed = false): void
+    public static function notifyAssigned(CleaningSession $session, bool $changed = false, ?string $oldWhen = null): void
     {
         try {
             $user = $session->housekeeper;
@@ -143,9 +144,13 @@ class CleaningFlowService
             }
 
             $p = $session->property;
-            $when = $session->scheduled_date->format('D, M j').($session->scheduled_time ? ' at '.$session->scheduled_time->format('g:i A') : '');
-            $label = $changed ? 'Updated cleaning' : 'New cleaning';
-            $msg = "{$label}: {$p->internal_display_name} on {$when}. Reply YES to confirm or NO to decline (job {$session->id}).";
+            $when = self::whenLabel($session->scheduled_date, $session->scheduled_time);
+            if ($changed && $oldWhen) {
+                $msg = "Scheduled cleaning for {$p->internal_display_name} on {$oldWhen} has been moved to {$when}. To accept, reply Y or if you're not available reply N.";
+            } else {
+                $label = $changed ? 'Updated cleaning' : 'New cleaning';
+                $msg = "{$label} available at {$p->internal_display_name}, {$when}. Accept this job? Reply Y or N";
+            }
 
             $result = SmsNotificationService::deliver($phone, $msg, 'cleaning');
             NotificationLog::create([
@@ -161,7 +166,7 @@ class CleaningFlowService
             ]);
 
             if (! empty($result['error'])) {
-                self::alertAdmins("The assignment text to {$user->name} for {$p->internal_display_name} failed to send. Confirm the job manually if they accept another way.");
+                self::alertAdmins("The assignment text to {$user->name} for {$p->internal_display_name} on {$when} failed to send. Job will need to be confirmed manually.");
             }
             $session->forceFill(['assignment_status' => 'pending_confirmation', 'cleaner_notified_at' => now()])->saveQuietly();
         } catch (\Throwable $e) {
@@ -174,6 +179,7 @@ class CleaningFlowService
     {
         try {
             $text = trim($body);
+            Log::info('SMS-LOG in RECEIVED from '.SmsNotificationService::maskPhone($phone).': "'.mb_substr($text, 0, 40).'"');
             $m = [];
             $isAnswer = (bool) preg_match('/^[^A-Za-z0-9]*(yes|y|no|n)[^A-Za-z0-9]*(\d+)?[^A-Za-z0-9]*$/i', $text, $m);
             $word = strtoupper(preg_replace('/[^A-Za-z]/', '', $text));
@@ -190,6 +196,7 @@ class CleaningFlowService
                 fn ($u) => in_array($digits, array_map(fn ($c) => SmsConsentService::normalizePhone($u->{$c}), $cols), true)
             );
             if (! $user) {
+                Log::info('SMS-LOG in IGNORED: no user has the number '.SmsNotificationService::maskPhone($phone).' (check phone_number on the cleaner).');
                 return false;
             }
 
@@ -199,43 +206,33 @@ class CleaningFlowService
                 ->whereDate('scheduled_date', '>=', now()->toDateString())
                 ->orderBy('scheduled_date')->get();
             if ($pending->isEmpty()) {
+                Log::info("SMS-LOG in IGNORED: {$user->name} has no cleaning waiting for confirmation.");
                 return false;
             }
 
             if (! $isAnswer) {
-                SmsNotificationService::deliver($phone, 'Please reply YES to confirm or NO to decline your cleaning assignment.', 'cleaning');
+                SmsNotificationService::deliver($phone, 'Please reply Y to confirm or N to decline your cleaning assignment.', 'cleaning');
                 return true;
             }
 
             $yes = in_array(strtoupper($m[1]), ['YES', 'Y'], true);
-            $code = (isset($m[2]) && $m[2] !== '') ? (int) $m[2] : null;
-
-            if ($code !== null) {
-                $session = $pending->firstWhere('id', $code);
-                if (! $session) {
-                    SmsNotificationService::deliver($phone, "There is no pending cleaning with job {$code}.", 'cleaning');
-                    return true;
-                }
-            } elseif ($pending->count() > 1) {
-                $list = $pending->take(5)->map(fn ($x) => "job {$x->id}: ".$x->property->internal_display_name.' '.$x->scheduled_date->format('M j'))->implode('; ');
-                SmsNotificationService::deliver($phone, "You have {$pending->count()} pending cleanings. Reply with the job number, for example YES {$pending->first()->id}. {$list}", 'cleaning');
-                return true;
-            } else {
-                $session = $pending->first();
-            }
+            // Job numbers are not used: Y/N answers the oldest pending cleaning.
+            $session = $pending->first();
 
             $name = $session->property->internal_display_name;
-            $day = $session->scheduled_date->format('D, M j');
+            $day = self::whenLabel($session->scheduled_date, $session->scheduled_time);
 
             if ($yes) {
                 $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
+                Log::info("SMS-LOG in CONFIRMED: {$user->name} accepted cleaning session {$session->id}.");
                 SmsNotificationService::deliver($phone, "Confirmed: {$name} on {$day}. Thank you!", 'cleaning');
                 return true;
             }
 
             $session->forceFill(['housekeeper_id' => null, 'assignment_status' => 'unassigned'])->saveQuietly();
-            SmsNotificationService::deliver($phone, "Got it, you are off the cleaning at {$name} on {$day}.", 'cleaning');
-            self::alertAdmins("{$user->name} declined the cleaning at {$name} on {$day}. It still needs a cleaner.");
+            Log::info("SMS-LOG in DECLINED: {$user->name} declined cleaning session {$session->id}.");
+            SmsNotificationService::deliver($phone, "Thank you, We will schedule another cleaner.", 'cleaning');
+            self::alertAdmins("{$user->name} declined the cleaning at {$name} on {$day}.");
             return true;
         } catch (\Throwable $e) {
             Log::error('CleaningFlow reply failed: '.$e->getMessage());
@@ -259,7 +256,7 @@ class CleaningFlowService
             if (! \Illuminate\Support\Facades\Cache::add($key, 1, now()->addDays(3))) {
                 continue;
             }
-            self::alertAdmins(($x->housekeeper?->name ?? 'A cleaner').' has not replied to the cleaning at '.$x->property->internal_display_name.' on '.$x->scheduled_date->format('D, M j').". It is still waiting for YES/NO.");
+            self::alertAdmins(($x->housekeeper?->name ?? 'Cleaner')." hasn't confirmed ".$x->property->internal_display_name.' cleaning for '.self::whenLabel($x->scheduled_date, $x->scheduled_time));
             $sent++;
         }
         return $sent;
@@ -299,6 +296,11 @@ class CleaningFlowService
         foreach ($numbers as $n) {
             SmsNotificationService::deliver($n, $message, 'staff');
         }
+    }
+
+    private static function whenLabel($date, $time = null): string
+    {
+        return $date->format('D, M j').($time ? ' at '.$time->format('g:i A') : '');
     }
 
     private static function phoneFor(User $user): ?string

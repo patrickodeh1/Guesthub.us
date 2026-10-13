@@ -241,6 +241,8 @@ class CleaningSmsNotificationService
      */
     public static function sendTrainingAssigned(CleaningSession $session, int $videosCount, int $tasksCount, int $estMinutes): void
     {
+        return; // training texts are turned off
+
         $property = $session->property;
         $date = TimezoneHelper::format($session->scheduled_date, $property, 'M j, Y');
         
@@ -261,6 +263,8 @@ class CleaningSmsNotificationService
      */
     public static function sendTrainingReminder(CleaningSession $session, string $timing, int $remainingItems, int $estMinutes): void
     {
+        return; // training texts are turned off
+
         $property = $session->property;
         $date = TimezoneHelper::format($session->scheduled_date, $property, 'M j, Y');
         
@@ -281,6 +285,8 @@ class CleaningSmsNotificationService
      */
     public static function sendTrainingBlockedReminder(CleaningSession $session, int $remainingItems): void
     {
+        return; // training texts are turned off
+
         $property = $session->property;
         
         $message = "Session Start Blocked\n\n"

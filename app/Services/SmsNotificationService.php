@@ -68,7 +68,7 @@ class SmsNotificationService
                 return;
             }
 
-            Log::info("SMS notification sent ({$context}) to {$to}.");
+            Log::info("SMS-LOG out SENT ({$context}) to ".self::maskPhone($to).' telnyx_id='.($response->json('data.id') ?? '?').' chars='.mb_strlen($message));
         } catch (\Throwable $e) {
             Log::error("SMS notification failed ({$context}): ".$e->getMessage());
         }
@@ -82,6 +82,7 @@ class SmsNotificationService
     public static function deliver(?string $to, string $message, string $context = 'staff'): array
     {
         if (! config('services.sms.enabled')) {
+            Log::warning("SMS-LOG out BLOCKED ({$context}) to ".self::maskPhone($to).": SMS_ENABLED is false.");
             return ['status' => 'failed', 'error' => 'SMS sending is turned off (SMS_ENABLED=false).'];
         }
 
@@ -112,7 +113,7 @@ class SmsNotificationService
                 return ['status' => 'failed', 'error' => 'Telnyx HTTP '.$response->status().': '.mb_substr($response->body(), 0, 300)];
             }
 
-            Log::info("SMS deliver sent ({$context}) to {$to}.");
+            Log::info("SMS-LOG out SENT ({$context}) to ".self::maskPhone($to).' telnyx_id='.($response->json('data.id') ?? '?').' chars='.mb_strlen($message));
             return ['status' => 'sent', 'error' => null];
         } catch (\Throwable $e) {
             Log::error("SMS deliver failed ({$context}): ".$e->getMessage());
@@ -137,6 +138,12 @@ class SmsNotificationService
      * Send an already-rendered lifecycle alert message (task 30) to an
      * arbitrary number — the guest's phone, or the admin's notify number.
      */
+    public static function maskPhone(?string $n): string
+    {
+        $d = preg_replace('/\D+/', '', (string) $n);
+        return $d === '' ? '(none)' : '***'.substr($d, -4);
+    }
+
     public static function guestAlert(string $to, string $message, bool $requireConsent = true): void
     {
         self::sendTo($to, $message, 'guest_alert', $requireConsent);
