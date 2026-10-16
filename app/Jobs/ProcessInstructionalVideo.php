@@ -62,7 +62,7 @@ class ProcessInstructionalVideo implements ShouldQueue
             $newPath = 'videos/' . preg_replace('/_web_\d+$/', '', $name) . '_web_' . time() . '.mp4';
             $dest = $disk->path($newPath);
 
-            $args = ['ffmpeg', '-y', '-nostats', '-progress', 'pipe:1', '-i', $src, '-map', '0:v:0', '-map', '0:a:0?'];
+            $args = [config('services.ffmpeg.binary'), '-y', '-nostats', '-progress', 'pipe:1', '-i', $src, '-map', '0:v:0', '-map', '0:a:0?'];
             if ($compatible) {
                 $args = array_merge($args, ['-c', 'copy']);
             } else {

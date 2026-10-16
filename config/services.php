@@ -92,4 +92,8 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'ffmpeg' => [
+        'binary' => env('FFMPEG_BINARIES', 'ffmpeg'),
+    ],
+
 ];

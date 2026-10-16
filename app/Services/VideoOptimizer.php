@@ -23,7 +23,7 @@ class VideoOptimizer
         }
 
         // Allow ffmpeg.exe in the project root to override system ffmpeg
-        $ffmpegPath = 'ffmpeg';
+        $ffmpegPath = config('services.ffmpeg.binary');
         if (file_exists(base_path('ffmpeg.exe'))) {
             $ffmpegPath = base_path('ffmpeg.exe');
         }

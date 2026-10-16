@@ -38,7 +38,7 @@ class ConvertTaskVideo
             if (str_ends_with($name, '_web')) {
                 return; // already converted
             }
-            if (Process::run(['ffmpeg', '-version'])->failed()) {
+            if (Process::run([config('services.ffmpeg.binary'), '-version'])->failed()) {
                 Log::warning('VIDEO_CONVERT_SKIPPED: ffmpeg is not available', ['path' => $rel]);
                 return;
             }
@@ -53,7 +53,7 @@ class ConvertTaskVideo
             $newPath = ($dir !== '' ? $dir.'/' : '').$name.'_web.mp4';
             $dest = $disk->path($newPath);
 
-            $args = ['ffmpeg', '-y', '-nostats', '-i', $src, '-map', '0:v:0', '-map', '0:a:0?'];
+            $args = [config('services.ffmpeg.binary'), '-y', '-nostats', '-i', $src, '-map', '0:v:0', '-map', '0:a:0?'];
             if ($compatible) {
                 $args = array_merge($args, ['-c', 'copy']);
             } else {
