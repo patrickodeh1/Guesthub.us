@@ -12,7 +12,7 @@ use Carbon\Carbon;
  */
 class DashboardDayService
 {
-    private const LAST_DAY = 10;
+    private const LAST_DAY = 14;
 
     private const EXCLUDED_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
 
