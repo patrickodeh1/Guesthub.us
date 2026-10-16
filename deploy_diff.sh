@@ -1,34 +1,47 @@
 #!/usr/bin/env bash
-# deploy_diff.sh - find files to deploy since the last deployed zip.
-# Run from the project (git) root.
-#
-# Stages:
-#   1. find -newermt  : files modified since SINCE
-#   2. git            : keep only those that differ from BASE (default HEAD) or are untracked
-#   3. last zip       : keep only those that are new/different vs the 13 Oct zip
-#   4. exclusions     : applied at every stage
+# deploy_diff.sh - list (and optionally zip) every file modified since a date/time.
+# newermt decides WHAT is listed/zipped. Git is only used to cross-check the count.
 #
 # Usage:
-#   ./deploy_diff.sh                 # dry run: prints lists, writes deploy_files.txt
-#   ./deploy_diff.sh --zip           # also builds ~/Downloads/deploy_<timestamp>.zip
-#   ./deploy_diff.sh --move-bak      # also moves *bak* files to ~/moved_bak_files
-#   LAST_ZIP=~/Downloads/x.zip BASE=<commit> SINCE="2026-10-12 17:00:00" ./deploy_diff.sh
+#   ./deploy_diff.sh "YYYY-MM-DD HH:MM"          # list + git cross-check
+#   ./deploy_diff.sh "YYYY-MM-DD HH:MM" --zip    # also zip all modified files to ~/Downloads
+#   ./deploy_diff.sh 14:30 --zip                 # HH:MM alone means today
+#   ./deploy_diff.sh --since "2026-10-15 09:00" --zip
+#   ./deploy_diff.sh "2026-10-15 09:00" --move-bak
+#
+# A date/time is required; running without one is an error.
+#
+# Git cross-check = files in commits made since the cutoff + uncommitted changes
+# + untracked files. It should equal the newermt list. If not, the table shows why:
+#   NOT IN GIT  modified on disk but git sees nothing (ignored file, or edited then reverted)
+#   GIT ONLY    git reports a change but the file's mtime is older than the cutoff
 
 set -euo pipefail
 
-SINCE="${SINCE:-2026-10-12 17:00:00}"
-BASE="${BASE:-HEAD}"
-DL="$HOME/Downloads"
-OUT="deploy_files.txt"
-DO_ZIP=0; DO_MOVE=0
-for a in "$@"; do
-  case "$a" in --zip) DO_ZIP=1;; --move-bak) DO_MOVE=1;; esac
+SINCE=""; DO_ZIP=0; DO_MOVE=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --zip) DO_ZIP=1;;
+    --move-bak) DO_MOVE=1;;
+    --since) shift; SINCE="${1:-}";;
+    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+    -*) echo "Unknown option: $1"; exit 1;;
+    *) SINCE="$1";;
+  esac
+  shift
 done
 
-git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "Not in a git repo"; exit 1; }
+if [ -z "$SINCE" ]; then
+  echo "ERROR: enter a date and time, e.g.  ./deploy_diff.sh \"2026-10-16 10:07\"  (or just 10:07 for today)" >&2
+  exit 1
+fi
+if [[ "$SINCE" =~ ^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?$ ]]; then SINCE="$(date +%Y-%m-%d) $SINCE"; fi
+date -d "$SINCE" >/dev/null 2>&1 || { echo "ERROR: invalid date/time '$SINCE'" >&2; exit 1; }
+SINCE="$(date -d "$SINCE" '+%Y-%m-%d %H:%M:%S')"
+
+git rev-parse --show-toplevel >/dev/null 2>&1 || { echo "Not in a git repo" >&2; exit 1; }
 cd "$(git rev-parse --show-toplevel)"
 
-# ---- exclusion regex (applied to repo-relative paths) ----
 EXCL='(^|/)(tests|scripts|vendor|node_modules|\.git|\.github|\.idea|\.vscode|docker|backups)/'
 EXCL+='|^storage/logs/|^storage/framework/(cache|sessions|views|testing)/'
 EXCL+='|^storage/app/(rehearsal|public|photo-ids|client-preview)/'
@@ -38,81 +51,71 @@ EXCL+='|\.md$|(^|/)phpunit\.xml$|\.phpunit\.result\.cache$'
 EXCL+='|(^|/)\.env(\.local|\.production|\.backup)?$'
 EXCL+='|^database/database\.sql$|\.sql$|\.sqlite$|\.zip$'
 EXCL+='|(^|/)docker-compose\.yml$|(^|/)Dockerfile$|(^|/)package-lock\.json$'
-EXCL+='|\.bak$|\.orig$|(^|/)\.DS_Store$'
+EXCL+='|\.bak[0-9]*$|\.orig$|(^|/)\.DS_Store$'
 EXCL+='|\.pre-[^/]*$'
-EXCL+='|^(deploy_diff\.sh|deploy_files\.txt|deploy_final\.txt|git_only_changes\.txt|deleted_files\.txt|dropped_unchanged_in_git\.txt)$'
+EXCL+='|^(deploy_diff\.sh|deploy_files\.txt)$'
 
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 
-# ---- 1. modified since SINCE ----
-find . -type f -newermt "$SINCE" \
-  -not -path './.git/*' -not -path './vendor/*' -not -path './node_modules/*' \
-  2>/dev/null \
-  | sed 's|^\./||' | grep -Ev "$EXCL" | sort > "$TMP/mtime.txt" || true
-echo "[1] modified since $SINCE (after exclusions): $(wc -l < "$TMP/mtime.txt")"
+# ---- newermt: the source of truth ----
+find . -type f -newermt "$SINCE" -not -path './.git/*' -not -path './vendor/*' -not -path './node_modules/*' 2>/dev/null \
+  | sed 's|^\./||' | grep -Ev "$EXCL" | sort -u > "$TMP/mtime.txt" || true
 
-# ---- 2. git: changed vs BASE, plus untracked ----
-{ git diff --name-only "$BASE" 2>/dev/null
-  git ls-files --others --exclude-standard; } | grep -Ev "$EXCL" | sort -u > "$TMP/git.txt" || true
-comm -12 "$TMP/mtime.txt" "$TMP/git.txt" > "$TMP/stage2.txt"
-echo "[2] also changed in git vs $BASE (or untracked):  $(wc -l < "$TMP/stage2.txt")"
+# ---- git cross-check (existing files only) ----
+{ git log --since="$SINCE" --name-only --pretty=format: 2>/dev/null
+  git diff --name-only HEAD 2>/dev/null
+  git ls-files --others --exclude-standard; } \
+  | grep -v '^$' | grep -Ev "$EXCL" | sort -u | while IFS= read -r f; do [ -f "$f" ] && echo "$f"; done > "$TMP/git.txt" || true
 
-# files modified by mtime but identical to BASE in git (dropped at stage 2)
-comm -23 "$TMP/mtime.txt" "$TMP/git.txt" > dropped_unchanged_in_git.txt
-echo "    note: $(wc -l < dropped_unchanged_in_git.txt) mtime-modified files match $BASE and were dropped (dropped_unchanged_in_git.txt)"
+n_m=$(wc -l < "$TMP/mtime.txt"); n_g=$(wc -l < "$TMP/git.txt")
+comm -23 "$TMP/mtime.txt" "$TMP/git.txt" > "$TMP/m_only.txt"
+comm -13 "$TMP/mtime.txt" "$TMP/git.txt" > "$TMP/g_only.txt"
+n_mo=$(wc -l < "$TMP/m_only.txt"); n_go=$(wc -l < "$TMP/g_only.txt")
 
-# files git sees as modified but mtime missed (e.g. checkout/touch) - informational
-comm -13 "$TMP/mtime.txt" "$TMP/git.txt" > "$TMP/git_only.txt"
-[ -s "$TMP/git_only.txt" ] && echo "    note: $(wc -l < "$TMP/git_only.txt") git-changed files have older mtimes (see git_only_changes.txt)" \
-  && cp "$TMP/git_only.txt" git_only_changes.txt
+echo "Since: $SINCE"
+echo
+printf '  %-34s %5s\n' "newermt (modified since cutoff)" "$n_m"
+printf '  %-34s %5s\n' "git (commits+changes+untracked)"  "$n_g"
+printf '  %-34s %5s\n' "NOT IN GIT (newermt only)"        "$n_mo"
+printf '  %-34s %5s\n' "GIT ONLY (older mtime)"           "$n_go"
+if [ "$n_mo" -eq 0 ] && [ "$n_go" -eq 0 ]; then echo "  RESULT: counts and files MATCH"; else echo "  RESULT: DIFFERENT - see table"; fi
+echo
 
-# ---- 3. compare with the 13 Oct zip ----
-if [ -z "${LAST_ZIP:-}" ]; then
-  LAST_ZIP="$(find "$DL" -maxdepth 1 -name '*.zip' \
-      -newermt '2026-10-13 00:00:00' ! -newermt '2026-10-14 00:00:00' -printf '%T@ %p\n' \
-      | sort -n | tail -1 | cut -d' ' -f2-)"
+# ---- table ----
+{ awk '{print $0 "\tYES\tYES"}' <(comm -12 "$TMP/mtime.txt" "$TMP/git.txt")
+  awk '{print $0 "\tYES\tNO"}'  "$TMP/m_only.txt"
+  awk '{print $0 "\tNO\tYES"}'  "$TMP/g_only.txt"; } | sort -t$'\t' -k1,1 > "$TMP/rows.tsv"
+
+if [ -s "$TMP/rows.tsv" ]; then
+  w=$(awk -F'\t' '{ if (length($1)>m) m=length($1) } END { print (m<4?4:m) }' "$TMP/rows.tsv")
+  line="+-$(printf '%*s' "$w" '' | tr ' ' '-')-+---------------------+----------+--------+--------------+"
+  echo "$line"; printf '| %-*s | %-19s | %-8s | %-6s | %-12s |\n' "$w" FILE "MODIFIED (mtime)" NEWERMT GIT STATUS; echo "$line"
+  while IFS=$'\t' read -r f a b; do
+    ts="-"; [ -e "$f" ] && ts="$(stat -c '%y' "$f" | cut -c1-19)"
+    if [ "$a$b" = YESYES ]; then st="OK"; elif [ "$a" = YES ]; then st="NOT IN GIT"; else st="GIT ONLY"; fi
+    printf '| %-*s | %-19s | %-8s | %-6s | %-12s |\n' "$w" "$f" "$ts" "$a" "$b" "$st"
+  done < "$TMP/rows.tsv"
+  echo "$line"
+else
+  echo "(no files modified since $SINCE)"
 fi
-[ -n "$LAST_ZIP" ] && [ -f "$LAST_ZIP" ] || { echo "Could not find 13 Oct zip in $DL. Set LAST_ZIP=..."; exit 1; }
-echo "[3] comparing against: $LAST_ZIP"
+echo
 
-mkdir -p "$TMP/zip"; unzip -q "$LAST_ZIP" -d "$TMP/zip"
-ROOT="$TMP/zip"
-# if the zip has a single top-level folder, descend into it
-if [ "$(ls -A "$ROOT" | wc -l)" -eq 1 ] && [ -d "$ROOT/$(ls -A "$ROOT")" ]; then
-  # only descend if that folder doesn't look like an app dir itself (app/, public/ ...)
-  case "$(ls -A "$ROOT")" in app|public|config|routes|resources|database|bootstrap|storage) ;; *) ROOT="$ROOT/$(ls -A "$ROOT")";; esac
-fi
-
-: > "$OUT"
-while IFS= read -r f; do
-  if [ ! -f "$ROOT/$f" ]; then echo "$f" >> "$OUT"; echo "  NEW      $f"
-  elif ! cmp -s "$f" "$ROOT/$f"; then echo "$f" >> "$OUT"; echo "  CHANGED  $f"
-  fi
-done < "$TMP/stage2.txt"
-echo "[3] files that differ from last deployed zip: $(wc -l < "$OUT")  -> $OUT"
-
-# deleted files (in git, gone from disk) - you may need to remove these on the server
-git ls-files --deleted | grep -Ev "$EXCL" > deleted_files.txt || true
-[ -s deleted_files.txt ] && echo "    note: $(wc -l < deleted_files.txt) tracked files deleted locally (deleted_files.txt)"
-
-# ---- 4. zip ----
-if [ "$DO_ZIP" -eq 1 ] && [ -s "$OUT" ]; then
-  Z="$DL/deploy_$(date +%Y%m%d_%H%M).zip"
-  zip -q "$Z" -@ < "$OUT"
-  echo "[4] created $Z"; unzip -l "$Z" | tail -1
+# ---- zip: ALL newermt files ----
+if [ "$DO_ZIP" -eq 1 ]; then
+  if [ -s "$TMP/mtime.txt" ]; then
+    mkdir -p "$HOME/Downloads"; Z="$HOME/Downloads/deploy_$(date +%Y%m%d_%H%M).zip"
+    zip -q "$Z" -@ < "$TMP/mtime.txt"
+    echo "Zipped $n_m file(s) -> $Z"; unzip -l "$Z" | tail -1
+  else echo "Nothing to zip."; fi
 fi
 
 # ---- *bak* files ----
 echo; echo "== backup-looking files (*bak*) =="
-find . -type f \( -iname '*bak*' -o -name '*.pre-*' \) \
-  -not -path './.git/*' -not -path './vendor/*' -not -path './node_modules/*' \
-  2>/dev/null | tee "$TMP/bak.txt" || true
+find . -type f \( -iname '*bak*' -o -name '*.pre-*' \) -not -path './.git/*' -not -path './vendor/*' -not -path './node_modules/*' \
+  2>/dev/null | sed 's|^\./||' | tee "$TMP/bak.txt" || true
 if [ "$DO_MOVE" -eq 1 ] && [ -s "$TMP/bak.txt" ]; then
   DEST="$HOME/moved_bak_files/$(date +%Y%m%d_%H%M)"
-  while IFS= read -r b; do
-    mkdir -p "$DEST/$(dirname "$b")"; mv "$b" "$DEST/$b"
-  done < "$TMP/bak.txt"
+  while IFS= read -r b; do mkdir -p "$DEST/$(dirname "$b")"; mv "$b" "$DEST/$b"; done < "$TMP/bak.txt"
   echo "Moved to $DEST"
-else
-  echo "(listed only; re-run with --move-bak to move them out of the project)"
-fi
+else echo "(listed only; --move-bak moves them out of the project)"; fi
