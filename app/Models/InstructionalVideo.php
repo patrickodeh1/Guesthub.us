@@ -99,7 +99,7 @@ class InstructionalVideo extends Model
                 $path = substr($path, strlen('storage/'));
             }
 
-            return url('file/' . $path);
+            return rtrim(request()->getBaseUrl(), '/') . '/file/' . $path;
         });
     }
 
@@ -111,7 +111,7 @@ class InstructionalVideo extends Model
         return Attribute::get(function () {
             $value = $this->thumbnail_path;
             if (!$value) {
-                return asset('images/placeholders/video-placeholder.png');
+                return null;
             }
 
             if (Str::startsWith($value, ['http://', 'https://'])) {
@@ -124,7 +124,7 @@ class InstructionalVideo extends Model
                 $path = substr($path, strlen('storage/'));
             }
 
-            return url('file/' . $path);
+            return rtrim(request()->getBaseUrl(), '/') . '/file/' . $path;
         });
     }
 }

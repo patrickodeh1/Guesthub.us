@@ -38,8 +38,22 @@ class AssignmentGroupingService
             if ($b === 'No Date Assigned') return -1;
 
             if ($upcoming) {
-                // Ascending chronological order (Tomorrow -> In 2 days)
-                return $a <=> $b;
+                $today = Carbon::today()->toDateString();
+                $aIsToday = $a === $today;
+                $bIsToday = $b === $today;
+
+                if ($aIsToday || $bIsToday) {
+                    return $aIsToday ? -1 : 1;
+                }
+
+                $aIsFuture = $a > $today;
+                $bIsFuture = $b > $today;
+
+                if ($aIsFuture !== $bIsFuture) {
+                    return $aIsFuture ? -1 : 1;
+                }
+
+                return $aIsFuture ? $a <=> $b : $b <=> $a;
             } else {
                 // Descending order (Today -> Yesterday -> 2 days ago)
                 return $b <=> $a;

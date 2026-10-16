@@ -52,6 +52,7 @@
     body { background: #fff; }
 </style>
 @endif
+    <meta name="app-base" content="{{ rtrim(url('/'), '/') }}">
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased" @if($cleaning ?? false) x-data="mainState" x-on:resize.window="handleWindowResize" @endif>
 @if($cleaning ?? false)
@@ -111,7 +112,7 @@
                 @if(isset($header) && trim((string) $header) !== '')
                     <div class="min-w-0">{{ $header }}</div>
                 @else
-                    <h1 class="truncate text-base font-semibold text-slate-950 lg:text-lg">{{ $title ?? 'Dashboard' }}</h1>
+                    <h1 class="min-w-0 break-words text-base font-semibold text-slate-950 lg:text-lg">{{ $title ?? 'Dashboard' }}</h1>
                 @endif
             </div>
 
@@ -418,7 +419,7 @@ function loadGlobalMediaPicker(folderId) {
             const el = document.createElement('button');
             el.type = 'button';
             el.className = 'flex flex-col items-center gap-1 rounded-lg border border-slate-200 p-3 hover:bg-slate-50';
-            el.innerHTML = '<span class="text-2xl">📁</span><span class="truncate text-xs font-semibold">' + folder.name + '</span>';
+            el.innerHTML = '<span class="text-2xl">📁</span><span class="min-w-0 break-words text-xs font-semibold">' + folder.name + '</span>';
             el.onclick = () => loadGlobalMediaPicker(folder.id);
             body.appendChild(el);
         });

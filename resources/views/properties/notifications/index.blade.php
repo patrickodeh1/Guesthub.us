@@ -36,7 +36,7 @@
                 <template x-for="recipient in recipients" :key="recipient.id">
                     <li class="flex items-center justify-between gap-3 py-3">
                         <div class="min-w-0">
-                            <p class="truncate text-sm font-semibold text-slate-900" x-text="recipient.recipient_name || 'Unnamed recipient'"></p>
+                            <p class="break-words text-sm font-semibold text-slate-900" x-text="recipient.recipient_name || 'Unnamed recipient'"></p>
                             <p class="text-sm text-slate-500" x-text="recipient.phone_number"></p>
                         </div>
                         <div class="flex items-center gap-3">

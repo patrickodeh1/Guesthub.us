@@ -143,7 +143,7 @@
                                             <video playsinline webkit-playsinline :src="m.url" class="w-full h-32 object-cover" controls muted></video>
                                         </template>
                                         <div class="p-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                                            <span class="text-xs truncate mr-2" :title="m.caption" x-text="m.caption"></span>
+                                            <span class="text-xs min-w-0 break-words mr-2" :title="m.caption" x-text="m.caption"></span>
                                             <button type="button" 
                                                     class="text-xs text-rose-600 hover:text-rose-700 dark:text-rose-400"
                                                     @click="deleteMedia(idx)">

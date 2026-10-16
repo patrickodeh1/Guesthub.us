@@ -66,7 +66,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-lg">
-                                        {{ \Illuminate\Support\Str::limit(optional($t->pivot)->instructions, 120) }}
+                                        {{ optional($t->pivot)->instructions }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
                                         {{ $t->media->count() }}

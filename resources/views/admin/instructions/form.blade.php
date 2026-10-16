@@ -147,6 +147,13 @@
         </fieldset>
 
         <label class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4 text-sm font-semibold">
+            <span>Cleaner must take a photo
+                <span class="block text-xs font-normal text-slate-500">Only applies when "Cleaners" is ticked. The cleaner cannot continue past this step until a photo is taken.</span>
+            </span>
+            <input type="checkbox" name="requires_photo" value="1" @checked(old('requires_photo', isset($step) && $step->requires_photo)) class="rounded border-slate-300">
+        </label>
+
+        <label class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4 text-sm font-semibold">
             <span>Show before GPS check
                 <span class="block text-xs font-normal text-slate-500">Visible before the guest or cleaner arrives, ahead of the "I have arrived" step.</span>
             </span>
@@ -323,7 +330,7 @@ body.tox-fullscreen-body .tox.tox-tinymce.tox-fullscreen {
                 const el = document.createElement('button');
                 el.type = 'button';
                 el.className = 'flex flex-col items-center gap-1 rounded-lg border border-slate-200 p-3 hover:bg-slate-50';
-                el.innerHTML = '<span class="text-2xl">📁</span><span class="truncate text-xs font-semibold">' + folder.name + '</span>';
+                el.innerHTML = '<span class="text-2xl">📁</span><span class="min-w-0 break-words text-xs font-semibold">' + folder.name + '</span>';
                 el.onclick = () => loadMediaPicker(folder.id);
                 body.appendChild(el);
             });

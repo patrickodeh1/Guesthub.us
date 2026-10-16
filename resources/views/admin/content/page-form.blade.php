@@ -42,7 +42,7 @@
                     @foreach($otherProperties as $other)
                         <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
                             <input type="checkbox" name="apply_to_property_ids[]" value="{{ $other->id }}" class="rounded border-slate-300">
-                            <span class="truncate">{{ $other->name }}</span>
+                            <span class="min-w-0 break-words">{{ $other->name }}</span>
                         </label>
                     @endforeach
                 </div>

@@ -36,12 +36,12 @@
 window.bookingAssign = function (cfg) {
     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' };
     return {
-        assignOpen: false, saving: false, loaded: false, error: '', conflictsActive: false, conflicts: [],
+        bookingId: null, assignOpen: false, saving: false, loaded: false, error: '', conflictsActive: false, conflicts: [],
         info: { property_id: null, property_name: '', guest: '', session_id: null, cleaners: [] },
         form: { housekeeper_id: '', scheduled_date: '', scheduled_time: '' },
         closeAssign() { if (!this.saving) this.assignOpen = false; },
         async openFor(detail) {
-            this.assignOpen = true; this.loaded = false; this.error = ''; this.conflictsActive = false;
+            this.bookingId = detail.booking_id; this.assignOpen = true; this.loaded = false; this.error = ''; this.conflictsActive = false;
             this.info = { property_id: null, property_name: '', guest: '', session_id: null, cleaners: [] };
             try {
                 const res = await fetch(cfg.optionsUrl + '?booking_id=' + encodeURIComponent(detail.booking_id), { headers });
@@ -56,7 +56,7 @@ window.bookingAssign = function (cfg) {
             this.saving = true; this.error = '';
             try {
                 const res = await fetch(cfg.url, { method: 'POST', headers, body: JSON.stringify({
-                    property_id: this.info.property_id, session_id: this.info.session_id,
+                    property_id: this.info.property_id, booking_id: this.bookingId, session_id: this.info.session_id,
                     housekeeper_id: this.form.housekeeper_id, scheduled_date: this.form.scheduled_date,
                     scheduled_time: this.form.scheduled_time || null, confirm_conflicts: confirm }) });
                 const r = await res.json().catch(() => ({}));

@@ -39,7 +39,7 @@ class Booking extends Model
         'parking_charge', 'parking_charge_override', 'incidentals_charge', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at', 'checkout_source', 'late_checkout_deducted_at',
         'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
-        'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_name', 'id_scan_status', 'id_scanned_at',
+        'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
         'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
     ];
 
@@ -148,9 +148,80 @@ class Booking extends Model
     {
         $buffer = (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
         $floor = (float) ($this->property?->required_incidentals_hold_amount ?? 0);
-        $fees = ($this->effectiveParkingCharge() ?? 0) + ($this->effectiveEarlyCheckinCharge() ?? 0);
+        $fees = ($this->effectiveParkingCharge() ?? 0) + ($this->effectiveEarlyCheckinCharge() ?? 0) + $this->localResidentSurcharge();
 
         return round(max($floor, $fees + $buffer), 2);
+    }
+
+    /**
+     * Local-resident surcharge: if the ZIP read from the guest's ID is within
+     * the configured radius (default 90 mi) of the property, add a flat fee
+     * (default $200). Returns 0 when there is no ID ZIP or no property GPS.
+     */
+    public function localResidentSurcharge(): float
+    {
+        return $this->isLocalResident()
+            ? (float) \App\Models\Setting::getValue('local_resident_surcharge', 200)
+            : 0.0;
+    }
+
+    public function isLocalResident(): bool
+    {
+        $miles = $this->idZipDistanceMiles();
+
+        return $miles !== null
+            && $miles <= (float) \App\Models\Setting::getValue('local_resident_radius_miles', 90);
+    }
+
+    public function idZipDistanceMiles(): ?float
+    {
+        if (! $this->property || $this->property->latitude === null || $this->property->longitude === null) {
+            return null;
+        }
+        $c = $this->idZipCoordinates();
+        if (! $c) {
+            return null;
+        }
+
+        $lat1 = deg2rad((float) $this->property->latitude);
+        $lat2 = deg2rad($c['lat']);
+        $dLat = $lat2 - $lat1;
+        $dLng = deg2rad($c['lng'] - (float) $this->property->longitude);
+        $a = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLng / 2) ** 2;
+
+        return 3958.8 * 2 * asin(min(1, sqrt($a)));
+    }
+
+    protected function idZipCoordinates(): ?array
+    {
+        static $memo = [];
+        $zip = substr(preg_replace('/\D/', '', (string) $this->id_zip), 0, 5);
+        if (strlen($zip) !== 5) {
+            return null;
+        }
+        if (array_key_exists($zip, $memo)) {
+            return $memo[$zip];
+        }
+
+        $hit = \Illuminate\Support\Facades\Cache::remember('zip-coords:' . $zip, now()->addDays(90), function () use ($zip) {
+            try {
+                $res = \Illuminate\Support\Facades\Http::timeout(4)->get("https://api.zippopotam.us/us/{$zip}");
+                if ($res->status() === 404) {
+                    return false;
+                }
+                if ($res->successful()) {
+                    $p = $res->json('places.0');
+                    if (is_array($p) && isset($p['latitude'], $p['longitude'])) {
+                        return ['lat' => (float) $p['latitude'], 'lng' => (float) $p['longitude']];
+                    }
+                }
+            } catch (\Throwable $e) {
+            }
+
+            return null;
+        });
+
+        return $memo[$zip] = (is_array($hit) ? $hit : null);
     }
 
     /**
@@ -965,6 +1036,37 @@ class Booking extends Model
         }
 
         return "Checking out {$outPhrase}";
+    }
+
+    /**
+     * Single-line status for the Today tab: the sentence and the time merged,
+     * e.g. "Checks in today at 1:00 PM for 3 nights" / "Checks out today at 2:00 PM".
+     */
+    public function todayTabTimedLabel(): string
+    {
+        if ($this->checked_out_at) {
+            return 'Checked out';
+        }
+
+        $nights = max(0, (int) $this->check_in_date->copy()->startOfDay()->diffInDays($this->check_out_date->copy()->startOfDay()));
+        $nightsText = $nights.' '.($nights === 1 ? 'night' : 'nights');
+
+        $out = $this->daysUntilCheckOut(today());
+        $outPhrase = match (true) {
+            $out <= 0 => 'today',
+            $out === 1 => 'tomorrow',
+            default => "in {$out} days",
+        };
+
+        if (! $this->isMarkedCheckedIn()) {
+            if ($this->check_in_date->toDateString() === today()->toDateString()) {
+                return "Checks in today at {$this->effectiveCheckinTimeFormatted()} for {$nightsText}";
+            }
+
+            return "Not checked in yet · checks out {$outPhrase} at {$this->effectiveCheckoutTimeFormatted()}";
+        }
+
+        return "Checks out {$outPhrase} at {$this->effectiveCheckoutTimeFormatted()}";
     }
 
     /**

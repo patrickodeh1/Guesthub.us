@@ -1,192 +1,80 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Pre-Arrival Training Hub') }}
-        </h2>
+        <div>
+            <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-100">Training</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Required training for your cleanings, plus guides and videos.</p>
+        </div>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Overview Stats -->
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 border border-gray-100 dark:border-gray-700">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Total Completed</h3>
-                    <p class="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">{{ $completedCount }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Items you have finished</p>
-                </div>
-            </div>
+    @php
+        $sections = [
+            ['title' => 'Required today', 'description' => "Complete these before you start today's cleanings.", 'items' => $requiredToday, 'empty' => 'You are all caught up for today.', 'border' => 'border-red-200 dark:border-red-900/50', 'heading' => 'text-red-600 dark:text-red-400', 'primary' => true],
+            ['title' => 'Upcoming required', 'description' => 'Get ahead by completing training for future assignments.', 'items' => $upcoming, 'empty' => 'No upcoming training requirements.', 'border' => 'border-gray-200 dark:border-gray-700', 'heading' => 'text-gray-900 dark:text-gray-100', 'primary' => false],
+            ['title' => 'Optional', 'description' => 'Available for your sessions but not required to start cleaning.', 'items' => $optional, 'empty' => 'No optional training available.', 'border' => 'border-gray-200 dark:border-gray-700', 'heading' => 'text-gray-900 dark:text-gray-100', 'primary' => false],
+        ];
+        $btnPrimary = 'inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors';
+        $btnSecondary = 'inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors';
+    @endphp
 
-            <!-- Required Today -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg border border-red-200 dark:border-red-900/50">
-                <div class="p-6 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-bold text-red-600 dark:text-red-400 mb-2">Required Today</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">You must complete these before starting your scheduled cleaning sessions today.</p>
-
-                    @if($requiredToday->isEmpty())
-                        <p class="text-green-600 dark:text-green-400 font-medium">You are all caught up for today!</p>
-                    @else
-                        <div class="space-y-4">
-                            @foreach ($requiredToday as $snapshot)
-                                <div class="p-4 border border-red-200 dark:border-red-900/50 rounded-md bg-red-50 dark:bg-red-900/20 flex items-center justify-between">
-                                    <div>
-                                        <h4 class="font-semibold text-gray-900 dark:text-white">
-                                            @if($snapshot->task)
-                                                <span class="text-xs uppercase font-bold tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 px-2 py-1 rounded mr-2">Task</span>
-                                                {{ $snapshot->task->name }}
-                                            @elseif($snapshot->video)
-                                                <span class="text-xs uppercase font-bold tracking-wider bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 px-2 py-1 rounded mr-2">Video</span>
-                                                {{ $snapshot->video->title }}
-                                            @endif
-                                        </h4>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">For session: {{ $snapshot->cleaningSession->property->name ?? 'Unknown' }}</p>
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        @if($snapshot->task)
-                                            <a href="{{ route('training.show', ['type' => 'task', 'id' => $snapshot->task->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors">Read</a>
-                                        @elseif($snapshot->video)
-                                            <a href="{{ route('training.show', ['type' => 'video', 'id' => $snapshot->video->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors">Watch</a>
-                                        @endif
-                                        <a href="{{ route('sessions.show', $snapshot->cleaning_session_id) }}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium shadow-sm transition-colors">Go to Session</a>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Upcoming -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg border border-gray-200 dark:border-gray-700">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">Upcoming Required Training</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Get ahead by completing training for future assignments.</p>
-
-                    @if($upcoming->isEmpty())
-                        <p class="text-gray-500 dark:text-gray-500 italic">No upcoming training requirements.</p>
-                    @else
-                        <div class="space-y-4">
-                            @foreach ($upcoming as $snapshot)
-                                <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md flex items-center justify-between hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors bg-gray-50 dark:bg-gray-900/50">
-                                    <div>
-                                        <h4 class="font-medium text-gray-900 dark:text-gray-200">
-                                            @if($snapshot->task)
-                                                <span class="text-xs uppercase bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded mr-2">Task</span>
-                                                {{ $snapshot->task->name }}
-                                            @elseif($snapshot->video)
-                                                <span class="text-xs uppercase bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded mr-2">Video</span>
-                                                {{ $snapshot->video->title }}
-                                            @endif
-                                        </h4>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">For session: {{ $snapshot->cleaningSession->property->name ?? 'Unknown' }} ({{ \Carbon\Carbon::parse($snapshot->cleaningSession->scheduled_date)->format('M d') }})</p>
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        @if($snapshot->task)
-                                            <a href="{{ route('training.show', ['type' => 'task', 'id' => $snapshot->task->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium transition-colors">Read</a>
-                                        @elseif($snapshot->video)
-                                            <a href="{{ route('training.show', ['type' => 'video', 'id' => $snapshot->video->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium transition-colors">Watch</a>
-                                        @endif
-                                        <a href="{{ route('sessions.show', $snapshot->cleaning_session_id) }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors">Session &rarr;</a>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-        <!-- Optional -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mt-6 border border-gray-200 dark:border-gray-700">
-                <div class="p-6 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">Optional Training</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">These items are available for your current or upcoming sessions but are not required to start cleaning.</p>
-
-                    @if($optional->isEmpty())
-                        <p class="text-gray-500 dark:text-gray-500 italic">No optional training items available.</p>
-                    @else
-                        <div class="space-y-4">
-                            @foreach ($optional as $snapshot)
-                                <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
-                                    <div>
-                                        <h4 class="font-medium text-gray-900 dark:text-gray-200">
-                                            @if($snapshot->task)
-                                                <span class="text-xs uppercase bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded mr-2">Task</span>
-                                                {{ $snapshot->task->name }}
-                                            @elseif($snapshot->video)
-                                                <span class="text-xs uppercase bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 px-2 py-1 rounded mr-2">Video</span>
-                                                {{ $snapshot->video->title }}
-                                            @endif
-                                        </h4>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">For session: {{ $snapshot->cleaningSession->property->name ?? 'Unknown' }}</p>
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-2">
-                                        @if($snapshot->task)
-                                            <a href="{{ route('training.show', ['type' => 'task', 'id' => $snapshot->task->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors">Read</a>
-                                        @elseif($snapshot->video)
-                                            <a href="{{ route('training.show', ['type' => 'video', 'id' => $snapshot->video->id, 'session' => $snapshot->cleaning_session_id]) }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors">Watch</a>
-                                        @endif
-                                        <a href="{{ route('sessions.show', $snapshot->cleaning_session_id) }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors">Session &rarr;</a>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Completed -->
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mt-6 border border-gray-200 dark:border-gray-700">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">Completed Training</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Review training you have already finished.</p>
-
-                    @if($completedItems->isEmpty())
-                        <p class="text-gray-500 dark:text-gray-500 italic">No completed training items.</p>
-                    @else
-                        <div class="space-y-4">
-                            @foreach ($completedItems as $completion)
-                                <div class="p-4 border border-green-200 dark:border-green-900/50 rounded-md bg-green-50 dark:bg-green-900/20 flex items-center justify-between">
-                                    <div>
-                                        <h4 class="font-medium text-gray-900 dark:text-gray-100 flex items-center">
-                                            <svg class="w-4 h-4 text-green-600 dark:text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                                            @if($completion->task)
-                                                <span class="text-xs uppercase font-bold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 rounded mr-2">Task</span>
-                                                {{ $completion->task->name }}
-                                            @elseif($completion->video)
-                                                <span class="text-xs uppercase font-bold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 px-2 py-0.5 rounded mr-2">Video</span>
-                                                {{ $completion->video->title }}
-                                            @endif
-                                        </h4>
-                                        <p class="text-xs text-green-600 dark:text-green-400 mt-1.5 ml-6">Completed {{ $completion->updated_at->diffForHumans() }}</p>
-                                    </div>
-                                    
-                                    <div class="flex items-center gap-4">
-                                        @if($completion->task)
-                                            <a href="{{ route('training.show', ['type' => 'task', 'id' => $completion->task->id, 'session' => $completion->cleaning_session_id ?? $completion->inferred_session_id]) }}" class="text-green-700 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium">Review</a>
-                                        @elseif($completion->video)
-                                            <a href="{{ route('training.show', ['type' => 'video', 'id' => $completion->video->id, 'session' => $completion->cleaning_session_id ?? $completion->inferred_session_id]) }}" class="text-green-700 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium">Review</a>
-                                        @endif
-                                        
-                                        @php
-                                            $targetSessionId = $completion->cleaning_session_id ?? $completion->inferred_session_id;
-                                        @endphp
-                                        
-                                        @if($targetSessionId)
-                                            <a href="{{ route('sessions.show', $targetSessionId) }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 rounded hover:bg-green-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors shadow-sm">Session &rarr;</a>
-                                        @else
-                                            <a href="{{ route('dashboard') }}" class="px-3 py-1.5 bg-white dark:bg-gray-800 border border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 rounded hover:bg-green-50 dark:hover:bg-gray-700 text-sm font-medium transition-colors shadow-sm">Dashboard &rarr;</a>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
-            </div>
-
+    <div class="space-y-6">
+        {{-- Library --}}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <a href="{{ route('resources.videos') }}" class="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 hover:border-purple-300 dark:hover:border-purple-700 transition-colors">
+                <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"></path></svg>
+                </span>
+                <span>
+                    <span class="block font-semibold text-gray-900 dark:text-gray-100">Videos</span>
+                    <span class="block text-sm text-gray-500 dark:text-gray-400">Watch how-to and training videos</span>
+                </span>
+            </a>
+            <a href="{{ route('resources.guides') }}" class="flex items-center gap-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors">
+                <span class="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                </span>
+                <span>
+                    <span class="block font-semibold text-gray-900 dark:text-gray-100">Guides</span>
+                    <span class="block text-sm text-gray-500 dark:text-gray-400">Step-by-step instructions by property and room</span>
+                </span>
+            </a>
         </div>
+
+        {{-- Assigned training --}}
+        @foreach($sections as $section)
+            <div class="bg-white dark:bg-gray-800 rounded-xl border {{ $section['border'] }} shadow-sm overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                    <h3 class="text-base font-bold {{ $section['heading'] }}">{{ $section['title'] }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ $section['description'] }}</p>
+                </div>
+
+                @if($section['items']->isEmpty())
+                    <p class="px-5 py-6 text-sm text-gray-500 dark:text-gray-400">{{ $section['empty'] }}</p>
+                @else
+                    <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach($section['items'] as $snapshot)
+                            @php
+                                $isTask = (bool) $snapshot->task;
+                                $title = $isTask ? $snapshot->task->name : ($snapshot->video->title ?? 'Training');
+                                $sess = $snapshot->cleaningSession;
+                                $date = $sess?->scheduled_date ? \Carbon\Carbon::parse($sess->scheduled_date)->format('M j') : null;
+                            @endphp
+                            <div class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div class="min-w-0">
+                                    <p class="font-medium text-gray-900 dark:text-gray-100">
+                                        <span class="mr-2 inline-flex rounded px-2 py-0.5 text-xs font-bold uppercase {{ $isTask ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' }}">{{ $isTask ? 'Task' : 'Video' }}</span>
+                                        {{ $title }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">For: {{ $sess?->property?->name ?? 'Unknown' }}@if($date) &middot; {{ $date }}@endif</p>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <a href="{{ route('training.show', ['type' => $isTask ? 'task' : 'video', 'id' => $isTask ? $snapshot->task->id : $snapshot->video->id, 'session' => $snapshot->cleaning_session_id]) }}" class="{{ $section['primary'] ? $btnPrimary : $btnSecondary }}">{{ $isTask ? 'Read' : 'Watch' }}</a>
+                                    <a href="{{ route('sessions.show', $snapshot->cleaning_session_id) }}" class="{{ $btnSecondary }}">Session &rarr;</a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endforeach
     </div>
 </x-app-layout>

@@ -32,8 +32,8 @@
 # php -- END cPanel-generated handler, do not edit
 
 <IfModule mod_php.c>
-    php_value upload_max_filesize 12M
-    php_value post_max_size 14M
-    php_value memory_limit 256M
-    php_value max_execution_time 60
+    php_value upload_max_filesize 200M
+    php_value post_max_size 210M
+    php_value memory_limit 512M
+    php_value max_execution_time 900
 </IfModule>

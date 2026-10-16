@@ -18,7 +18,7 @@
                     <p class="font-semibold text-slate-950">{{ $amenity->title }}</p>
                     <p class="mt-1 text-sm text-slate-500">{{ $amenity->active ? 'Active' : 'Inactive' }}</p>
                     @if($amenity->details)
-                        <p class="mt-2 text-sm text-slate-600 line-clamp-2">{{ strip_tags($amenity->details) }}</p>
+                        <p class="mt-2 text-sm text-slate-600">{{ strip_tags($amenity->details) }}</p>
                     @endif
                 </div>
                 <div class="flex shrink-0 flex-col gap-2">

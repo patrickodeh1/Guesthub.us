@@ -47,6 +47,7 @@ class AamvaParser
             'expires_at' => self::date($get('DBA'), $country),
             'issued_at' => self::date($get('DBD'), $country),
             'id_number' => $get('DAQ'),
+            'zip' => (substr(preg_replace('/\D/', '', (string) $get('DAK')), 0, 5) ?: null),
             'state' => $get('DAJ'),
             'country' => $country,
         ];

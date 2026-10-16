@@ -131,7 +131,7 @@
                             <div class="p-4 bg-white dark:bg-gray-800">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex-1 min-w-0">
-                                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 min-w-0 break-words">
                                             {{ $s->property->name }}
                                         </h3>
                                         @if(isset($bookingByJob[$s->id]))
@@ -152,23 +152,28 @@
                                     <div class="flex-shrink-0">
                                         @if($s->report_token && in_array($s->status, ['in_progress', 'completed']))
                                             <a href="{{ route('reports.sessions.show', ['token' => $s->report_token]) }}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity inline-block" title="View Report">
-                                                <x-status-badge :status="$s->status" />
+                                                @include('sessions._assignment_badge', ['s' => $s])
                                             </a>
                                         @else
-                                            <x-status-badge :status="$s->status" />
+                                            @include('sessions._assignment_badge', ['s' => $s])
                                         @endif
                                     </div>
                                 </div>
                                 <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
-                                    <div class="flex items-center gap-3 flex-wrap">
-                                        <a href="{{ route('sessions.show', $s) }}" class="text-sm text-green-600 dark:text-green-400 font-medium">
-                                            Open
-                                        </a>
-                                    </div>
+                                    <div></div>
                                     <x-action-dropdown align="right">
-                                        <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
-                                            Edit Schedule
-                                        </x-dropdown-link>
+                                        <x-dropdown-link :href="route('sessions.show', $s)">
+    Start cleaning
+</x-dropdown-link>
+<x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
+    Edit cleaning
+</x-dropdown-link>
+@if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->status === 'pending' && ! $s->gps_override_enabled)
+<button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
+    @click="$dispatch('gps-override-open', { action: '{{ route('sessions.gps-override', $s) }}', label: @js($s->property->name ?? '') }); $dispatch('open-modal', 'manage-gps-override-modal')">
+    Grant GPS override
+</button>
+@endif
                                         {{-- gh-confirm-manually --}}
                                         @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->housekeeper_id && $s->status === 'pending' && $s->assignment_status === 'pending_confirmation')
                                         <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
@@ -176,11 +181,11 @@
                                             Confirm manually
                                         </button>
                                         @endif
-                                        <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete assignment?')">
+                                        <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete this cleaning?')">
                                             @csrf @method('delete')
                                             <input type="hidden" name="_return_to" value="{{ $currentUrl }}">
                                             <button type="submit" class="w-full text-left px-4 py-2 text-sm leading-5 text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition">
-                                                Delete
+                                                Delete cleaning
                                             </button>
                                         </form>
                                     </x-action-dropdown>
@@ -209,7 +214,7 @@
                                         @if($dateLabel === 'No Date Assigned')
                                             <td class="px-4 py-3 text-gray-500">—</td>
                                         @endif
-                                        <td class="px-4 py-3 truncate font-medium text-gray-900 dark:text-gray-100">
+                                        <td class="px-4 py-3 min-w-0 break-words font-medium text-gray-900 dark:text-gray-100">
                                             <div>
                                                 <div>{{ $s->property->name }}</div>
                                         @if(isset($bookingByJob[$s->id]))
@@ -229,21 +234,27 @@
                                         <td class="px-4 py-3 text-center">
                                             @if($s->report_token && in_array($s->status, ['in_progress', 'completed']))
                                                 <a href="{{ route('reports.sessions.show', ['token' => $s->report_token]) }}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity inline-block" title="View Report">
-                                                    <x-status-badge :status="$s->status" />
+                                                    @include('sessions._assignment_badge', ['s' => $s])
                                                 </a>
                                             @else
-                                                <x-status-badge :status="$s->status" />
+                                                @include('sessions._assignment_badge', ['s' => $s])
                                             @endif
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-end whitespace-nowrap gap-2 pr-2">
-                                                <a href="{{ route('sessions.show', $s) }}" class="text-sm font-semibold text-green-600 dark:text-green-400 hover:underline">
-                                                    Open
-                                                </a>
                                                 <x-action-dropdown align="right">
-                                                    <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
-                                                        Edit Schedule
-                                                    </x-dropdown-link>
+                                                    <x-dropdown-link :href="route('sessions.show', $s)">
+    Start cleaning
+</x-dropdown-link>
+<x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
+    Edit cleaning
+</x-dropdown-link>
+@if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->status === 'pending' && ! $s->gps_override_enabled)
+<button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
+    @click="$dispatch('gps-override-open', { action: '{{ route('sessions.gps-override', $s) }}', label: @js($s->property->name ?? '') }); $dispatch('open-modal', 'manage-gps-override-modal')">
+    Grant GPS override
+</button>
+@endif
                                                     {{-- gh-confirm-manually --}}
                                                     @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->housekeeper_id && $s->status === 'pending' && $s->assignment_status === 'pending_confirmation')
                                                     <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
@@ -251,11 +262,11 @@
                                                         Confirm manually
                                                     </button>
                                                     @endif
-                                                    <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete assignment?')">
+                                                    <form method="post" action="{{ route('manage.sessions.destroy', $s) }}" class="block" onsubmit="return confirm('Delete this cleaning?')">
                                                         @csrf @method('delete')
                                                         <input type="hidden" name="_return_to" value="{{ $currentUrl }}">
                                                         <button type="submit" class="w-full text-left px-4 py-2 text-sm leading-5 text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition">
-                                                            Delete
+                                                            Delete cleaning
                                                         </button>
                                                     </form>
                                                 </x-action-dropdown>
@@ -352,7 +363,7 @@
             if (!this.a.property_id) { this.tasks = []; return; }
             this.loading = true;
             try {
-                const res = await fetch('/api/properties/' + this.a.property_id + '/sporadic-tasks');
+                const res = await fetch('{{ url("/api/properties") }}/' + this.a.property_id + '/sporadic-tasks');
                 this.tasks = res.ok ? await res.json() : [];
             } catch (e) { this.tasks = []; }
             this.loading = false;
@@ -439,5 +450,27 @@
         </x-slot>
     </x-preview-panel>
 </div>
+
+@if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']))
+    <x-modal name="manage-gps-override-modal" :show="false" maxWidth="md">
+        <form method="post" x-data="{ action: '', label: '' }"
+              @gps-override-open.window="action = $event.detail.action; label = $event.detail.label"
+              :action="action" class="p-6">
+            @csrf
+            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Grant GPS Override</h2>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Authorize the cleaner to start this cleaning<span x-show="label"> at <span x-text="label"></span></span> without passing GPS verification.
+            </p>
+            <div class="mt-4">
+                <x-form.label for="manage-gps-reason" value="Reason for Override" />
+                <x-form.input id="manage-gps-reason" name="reason" type="text" maxlength="255" class="mt-1 block w-full" required placeholder="e.g., Cleaner's phone GPS broken" />
+            </div>
+            <div class="mt-6 flex justify-end">
+                <x-button type="button" variant="secondary" x-on:click="$dispatch('close')">Cancel</x-button>
+                <x-button type="submit" class="ml-3">Grant Override</x-button>
+            </div>
+        </form>
+    </x-modal>
+@endif
 
 </x-app-layout>

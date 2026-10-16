@@ -2,9 +2,9 @@
     <a href="{{ route('admin.guests.show', $booking) }}" class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
             <img src="{{ $booking->property->heroImageUrl() }}" alt="" class="h-6 w-9 shrink-0 rounded object-cover">
-            <span class="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $booking->property->name }}</span>
+            <span class="min-w-0 break-words text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $booking->property->name }}</span>
         </div>
-        <p class="mt-1 truncate font-semibold text-slate-950">{{ $booking->guest_name }}</p>
+        <p class="mt-1 min-w-0 break-words font-semibold text-slate-950">{{ $booking->guest_name }}</p>
         @php
             $ctx = $context ?? null;
             $nights = max(0, (int) $booking->check_in_date->copy()->startOfDay()->diffInDays($booking->check_out_date->copy()->startOfDay()));
@@ -12,18 +12,18 @@
             $inTomorrow = $ctx === 'tomorrow' && ! $booking->isMarkedCheckedIn();
         @endphp
         @if(! empty($pinned) && $booking->priorityReason())
-            <p class="truncate text-sm font-semibold text-amber-700">{{ $booking->priorityReason() }}</p>
+            <p class="min-w-0 break-words text-sm font-semibold text-amber-700">{{ $booking->priorityReason() }}</p>
         @endif
         @if($ctx === 'today' && $inToday)
-            <p class="truncate text-sm text-slate-600">Checking in today for {{ $nights }} {{ $nights === 1 ? 'night' : 'nights' }}</p>
+            <p class="min-w-0 break-words text-sm text-slate-600">Checking in today for {{ $nights }} {{ $nights === 1 ? 'night' : 'nights' }}</p>
         @elseif($inTomorrow)
-            <p class="truncate text-sm text-slate-600">Checking in tomorrow for {{ $nights }} {{ $nights === 1 ? 'night' : 'nights' }}</p>
+            <p class="min-w-0 break-words text-sm text-slate-600">Checking in tomorrow for {{ $nights }} {{ $nights === 1 ? 'night' : 'nights' }}</p>
         @else
-            <p class="truncate text-sm text-slate-600">{!! $booking->dashboardArrivalLine($today) !!}</p>
+            <p class="min-w-0 break-words text-sm text-slate-600">{!! $booking->dashboardArrivalLine($today) !!}</p>
         @endif
         @php $acct = \App\Services\CleanerAccountability::forBooking($booking, $today); @endphp
         @if($acct)
-            <p class="truncate text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+            <p class="min-w-0 break-words text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
         @endif
 
     </a>

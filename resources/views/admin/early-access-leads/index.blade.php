@@ -28,7 +28,7 @@
                         <td class="py-3 capitalize">{{ $lead->role }}</td>
                         <td class="py-3"><a href="mailto:{{ $lead->email }}" class="text-teal-800">{{ $lead->email }}</a></td>
                         <td class="py-3">{{ \App\Support\PhoneFormatter::format($lead->phone) ?: '-' }}</td>
-                        <td class="py-3 max-w-xs truncate" title="{{ $lead->message }}">{{ $lead->message ?: '-' }}</td>
+                        <td class="py-3 max-w-xs min-w-0 break-words" title="{{ $lead->message }}">{{ $lead->message ?: '-' }}</td>
                         <td class="py-3 text-slate-500">{{ $lead->created_at->copy()->setTimezone(config('app.display_timezone'))->format('M j, Y g:i A') }}</td>
                         <td class="py-3">
                             @if($lead->contacted_at)

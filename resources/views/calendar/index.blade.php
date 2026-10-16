@@ -178,7 +178,7 @@
                                 <div class="flex flex-col gap-1 items-center w-full mb-1">
                                     @if ($hasSession)
                                         <div class="w-full px-1">
-                                            <div class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] rounded px-1 py-0.5 truncate text-center">
+                                            <div class="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] rounded px-1 py-0.5 min-w-0 break-words text-center">
                                                 {{ $day['sessionCount'] }} task{{ $day['sessionCount'] > 1 ? 's' : '' }}
                                             </div>
                                         </div>
@@ -194,14 +194,14 @@
                                     @endif
                                     @if ($acting !== 'housekeeper' && ($day['blocked'] ?? 0) > 0)
                                         <div class="w-full px-1">
-                                            <div class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] rounded px-1 py-0.5 truncate text-center">
+                                            <div class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[10px] rounded px-1 py-0.5 min-w-0 break-words text-center">
                                                 {{ $day['blocked'] }} blocked
                                             </div>
                                         </div>
                                     @endif
                                     @if ($hasUnscheduled && $acting !== 'housekeeper')
                                         <div class="w-full px-1">
-                                            <div class="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] rounded px-1 py-0.5 truncate text-center">
+                                            <div class="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] rounded px-1 py-0.5 min-w-0 break-words text-center">
                                                 {{ $day['unscheduledCount'] }} checkout{{ $day['unscheduledCount'] > 1 ? 's' : '' }}
                                             </div>
                                         </div>
@@ -235,7 +235,7 @@
                                                 <div class="mt-0.5 text-orange-800 dark:text-orange-300">Guest: @if (!empty($p['booking_id']))<a href="{{ route('admin.guests.show', $p['booking_id']) }}" class="underline">{{ $p['guest_name'] }}</a>@else{{ $p['guest_name'] }}@endif</div>
                                                 @if ($acting !== 'housekeeper')
                                                     <button type="button" class="mt-1.5 w-full rounded bg-indigo-600 py-1 text-center font-medium text-white hover:bg-indigo-700"
-                                                        @click="openAssign(@js(['property_id' => $p['property_id'], 'property_name' => $p['property_name'], 'date' => $p['date'], 'session_id' => null, 'housekeeper_id' => null, 'scheduled_time' => null, 'cleaners' => $cleanerOptions[$p['property_id']] ?? []]))">Assign cleaner</button>
+                                                        @click="openAssign(@js(['property_id' => $p['property_id'], 'property_name' => $p['property_name'], 'date' => $p['date'], 'session_id' => null, 'booking_id' => $p['booking_id'] ?? null, 'housekeeper_id' => null, 'scheduled_time' => null, 'cleaners' => $cleanerOptions[$p['property_id']] ?? []]))">Assign cleaner</button>
                                                 @endif
                                             </div>
                                         @endforeach
@@ -247,7 +247,7 @@
                                                     <span class="text-indigo-700 dark:text-indigo-300">{{ $s['time'] ?? 'No time' }}</span>
                                                 </div>
                                                 <div class="mt-0.5 flex items-center justify-between gap-2">
-                                                    @if ($s['cleaner'])<span class="text-gray-700 dark:text-gray-300">{{ $s['cleaner'] }}</span>@else<span class="font-semibold text-orange-700">Needs cleaner</span>@endif
+                                                    @if ($s['cleaner'])<span class="{{ ! empty($s['cleaner_pending']) ? 'text-red-600' : 'text-emerald-700' }}">{{ $s['cleaner'] }}</span>@else<span class="font-semibold text-orange-700">Needs cleaner</span>@endif
                                                     @if ($s['status'])<span class="text-gray-500">{{ ucfirst(str_replace('_', ' ', (string) $s['status'])) }}</span>@endif
                                                 </div>
                                             </div>
@@ -329,6 +329,7 @@
                                                     'property_name' => $u['property_name'],
                                                     'date' => $u['date'],
                                                     'session_id' => null,
+                                                    'booking_id' => $u['booking_id'] ?? null,
                                                     'housekeeper_id' => null,
                                                     'scheduled_time' => null,
                                                     'cleaners' => $cleanerOptions[$u['property_id']] ?? [],
@@ -359,10 +360,10 @@
                                 @foreach ($dayBookings as $item)
                                     <li class="rounded-lg border p-3 text-sm {{ $item['conflict'] ? 'border-red-300 bg-red-50' : 'border-gray-100 bg-white' }} dark:border-gray-700 dark:bg-gray-800">
                                         <div class="flex items-center justify-between gap-2">
-                                            <a href="{{ route('admin.guests.show', $item['booking']) }}" class="truncate font-medium text-indigo-700 hover:underline">{{ $item['booking']->guest_name ?: 'Guest' }}</a>
+                                            <a href="{{ route('admin.guests.show', $item['booking']) }}" class="min-w-0 break-words font-medium text-indigo-700 hover:underline">{{ $item['booking']->guest_name ?: 'Guest' }}</a>
                                             <span class="shrink-0 text-[10px] font-bold uppercase text-gray-500">{{ $item['role'] }}</span>
                                         </div>
-                                        <div class="mt-0.5 truncate text-xs text-gray-500">{{ $item['booking']->property?->name }}</div>
+                                        <div class="mt-0.5 min-w-0 break-words text-xs text-gray-500">{{ $item['booking']->property?->name }}</div>
                                         @hasanyrole('admin|owner|company')<button type="button" class="mt-1 rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-100" @click="$dispatch('open-guest', @js(['url' => route('admin.guests.show', $item['booking']).'?embed=1', 'title' => $item['booking']->guest_name ?: 'Guest']))">Edit</button>@endhasanyrole
                                         <div class="text-xs text-gray-500">{{ $item['booking']->check_in_date->format('M j') }}@if ($item['in_time']) &middot; {{ $item['in_time'] }}@endif &rarr; {{ $item['booking']->check_out_date->format('M j') }}@if ($item['out_time']) &middot; {{ $item['out_time'] }}@endif</div>
                                         @if ($item['conflict'])<div class="mt-1 text-xs font-bold text-red-700">Overlaps another booking on this property</div>@foreach (($item['conflict_with'] ?? []) as $cw)<div class="text-xs text-red-700">Clashes with {{ $cw['guest'] }} ({{ $cw['stay'] }}). Shared: {{ $cw['shared'] }}</div>@endforeach @endif
@@ -391,7 +392,7 @@
                                             <li class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm rounded-lg p-3 hover:shadow-md transition group">
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex-1 min-w-0">
-                                                        <div class="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{{ $s->property->name }}</div>
+                                                        <div class="font-medium text-gray-900 dark:text-gray-100 text-sm min-w-0 break-words">{{ $s->property->name }}</div>
                                                         <div class="flex flex-col gap-0.5 mt-1">
                                                             @if ($s->scheduled_time)
                                                                 <div class="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
@@ -400,14 +401,14 @@
                                                                 </div>
                                                             @endif
                                                             @if ($acting !== 'housekeeper')
-                                                                <div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                <div class="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">
                                                                     To: {{ $s->housekeeper?->name ?? 'Unassigned' }}
                                                                 </div>
                                                             @endif
                                                         </div>
                                                     </div>
                                                     <div class="flex flex-col items-end gap-2 ml-2">
-                                                        <x-status-badge :status="$s->status" class="!text-[10px] !px-1.5 !py-0.5" />
+                                                        @include('sessions._assignment_badge', ['s' => $s])
                                                         @if ($acting !== 'housekeeper')
                                                             <select class="input !py-0.5 !text-[11px] w-auto" aria-label="Change cleaning status"
                                                                 @change="changeStatus({{ $s->id }}, $event.target, '{{ $s->status }}')">
@@ -673,7 +674,7 @@
                     assignOpen: false,
                     saving: false,
                     error: '',
-                    form: { property_id: '', property_name: '', date: '', session_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [] },
+                    form: { property_id: '', property_name: '', date: '', session_id: null, booking_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [] },
                     openAssign(data) {
                         this.form = { ...data, housekeeper_id: data.housekeeper_id ?? '', scheduled_time: data.scheduled_time ?? '' };
                         this.error = '';
@@ -754,6 +755,7 @@
                                     property_id: this.form.property_id,
                                     scheduled_date: this.form.date,
                                     session_id: this.form.session_id,
+                                    booking_id: this.form.booking_id || null,
                                     housekeeper_id: this.form.housekeeper_id,
                                     scheduled_time: this.form.scheduled_time || null,
                                     confirm_conflicts: confirm

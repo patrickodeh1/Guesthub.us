@@ -307,7 +307,7 @@
             loadMoreBtn.disabled = true;
             loadMoreBtn.textContent = 'Loading...';
 
-            fetch('/guest/' + bookingId + '/' + token + '/guide/' + categorySlug + '/events?page=' + nextPage)
+            fetch('{{ url("/guest") }}/' + bookingId + '/' + token + '/guide/' + categorySlug + '/events?page=' + nextPage)
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
                     (data.events || []).forEach(function(event) {

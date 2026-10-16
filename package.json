@@ -4,9 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite",
-        "preview:screenshots": "node scripts/capture-screenshots.js",
-        "preview:pdf": "node scripts/generate-client-preview-pdf.js"
+        "dev": "vite"
     },
     "devDependencies": {
         "@alpinejs/collapse": "^3.4.2",

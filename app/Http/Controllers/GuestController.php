@@ -693,11 +693,24 @@ class GuestController extends Controller
         // review. This gates the rental agreement signature — see
         // signRentalAgreement() — the guest can no longer sign before the
         // ID they uploaded has actually been checked.
+        // Barcode text: read it from the saved back photo on the server (same result on every phone
+        // and browser). If the server decoder cannot run or finds nothing, keep what the browser posted.
+        $barcodeRaw = $request->input('id_barcode_raw');
+        $serverDecode = null;
+
         if (isset($updates['photo_id_path']) || isset($updates['photo_id_back_path'])) {
+            $backPath = $updates['photo_id_back_path'] ?? $booking->photo_id_back_path;
+            if ($booking->id_type !== 'passport' && filled($backPath)) {
+                $serverDecode = app(\App\Services\BarcodeDecoder::class)->decodeStored($backPath);
+                if (filled($serverDecode['text'])) {
+                    $barcodeRaw = $serverDecode['text'];
+                }
+            }
+
             $this->scanIdentity(
                 $booking,
                 $updates['photo_id_path'] ?? $booking->photo_id_path,
-                $request->input('id_barcode_raw')
+                $barcodeRaw
             );
         }
 
@@ -724,7 +737,7 @@ class GuestController extends Controller
 
         // Debug trail for the ID scan: outcome + browser events, never the barcode text or personal data.
         try {
-            $rawBarcode = (string) $request->input('id_barcode_raw', '');
+            $rawBarcode = (string) ($barcodeRaw ?? '');
             $parsedBarcode = filled($rawBarcode) ? \App\Services\AamvaParser::parse($rawBarcode) : null;
             $scanPassed = $booking->idScanPassed();
             ActivityLogService::guest(
@@ -746,6 +759,8 @@ class GuestController extends Controller
                         'passed'                => $scanPassed,
                         'blocking_reason'       => $booking->idScanBlockingReason(),
                         'barcode_text_received' => filled($rawBarcode),
+                        'server_decode'         => $serverDecode['reason'] ?? 'not_run',
+                        'server_decode_recipe'  => $serverDecode['recipe'] ?? null,
                         'barcode_chars'         => strlen($rawBarcode),
                         'barcode_parsed'        => (bool) ($parsedBarcode && filled($parsedBarcode['last_name'] ?? null) && filled($parsedBarcode['dob'] ?? null)),
                         'front_uploaded'        => (bool) $frontUploaded,
@@ -846,6 +861,7 @@ class GuestController extends Controller
             'id_age' => $dob?->age,
             'id_expiry_date' => $expires,
             'id_number' => $booking->id_number,
+            'id_zip' => (isset($parsed) && is_array($parsed)) ? ($parsed['zip'] ?? $booking->id_zip) : $booking->id_zip,
             'id_scan_status' => $status,
             'id_scan_source' => $source,
             'id_name_match' => $nameMatch,

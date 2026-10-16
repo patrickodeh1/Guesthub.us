@@ -5,7 +5,7 @@
     var guestPhoneCountryMenu = document.getElementById("guest-phone-country-menu");
     var guestPhoneCountryList = document.getElementById("guest-phone-country-list");
     var guestPhoneCountrySearch = document.getElementById("guest-phone-country-search");
-    var guestPhoneInputs = document.querySelectorAll('input[name="phone"]');
+    var guestPhoneInputs = document.querySelectorAll('input[name="phone"], input[name="phone_number"]');
 
     var flagUrl = function(iso2) {
         if (!iso2) return '';
@@ -1242,7 +1242,27 @@
     }
 ];
 
-    var selectedCountry = guestPhoneCountryData.find(function(c) { return c.iso2 === 'US'; }) || guestPhoneCountryData[0];
+    var preferredIso = {'+1':'US','+44':'GB','+7':'RU','+39':'IT','+47':'NO','+358':'FI','+212':'MA','+590':'GP','+262':'RE','+290':'SH'};
+    function countryForCode(code) {
+        var iso = preferredIso[code];
+        return guestPhoneCountryData.find(function(c) { return iso ? c.iso2 === iso : c.code === code; })
+            || guestPhoneCountryData.find(function(c) { return c.code === code; });
+    }
+    var startCode = guestPhoneCountryCode ? guestPhoneCountryCode.value : '+1';
+    var fullInput = document.querySelector('input[data-full-number]');
+    if (fullInput) {
+        var full = fullInput.getAttribute('data-full-number') || '';
+        if (full.charAt(0) === '+') {
+            var best = null;
+            guestPhoneCountryData.forEach(function(c) {
+                if (full.indexOf(c.code) === 0 && (!best || c.code.length > best.code.length)) best = c;
+            });
+            if (best) { startCode = best.code; fullInput.value = full.slice(best.code.length); }
+        }
+    }
+    var selectedCountry = countryForCode(startCode || '+1')
+        || guestPhoneCountryData.find(function(c) { return c.iso2 === 'US'; })
+        || guestPhoneCountryData[0];
 
     function setSelectedCountry(country) {
         selectedCountry = country;

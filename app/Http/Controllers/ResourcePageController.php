@@ -166,6 +166,7 @@ class ResourcePageController extends Controller
 
         // Build video query
         $query = InstructionalVideo::published()
+            ->where('processing_status', 'completed')
             ->with('properties')
             ->whereHas('properties', function ($q) use ($propertyIds, $selectedPropertyId) {
                 $q->whereIn('properties.id', $propertyIds);

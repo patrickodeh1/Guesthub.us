@@ -121,6 +121,7 @@ class CheckoutOverviewService
                     'session' => $session,
                     'cleaner' => $session?->housekeeper?->name,
                     'covered' => (bool) ($session && $session->housekeeper_id),
+                    'cleaner_pending' => (bool) ($session && $session->housekeeper_id && $session->assignment_status === 'pending_confirmation'),
                     'cleaner_options' => $cleanerOptions->get($primary->property_id, collect()),
                 ];
             })

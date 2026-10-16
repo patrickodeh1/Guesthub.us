@@ -1,3 +1,4 @@
+const APP_BASE = document.querySelector("meta[name=app-base]")?.content ?? "";
 /**
  * Resources Menu Alpine.js Component
  */
@@ -33,7 +34,7 @@ export default function resourcesMenu() {
             this.loading = true;
             this.error = null;
             try {
-                const response = await fetch(`/api/property-videos?property_id=${propertyId}`);
+                const response = await fetch(`${APP_BASE}/api/property-videos?property_id=${propertyId}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch videos');
                 }

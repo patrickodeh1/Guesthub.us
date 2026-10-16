@@ -12,7 +12,7 @@
                             <x-icon :name="$item['icon']" class="h-4 w-4" />
                         </span>
                     @endunless
-                    <span class="min-w-0 flex-1 truncate font-medium">{{ $item['label'] }}</span>
+                    <span class="min-w-0 flex-1 min-w-0 break-words font-medium">{{ $item['label'] }}</span>
                 </a>
                 {{-- Rotation lives on the svg only (it used to be on the button too, which double-rotated it) --}}
                 <button type="button"
@@ -39,7 +39,7 @@
                         <x-icon :name="$item['icon']" class="h-4 w-4" />
                     </span>
                 @endunless
-                <span class="min-w-0 flex-1 truncate font-medium">{{ $item['label'] }}</span>
+                <span class="min-w-0 flex-1 min-w-0 break-words font-medium">{{ $item['label'] }}</span>
                 <x-icon name="chevron-right" class="h-3.5 w-3.5 shrink-0 transition-transform group-open/nav-section:rotate-90" />
             </summary>
             <div class="ml-2 grid min-w-0 gap-1 border-l border-white/10 pl-2">

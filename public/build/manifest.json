@@ -1,6 +1,6 @@
 {
-  "_bootstrap-BcVDo3KE.js": {
-    "file": "assets/bootstrap-BcVDo3KE.js",
+  "_bootstrap-BCviDWfR.js": {
+    "file": "assets/bootstrap-BCviDWfR.js",
     "name": "bootstrap"
   },
   "node_modules/zxing-wasm/dist/es/reader/index.js": {
@@ -14,7 +14,7 @@
     "src": "node_modules/zxing-wasm/dist/reader/zxing_reader.wasm"
   },
   "resources/css/app.css": {
-    "file": "assets/app-By3-85ip.css",
+    "file": "assets/app-BfU_RnqW.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -32,21 +32,21 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-TEvdtMNi.js",
+    "file": "assets/app-B-vmcLkM.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_bootstrap-BcVDo3KE.js"
+      "_bootstrap-BCviDWfR.js"
     ]
   },
   "resources/js/cleaning-app.js": {
-    "file": "assets/cleaning-app-eTQSI9y4.js",
+    "file": "assets/cleaning-app-r_GElEgP.js",
     "name": "cleaning-app",
     "src": "resources/js/cleaning-app.js",
     "isEntry": true,
     "imports": [
-      "_bootstrap-BcVDo3KE.js"
+      "_bootstrap-BCviDWfR.js"
     ]
   },
   "resources/js/id-barcode.js": {

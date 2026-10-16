@@ -624,7 +624,7 @@ export default function checklist(config = {}) {
                 }
                 const sessionId = this.getSessionId();
                 if (sessionId) {
-                    window.location.href = `/sessions/${sessionId}`;
+                    window.location.href = `${window.APP_BASE}/sessions/${sessionId}`;
                 }
                 return;
             }

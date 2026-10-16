@@ -26,7 +26,8 @@ class AssignmentController extends Controller
                 $q->withCount(['rooms', 'propertyTasks']);
             }])
             ->with('housekeeper:id,name')
-            ->orderBy('scheduled_date', 'asc');
+            ->orderBy('scheduled_date', 'asc')
+            ->orderBy('scheduled_time', 'asc');
 
         // Admins/owners see all assignments; housekeepers see only their own
         if (!$user->hasAnyRole(['admin', 'owner', 'company'])) {
@@ -51,7 +52,7 @@ class AssignmentController extends Controller
         $assignments = $query->get();
 
         // Group assignments by relative date
-        $groupedAssignments = AssignmentGroupingService::groupAssignmentsByDate($assignments);
+        $groupedAssignments = AssignmentGroupingService::groupAssignmentsByDate($assignments, true);
 
         return view('assignments.index', [
             'groupedAssignments' => $groupedAssignments,

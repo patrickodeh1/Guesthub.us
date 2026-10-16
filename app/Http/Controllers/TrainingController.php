@@ -17,6 +17,10 @@ class TrainingController extends Controller
     {
         $user = Auth::user();
 
+        if ($user->hasRole('admin') && ! $user->hasRole('housekeeper')) {
+            return redirect()->route('admin.training-logs.index');
+        }
+
         // Get all pending sessions for this user
         $sessions = CleaningSession::where('housekeeper_id', $user->id)
             ->where('status', 'pending')

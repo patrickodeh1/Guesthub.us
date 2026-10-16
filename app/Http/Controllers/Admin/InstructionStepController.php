@@ -253,6 +253,7 @@ class InstructionStepController extends Controller
         unset($data['existing_image_path']);
 
         $data['active'] = $request->boolean('active', true);
+        $data['requires_photo'] = $request->boolean('requires_photo') && $request->boolean('for_cleaner');
         // Audience checkboxes: the admin ticks everyone who should see this step.
         $gp = $request->boolean('for_guest_parking');
         $gn = $request->boolean('for_guest_no_parking');

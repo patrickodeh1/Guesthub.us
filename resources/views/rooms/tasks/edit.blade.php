@@ -121,7 +121,7 @@
                                             <video src="{{ $m->url }}" class="w-full h-36 object-cover" controls muted></video>
                                         @endif
                                         <div class="p-2 border-t dark:border-gray-800 text-xs flex items-center justify-between">
-                                            <span class="truncate">{{ $m->caption }}</span>
+                                            <span class="min-w-0 break-words">{{ $m->caption }}</span>
 
                                             {{-- IMPORTANT: This button does not live inside a form; it targets the external form below --}}
                                             <button type="submit"

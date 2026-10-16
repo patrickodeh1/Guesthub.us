@@ -48,7 +48,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" x-text="videoName"></p>
+                                            <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 min-w-0 break-words" x-text="videoName"></p>
                                             <p class="text-xs text-gray-500" x-text="videoSize"></p>
                                         </div>
                                     </div>
@@ -182,7 +182,7 @@
                                 </div>
                                 <div class="space-y-4 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                                     <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                                        <input type="checkbox" name="is_required_during_task" value="1"
+                                        <input type="checkbox" name="is_required_during_task" value="1" x-model="requiredDuringTask"
                                             class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500 w-5 h-5"
                                             @checked(old('is_required_during_task') == '1')>
                                         <div>
@@ -193,7 +193,7 @@
                                 </div>
                             </div>
                             
-                            <div x-show="isPreArrival || formData?.is_required_during_task" class="pl-8 pt-2">
+                            <div x-show="isPreArrival || requiredDuringTask" class="pl-8 pt-2">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <x-form.label value="Required Views" />
@@ -242,7 +242,7 @@
                                         <input type="checkbox" name="properties[]" value="{{ $property->id }}"
                                             class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
                                             @checked(in_array($property->id, old('properties', [])))>
-                                        <span class="truncate">{{ $property->name }}</span>
+                                        <span class="min-w-0 break-words">{{ $property->name }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -288,7 +288,7 @@
                                               }
                                               $ctxStr = empty($ctx) ? "" : " (" . implode(", ", $ctx) . ")";
                                           @endphp
-                                          <span class="truncate">{{ $task->name }}{{ $ctxStr }}</span>
+                                          <span class="min-w-0 break-words">{{ $task->name }}{{ $ctxStr }}</span>
 
                                     </label>
                                 @endforeach
@@ -327,7 +327,7 @@
                 {{-- Upload Progress Bar --}}
                 <div x-show="uploading" class="w-full" x-transition>
                     <div class="flex justify-between text-sm text-gray-700 dark:text-gray-300 mb-1">
-                        <span class="font-medium">Uploading Video...</span>
+                        <span class="font-medium" x-text="processing ? 'Processing video...' : 'Uploading Video...'"></span>
                         <span x-text="Math.round(uploadProgress) + '%'"></span>
                     </div>
                     <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
@@ -337,7 +337,7 @@
                         </div>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5" x-show="uploadSpeed">
-                        <span x-text="uploadSpeed"></span> · <span x-text="uploadEta"></span> remaining
+                        <span x-text="uploadSpeed"></span><span x-show="uploadEta && !processing"> · <span x-text="uploadEta"></span> remaining</span>
                     </p>
                 </div>
 
@@ -354,11 +354,11 @@
         </form>
     </x-card>
 
-    <script src="{{ url('/ffmpeg-assets/ffmpeg.js') }}"></script>
     <script>
         function videoForm() {
             return {
                 isPreArrival: {{ old('is_pre_arrival') ? 'true' : 'false' }},
+                requiredDuringTask: {{ old('is_required_during_task') ? 'true' : 'false' }},
                 videoDrag: false,
                 videoName: null,
                 videoSize: null,
@@ -369,6 +369,7 @@
                 uploadSpeed: null,
                 uploadEta: null,
                 _uploadStartTime: null,
+                processing: false,
                 
                 thumbDrag: false,
                 thumbUrl: null,
@@ -437,80 +438,41 @@
                     });
                 },
                 
-                async optimizeVideo(file) {
-                    if (typeof window.FFmpegWASM === 'undefined') {
-                        this.uploadSpeed = "Initializing video engine...";
-                        await new Promise((resolve, reject) => {
-                            let script = document.createElement('script');
-                            script.src = "{{ url('/ffmpeg-assets/ffmpeg.js') }}?v=" + Date.now();
-                            script.onload = resolve;
-                            script.onerror = () => {
-                                alert("Critical Error: Your server is blocking the FFmpeg script. Please contact your host.");
-                                reject(new Error("FFmpeg script blocked"));
-                            };
-                            document.head.appendChild(script);
-                        });
-                    }
-
-                    const { FFmpeg } = window.FFmpegWASM;
-                    
-                    this.isOptimizing = true;
+                async pollStatus(url, redirect) {
+                    this.processing = true;
                     this.uploadProgress = 0;
-                    this.uploadSpeed = 'Downloading video engine (~30MB) - Please wait...';
-                    
-                    const fetchFile = async (f) => {
-                        return new Uint8Array(await f.arrayBuffer());
+                    this.uploadEta = null;
+                    this.uploadSpeed = 'Converting video...';
+                    const started = Date.now();
+                    const tick = async () => {
+                        try {
+                            const r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                            const d = await r.json();
+                            if (d.status === 'completed') {
+                                this.uploadProgress = 100;
+                                this.uploadSpeed = 'Done! Redirecting...';
+                                window.location.href = redirect;
+                                return;
+                            }
+                            if (d.status === 'failed') {
+                                this.uploading = false;
+                                this.processing = false;
+                                this.uploadProgress = 0;
+                                this.uploadError = 'Video conversion failed: ' + (d.error || 'unknown error') + '\nThe video was saved as a failed draft. Delete it from the library and try again.';
+                                return;
+                            }
+                            this.uploadProgress = d.progress || 0;
+                            this.uploadSpeed = 'Converting video... ' + this.uploadProgress + '%';
+                        } catch (e) { /* network blip, keep polling */ }
+                        if (Date.now() - started > 20 * 60 * 1000) {
+                            this.uploading = false;
+                            this.processing = false;
+                            this.uploadError = 'Conversion is taking too long. Check the video library in a few minutes.';
+                            return;
+                        }
+                        setTimeout(tick, 1000);
                     };
-                    
-                    const ffmpeg = new FFmpeg();
-                    
-                    ffmpeg.on('log', ({ message }) => {
-                        console.log(message);
-                    });
-                    
-                    ffmpeg.on('progress', ({ progress }) => {
-                        this.uploadProgress = Math.round(progress * 100);
-                        this.uploadSpeed = `Optimizing video for iPhone... ${this.uploadProgress}%`;
-                    });
-                    
-                    const baseURL = "{{ url('/ffmpeg-assets') }}";
-                    
-                    // Load FFmpeg.wasm from local server.
-                    // CRITICAL: We explicitly DO NOT pass classWorkerURL. 
-                    // If classWorkerURL is passed, ffmpeg.wasm forces {type: "module"} on the Web Worker,
-                    // which breaks importScripts on Safari/iOS and throws "failed to import ffmpeg-core.js".
-                    // By omitting it, ffmpeg.js automatically loads 814.ffmpeg.js as a standard script worker.
-                    await ffmpeg.load({
-                        coreURL: `${baseURL}/ffmpeg-core.js`,
-                        wasmURL: `${baseURL}/ffmpeg-core.wasm`
-                    });
-                    
-                    const inputName = 'input_' + Date.now() + '.mp4';
-                    const outputName = 'output_' + Date.now() + '.mp4';
-                    
-                    await ffmpeg.writeFile(inputName, await fetchFile(file));
-                    
-                    // Run FFmpeg command - ultrafast preset to keep browser from freezing too long
-                    await ffmpeg.exec([
-                        '-i', inputName,
-                        '-c:v', 'libx264',
-                        '-preset', 'ultrafast',
-                        '-crf', '28',
-                        '-pix_fmt', 'yuv420p',
-                        '-c:a', 'aac',
-                        '-b:a', '128k',
-                        outputName
-                    ]);
-                    
-                    const data = await ffmpeg.readFile(outputName);
-                    
-                    // CRITICAL: Terminate the Web Worker to free up 500MB+ of memory.
-                    // If we don't do this, subsequent uploads will hang due to OOM!
-                    ffmpeg.terminate();
-                    
-                    // Ensure the final uploaded file always ends in .mp4 so the server sends the correct video/mp4 MIME type
-                    const finalName = file.name.replace(/\.[^/.]+$/, "") + ".mp4";
-                    return new File([data.buffer], finalName, { type: 'video/mp4' });
+                    tick();
                 },
 
                 async submitForm(event) {
@@ -520,30 +482,11 @@
                     this.uploading = true;
                     this.uploadProgress = 0;
                     this.uploadError = null;
-                    this.uploadSpeed = 'Preparing video...';
+                    this.uploadSpeed = 'Preparing upload...';
+                    this.processing = false;
                     this.uploadEta = null;
                     
                     let fileToUpload = this.$refs.videoFile.files?.[0];
-                    
-                    // Process video with FFmpeg.wasm
-                    if (fileToUpload) {
-                        try {
-                            this.uploadSpeed = 'Loading Apple Optimizer (One-time download ~25MB)...';
-                            fileToUpload = await this.optimizeVideo(fileToUpload);
-                            this.uploadSpeed = 'Video optimized! Starting upload...';
-                        } catch (e) {
-                            console.error("FFmpeg Error:", e);
-                            let errorMsg = e;
-                            if (e instanceof Error) {
-                                errorMsg = e.message;
-                            } else if (typeof e === 'object') {
-                                errorMsg = JSON.stringify(e);
-                            }
-                            this.uploadError = 'Failed to optimize video: ' + errorMsg;
-                            this.uploading = false;
-                            return;
-                        }
-                    }
                     
                     const formData = new FormData(form);
                     if (fileToUpload) {
@@ -561,6 +504,12 @@
                     xhr.upload.onprogress = (e) => {
                         if (e.lengthComputable) {
                             this.uploadProgress = Math.round((e.loaded / e.total) * 100);
+                            if (e.loaded >= e.total) {
+                                this.processing = true;
+                                this.uploadEta = null;
+                                this.uploadSpeed = 'Upload complete. Converting the video so it plays on every device. This can take a minute.';
+                                return;
+                            }
                             // Calculate speed and ETA
                             const elapsed = (Date.now() - this._uploadStartTime) / 1000;
                             if (elapsed > 0.5) {
@@ -585,11 +534,26 @@
                     
                     xhr.onload = () => {
                         if (xhr.status >= 200 && xhr.status < 300) {
-                            const res = JSON.parse(xhr.responseText);
-                            window.location.href = res.redirect || '{{ route('admin.videos.index') }}';
+                            let res;
+                            try {
+                                res = JSON.parse(xhr.responseText);
+                            } catch (e) {
+                                console.error('Unexpected server response:', xhr.responseText);
+                                this.uploading = false;
+                                this.processing = false;
+                                this.uploadProgress = 0;
+                                this.uploadError = 'The server returned an unexpected response. Details: ' + xhr.responseText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+                                return;
+                            }
+                            if (res.status_url) {
+                                this.pollStatus(res.status_url, res.redirect || '{{ route('admin.videos.index') }}');
+                            } else {
+                                window.location.href = res.redirect || '{{ route('admin.videos.index') }}';
+                            }
                         } else {
                             this.uploading = false;
                             this.uploadProgress = 0;
+                            this.processing = false;
                             let msg = 'Upload failed.';
                             try {
                                 const res = JSON.parse(xhr.responseText);
@@ -607,6 +571,7 @@
                     xhr.onerror = () => {
                         this.uploading = false;
                         this.uploadProgress = 0;
+                        this.processing = false;
                         this.uploadError = 'A network error occurred during upload. Please check your connection and try again.';
                     };
                     

@@ -38,9 +38,7 @@
                     </div>
                     <div>
                         <label class="field-label" for="phone">Phone number</label>
-                        <input id="phone" name="phone_number" type="tel"
-                               value="{{ old('phone_number', $user->phone_number ?: $user->phone) }}"
-                               class="input" placeholder="+1 555 000 0000">
+                        @include('partials.phone-country-picker', ['id' => 'phone', 'name' => 'phone_number', 'value' => old('phone_number', $user->phone_number ?: $user->phone)])
                         @error('phone_number') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                     <div>

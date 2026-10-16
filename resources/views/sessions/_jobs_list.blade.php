@@ -6,7 +6,7 @@
                 <a href="{{ route('sessions.show', $s) }}" class="absolute inset-0 z-0 rounded-xl"></a>
                 <div class="relative z-10 flex items-start justify-between gap-3 pointer-events-none">
                     <div class="flex-1 min-w-0">
-                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        <h3 class="font-semibold text-gray-900 dark:text-gray-100 min-w-0 break-words">
                             {{ $s->property->name }}
                         </h3>
                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -28,13 +28,13 @@
                             <div class="mt-2 pointer-events-auto">
                                 <a href="{{ $mapsUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-start text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
                                     <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0 mt-0.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                    <span class="break-words line-clamp-2" title="{{ $s->property->address }}">{{ $s->property->address }}</span>
+                                    <span class="break-words" title="{{ $s->property->address }}">{{ $s->property->address }}</span>
                                 </a>
                             </div>
                         @endif
                     </div>
                     <div class="flex-shrink-0 pointer-events-auto">
-                        <x-status-badge :status="$s->status" />
+                        @include('sessions._assignment_badge', ['s' => $s])
                     </div>
                 </div>
                 <div class="mt-3 flex items-center justify-end relative z-10 pointer-events-none gap-3">
@@ -43,12 +43,7 @@
                             Live Report
                         </a>
                     @endif
-                    <span class="text-sm text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1">
-                        Open
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
-                    </span>
+                    <div class="pointer-events-auto">@include('sessions._job_menu', ['s' => $s])</div>
                 </div>
             </div>
         </div>
@@ -94,14 +89,14 @@
                             <div class="mt-1 max-w-[250px]">
                                 <a href="{{ $mapsUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-start text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
                                     <svg class="w-3.5 h-3.5 mr-1 flex-shrink-0 mt-0.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                    <span class="break-words line-clamp-2" title="{{ $s->property->address }}">{{ $s->property->address }}</span>
+                                    <span class="break-words" title="{{ $s->property->address }}">{{ $s->property->address }}</span>
                                 </a>
                             </div>
                         @endif
                     </td>
-                    <td class="px-4 py-3 text-center"><x-status-badge :status="$s->status" /></td>
+                    <td class="px-4 py-3 text-center">@include('sessions._assignment_badge', ['s' => $s])</td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('sessions.show', $s) }}" class="text-indigo-600 hover:underline font-medium">Open</a>
+                        @include('sessions._job_menu', ['s' => $s])
                         @if($s->status === 'in_progress' && $s->report_token && (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company'])))
                             <span class="text-gray-300 dark:text-gray-600 mx-1">|</span>
                             <a href="{{ route('reports.sessions.show', ['token' => $s->report_token]) }}" target="_blank" rel="noopener noreferrer" class="text-emerald-600 hover:underline font-medium whitespace-nowrap">Live Report</a>
@@ -116,3 +111,27 @@
         </tbody>
     </table>
 </x-card>
+
+@once
+    @if (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+        <x-modal name="jobs-gps-override-modal" :show="false" maxWidth="md">
+            <form method="post" x-data="{ action: '', label: '' }"
+                  @gps-override-open.window="action = $event.detail.action; label = $event.detail.label"
+                  :action="action" class="p-6">
+                @csrf
+                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Grant GPS Override</h2>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Authorize the cleaner to start this cleaning<span x-show="label"> at <span x-text="label"></span></span> without passing GPS verification.
+                </p>
+                <div class="mt-4">
+                    <x-form.label for="jobs-gps-reason" value="Reason for Override" />
+                    <x-form.input id="jobs-gps-reason" name="reason" type="text" maxlength="255" class="mt-1 block w-full" required placeholder="e.g., Cleaner's phone GPS broken" />
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <x-button type="button" variant="secondary" x-on:click="$dispatch('close')">Cancel</x-button>
+                    <x-button type="submit" class="ml-3">Grant Override</x-button>
+                </div>
+            </form>
+        </x-modal>
+    @endif
+@endonce

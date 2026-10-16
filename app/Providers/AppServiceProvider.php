@@ -48,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
             }
         });
         \App\Models\CleaningSession::updated(function (\App\Models\CleaningSession $s) {
+            if ($s->wasChanged('scheduled_date') && ! $s->booking_id && ! $s->no_guest) {
+                \App\Services\CleaningFlowService::autoTag($s);
+            }
             if ($s->wasChanged('housekeeper_id') && $s->housekeeper_id) {
                 \App\Services\CleaningFlowService::notifyAssigned($s);
             }

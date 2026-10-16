@@ -137,13 +137,13 @@
                 <div class="flex items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="min-w-0 text-left">
                         @if (isset($title))
-                            <h3 id="{{ $name }}-title" class="font-semibold truncate text-gray-900 dark:text-gray-100">
+                            <h3 id="{{ $name }}-title" class="font-semibold min-w-0 break-words text-gray-900 dark:text-gray-100">
                                 {{ $title }}
                             </h3>
                         @endif
 
                         @if (isset($subtitle))
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 min-w-0 break-words">
                                 {{ $subtitle }}
                             </p>
                         @endif

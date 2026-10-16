@@ -100,15 +100,7 @@
                 :value="__('Phone Number')"
             />
 
-            <x-form.input
-                id="phone_number"
-                name="phone_number"
-                type="tel"
-                class="block w-full"
-                :value="old('phone_number', $user->phone_number)"
-                autocomplete="tel"
-                placeholder="e.g. +1 234 567 8900"
-            />
+            @include('partials.phone-country-picker', ['id' => 'phone_number', 'name' => 'phone_number', 'value' => old('phone_number', $user->phone_number), 'inputClass' => 'block rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'])
 
             <x-form.error :messages="$errors->get('phone_number')" />
         </div>

@@ -2,35 +2,35 @@
     @php
         $checkinToday = $booking->check_in_date?->isToday() ?? false;
         $checkoutToday = $booking->check_out_date?->isToday() ?? false;
+        $shortTime = fn ($t) => str_replace(':00', '', \Carbon\Carbon::parse($t)->format('g:ia'));
+        $showCountdown = $context !== 'today' && ! $booking->isMarkedCheckedIn() && ! $booking->checked_out_at && $booking->daysUntilCheckIn() > 0;
     @endphp
     <div class="min-w-0 pr-[45%]">
+        @if($showCountdown)
+            <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ $booking->arrivalCountdownLabel() }}</p>
+        @endif
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
         @php $acct = \App\Services\CleanerAccountability::forBooking($booking, now()->setTimezone(config('app.display_timezone'))->toDateString()); @endphp
         @if($acct)
-            <p class="text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+            <p class="text-xs font-semibold {{ match($acct['tone']) { 'ok', 'green' => 'text-emerald-700', 'red' => 'text-red-600', 'warn' => 'text-amber-700', default => 'text-slate-500' } }}">{{ $acct['text'] }}</p>
         @endif
         @if($context === 'today')
-            <p class="text-sm font-medium text-slate-700">{{ $booking->todayTabLabel() }}</p>
+            @if($booking->checked_out_at)
+                <p class="text-sm font-medium text-slate-700">{{ $booking->todayTabLabel() }}</p>
+            @endif
         @else
         <p class="text-sm text-slate-600">
-            {{ $booking->dateRangeOnly() }}
-            @if($booking->nightsLabel())
-                &middot; {{ $booking->nightsLabel() }}
-            @endif
-            @if(! $booking->isMarkedCheckedIn() && ! $booking->checked_out_at)
-                {{-- Not yet checked in: always show "checks in" language,
-                     regardless of section -- never "checks out" until the
-                     guest is actually marked checked in. --}}
-                &middot; {{ $booking->weekCardArrivalLabel() }}
-            @else
-                &middot; {{ $booking->weekCardDynamicLabel() }}
-            @endif
+            {{ $booking->dateRangeOnly() }}@if($booking->nightsLabel()) ({{ $booking->nightsLabel() }})@endif
         </p>
         @endif
-        <p class="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-slate-700">
+        <p class="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-slate-700 {{ $context !== 'today' ? 'w-max whitespace-nowrap' : '' }}">
             <x-icon name="clock" class="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            @if($checkinToday && ! $checkoutToday)
+            @if($context !== 'today')
+                <span class="whitespace-nowrap">Arrive: {{ $shortTime($booking->effectiveCheckinTimeFormatted()) }} &middot; Departs: {{ $shortTime($booking->effectiveCheckoutTimeFormatted()) }}</span>
+            @elseif($context === 'today' && ! $booking->checked_out_at)
+                <span>{{ $booking->todayTabTimedLabel() }}</span>
+            @elseif($checkinToday && ! $checkoutToday)
                 <span>Check-in {{ $booking->effectiveCheckinTimeFormatted() }}</span>
             @elseif($checkoutToday && ! $checkinToday)
                 <span>Check-out {{ $booking->effectiveCheckoutTimeFormatted() }}</span>
@@ -41,11 +41,8 @@
     </div>
 
     <div class="absolute right-4 top-3 max-w-[45%] text-right">
-        @if($context === 'upcoming' || ($context === 'this-week' && $booking->daysUntilCheckIn() > 0 && ! $booking->isMarkedCheckedIn()))
-            <span class="badge badge-arrival-countdown whitespace-normal">{{ $booking->arrivalCountdownLabel() }}</span>
-        @else
-            <span class="badge badge-{{ $booking->effectiveStatus() }} whitespace-normal">{{ $booking->statusLabel() }}</span>
-        @endif
+        <span class="badge badge-{{ $booking->effectiveStatus() }} whitespace-normal">{{ $booking->statusLabel() }}</span>
+
     </div>
 
     <div class="absolute bottom-3 right-4" data-row-menu>

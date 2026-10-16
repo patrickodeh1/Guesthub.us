@@ -422,7 +422,7 @@
                                 <video playsinline webkit-playsinline :src="media.url" class="w-full h-32 object-cover" controls></video>
                             </template>
                             <div class="absolute top-0 right-0 p-1">
-                                <button type="button" class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm" @click="if(confirm('Are you sure?')) { fetch(`/tasks/${taskId}/media/${media.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } }).then(() => { existingMedia = existingMedia.filter(m => m.id !== media.id) }) }">
+                                <button type="button" class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm" @click="if(confirm('Are you sure?')) { fetch(`{{ url("/tasks") }}/${taskId}/media/${media.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } }).then(() => { existingMedia = existingMedia.filter(m => m.id !== media.id) }) }">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                         </svg>

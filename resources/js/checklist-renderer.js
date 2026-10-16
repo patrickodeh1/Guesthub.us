@@ -789,7 +789,7 @@ export default function checklistRenderer(config = {}) {
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all
                         ${isActive ? 'border-blue-600 bg-blue-600 text-white' : isDone ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-400'}"
                     >${i + 1}</div>
-                    <span class="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[60px] text-center">${r.name}</span>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-400 break-words max-w-[72px] text-center">${r.name}</span>
                 </div>`;
             }).join('');
 
@@ -835,7 +835,7 @@ export default function checklistRenderer(config = {}) {
 
                         <div x-data="photoUploader(${room.id})" class="mb-6">
                             <form method="post" enctype="multipart/form-data"
-                                  action="/sessions/${this.sessionId}/rooms/${room.id}/photos"
+                                  action="${window.APP_BASE}/sessions/${this.sessionId}/rooms/${room.id}/photos"
                                   data-checklist-photo-form
                                   data-room-id="${room.id}"
                                   @submit.prevent.stop="handleSubmit($event)">
@@ -1061,7 +1061,7 @@ export default function checklistRenderer(config = {}) {
 
                                 <div x-data="photoUploader(${room.id})" class="mb-6">
                                     <form method="post" enctype="multipart/form-data"
-                                          action="/sessions/${this.sessionId}/rooms/${room.id}/photos"
+                                          action="${window.APP_BASE}/sessions/${this.sessionId}/rooms/${room.id}/photos"
                                           data-checklist-photo-form
                                           data-room-id="${room.id}"
                                           @submit.prevent.stop="handleSubmit($event)">
@@ -1317,7 +1317,7 @@ export default function checklistRenderer(config = {}) {
                                     : 'You have completed all stages of this cleaning session. Please add any notes and submit when ready.'}
                             </p>
                             ${isCompleted && this.sessionData.is_admin ? `
-                            <a href="/sessions/${this.sessionId}?edit_report=1"
+                            <a href="${window.APP_BASE}/sessions/${this.sessionId}?edit_report=1"
                                class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md mb-4">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>

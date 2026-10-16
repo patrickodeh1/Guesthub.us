@@ -48,6 +48,15 @@
                     @elseif(($step['action'] ?? 'content') === 'door_lock')
                         <p class="mt-5 text-sm font-bold text-slate-500 text-center">No lock is configured for this property yet.</p>
                     @endif
+                    @if(!empty($step['photo_url']))
+                        <div class="mt-5 text-center">
+                            <label class="guest-primary-btn is-go inline-flex cursor-pointer">
+                                <input type="file" accept="image/*" capture="environment" class="hidden" data-photo-input data-url="{{ $step['photo_url'] }}" data-step="{{ $i }}">
+                                <span>{{ !empty($step['photo_done']) ? 'Retake photo' : 'Take photo to continue' }}</span>
+                            </label>
+                            <p class="mt-2 text-sm font-semibold {{ !empty($step['photo_done']) ? 'text-emerald-700' : 'text-slate-500' }}" data-photo-status="{{ $i }}">{{ !empty($step['photo_done']) ? 'Photo saved' : 'A photo is required before you can continue.' }}</p>
+                        </div>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -108,6 +117,27 @@
         });
     });
 
+    var photoNeeded = {!! json_encode(array_map(fn ($s) => !empty($s['photo_url']) && empty($s['photo_done']), array_values($steps))) !!};
+    function applyPhotoGate() {
+        var last = current === total - 1;
+        var btn = document.getElementById((last ? "wizard-done-" : "wizard-next-") + type);
+        if (!btn) return;
+        if (photoNeeded[current]) { btn.disabled = true; btn.style.opacity = ".5"; }
+        else if (type !== "checkout") { btn.disabled = false; btn.style.opacity = "1"; }
+    }
+    document.querySelectorAll("#step-wizard-" + type + " [data-photo-input]").forEach(function (inp) {
+        inp.addEventListener("change", function () {
+            if (!inp.files.length) return;
+            var idx = parseInt(inp.dataset.step, 10);
+            var st = document.querySelector("#step-wizard-" + type + " [data-photo-status='" + idx + "']");
+            if (st) st.textContent = "Uploading...";
+            var fd = new FormData(); fd.append("photo", inp.files[0]);
+            fetch(inp.dataset.url, { method: "POST", body: fd, headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" } })
+                .then(function (r) { if (!r.ok) throw new Error(); photoNeeded[idx] = false; if (st) { st.textContent = "Photo saved"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; } applyPhotoGate(); })
+                .catch(function () { if (st) st.textContent = "Upload failed. Try again."; });
+        });
+    });
+
     function goTo(n) {
         document.getElementById("wizard-" + type + "-step-" + current).style.display = "none";
         document.getElementById("wizard-dot-" + type + "-" + current).className = "wizard-dot h-2 w-2 rounded-full bg-slate-200";
@@ -122,6 +152,7 @@
         var scrollEl = document.querySelector("#step-wizard-" + type + " .wizard-scroll");
         if (scrollEl) scrollEl.scrollTo({top: 0, behavior: "smooth"});
         armStep();
+        applyPhotoGate();
     }
 
     document.getElementById("wizard-next-" + type).addEventListener("click", function() { if (current < total - 1) goTo(current + 1); });
@@ -163,6 +194,7 @@
         }, 1000);
     }
     armStep();
+    applyPhotoGate();
     document.getElementById("wizard-prev-" + type).addEventListener("click", function() { if (current > 0) goTo(current - 1); });
 
     var backLink = document.getElementById("wizard-back-to-guide-" + type);

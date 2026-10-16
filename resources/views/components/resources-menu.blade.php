@@ -179,8 +179,8 @@
 
                                         <!-- Details -->
                                         <div class="p-3 flex-1 min-w-0 flex flex-col justify-center">
-                                            <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100 truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" x-text="video.title"></h4>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2" x-text="video.description || 'No description provided.'"></p>
+                                            <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100 min-w-0 break-words group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors" x-text="video.title"></h4>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="video.description || 'No description provided.'"></p>
                                             <div class="mt-1.5 flex items-center gap-1.5">
                                                 <span class="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400" x-text="video.category.replace('-', ' ')"></span>
                                             </div>

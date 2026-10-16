@@ -28,6 +28,7 @@ class CleaningJobService
             'scheduled_time' => $data['scheduled_time'] ?? null,
             'status' => $data['status'] ?? 'pending',
             'checkout_id' => $data['checkout_id'] ?? null,
+            'booking_id' => $data['booking_id'] ?? null,
             'sporadic_tasks' => array_values(array_unique($data['sporadic_tasks'] ?? [])),
         ]);
     }
@@ -96,8 +97,24 @@ class CleaningJobService
             'scheduled_time' => $data['scheduled_time'] ?? null,
             'status' => $session?->status ?? 'pending',
             'checkout_id' => $session?->checkout_id,
+            'booking_id' => $session?->booking_id ?? ($data['booking_id'] ?? null),
             'sporadic_tasks' => $session?->sporadic_tasks ?? [],
         ];
+
+        if (! $session) {
+            $d = Carbon::parse($data['scheduled_date'])->toDateString();
+            $session = CleaningSession::where('property_id', $data['property_id'])
+                ->whereNotNull('booking_id')
+                ->whereNull('housekeeper_id')
+                ->where('status', 'pending')
+                ->whereIn('booking_id', Booking::where('property_id', $data['property_id'])
+                    ->whereNull('cancelled_at')
+                    ->whereDate('check_in_date', '<=', $d)
+                    ->whereDate('check_out_date', '>=', $d)
+                    ->select('id'))
+                ->orderByRaw('DATE(scheduled_date) = ? desc', [$d])
+                ->first();
+        }
 
         $before = $session ? [
             'hk' => (int) $session->housekeeper_id,
@@ -112,7 +129,11 @@ class CleaningJobService
         $custom = $checkout
             && ! empty($data['scheduled_time'])
             && Carbon::parse($data['scheduled_date'].' '.$data['scheduled_time'])->ne($checkout);
-        $result->forceFill(['schedule_overridden' => (bool) $custom])->saveQuietly();
+        $moved = false;
+        if ($result->booking_id && ($lb = Booking::find($result->booking_id)) && $lb->check_out_date) {
+            $moved = $lb->check_out_date->toDateString() !== $result->scheduled_date?->toDateString();
+        }
+        $result->forceFill(['schedule_overridden' => (bool) $custom || $moved])->saveQuietly();
 
         // Same cleaner, new date or time: the model hook only fires on a cleaner change, so re-text here.
         if ($before && $before['hk'] === (int) $result->housekeeper_id && $before['hk'] > 0) {

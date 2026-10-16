@@ -116,7 +116,7 @@
                                                     <span>{{ $session->scheduled_time ? $session->scheduled_time->format('g:i A') : 'No time specified' }}</span>
                                                 </span>
                                                 @if($session->property->address)
-                                                    <span class="truncate max-w-xs sm:max-w-md hidden sm:inline-flex items-center gap-1">
+                                                    <span class="min-w-0 break-words max-w-xs sm:max-w-md hidden sm:inline-flex items-center gap-1">
                                                         <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -128,7 +128,7 @@
                                         </div>
 
                                         <div class="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 flex-shrink-0">
-                                            <x-status-badge :status="$session->status" />
+                                            @include('sessions._assignment_badge', ['s' => $session])
                                             
                                             <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform flex items-center gap-1 select-none">
                                                 Open Job 

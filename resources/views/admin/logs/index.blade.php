@@ -6,7 +6,7 @@
             <p class="page-subtitle">Complete audit trail of every admin and guest action across the platform.</p>
         </div>
         <a href="{{ route('admin.logs.index', array_merge(request()->query(), ['export' => 1])) }}"
-           class="btn-secondary hidden sm:inline-flex">
+           class="btn-secondary w-full sm:w-auto">
             <x-icon name="download" class="mr-2 h-4 w-4" />
             Export CSV
         </a>
@@ -14,8 +14,8 @@
 
     {{-- Filters --}}
     <form method="get" class="card card-pad mb-5" data-tour="logs-filters">
-        <div class="flex flex-wrap items-end gap-3">
-            <div class="flex-1" style="min-width:180px">
+        <div class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="min-w-0">
                 <label class="field-label">Search</label>
                 <div class="relative mt-2">
                     <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -23,52 +23,52 @@
                            placeholder="Description, actor, action…" class="input pl-9">
                 </div>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Source</label>
-                <select name="source" class="input mt-2">
+                <select name="source" class="input mt-2 w-full">
                     <option value="">All sources</option>
                     <option value="portal" @selected(request('source') === 'portal')>Guest Portal</option>
                     <option value="ops" @selected(request('source') === 'ops')>Cleaning Ops</option>
                 </select>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Actor</label>
-                <select name="actor" class="input mt-2">
+                <select name="actor" class="input mt-2 w-full">
                     <option value="">All actors</option>
                     @foreach($actors as $actor)
                         <option value="{{ $actor }}" @selected(request('actor') === $actor)>{{ ucfirst($actor) }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Module</label>
-                <select name="module" class="input mt-2">
+                <select name="module" class="input mt-2 w-full">
                     <option value="">All modules</option>
                     @foreach($modules as $module)
                         <option value="{{ $module }}" @selected(request('module') === $module)>{{ ucfirst($module) }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Severity</label>
-                <select name="severity" class="input mt-2">
+                <select name="severity" class="input mt-2 w-full">
                     <option value="">All</option>
                     @foreach($severities as $sev)
                         <option value="{{ $sev }}" @selected(request('severity') === $sev)>{{ ucfirst($sev) }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Date from</label>
-                <input name="date_from" type="date" value="{{ request('date_from') }}" class="input mt-2">
+                <input name="date_from" type="date" value="{{ request('date_from') }}" class="input mt-2 w-full">
             </div>
-            <div>
+            <div class="min-w-0">
                 <label class="field-label">Date to</label>
-                <input name="date_to" type="date" value="{{ request('date_to') }}" class="input mt-2">
+                <input name="date_to" type="date" value="{{ request('date_to') }}" class="input mt-2 w-full">
             </div>
-            <button type="submit" class="btn-primary">Filter</button>
+            <button type="submit" class="btn-primary w-full sm:w-auto">Filter</button>
             @if(request()->hasAny(['search', 'source', 'actor', 'module', 'severity', 'property', 'subject_type', 'subject_id', 'date_from', 'date_to']))
-                <a href="{{ route('admin.logs.index') }}" class="btn-secondary">Clear</a>
+                <a href="{{ route('admin.logs.index') }}" class="btn-secondary w-full sm:w-auto">Clear</a>
             @endif
         </div>
     </form>
@@ -91,7 +91,63 @@
     </div>
 
     {{-- Log table --}}
-    <div class="table-wrap" data-tour="logs-table">
+    <div class="grid gap-3 md:hidden" data-tour="logs-mobile">
+        @forelse($logs as $log)
+            <article class="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+                <div class="flex items-start gap-3">
+                    <span class="icon-chip mt-0.5 h-8 w-8 shrink-0">
+                        <x-icon :name="$log->icon ?: 'logs'" class="h-3.5 w-3.5" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="break-words text-sm font-semibold text-slate-950">{{ $log->description }}</h2>
+                        <p class="mt-0.5 break-words text-xs text-slate-500">{{ $log->event }}</p>
+                    </div>
+                    <span class="badge badge-inactive shrink-0">{{ $log->severity }}</span>
+                </div>
+
+                <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm">
+                    <div class="min-w-0">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Actor</dt>
+                        <dd class="mt-1 break-words font-medium text-slate-900">{{ $log->actor_name ?: ucfirst($log->actor_type) }}</dd>
+                        @if($log->actor_email)
+                            <dd class="break-all text-xs text-slate-500">{{ $log->actor_email }}</dd>
+                        @endif
+                    </div>
+                    <div class="min-w-0">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Source</dt>
+                        <dd class="mt-1"><span class="badge badge-inactive">{{ $log->source === 'portal' ? 'Guest Portal' : 'Cleaning Ops' }}</span></dd>
+                    </div>
+                    <div class="min-w-0">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Module</dt>
+                        <dd class="mt-1 break-words text-slate-700">{{ $log->module ?: '—' }}</dd>
+                    </div>
+                    <div class="min-w-0">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">When</dt>
+                        <dd class="mt-1 text-slate-700" title="{{ \Illuminate\Support\Carbon::parse($log->occurred_at)->setTimezone(config('app.display_timezone'))->format('d M Y H:i:s') }}">
+                            {{ \Illuminate\Support\Carbon::parse($log->occurred_at)->diffForHumans() }}
+                        </dd>
+                    </div>
+                    <div class="col-span-2 min-w-0">
+                        <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">IP address</dt>
+                        <dd class="mt-1 break-all font-mono text-xs text-slate-600">{{ $log->ip_address ?? '—' }}</dd>
+                    </div>
+                </dl>
+
+                <a href="{{ route('admin.logs.show', [$log->source, $log->id]) }}"
+                   class="btn-secondary mt-4 w-full text-xs">
+                    View details
+                </a>
+            </article>
+        @empty
+            <div class="rounded-lg border border-slate-200 bg-white px-4 py-10 text-center">
+                <span class="icon-chip mx-auto mb-4 h-14 w-14"><x-icon name="logs" class="h-7 w-7" /></span>
+                <p class="text-base font-semibold text-slate-950">No logs found</p>
+                <p class="mt-1 text-sm text-slate-500">Activity will be logged here as the system is used.</p>
+            </div>
+        @endforelse
+    </div>
+
+    <div class="table-wrap hidden md:block" data-tour="logs-table">
         <table class="data-table">
             <thead>
                 <tr>
@@ -113,7 +169,7 @@
                                     <x-icon :name="$log->icon ?: 'logs'" class="h-3 w-3" />
                                 </span>
                                 <div class="min-w-0">
-                                    <p class="truncate text-sm font-medium text-slate-900" title="{{ $log->description }}">
+                                    <p class="min-w-0 break-words text-sm font-medium text-slate-900" title="{{ $log->description }}">
                                         {{ $log->description }}
                                     </p>
                                     <p class="text-xs text-slate-500">{{ $log->event }}</p>

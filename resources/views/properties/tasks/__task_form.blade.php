@@ -380,7 +380,7 @@
                                     if (media.is_template) {
                                         existingMedia = existingMedia.filter(m => m.id !== media.id);
                                     } else {
-                                        fetch(`/tasks/${taskId}/media/${media.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } }).then(() => { existingMedia = existingMedia.filter(m => m.id !== media.id) }) 
+                                        fetch(`{{ url("/tasks") }}/${taskId}/media/${media.id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' } }).then(() => { existingMedia = existingMedia.filter(m => m.id !== media.id) })
                                     }
                                 }">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -495,4 +495,3 @@
         </div>
     </form>
 </div>
-

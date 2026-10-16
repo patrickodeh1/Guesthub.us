@@ -14,6 +14,8 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
+        $status = $request->input('status', 'active');
+
         $users = User::query()
             ->when($request->search, fn ($q, $s) => $q->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$s}%")
@@ -21,17 +23,34 @@ class UserController extends Controller
             ))
             ->when($request->role, fn ($q, $r) => $q->role($r))
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
-            ->when($request->status !== 'all', function ($q) use ($request) {
-                $inactive = $request->status === 'inactive';
-                $q->where(fn ($w) => $inactive
-                    ? $w->where('status', 'inactive')
-                    : $w->where('status', '<>', 'inactive')->orWhereNull('status'));
+            ->when($status !== 'all', function ($q) use ($status) {
+                $q->where('is_active', $status !== 'inactive');
             })
             ->orderByDesc('created_at')
             ->paginate(15)
             ->withQueryString();
 
         return view('admin.users.index', compact('users'));
+    }
+
+    private function normalizePhoneInput(Request $request): void
+    {
+        $raw = trim((string) $request->input('phone_number', ''));
+        if ($raw === '') {
+            $request->merge(['phone_number' => null]);
+            return;
+        }
+        $code = (string) $request->input('phone_country_code', '+1');
+        if (str_starts_with($raw, '+')) {
+            $normalized = '+'.preg_replace('/\D+/', '', $raw);
+        } else {
+            $digits = preg_replace('/\D+/', '', $raw);
+            if ($code !== '+1') {
+                $digits = ltrim($digits, '0');
+            }
+            $normalized = \App\Support\PhoneFormatter::normalizeForStorage($digits, $code);
+        }
+        $request->merge(['phone_number' => $normalized]);
     }
 
     public function create()
@@ -41,13 +60,14 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $this->normalizePhoneInput($request);
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'host_name' => ['nullable', 'string', 'max:255'],
             'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role'     => ['required', Rule::in(User::ROLES)],
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number' => ['nullable', 'string', 'regex:/^\+[1-9]\d{7,14}$/'],
             'owner_id' => ['nullable', 'integer', 'exists:users,id'],
             'owner_ids' => ['nullable', 'array'],
             'owner_ids.*' => ['integer', 'exists:users,id'],
@@ -147,12 +167,13 @@ class UserController extends Controller
 
         $this->authorizeTarget($user);
 
+        $this->normalizePhoneInput($request);
         $rules = [
             'name'  => ['required', 'string', 'max:255'],
             'host_name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'role'  => ['required', Rule::in(User::ROLES)],
-            'phone_number' => ['nullable', 'string', 'max:20'],
+            'phone_number' => ['nullable', 'string', 'regex:/^\+[1-9]\d{7,14}$/'],
             'owner_id' => ['nullable', 'integer', 'exists:users,id'],
             'owner_ids' => ['nullable', 'array'],
             'owner_ids.*' => ['integer', 'exists:users,id'],

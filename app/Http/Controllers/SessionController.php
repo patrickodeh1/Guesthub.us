@@ -53,6 +53,9 @@ class SessionController extends Controller
             ->orderBy('scheduled_time', 'asc')
             ->get();
 
+        $pendingOffers = $activeJobs->where('assignment_status', 'pending_confirmation')->values();
+        $activeJobs = $activeJobs->where('assignment_status', '!=', 'pending_confirmation');
+
         $currentJobs = collect();
         $upcomingJobs = collect();
         $seenProperties = [];
@@ -66,7 +69,7 @@ class SessionController extends Controller
             }
         }
 
-        return view('sessions.index', compact('currentJobs', 'upcomingJobs'));
+        return view('sessions.index', compact('currentJobs', 'upcomingJobs', 'pendingOffers'));
     }
 
 
@@ -1018,6 +1021,23 @@ class SessionController extends Controller
     public function start(StartSessionRequest $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+
+        // Start window: 1 hour either side of the scheduled time, in the property's local time.
+        if ($session->scheduled_date && $session->scheduled_time
+            && (int) $session->housekeeper_id === (int) auth()->id()
+            && ! auth()->user()->hasRole('admin')) {
+            $tz = $session->property?->timezone ?: config('app.display_timezone');
+            $scheduled = \Carbon\Carbon::parse(
+                $session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'),
+                $tz
+            );
+            $nowLocal = now($tz);
+            if ($nowLocal->lt($scheduled->copy()->subHour()) || $nowLocal->gt($scheduled->copy()->addHour())) {
+                return back()->withErrors(['gps' => 'You can start this cleaning between '
+                    .$scheduled->copy()->subHour()->format('g:i A').' and '
+                    .$scheduled->copy()->addHour()->format('g:i A').' (property time).']);
+            }
+        }
 
         // gh-confirm-on-start: cleaners are never blocked; starting the job confirms it.
         if ($session->assignment_status === 'pending_confirmation'

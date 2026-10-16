@@ -153,7 +153,7 @@
                                         </div>
                                     </div>
                                     <div class="border-t border-slate-100 p-2.5">
-                                        <p class="truncate text-xs font-semibold text-slate-700" title="{{ $file->original_name }}">{{ $file->original_name }}</p>
+                                        <p class="min-w-0 break-words text-xs font-semibold text-slate-700" title="{{ $file->original_name }}">{{ $file->original_name }}</p>
                                         <p class="mt-0.5 text-xs text-slate-400">{{ $formatSize($file->size) }}</p>
                                     </div>
                                     </button>

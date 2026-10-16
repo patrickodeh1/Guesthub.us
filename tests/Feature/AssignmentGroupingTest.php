@@ -109,10 +109,10 @@ class AssignmentGroupingTest extends TestCase
         $this->assertEquals($s3->id, $grouped['Yesterday'][0]->id);
         $this->assertNull($grouped['No Date Assigned'][0]->id);
 
-        // Test Upcoming Ascending Order (Future view, past dates in list just to test sorting priority)
+        // Upcoming order puts today first, then future dates, then past dates.
         $groupedUpcoming = AssignmentGroupingService::groupAssignmentsByDate([$s1, $s2, $s3, $s4], true);
         $labelsUpcoming = array_keys($groupedUpcoming);
-        $this->assertEquals(['Yesterday', 'Today', 'Tomorrow', 'No Date Assigned'], $labelsUpcoming);
+        $this->assertEquals(['Today', 'Tomorrow', 'Yesterday', 'No Date Assigned'], $labelsUpcoming);
 
         Carbon::setTestNow();
     }
@@ -125,6 +125,34 @@ class AssignmentGroupingTest extends TestCase
             ->get(route('assignments.index'));
 
         $response->assertOk();
+    }
+
+    public function test_housekeeper_assignments_show_today_then_future_then_past_dates(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-17 12:00:00'));
+
+        foreach (['2026-06-18', '2026-06-16', '2026-06-17'] as $date) {
+            CleaningSession::factory()->create([
+                'housekeeper_id' => $this->housekeeper->id,
+                'property_id' => $this->property->id,
+                'scheduled_date' => $date,
+            ]);
+        }
+
+        $response = $this->actingAs($this->housekeeper)
+            ->get(route('assignments.index'));
+
+        $response->assertOk();
+        $content = $response->getContent();
+        $datePositions = array_map(
+            fn (string $label) => strpos($content, '<span>'.$label.'</span>'),
+            ['Today', 'Tomorrow', 'Yesterday']
+        );
+
+        $this->assertNotContains(false, $datePositions);
+        $this->assertSame($datePositions, collect($datePositions)->sort()->values()->all());
+
+        Carbon::setTestNow();
     }
 
     public function test_guest_cannot_view_assignments(): void

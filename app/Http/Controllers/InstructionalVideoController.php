@@ -145,33 +145,17 @@ class InstructionalVideoController extends Controller
             $video->tasks()->sync($request->tasks);
         }
 
-        try {
-            \Log::info('VIDEO_UPLOAD_STARTED', ['user_id' => $user->id, 'file' => $videoPath]);
-            // Dispatch FFmpeg background processing job
-            // Using dispatchSync to ensure we catch any synchronous errors (since the environment might use sync driver)
-            ProcessInstructionalVideo::dispatchSync($video);
-            \Log::info('DATABASE_UPDATED', ['video_id' => $video->id]);
-        } catch (\Throwable $e) {
-            \Log::error('Upload process failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            // Safe cleanup
-            if (isset($videoPath) && Storage::disk('public')->exists($videoPath)) {
-                Storage::disk('public')->delete($videoPath);
-            }
-            if (isset($thumbnailPath) && Storage::disk('public')->exists($thumbnailPath)) {
-                Storage::disk('public')->delete($thumbnailPath);
-            }
-            if (isset($video)) {
-                $video->delete();
-            }
-            
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Video processing failed: ' . $e->getMessage()], 422);
-            }
-            return back()->withInput()->withErrors(['video' => 'Video processing failed: ' . $e->getMessage()]);
-        }
+        \Log::info('VIDEO_UPLOAD_STARTED', ['user_id' => $user->id, 'file' => $videoPath]);
+        \Illuminate\Support\Facades\Cache::put('video_progress:' . $video->id, 0, now()->addHours(2));
+        ProcessInstructionalVideo::dispatchAfterResponse($video);
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'redirect' => route('admin.videos.index')]);
+            return response()->json([
+                'success' => true,
+                'processing' => true,
+                'status_url' => route('admin.videos.status', $video),
+                'redirect' => route('admin.videos.index'),
+            ]);
         }
         return redirect()->route('admin.videos.index')
             ->with('success', 'Video uploaded successfully and is now processing in the background. It will be available once processing is complete.');
@@ -276,7 +260,15 @@ class InstructionalVideoController extends Controller
 
         $video->update($updateData);
 
-        // The video is already optimized client-side, so no background jobs are needed.
+        // A replaced file must be made web-playable too (the job skips the slow part when it already is).
+        if ($request->hasFile('video')) {
+            try {
+                \App\Jobs\ProcessInstructionalVideo::dispatchSync($video->fresh());
+            } catch (\Throwable $e) {
+                \Log::error('Video replace processing failed', ['id' => $video->id, 'error' => $e->getMessage()]);
+                return back()->withInput()->withErrors(['video' => 'Video processing failed: ' . $e->getMessage()]);
+            }
+        }
 
         // Sync properties
         $propertyIds = [];
@@ -325,6 +317,25 @@ class InstructionalVideoController extends Controller
 
         return redirect()->route('admin.videos.index')
             ->with('success', 'Video deleted successfully!');
+    }
+
+    /**
+     * Conversion progress, polled by the upload page.
+     */
+    public function status(InstructionalVideo $video)
+    {
+        Gate::authorize('update', $video);
+
+        $status = $video->processing_status ?? 'pending';
+        $progress = (int) \Illuminate\Support\Facades\Cache::get('video_progress:' . $video->id, $status === 'completed' ? 100 : 0);
+
+        return response()->json([
+            'status' => $status,
+            'progress' => $status === 'completed' ? 100 : $progress,
+            'error' => $status === 'failed'
+                ? (\Illuminate\Support\Facades\Cache::get('video_error:' . $video->id) ?: 'Video conversion failed.')
+                : null,
+        ]);
     }
 
     /**

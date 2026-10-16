@@ -255,7 +255,9 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show')->middleware(['role:admin,owner,company', 'property.access']);
     Route::get('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'index'])->name('photo-guide.index')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'store'])->name('photo-guide.store')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/photo-guide/rooms/{roomId}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'saveRoom'])->name('photo-guide.room')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company');
+    Route::post('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'updateReference'])->name('photo-guide.update')->middleware('role:admin,owner,company');
     Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder')->middleware('role:admin,owner,company');
     Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy')->middleware('role:admin,owner,company');
     Route::resource('instructions', InstructionStepController::class)->except(['show'])->middleware('role:admin,owner,company');
@@ -271,6 +273,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store')->middleware(['role:admin,owner,company', 'property.access']);
     Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::patch('properties/{property}/lockbox', [\App\Http\Controllers\Admin\PropertyLockboxController::class, 'update'])->name('properties.lockbox.update')->middleware(['role:admin,owner,company', 'property.access']);
 
     Route::get('properties/{property}/availability', [PropertyAvailabilityController::class, 'index'])->name('properties.availability.index')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/fetch-mapping', [PropertyAvailabilityController::class, 'fetchMapping'])->name('properties.availability.fetch-mapping')->middleware(['role:admin,owner,company', 'property.access']);
@@ -468,7 +471,11 @@ Route::get('/file/{path}', function (string $path) {
     }
 
     if (str_starts_with($mimeType, 'video/')) {
-        return serveVideoStream($fullPath, $mimeType);
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
     }
 
     return response()->file($fullPath, [
@@ -496,7 +503,11 @@ Route::get('/storage/{path}', function (string $path) {
     }
 
     if (str_starts_with($mimeType, 'video/')) {
-        return serveVideoStream($fullPath, $mimeType);
+        return response()->file($fullPath, [
+            'Content-Type' => $mimeType,
+            'Accept-Ranges' => 'bytes',
+            'Cache-Control' => 'private, max-age=86400',
+        ]);
     }
 
     return response()->file($fullPath, [
@@ -597,6 +608,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sessions/{session}/door/{lock}/status', [\App\Http\Controllers\SessionDoorController::class, 'status'])->name('sessions.door.status');
     Route::post('/sessions/{session}/verify-location', [\App\Http\Controllers\SessionLocationController::class, 'verify'])->name('sessions.verify-location');
     Route::post('/sessions/{session}/photo-tutorial', [CleaningSessionController::class, 'markPhotoTutorial'])->name('sessions.photo-tutorial');
+    Route::post('/sessions/{session}/access-steps/{step}/photo', [\App\Http\Controllers\SessionAccessPhotoController::class, 'store'])->name('sessions.access-photo');
     Route::post('/sessions/{session}/complete-onboarding', [CleaningSessionController::class, 'completeOnboarding'])->name('sessions.complete-onboarding');
     Route::post('/sessions/{session}/gps-override', [CleaningSessionController::class, 'grantGpsOverride'])->name('sessions.gps-override');
     Route::post('/sessions/{session}/complete', [CleaningSessionController::class, 'complete'])->name('sessions.complete');
@@ -646,6 +658,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/training', [\App\Http\Controllers\TrainingController::class, 'index'])->name('training.index');
     Route::get('/training/{type}/{id}', [\App\Http\Controllers\TrainingController::class, 'show'])->name('training.show');
     Route::post('/training/{type}/{id}/progress', [\App\Http\Controllers\TrainingController::class, 'updateProgress'])->name('training.update_progress');
+
+    // Admin training log: completed training across all cleaners
+    Route::get('admin/training-logs', [\App\Http\Controllers\Admin\TrainingLogController::class, 'index'])->name('admin.training-logs.index')->middleware('role:admin');
 
     // User Management Routes
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->name('users.index');
@@ -704,7 +719,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('tasks', \App\Http\Controllers\TaskController::class)->middleware('role:admin,owner,company');
 
     // Resources Pages (Photos, Videos, Guides)
-    Route::get('resources/photos', [\App\Http\Controllers\ResourcePageController::class, 'photos'])->name('resources.photos');
+    Route::get('resources/photos', [\App\Http\Controllers\ResourcePageController::class, 'photos'])->name('resources.photos')->middleware('role:admin');
     Route::get('resources/videos', [\App\Http\Controllers\ResourcePageController::class, 'videos'])->name('resources.videos');
     Route::get('resources/guides', [\App\Http\Controllers\ResourcePageController::class, 'guides'])->name('resources.guides');
 
@@ -717,6 +732,7 @@ Route::middleware('auth')->group(function () {
         Route::post('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'update'])->name('admin.videos.update');
         Route::delete('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'destroy'])->name('admin.videos.destroy');
         Route::post('admin/videos/{video}/publish', [\App\Http\Controllers\InstructionalVideoController::class, 'togglePublish'])->name('admin.videos.publish');
+        Route::get('admin/videos/{video}/status', [\App\Http\Controllers\InstructionalVideoController::class, 'status'])->name('admin.videos.status');
     });
 
     // Cleaner API endpoint for property videos

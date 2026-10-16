@@ -21,9 +21,11 @@
         @forelse($propertyLocks as $propertyName => $locks)
             @foreach($locks as $lock)
                 <span class="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs">
-                    <span class="h-2 w-2 shrink-0 rounded-full {{ is_null($lock->last_known_locked) ? 'bg-slate-300' : ($lock->last_known_locked ? 'bg-emerald-500' : 'bg-red-500') }}"></span>
+                    <span class="h-2 w-2 shrink-0 rounded-full {{ is_null($lock->last_known_locked) ? 'bg-slate-300' : ($lock->last_known_locked ? 'bg-red-500' : 'bg-emerald-500') }}"
+                          title="{{ is_null($lock->last_known_locked) ? 'Lock status unknown' : ($lock->last_known_locked ? 'Locked' : 'Unlocked') }}"
+                          aria-label="{{ is_null($lock->last_known_locked) ? 'Lock status unknown' : ($lock->last_known_locked ? 'Locked' : 'Unlocked') }}"></span>
                     <span class="font-semibold text-slate-950">{{ $lock->label }}</span>
-                    <span class="text-slate-500">{{ $propertyName }} &middot; {{ is_null($lock->last_known_locked) ? 'Unknown' : ($lock->last_known_locked ? 'Locked' : 'Unlocked') }}</span>
+                    <span class="text-slate-500">{{ $propertyName }}</span>
                     @php($batteryPercent = $lock->battery_level === null ? null : max(0, min(100, (int) $lock->battery_level)))
                     <span class="inline-flex items-center gap-1 font-medium {{ $batteryPercent === null ? 'text-slate-400' : ($batteryPercent < 50 ? 'text-red-600' : 'text-emerald-600') }}"
                           title="{{ $batteryPercent === null ? 'Battery level unavailable' : 'Battery level: '.$batteryPercent.'%' }}"

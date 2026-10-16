@@ -1,5 +1,8 @@
 import axios from 'axios';
 window.axios = axios;
+const APP_BASE = document.querySelector('meta[name="app-base"]')?.content ?? '';
+window.APP_BASE = APP_BASE;
+if (APP_BASE) { window.axios.defaults.baseURL = APP_BASE; }
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 

@@ -50,8 +50,8 @@
                     </template>
 
                     @if($type === 'video')
-                        <div class="aspect-w-16 aspect-h-9 mb-6 bg-black rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner">
-                            <video id="training-video" controls playsinline preload="metadata" class="w-full h-full" x-ref="video" @timeupdate="updateVideoProgress" @ended="completeVideo">
+                        <div class="aspect-video mb-6 bg-black rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner">
+                            <video id="training-video" controls playsinline preload="metadata" class="w-full h-full object-contain" x-ref="video" @timeupdate="updateVideoProgress" @ended="completeVideo">
                                 <source src="{{ $item->video_url }}" type="video/mp4">
                                 Your browser does not support the video tag.
                             </video>
@@ -224,7 +224,7 @@
                     let timeDelta = this.activeSecondsSinceSync;
                     this.activeSecondsSinceSync = 0; 
 
-                    fetch(`/training/${this.type}/${this.itemId}/progress`, {
+                    fetch(`{{ url("/training") }}/${this.type}/${this.itemId}/progress`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

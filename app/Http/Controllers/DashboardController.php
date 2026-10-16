@@ -95,13 +95,21 @@ class DashboardController extends Controller
                 ->with('property:id,name,address,latitude,longitude')
                 ->where('housekeeper_id', $u->id);
 
+            $active = (clone $base)->where(function ($q) {
+                $q->whereNull('assignment_status')->orWhere('assignment_status', '!=', 'pending_confirmation');
+            });
+            $pendingOffers = (clone $base)->where('assignment_status', 'pending_confirmation')
+                ->whereDate('scheduled_date', '>=', $today)
+                ->orderBy('scheduled_date')->orderBy('scheduled_time')->get();
+
             return view('dashboard-housekeeper', [
-                'todaySessions' => (clone $base)->whereDate('scheduled_date', $today)->orderBy('scheduled_time')->get(),
-                'upcomingSessions' => (clone $base)->whereDate('scheduled_date', '>', $today)
+                'todaySessions' => (clone $active)->whereDate('scheduled_date', $today)->orderBy('scheduled_time')->get(),
+                'upcomingSessions' => (clone $active)->whereDate('scheduled_date', '>', $today)
                     ->whereDate('scheduled_date', '<=', Carbon::today()->addDays(14)->toDateString())
                     ->orderBy('scheduled_date')->get(),
-                'overdueSessions' => (clone $base)->whereDate('scheduled_date', '<', $today)
+                'overdueSessions' => (clone $active)->whereDate('scheduled_date', '<', $today)
                     ->whereIn('status', ['pending', 'in_progress'])->orderBy('scheduled_date')->get(),
+                'pendingOffers' => $pendingOffers,
                 'completed30' => (clone $base)->where('status', 'completed')
                     ->whereBetween('scheduled_date', [Carbon::today()->subDays(30)->toDateString(), $today])->count(),
             ]);

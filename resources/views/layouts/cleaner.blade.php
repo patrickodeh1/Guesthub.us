@@ -37,6 +37,7 @@
             box-shadow: none !important;
         }
     </style>
+    <meta name="app-base" content="{{ rtrim(url('/'), '/') }}">
 </head>
 <body class="guest-canvas text-slate-950 antialiased" x-data="mainState" x-on:resize.window="handleWindowResize">
 <script>

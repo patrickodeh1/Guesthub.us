@@ -8,7 +8,7 @@
         <a href="{{ route('admin.media.index', ['folder_id' => $folder->id]) }}"
            class="mb-0.5 flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold transition {{ $isActive ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-white hover:text-slate-900' }}">
             <x-icon name="folder" class="h-4 w-4 shrink-0 {{ $isActive ? 'text-amber-600' : 'text-slate-400' }}" />
-            <span class="truncate">{{ $folder->name }}</span>
+            <span class="min-w-0 break-words">{{ $folder->name }}</span>
         </a>
         <form method="post" action="{{ route('admin.media.folders.destroy', $folder) }}"
               onsubmit="return confirm('Delete this folder and everything inside it?')"

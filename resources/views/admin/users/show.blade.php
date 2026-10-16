@@ -184,7 +184,7 @@
                     <div class="flex flex-wrap items-center gap-3 p-4">
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <p class="truncate text-sm font-medium text-slate-900">{{ $fam->task->name ?? 'Unknown task' }}</p>
+                                <p class="min-w-0 break-words text-sm font-medium text-slate-900">{{ $fam->task->name ?? 'Unknown task' }}</p>
                                 <span class="badge {{ $familiar ? 'badge-active' : 'badge-inactive' }}">{{ $familiar ? 'Familiar' : 'Learning' }}</span>
                             </div>
                             <p class="mt-1 text-xs text-slate-500">Views: {{ $fam->views_completed }} / {{ $requiredViews }} &middot; Last viewed: {{ $fam->last_viewed_at ? $fam->last_viewed_at->format('M j, Y') : 'Never' }}</p>

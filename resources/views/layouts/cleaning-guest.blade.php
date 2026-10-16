@@ -37,6 +37,7 @@
         'resources/css/cleaning.css',
         'resources/js/cleaning-app.js',
     ])
+    <meta name="app-base" content="{{ rtrim(url('/'), '/') }}">
 </head>
 
 <body>

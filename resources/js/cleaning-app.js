@@ -1,3 +1,4 @@
+const APP_BASE = document.querySelector("meta[name=app-base]")?.content ?? "";
 // resources/js/app.js
 
 import './bootstrap'
@@ -762,7 +763,7 @@ document.addEventListener('alpine:init', () => {
             }
             this.loading = true;
             try {
-                const res = await fetch(`/api/properties/${this.propertyId}/sporadic-tasks`);
+                const res = await fetch(`${APP_BASE}/api/properties/${this.propertyId}/sporadic-tasks`);
                 if (res.ok) {
                     this.tasks = await res.json();
                 } else {

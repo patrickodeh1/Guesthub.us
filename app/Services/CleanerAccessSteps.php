@@ -42,6 +42,7 @@ class CleanerAccessSteps
                 'image'   => $s->imageUrl(),
                 'images'  => $s->images->map(fn ($img) => $img->imageUrl())->values()->all(),
                 ...self::lockFields($s, $session),
+                ...self::photoFields($s, $session),
             ])
             ->values()
             ->all();
@@ -78,6 +79,7 @@ class CleanerAccessSteps
                 'image'   => $s->imageUrl(),
                 'images'  => $s->images->map(fn ($img) => $img->imageUrl())->values()->all(),
                 ...self::lockFields($s, $session),
+                ...self::photoFields($s, $session),
             ])
             ->values()
             ->all();
@@ -136,6 +138,23 @@ class CleanerAccessSteps
             'unlock_url' => route('sessions.door.unlock', [$session, $lock]),
             'lock_url' => route('sessions.door.lock', [$session, $lock]),
             'status_url' => route('sessions.door.status', [$session, $lock]),
+        ];
+    }
+
+    /** Steps flagged "photo required" get an upload control for the assigned cleaner only. */
+    private static function photoFields(InstructionStep $s, CleaningSession $session): array
+    {
+        if (! $s->requires_photo) {
+            return [];
+        }
+        if (! auth()->check() || (int) $session->housekeeper_id !== (int) auth()->id()) {
+            return [];
+        }
+
+        return [
+            'photo_url' => route('sessions.access-photo', [$session, $s->id]),
+            'photo_done' => \App\Models\SessionAccessPhoto::where('cleaning_session_id', $session->id)
+                ->where('instruction_step_id', $s->id)->exists(),
         ];
     }
 

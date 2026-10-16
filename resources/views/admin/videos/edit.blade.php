@@ -36,7 +36,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
                                     <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" x-text="videoName"></p>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 min-w-0 break-words" x-text="videoName"></p>
                                         <p class="text-xs text-gray-500" x-text="videoSize || 'Existing Video'"></p>
                                     </div>
                                 </div>
@@ -240,7 +240,7 @@
                                         <input type="checkbox" name="properties[]" value="{{ $property->id }}"
                                             class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
                                             @checked(in_array($property->id, old('properties', $attachedPropertyIds)))>
-                                        <span class="truncate">{{ $property->name }}</span>
+                                        <span class="min-w-0 break-words">{{ $property->name }}</span>
                                     </label>
                                 @endforeach
                             </div>
@@ -286,7 +286,7 @@
                                               }
                                               $ctxStr = empty($ctx) ? "" : " (" . implode(", ", $ctx) . ")";
                                           @endphp
-                                          <span class="truncate">{{ $task->name }}{{ $ctxStr }}</span>
+                                          <span class="min-w-0 break-words">{{ $task->name }}{{ $ctxStr }}</span>
 
                                     </label>
                                 @endforeach

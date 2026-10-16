@@ -69,6 +69,13 @@ return [
         'debug' => (bool) env('GOOGLE_VISION_DEBUG_LOG', false),
     ],
 
+    // Server-side PDF417 (driver licence barcode) decoder used by App\Services\BarcodeDecoder.
+    'barcode_decoder' => [
+        'python' => env('BARCODE_PYTHON'),
+        'script' => env('BARCODE_SCRIPT', base_path('scripts/barcode_decode.py')),
+        'seconds' => (int) env('BARCODE_SECONDS', 6),
+    ],
+
     'pricelabs' => [
         'api_key' => env('PRICELABS_API_KEY'),
     ],

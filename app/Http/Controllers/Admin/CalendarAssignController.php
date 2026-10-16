@@ -23,6 +23,7 @@ class CalendarAssignController extends Controller
             'housekeeper_id' => ['required', 'integer', 'exists:users,id'],
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'session_id' => ['nullable', 'integer', 'exists:cleaning_sessions,id'],
+            'booking_id' => ['nullable', 'integer', 'exists:bookings,id'],
             'confirm_conflicts' => ['nullable', 'boolean'],
         ]);
 
@@ -40,6 +41,13 @@ class CalendarAssignController extends Controller
                 ->whereKey($data['session_id'])
                 ->first();
             abort_unless($session, 404, 'That cleaning job no longer exists.');
+        }
+
+        if (! $session && ! empty($data['booking_id'])) {
+            $session = CleaningSession::where('booking_id', $data['booking_id'])
+                ->where('property_id', $data['property_id'])
+                ->where('status', '<>', 'cancelled')
+                ->latest('id')->first();
         }
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);

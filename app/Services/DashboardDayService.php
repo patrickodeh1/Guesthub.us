@@ -96,6 +96,8 @@ class DashboardDayService
                     'todo' => $todo,
                     'notes' => $notes,
                     'ok' => $row['covered'] ? 'Cleaner: '.$row['cleaner'] : null,
+                    'ok_name' => $row['covered'] ? $row['cleaner'] : null,
+                    'ok_pending' => (bool) ($row['cleaner_pending'] ?? false),
                     'assign' => $assign,
                     'urgent' => $this->urgent($todo, $notes, $offset),
                 ];
@@ -258,7 +260,7 @@ class DashboardDayService
             if ($i['assign']) {
                 $cleaner = ['text' => 'No cleaner assigned', 'tone' => 'red'];
             } elseif ($i['ok']) {
-                $cleaner = ['text' => $i['ok'], 'tone' => 'slate'];
+                $cleaner = ['text' => $i['ok_name'] ?? $i['ok'], 'tone' => isset($i['ok_name']) ? (! empty($i['ok_pending']) ? 'red' : 'green') : 'slate'];
             }
         }
 
@@ -283,7 +285,7 @@ class DashboardDayService
                 $cleaner = ['text' => 'No cleaner assigned', 'tone' => 'red'];
                 $assign = $this->assignData($cr);
             } else {
-                $cleaner = ['text' => 'Cleaner: '.$cr['cleaner'], 'tone' => 'slate'];
+                $cleaner = ['text' => (string) $cr['cleaner'], 'tone' => ! empty($cr['cleaner_pending']) ? 'red' : 'green'];
             }
         }
 

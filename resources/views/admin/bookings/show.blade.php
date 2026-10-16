@@ -142,6 +142,32 @@
 
         <div class="mt-3 grid content-start gap-3 lg:col-span-3 order-3 lg:order-none">
             {{-- Guest Details --}}
+            <section class="card card-pad" id="guest-glance">
+                <h2 class="section-title">Guest details</h2>
+                @php
+                    $gdDone = ['approved', 'declined', 'denied', 'rejected'];
+                    $gdShowInReq  = $booking->checkin_time_preference  && ! in_array($booking->checkin_time_status, $gdDone, true);
+                    $gdShowOutReq = $booking->checkout_time_preference && ! in_array($booking->checkout_time_status, $gdDone, true);
+                @endphp
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div class="flex items-center rounded-lg border border-slate-200 p-3">
+                        <p class="flex items-center gap-1.5 text-base font-bold text-slate-900">Parking
+                            @if($booking->parking_needed === true)<x-icon name="check" class="h-5 w-5 text-emerald-600" />@else<x-icon name="x" class="h-5 w-5 text-red-600" />@endif
+                        </p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Check-in time</p>
+                        <p class="mt-1 text-base font-bold text-slate-950">{{ $booking->effectiveCheckinTimeFormatted() }}</p>
+                        @if($gdShowInReq)<p class="text-xs text-slate-500">Requested {{ $booking->checkinTimePreferenceFormatted() }}</p>@endif
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Check-out time</p>
+                        <p class="mt-1 text-base font-bold text-slate-950">{{ $booking->effectiveCheckoutTimeFormatted() }}</p>
+                        @if($gdShowOutReq)<p class="text-xs text-slate-500">Requested {{ $booking->checkoutTimePreferenceFormatted() }}</p>@endif
+                    </div>
+                </div>
+            </section>
+
             <section class="card card-pad">
                 <h2 class="section-title">Ledger<x-help text="Charges are auto-calculated from approved times. Tap the pencil to edit an amount." /></h2>
                 <dl class="mt-4 text-sm">
@@ -161,7 +187,7 @@
 
                         $lines = [];
                         if ($parkingOn) {
-                            $lines[] = ['label' => 'Parking', 'icon' => 'parking', 'flag' => true, 'field' => 'parking_charge_override', 'auto' => $booking->calculateParkingCharge() ?? 0];
+                            $lines[] = ['label' => 'Parking', 'icon' => 'car', 'flag' => true, 'field' => 'parking_charge_override', 'auto' => $booking->calculateParkingCharge() ?? 0];
                         }
                         if ($earlyShow) {
                             $lines[] = ['label' => 'Early check-in', 'icon' => 'calendar', 'field' => 'early_checkin_charge_override', 'auto' => $booking->earlyCheckinCharge() ?? 0];
@@ -195,6 +221,14 @@
                         
 
                         @foreach($lines as $ln)
+                            @php
+                                $lnVal = old($ln['field'], $booking->{$ln['field']});
+                                $lnHidden = ((float) $ln['auto'] <= 0) && ($lnVal === null || $lnVal === '');
+                            @endphp
+                            @if($lnHidden)
+                                <input type="hidden" name="{{ $ln['field'] }}" value="{{ $lnVal }}">
+                                @continue
+                            @endif
                             <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
                                 <span class="flex items-center gap-2 text-slate-500">
                                     <x-icon :name="$ln['icon']" class="h-4 w-4 shrink-0 text-slate-400" />{{ $ln['label'] }}
@@ -242,8 +276,15 @@
                             $sgPark = (float) ($booking->effectiveParkingCharge() ?? 0);
                             $sgEarly = (float) ($booking->effectiveEarlyCheckinCharge() ?? 0);
                             $sgTotal = $booking->suggestedIncidentalsCharge();
-                            $sgHelp = 'Parking $'.number_format($sgPark, 2).' + early check-in $'.number_format($sgEarly, 2).' + $'.number_format($sgBuffer, 2).' buffer = $'.number_format($sgPark + $sgEarly + $sgBuffer, 2).'. It is never lower than the property default hold ($'.number_format($sgFloor, 2).'). Type your own amount in Incidentals hold to override it.';
+                            $sgLocal = (float) $booking->localResidentSurcharge();
+                            $sgHelp = 'Parking $'.number_format($sgPark, 2).' + early check-in $'.number_format($sgEarly, 2).($sgLocal > 0 ? ' + local resident $'.number_format($sgLocal, 2) : '').' + $'.number_format($sgBuffer, 2).' buffer = $'.number_format($sgPark + $sgEarly + $sgLocal + $sgBuffer, 2).'. It is never lower than the property default hold ($'.number_format($sgFloor, 2).'). Type your own amount in Incidentals hold to override it.';
                         @endphp
+                        @if($sgLocal > 0)
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                            <span class="flex items-center gap-2 text-slate-500"><x-icon name="map" class="h-4 w-4 shrink-0 text-slate-400" />Local resident<x-help :text="'ID ZIP is about '.round($booking->idZipDistanceMiles() ?? 0).' miles from the property.'" /></span>
+                            <span class="font-semibold text-slate-950">${{ number_format($sgLocal, 2) }}</span>
+                        </div>
+                        @endif
                         <div class="flex items-center justify-between gap-3 border-b border-t-2 border-slate-200 border-b-slate-100 py-3">
                             <span class="flex items-center gap-2 font-bold text-slate-900"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-500" />Incidentals hold<x-help :text="$sgHelp" /></span>
                             <span class="flex items-center gap-1 font-bold text-slate-950">
@@ -262,10 +303,6 @@
                             <span class="font-semibold">Heads up:</span> deductions (${{ number_format($booking->holdDeductions(), 2) }}) exceed the incidentals hold (${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}). Consider raising the hold.
                         </div>
                     @endif
-                    <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
-                        <span class="flex items-center gap-2 font-bold text-slate-950"><x-icon name="refresh" class="h-4 w-4 shrink-0 text-emerald-600" />{{ ($holdLocked && $owed > 0) ? 'Guest balance due' : 'Estimated refund' }}</span>
-                        <span class="text-lg font-extrabold {{ ($holdLocked && $owed > 0) ? 'text-red-700' : 'text-slate-950' }}">${{ number_format(($holdLocked && $owed > 0) ? $owed : $booking->estimatedIncidentalsRefund(), 2) }}</span>
-                    </div>
                     
                 </dl>
                 @if($booking->photo_id_front_declined_reason)
@@ -457,59 +494,38 @@
         {{-- Sidebar --}}
         <aside class="contents lg:grid lg:content-start lg:gap-3 lg:col-start-4 lg:row-start-1 lg:row-span-3 lg:sticky lg:top-20">
             <section class="card card-pad order-2 lg:order-none">
-                <h2 class="section-title">Quick Actions</h2>
-
-                @php
-                    $asSession = \App\Models\CleaningSession::where('booking_id', $booking->id)->first();
-                    $asTime = \Carbon\Carbon::parse($booking->effectiveCheckoutTime())->format('H:i');
-                    $asCleaners = \App\Models\User::query()->active()
-                        ->whereIn('id', \Illuminate\Support\Facades\DB::table('property_user')->where('property_id', $booking->property_id)->pluck('user_id'))
-                        ->orderBy('name')->get()
-                        ->filter(fn ($u) => $u->hasAnyRole(['housekeeper']))
-                        ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values();
-                @endphp
-                @if(auth()->user()?->hasAnyRole(['admin', 'owner', 'company']))
-                    <button type="button" class="btn-secondary mt-3 w-full" onclick="window.dispatchEvent(new CustomEvent('open-assign', {detail: {booking_id: {{ $booking->id }}}}))">
-                        {{ $asSession?->housekeeper_id ? 'Change cleaner or time' : 'Assign cleaner' }}
-                    </button>
-                    @if($asSession?->housekeeper_id)
-                        <p class="mt-2 text-sm text-slate-600">
-                            {{ $asSession->housekeeper?->name }}
-                            @if($asSession->assignment_status === 'pending_confirmation') (awaiting reply) @elseif($asSession->assignment_status === 'confirmed') (confirmed) @endif
-                        </p>
-                    @endif
-                @endif
-                <p class="section-copy">Take action on this booking.</p>
-
+                <h2 class="section-title">Next step</h2>
 
                 @if($booking->isCancelled())
-                    <div class="mt-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">This reservation was cancelled by the guest and is locked. All actions are disabled.</div>
+                    <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">This reservation was cancelled by the guest and is locked. All actions are disabled.</div>
                 @else
-                <div class="mt-5 grid gap-2.5">
-                    {{-- Item 6: exactly 3, in order: Background Passed -> Deposit Verified -> Override GPS --}}
-                    @if(! $booking->isApproved())
-                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-500">Waiting on Photo ID approval before {{ \App\Models\Setting::getValue('background_check_step_name', 'Background Check') }} can be marked.</div>
+                @php
+                    $nsHasId = filled($booking->photo_id_path) || filled($booking->photo_id_back_path);
+                    $nsOut = filled($booking->checked_out_at);
+                    $nsIn = $booking->isCheckedIn() && ! $nsOut;
+                    $nsBgName = \App\Models\Setting::getValue('background_check_step_name', 'Background Check');
+                    $nsGpsOk = $booking->isCheckinApproved() && ! $nsIn && ! $nsOut && ! $booking->gps_verified;
+                    $nsManualIn = $booking->isCheckinApproved() && ! $nsIn && ! $nsOut;
+                @endphp
+
+                <div class="mt-4 grid gap-2.5">
+                    @if($nsOut)
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. Guest checked out {{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
+                    @elseif($nsIn)
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Currently hosting. Waiting on the guest to check out.</div>
+                    @elseif($booking->isCheckinApproved())
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Unit ready, check-in approved {{ $booking->localTimestamp($booking->checkin_approved_at)->format('M j, Y g:i A') }}. Waiting on the guest to check in.</div>
+                    @elseif($booking->isDepositVerified())
+                        <form method="post" action="{{ route('admin.guests.approve-checkin', $booking) }}" data-confirm-title="Approve check-in?" data-confirm="Confirm the unit is ready and the guest may check in. This is what releases them from the 'unit isn't quite ready yet' screen and reveals their arrival details.">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check-circle" class="h-4 w-4" />Unit Ready: Approve Check-In</button></form>
                     @elseif($booking->isBackgroundCheckComplete())
-                        <div class="rounded-lg bg-indigo-50 border border-indigo-200 p-3 text-sm text-indigo-800 font-semibold">{{ \App\Models\Setting::getValue('background_check_step_name', 'Background Check') }} completed {{ $booking->localTimestamp($booking->background_check_completed_at)->format('M j, Y g:i A') }}</div>
+                        <form method="post" action="{{ route('admin.guests.deposit-verified', $booking) }}" data-confirm-title="Mark Deposit Verified?" data-confirm="This will fully approve the guest. Before continuing, verify the guest has actually paid everything owed on / outside the platform: incidentals, parking, and early check-in (if applicable). This action does not check or record any of those payments itself.">@csrf<button class="btn-primary w-full gap-2"><x-icon name="lock" class="h-4 w-4" />Deposit Verified</button></form>
+                    @elseif($booking->isApproved())
+                        <form method="post" action="{{ route('admin.guests.background-check', $booking) }}">@csrf<button class="btn-primary w-full gap-2"><x-icon name="shield-alert" class="h-4 w-4" />{{ $nsBgName }} Passed</button></form>
+                    @elseif($nsHasId)
+                        <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 font-semibold">Photo ID uploaded. Review and approve it below.</div>
                     @else
-                        <form method="post" action="{{ route('admin.guests.background-check', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="shield-alert" class="h-4 w-4" />Background Passed</button></form>
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600">Waiting on the guest to upload their Photo ID.</div>
                     @endif
-
-                    @if($booking->isBackgroundCheckComplete())
-                        @if($booking->isDepositVerified())
-                            <div class="rounded-lg bg-teal-50 border border-teal-200 p-3 text-sm text-teal-800 font-semibold">Deposit verified {{ $booking->localTimestamp($booking->deposit_verified_at)->format('M j, Y g:i A') }}</div>
-                        @else
-                            <form method="post" action="{{ route('admin.guests.deposit-verified', $booking) }}" data-confirm-title="Mark Deposit Verified?" data-confirm="This will fully approve the guest. Before continuing, verify the guest has actually paid everything owed on / outside the platform: incidentals, parking, and early check-in (if applicable). This action does not check or record any of those payments itself.">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="lock" class="h-4 w-4" />Deposit Verified</button></form>
-                        @endif
-                    @endif
-
-                    @if($booking->isCheckinApproved())
-                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Unit ready / check-in approved {{ $booking->localTimestamp($booking->checkin_approved_at)->format('M j, Y g:i A') }}</div>
-                    @else
-                        <form method="post" action="{{ route('admin.guests.approve-checkin', $booking) }}" data-confirm-title="Approve check-in?" data-confirm="Confirm the unit is ready and the guest may check in. This is what releases them from the 'unit isn't quite ready yet' screen and reveals their arrival details.">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check-circle" class="h-4 w-4" />Unit Ready — Approve Check-In</button></form>
-                    @endif
-
-                    <form method="post" action="{{ route('admin.guests.override-gps', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="map" class="h-4 w-4" />Override GPS</button></form>
 
                     @if($booking->access_blocked_at)
                         <div class="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
@@ -518,16 +534,26 @@
                         </div>
                     @endif
 
-                    {{-- Item 6: Manual Check-In/Out, Photo ID review, and Block Access move to a sub-menu --}}
-                    <div class="relative mt-1">
-                        <button type="button" onclick="document.getElementById('quick-actions-more-{{ $booking->id }}').classList.toggle('hidden')" class="btn-secondary w-full gap-2">
-                            <x-icon name="more-vertical" class="h-4 w-4" />More actions
+                    <div class="relative">
+                        <button type="button" onclick="document.getElementById('booking-more-{{ $booking->id }}').classList.toggle('hidden')" class="btn-secondary w-full gap-2">
+                            <x-icon name="more-vertical" class="h-4 w-4" />More
                         </button>
-                        <div id="quick-actions-more-{{ $booking->id }}" class="hidden mt-2 grid gap-2.5 rounded-lg border border-slate-200 p-3">
-                            <form method="post" action="{{ route('admin.guests.override', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked In</button></form>
-                            <form method="post" action="{{ route('admin.guests.override-checkout', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked Out</button></form>
-                            <form method="post" action="{{ route('admin.guests.mark-id', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="upload" class="h-4 w-4" />Mark Photo ID Received</button></form>
-                            <form method="post" action="{{ route('admin.guests.bypass-vehicle-info', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="car" class="h-4 w-4" />Bypass Vehicle Info</button></form>
+                        <div id="booking-more-{{ $booking->id }}" class="hidden mt-2 grid gap-2.5 rounded-lg border border-slate-200 p-3">
+                            @if($nsGpsOk)
+                                <form method="post" action="{{ route('admin.guests.override-gps', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="map" class="h-4 w-4" />Override GPS</button></form>
+                            @endif
+                            @if($nsManualIn)
+                                <form method="post" action="{{ route('admin.guests.override', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked In</button></form>
+                            @endif
+                            @if($nsIn)
+                                <form method="post" action="{{ route('admin.guests.override-checkout', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked Out</button></form>
+                            @endif
+                            @if(! $nsHasId)
+                                <form method="post" action="{{ route('admin.guests.mark-id', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="upload" class="h-4 w-4" />Mark Photo ID Received</button></form>
+                            @endif
+                            @if($booking->parking_needed)
+                                <form method="post" action="{{ route('admin.guests.bypass-vehicle-info', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="car" class="h-4 w-4" />Bypass Vehicle Info</button></form>
+                            @endif
 
                             @if($booking->access_blocked_at)
                                 <form method="post" action="{{ route('admin.guests.unblock-access', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="unlock" class="h-4 w-4" />Restore Access</button></form>
@@ -626,7 +652,6 @@
         </div>
     </div>
 
-    @include('admin.bookings.partials.assign-drawer')
 
 {{-- Force TinyMCE's floating menus/dropdowns/overflow drawer below our modal --}}
     <style>
@@ -1048,5 +1073,5 @@
         });
     })();
     </script>
-    <script src="{{ asset('js/guest-phone-country.js') }}"></script>
+        <script src="{{ asset('js/guest-phone-country.js') }}"></script>
 </x-admin-layout>

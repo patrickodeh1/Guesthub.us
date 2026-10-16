@@ -8,6 +8,51 @@
         <a href="{{ $returnTo ?? route('admin.properties.index') }}" class="btn-secondary">Back</a>
     </div>
 
+    @if($property->exists)
+    <section class="card card-pad mb-6" id="lockbox-quick">
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="section-title">Lockbox code</h2>
+            <span id="lockbox-quick-msg" class="text-sm"></span>
+        </div>
+        <div class="mt-3 flex flex-col gap-3 sm:flex-row">
+            <input id="lockbox-quick-input" type="text" inputmode="text" autocomplete="off" value="{{ $property->lockbox_code }}" placeholder="4521" class="input flex-1 font-mono text-2xl tracking-widest" aria-label="Lockbox code">
+            <button type="button" id="lockbox-quick-save" class="rounded-lg bg-slate-900 px-6 py-3 text-base font-semibold text-white hover:bg-slate-700 sm:w-auto w-full">Save code</button>
+        </div>
+    </section>
+    <script>
+        (function () {
+            var input = document.getElementById('lockbox-quick-input');
+            var btn = document.getElementById('lockbox-quick-save');
+            var msg = document.getElementById('lockbox-quick-msg');
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                msg.textContent = 'Saving...';
+                msg.className = 'text-sm text-slate-500';
+                fetch(@json(route('admin.properties.lockbox.update', $property)), {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': @json(csrf_token()),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ lockbox_code: input.value })
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                }).then(function () {
+                    msg.textContent = 'Saved';
+                    msg.className = 'text-sm font-semibold text-emerald-700';
+                }).catch(function (e) {
+                    msg.textContent = 'Could not save (' + e.message + ')';
+                    msg.className = 'text-sm font-semibold text-red-700';
+                }).finally(function () { btn.disabled = false; });
+            });
+        })();
+    </script>
+    @endif
+
     <form method="post" enctype="multipart/form-data" action="{{ $property->exists ? route('admin.properties.update', $property) : route('admin.properties.store') }}" class="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         @csrf @if($property->exists) @method('put') @endif
         <input type="hidden" name="return_to" value="{{ $returnTo ?? '' }}">
@@ -165,9 +210,11 @@
                         <x-help-tip text="The standard check-out time shown to guests." /><input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ?? '11:00') }}" class="input">
                     </label>
                 </div>
+                @unless($property->exists)
                 <label class="field-label mt-4">Lockbox code
                     <x-help-tip text="The code for the key lockbox at the property." /><input name="lockbox_code" value="{{ old('lockbox_code', $property->lockbox_code) }}" placeholder="4521" class="input">
                 </label>
+                @endunless
             </div>
             @endif
 

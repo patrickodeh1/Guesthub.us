@@ -30,7 +30,7 @@
         {{-- Filters --}}
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
             <form method="get" class="flex flex-col sm:flex-row flex-wrap gap-3 w-full">
-                <div class="flex-1 min-w-[200px]">
+                <div class="min-w-0 flex-1">
                     <x-form.input name="q" type="text" :value="request('q')" autocomplete="off"
                         placeholder="Search videos..." class="w-full" />
                 </div>
@@ -53,12 +53,52 @@
             </form>
         </div>
 
+        <script>
+        function adminVideoPlayer() {
+            return {
+                activeVideo: null,
+                play(video) {
+                    this.activeVideo = video;
+                    document.body.classList.add('overflow-hidden');
+                    this.$nextTick(() => {
+                        const el = this.$refs.videoPlayer;
+                        if (el) el.play().catch(() => {});
+                    });
+                },
+                closePlayer() {
+                    const el = this.$refs.videoPlayer;
+                    if (el) el.pause();
+                    this.activeVideo = null;
+                    document.body.classList.remove('overflow-hidden');
+                }
+            };
+        }
+    </script>
+
         {{-- Video Grid --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3" x-data="adminVideoPlayer()">
+            {{-- Video Player Modal --}}
+            <template x-if="activeVideo">
+                <div class="fixed inset-0 z-[300] flex flex-col items-center justify-start overflow-y-auto bg-black/95 p-3 backdrop-blur-md sm:justify-center sm:p-6 md:p-8"
+                     @click.self="closePlayer()"
+                     @keydown.escape.window="closePlayer()">
+                    <div class="relative flex aspect-video max-h-[58vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-gray-800 bg-black shadow-2xl sm:max-h-[70vh]">
+                        <video playsinline webkit-playsinline x-ref="videoPlayer" :src="activeVideo.video_url" controls preload="metadata" class="w-full h-full object-contain focus:outline-none"></video>
+                        <button type="button" @click="closePlayer()" class="absolute right-2 top-2 z-50 rounded-full bg-black/60 p-2 text-white hover:bg-black/80" aria-label="Close Player">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="mt-3 w-full max-w-4xl px-1 text-left text-white">
+                        <h3 class="break-words text-lg font-bold text-gray-100" x-text="activeVideo.title"></h3>
+                        <p class="mt-1 break-words text-sm text-gray-400" x-text="activeVideo.description || ''"></p>
+                    </div>
+                </div>
+            </template>
             @forelse ($videos as $video)
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300">
+                <div class="min-w-0 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col group hover:shadow-lg transition-all duration-300">
                     {{-- Thumbnail & Duration --}}
-                    <div class="relative aspect-video bg-gray-950 flex items-center justify-center overflow-hidden">
+                    <div class="relative aspect-video bg-gray-950 flex items-center justify-center overflow-hidden @if(($video->processing_status ?? 'completed') === 'completed') cursor-pointer @endif"
+                         @if(($video->processing_status ?? 'completed') === 'completed') @click="play(@js($video->toArray()))" @endif>
                         @if ($video->thumbnail_path)
                             <img src="{{ $video->thumbnail_url }}" alt="{{ $video->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         @else
@@ -107,25 +147,25 @@
                     </div>
 
                     {{-- Body --}}
-                    <div class="p-5 flex-1 flex flex-col justify-between">
+                    <div class="min-w-0 p-4 sm:p-5 flex-1 flex flex-col justify-between">
                         <div class="space-y-2">
-                            <h3 class="font-bold text-lg text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                            <h3 class="break-words font-bold text-lg text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">
                                 {{ $video->title }}
                             </h3>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 min-h-[40px]">
+                            <p class="break-words text-sm text-gray-600 dark:text-gray-400 min-h-[40px]">
                                 {{ $video->description ?: 'No description provided.' }}
                             </p>
                         </div>
 
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                            <span class="flex items-center gap-1">
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span class="flex min-w-0 items-center gap-1 break-words">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                                 </svg>
                                 {{ $video->properties_count }} Property/ies
                             </span>
 
-                            <span class="flex items-center gap-1">
+                            <span class="flex min-w-0 items-center gap-1 break-words">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                 </svg>
@@ -135,7 +175,7 @@
                     </div>
 
                     {{-- Actions Footer --}}
-                    <div class="px-5 py-4 bg-gray-50 dark:bg-gray-800/40 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                    <div class="px-4 py-4 sm:px-5 bg-gray-50 dark:bg-gray-800/40 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                         {{-- Publish Toggle Form --}}
                         <form method="post" action="{{ route('admin.videos.publish', $video) }}">
                             @csrf

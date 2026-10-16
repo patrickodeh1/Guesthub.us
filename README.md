@@ -163,18 +163,6 @@ locally or a cron entry in production:
 | `photos:prune-old --days=15` | daily 02:00 | Delete old cleaning-session photos |
 | `training:send-reminders` | hourly | Training reminder emails |
 
-## Client Preview Screenshots & PDF
-
-```bash
-npm run build
-npm run preview:screenshots
-npm run preview:pdf
-```
-
-Runs `php artisan migrate --seed --force`, starts Laravel locally if needed,
-logs in as the demo admin, and captures screens. Set `CHROME_PATH` if Chrome
-isn't found automatically. Outputs to `public/client-preview/`.
-
 ## Deployment Notes (AlmaLinux / GoDaddy VPS, cPanel)
 
 - PHP 8.2+ with: BCMath, Ctype, cURL, DOM, Fileinfo, JSON, Mbstring, OpenSSL,

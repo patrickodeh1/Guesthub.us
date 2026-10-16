@@ -2,8 +2,8 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-100">Photos</h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Staging & reference images for your properties</p>
+                <h2 class="font-semibold text-xl text-gray-900 dark:text-gray-100">Task Photos</h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Reference images attached to cleaning tasks, by property and room</p>
             </div>
         </div>
     </x-slot>

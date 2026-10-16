@@ -16,6 +16,7 @@ services:
       - DB_DATABASE=guesthub
       - DB_USERNAME=guesthub
       - DB_PASSWORD=secret
+      - PHP_CLI_SERVER_WORKERS=4
 
   db:
     image: mysql:8.0

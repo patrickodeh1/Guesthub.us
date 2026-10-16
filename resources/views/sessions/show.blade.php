@@ -43,6 +43,12 @@
             && ! request()->has('edit_report')
             && $session->status === 'pending'
             && $session->assignment_status === 'pending_confirmation';
+        $ghTooEarly = $cleanerLayout
+            && ! $ghAwaitingConfirm
+            && ! request()->has('edit_report')
+            && $session->status === 'pending'
+            && ! empty($isTooEarly)
+            && empty($is_admin);
     @endphp
     @if ($ghAwaitingConfirm)
         {{-- gh-confirm-gate --}}
@@ -59,6 +65,40 @@
             <p class="guest-status-kicker">Job status</p>
             <h2 class="mt-2 text-lg font-bold text-slate-900">Awaiting your confirmation</h2>
             <p class="mt-2 text-sm text-slate-600">Reply to the text message to confirm this job. The details will appear here once it is confirmed.</p>
+            @php
+                $ghConfirmDashUrl = \Illuminate\Support\Facades\Route::has('dashboard') ? route('dashboard') : url('/');
+            @endphp
+            <a href="{{ $ghConfirmDashUrl }}" id="gh-confirm-back" class="guest-outline-btn mt-4 w-full max-w-xs justify-center">Back to dashboard</a>
+        </div>
+    @elseif ($ghTooEarly)
+        {{-- gh-too-early-gate --}}
+        @php
+            $ghLogo = \App\Support\Branding::logoUrl();
+            $ghSite = \App\Support\Branding::siteName();
+        @endphp
+        <div class="guest-portal-card">
+            <div class="guest-status-bar">
+                <div>
+                    @if ($ghLogo)
+                        <img src="{{ $ghLogo }}" alt="{{ $ghSite }}" class="h-8 max-w-[140px] w-auto object-contain">
+                    @endif
+                </div>
+                <span class="guest-status-pill">
+                    <x-icon name="clock" class="h-4 w-4" />
+                    Not available yet
+                </span>
+            </div>
+            <div class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24">
+                <h1 class="guest-status-title">Session not available yet</h1>
+                <p class="max-w-md text-sm leading-6 text-slate-600">
+                    This cleaning is not yet available. Access will be granted at the scheduled start time
+                    ({{ $session->scheduled_date->format('F j, Y') }}@if($session->scheduled_time) at {{ \Carbon\Carbon::parse($session->scheduled_time)->format('g:i A') }}@endif).
+                </p>
+                @php
+                    $ghDashUrl = \Illuminate\Support\Facades\Route::has('dashboard') ? route('dashboard') : url('/');
+                @endphp
+                <a href="{{ $ghDashUrl }}" id="gh-too-early-back" class="guest-outline-btn mt-2 w-full max-w-xs justify-center">Back to dashboard</a>
+            </div>
         </div>
     @else
 
@@ -216,7 +256,15 @@
 
         {{-- Getting in: parking question + access steps for the cleaner --}}
         @if ($session->status !== 'completed')
-            @include('sessions.partials.getting-in')
+            @php
+                $ghHideGettingIn = $session->status === 'pending'
+                    && auth()->check()
+                    && (int) $session->housekeeper_id === (int) auth()->id()
+                    && ! \App\Services\CleanerAccessSteps::locationVerified($session);
+            @endphp
+            @unless ($ghHideGettingIn)
+                @include('sessions.partials.getting-in')
+            @endunless
             @include('sessions.partials.door')
             @include('sessions.partials.lockbox')
             @php
@@ -279,7 +327,23 @@
             $gateWait = $gateCleaner && count($accessSteps ?? []) > 0;
         @endphp
         <div id="pending-gate" @if ($gateWait) style="display:none" @endif>
-            <x-card class="p-8">
+            @php
+                $ghBarLogo = \App\Support\Branding::logoUrl();
+                $ghBarSite = \App\Support\Branding::siteName();
+            @endphp
+            <div class="guest-portal-card">
+                <div class="guest-status-bar">
+                    <div>
+                        @if ($ghBarLogo)
+                            <img src="{{ $ghBarLogo }}" alt="{{ $ghBarSite }}" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                    <span class="guest-status-pill is-ready">
+                        <x-icon name="clock" class="h-4 w-4" />
+                        Ready to start
+                    </span>
+                </div>
+                <div class="px-6 py-10 md:py-16">
                 <div class="max-w-2xl mx-auto text-center">
                     @if (isset($isViewOnly) && $isViewOnly)
                         <div class="mb-6">
@@ -298,16 +362,9 @@
                     @else
                         <div class="mb-6">
                             {{-- gh-ready-gate --}}
-                            @php
-                                $ghLogo = \App\Support\Branding::logoUrl();
-                                $ghSite = \App\Support\Branding::siteName();
-                            @endphp
-                            @if ($ghLogo)
-                                <img src="{{ $ghLogo }}" alt="{{ $ghSite }}" class="mx-auto mb-4 h-10 w-auto object-contain">
-                            @endif
-                            <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Ready to Start</h3>
+                            <h1 class="guest-status-title">Ready to start</h1>
                             @if (\App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id())
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
+                                <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
                             @endif
                         </div>
 
@@ -319,22 +376,33 @@
                         @endif
 
                         @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id(); @endphp
+                        @php
+                            $startLocked = false;
+                            if ($session->scheduled_date && $session->scheduled_time
+                                && (int) $session->housekeeper_id === (int) auth()->id()
+                                && ! auth()->user()->hasRole('admin')) {
+                                $startTz = $session->property?->timezone ?: config('app.display_timezone');
+                                $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
+                                $startNow = now($startTz);
+                                $startLocked = $startNow->lt($startAt->copy()->subHour()) || $startNow->gt($startAt->copy()->addHour());
+                            }
+                        @endphp
                         @if ($locationVerified)
                         <form method="post" action="{{ route('sessions.start', $session) }}" id="gps-start">
                             @csrf
                             <x-form.input type="hidden" name="latitude" id="lat" />
                             <x-form.input type="hidden" name="longitude" id="lng" />
                             @if(!empty($requiresOnboarding) && $requiresOnboarding)
-                                <x-button type="button" id="start-btn" size="lg" class="w-full justify-center" x-data @click="$dispatch('open-modal', 'onboarding-modal')">Begin</x-button>
+                                <button type="button" id="start-btn" class="guest-primary-btn is-go w-full" x-data @click="$dispatch('open-modal', 'onboarding-modal')" @disabled($startLocked) @if($startLocked) style="opacity:.5;cursor:not-allowed" @endif>Begin</button>
                             @else
-                                <x-button id="start-btn" size="lg" class="w-full justify-center">Begin</x-button>
+                                <button type="submit" id="start-btn" class="guest-primary-btn is-go w-full" @disabled($startLocked) @if($startLocked) style="opacity:.5;cursor:not-allowed" @endif>Begin</button>
                             @endif
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400" id="location-status"></p>
                         </form>
                         @else
                         <div id="verify-location-card">
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">Verify you are at the property to unlock your directions and the door. Then you can start your session.</p>
-                            <div class="flex justify-center" data-gh-verify-center>{{-- gh-verify-center --}}<x-button type="button" id="verify-loc-btn" size="lg" class="mx-auto w-full sm:w-auto justify-center">Verify my location</x-button></div>
+                            <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">Verify you are at the property to unlock your directions and the door. Then you can start your session.</p>
+                            <div class="flex justify-center" data-gh-verify-center>{{-- gh-verify-center --}}<button type="button" id="verify-loc-btn" class="guest-primary-btn is-go w-full">Verify my location</button></div>
                             <p id="verify-loc-msg" class="mt-3 text-sm text-gray-500"></p>
                         </div>
                         <script>
@@ -377,7 +445,8 @@
                         @endif
                     @endif
                 </div>
-            </x-card>
+                </div>
+            </div>
         </div>
 
             @if ($is_admin)
@@ -417,55 +486,68 @@
             @endif
         @else
             {{-- PROGRESS HEADER --}}
-            <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <span data-status-badge><x-status-badge :status="$session->status" /></span>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                Started: {{ optional($session->started_at)->format('M j, Y g:i A') ?? '—' }}
-                            </p>
-                            @if ($session->gps_confirmed_at)
-                                <span class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 mt-1">
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    GPS Confirmed
-                                </span>
+            @php
+                $ghHdrLogo = \App\Support\Branding::logoUrl();
+                $ghHdrSite = \App\Support\Branding::siteName();
+            @endphp
+            <div class="guest-portal-card">
+                <div class="guest-status-bar">
+                    <div>
+                        @if ($ghHdrLogo)
+                            <img src="{{ $ghHdrLogo }}" alt="{{ $ghHdrSite }}" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                    <span data-status-badge><x-status-badge :status="$session->status" /></span>
+                </div>
+
+                <div class="p-6">
+                    <div class="guest-stay-grid">
+                        <div class="guest-stay-tile">
+                            <div class="guest-stay-tile-icon">
+                                <x-icon name="calendar" class="h-5 w-5" />
+                            </div>
+                            <p class="guest-stay-tile-label">Started</p>
+                            <p class="guest-stay-tile-date">{{ optional($session->started_at)->format('M j, Y') ?? '—' }}</p>
+                            @if ($session->started_at)
+                                <p class="mt-0.5 text-xs text-slate-500">{{ $session->started_at->format('g:i A') }}</p>
                             @endif
                         </div>
+                        <div class="guest-stay-tile">
+                            <div class="guest-stay-tile-icon">
+                                <x-icon name="{{ $session->gps_confirmed_at ? 'check' : 'clock' }}" class="h-5 w-5" />
+                            </div>
+                            <p class="guest-stay-tile-label">Location</p>
+                            <p class="guest-stay-tile-date {{ $session->gps_confirmed_at ? 'text-emerald-700' : 'text-slate-500' }}">
+                                {{ $session->gps_confirmed_at ? 'GPS confirmed' : 'Not confirmed' }}
+                            </p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-gray-600 dark:text-gray-400">Current Stage:</span>
-                        <span data-stage-area>
-                        @if ($stage === 'summary')
-                            <span class="px-3 py-1 rounded-lg text-sm font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200">
-                                Completed
-                            </span>
-                        @else
-                            <span class="px-3 py-1 rounded-lg text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                                {{ ucwords(str_replace('_', ' ', $stage)) }}
-                            </span>
-                        @endif
-                        </span>
 
-                        @if($reportUrl && ($stage === 'summary' || (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']))))
-                            <a href="{{ $reportUrl }}"
-                               id="live-report-btn"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="ml-2 inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-3 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20">
-                                {{ $stage === 'summary' ? 'View Report' : 'View Live Report' }}
-                            </a>
-                        @endif
-                        
-                        @if ($is_admin && $session->status !== 'completed')
-                            <button type="button"
-                                    onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'admin-close-modal' }))"
-                                    class="ml-2 inline-flex items-center rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20">
-                                Close Session
-                            </button>
-                        @endif
+                    <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
+                        <div class="flex items-center gap-2">
+                            <span class="guest-status-kicker">Current stage</span>
+                            <span data-stage-area>
+                                @if ($stage === 'summary')
+                                    <span class="guest-status-pill is-checked">Completed</span>
+                                @else
+                                    <span class="guest-status-pill is-ready">{{ ucwords(str_replace('_', ' ', $stage)) }}</span>
+                                @endif
+                            </span>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if($reportUrl && ($stage === 'summary' || (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']))))
+                                <a href="{{ $reportUrl }}" id="live-report-btn" target="_blank" rel="noopener noreferrer" class="guest-outline-btn">
+                                    {{ $stage === 'summary' ? 'View Report' : 'View Live Report' }}
+                                </a>
+                            @endif
+
+                            @if ($is_admin && $session->status !== 'completed')
+                                <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'admin-close-modal' }))" class="guest-outline-btn">
+                                    Close Session
+                                </button>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -559,7 +641,7 @@
                                         <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                                         </svg>
-                                        <span class="truncate max-w-[280px] sm:max-w-xs" x-text="instructionsData?.task ? (activeRoomId ? (sessionData?.rooms.find(r => r.id === activeRoomId)?.name + ' - ') : 'Property - ') + instructionsData.task.name : 'Instructions'"></span>
+                                        <span class="min-w-0 break-words max-w-[280px] sm:max-w-xs" x-text="instructionsData?.task ? (activeRoomId ? (sessionData?.rooms.find(r => r.id === activeRoomId)?.name + ' - ') : 'Property - ') + instructionsData.task.name : 'Instructions'"></span>
                                     </h3>
                                     <button type="button" @click="instructionsOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 transition-colors">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -664,7 +746,7 @@
                                                                     <video :src="media.url" class="w-full aspect-video object-cover" controls playsinline></video>
                                                                 </template>
                                                                 <template x-if="media.caption">
-                                                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 text-center p-1 truncate" x-text="media.caption"></p>
+                                                                    <p class="text-[10px] text-gray-500 dark:text-gray-400 text-center p-1 min-w-0 break-words" x-text="media.caption"></p>
                                                                 </template>
                                                             </div>
                                                         </template>

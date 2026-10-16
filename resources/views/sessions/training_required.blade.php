@@ -193,7 +193,7 @@
                                         this.activeSecondsSinceSync = 0; 
 
                                         try {
-                                            const response = await fetch(`/training/${this.type}/${this.itemId}/progress`, {
+                                            const response = await fetch(`{{ url("/training") }}/${this.type}/${this.itemId}/progress`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Content-Type': 'application/json',

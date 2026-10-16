@@ -46,7 +46,7 @@
                                 <div class="p-4 flex items-start justify-between gap-3">
                                     <div>
                                         <h4 class="font-bold text-gray-900 dark:text-white">{{ $video->title }}</h4>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{{ $video->description ?: 'No description' }}</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $video->description ?: 'No description' }}</p>
                                     </div>
                                     <div x-show="videoStatus['{{ $video->id }}']" class="shrink-0 text-green-500 bg-green-50 dark:bg-green-900 p-1.5 rounded-full">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>

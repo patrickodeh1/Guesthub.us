@@ -26,7 +26,7 @@
                 @foreach($allProperties->where('id', '!=', $property->id) as $other)
                     <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
                         <input type="checkbox" name="target_property_ids[]" value="{{ $other->id }}" class="rounded border-slate-300 copy-guide-target">
-                        <span class="truncate">{{ $other->name }}</span>
+                        <span class="min-w-0 break-words">{{ $other->name }}</span>
                     </label>
                 @endforeach
             </div>
@@ -41,7 +41,7 @@
                     <div class="mt-3 grid gap-2">
                         @foreach($guideCats as $cat)
                             <label class="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                                <span class="truncate">{{ $cat->pivot->custom_title ?: $cat->title }}</span>
+                                <span class="min-w-0 break-words">{{ $cat->pivot->custom_title ?: $cat->title }}</span>
                                 <select name="sections[{{ $cat->id }}]" class="rounded border-slate-300 text-sm">
                                     <option value="skip" selected>Do not copy</option>
                                     <option value="once">Copy once (separate)</option>

@@ -71,50 +71,10 @@ return [
                     'label' => 'Jobs',
                     'icon' => 'logs',
                     'tour' => 'nav-jobs',
-                    'collapsible' => true,
                     'routes' => [
                         ['name' => 'manage.sessions.index', 'roles' => $staff],
                     ],
-                    'active' => ['manage.sessions.*', 'rooms.*', 'tasks.*'],
-                    'children' => [
-                        [
-                            'label' => 'Cleaning Rooms',
-                            'routes' => [
-                                ['name' => 'rooms.index', 'roles' => $staff],
-                            ],
-                            'active' => ['rooms.*'],
-                        ],
-                        [
-                            'label' => 'Cleaning Tasks',
-                            'routes' => [
-                                ['name' => 'tasks.index', 'roles' => $staff],
-                            ],
-                            'active' => ['tasks.*'],
-                        ],
-                    ],
-                ],
-                [
-                    'label' => 'Communications',
-                    'icon' => 'contact-guest-services',
-                    'roles' => ['admin', 'owner', 'company', 'manager'],
-                    'collapsible' => true,
-                    'active' => ['admin.notifications.*', 'admin.notices.*'],
-                    'children' => [
-                        [
-                            'label' => 'Notifications',
-                            'routes' => [
-                                ['name' => 'admin.notifications.index', 'roles' => ['admin', 'owner', 'company', 'manager']],
-                            ],
-                            'active' => ['admin.notifications.*'],
-                        ],
-                        [
-                            'label' => 'Guest Notices',
-                            'routes' => [
-                                ['name' => 'admin.notices.index', 'roles' => ['admin', 'manager']],
-                            ],
-                            'active' => ['admin.notices.*'],
-                        ],
-                    ],
+                    'active' => ['manage.sessions.*'],
                 ],
                 [
                     'label' => 'Media',
@@ -138,6 +98,13 @@ return [
                             'active' => ['admin.videos.*'],
                         ],
                         [
+                            'label' => 'Task Photos',
+                            'routes' => [
+                                ['name' => 'resources.photos', 'roles' => ['admin']],
+                            ],
+                            'active' => ['resources.photos'],
+                        ],
+                        [
                             'label' => 'Categories',
                             'routes' => [
                                 ['name' => 'admin.categories.index', 'roles' => $staff],
@@ -157,7 +124,6 @@ return [
                         'admin.early-access-leads.*',
                         'admin.logs.*',
                         'activity.*',
-                        'admin.security',
                         'admin.guide',
                         'reports.training.*',
                         'reports.familiarity.*',
@@ -185,12 +151,20 @@ return [
                             'active' => ['admin.logs.*', 'activity.*'],
                         ],
                         [
-                            'label' => 'Security',
+                            'label' => 'Cleaning Notification Logs',
                             'routes' => [
-                                ['name' => 'admin.security', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.notifications.index', 'roles' => ['admin', 'owner', 'company', 'manager']],
                             ],
-                            'active' => ['admin.security'],
+                            'active' => ['admin.notifications.*'],
                         ],
+                        [
+                            'label' => 'Training Logs',
+                            'routes' => [
+                                ['name' => 'admin.training-logs.index', 'roles' => ['admin']],
+                            ],
+                            'active' => ['admin.training-logs.*'],
+                        ],
+                        /*
                         [
                             'label' => 'Admin Guide',
                             'routes' => [
@@ -198,6 +172,7 @@ return [
                             ],
                             'active' => ['admin.guide'],
                         ],
+                        */
                     ],
                 ],
             ],
@@ -239,36 +214,6 @@ return [
                     'active' => ['training.*'],
                 ],
                 [
-                    'label' => 'Videos',
-                    'icon' => 'guide',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
-                    'routes' => [
-                        ['name' => 'resources.videos', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['resources.videos'],
-                ],
-                [
-                    'label' => 'Photos',
-                    'icon' => 'image',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
-                    'routes' => [
-                        ['name' => 'resources.photos', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['resources.photos'],
-                ],
-                [
-                    'label' => 'Guides',
-                    'icon' => 'guide',
-                    'roles' => ['housekeeper'],
-                    'exclude_roles' => ['admin'],
-                    'routes' => [
-                        ['name' => 'resources.guides', 'roles' => ['housekeeper']],
-                    ],
-                    'active' => ['resources.guides'],
-                ],
-                [
                     'label' => 'My Account',
                     'icon' => 'users',
                     'roles' => ['housekeeper', 'manager', 'staff', 'viewer'],
@@ -292,7 +237,7 @@ return [
                     'routes' => [
                         ['name' => 'admin.settings.edit', 'roles' => ['admin']],
                     ],
-                    'active' => ['admin.settings.*', 'admin.payments.*', 'resources.*'],
+                    'active' => ['admin.settings.*', 'admin.payments.*', 'admin.notices.*', 'admin.security', 'resources.*', 'rooms.*', 'tasks.*'],
 
                     // TEMPORARY: remove once the tabbed Settings page exists.
                     'collapsible' => true,
@@ -301,6 +246,10 @@ return [
                         ['label' => 'Notification Settings', 'routes' => [['name' => 'admin.settings.notifications.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.notifications.*']],
                         ['label' => 'Payments', 'routes' => [['name' => 'admin.payments.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.payments.*']],
                         ['label' => 'Legal', 'routes' => [['name' => 'admin.settings.legal.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.legal.*']],
+                        ['label' => 'Guest Notices', 'routes' => [['name' => 'admin.notices.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.notices.*']],
+                        ['label' => 'Cleaning Rooms', 'routes' => [['name' => 'rooms.index', 'roles' => $staff]], 'active' => ['rooms.*']],
+                        ['label' => 'Cleaning Tasks', 'routes' => [['name' => 'tasks.index', 'roles' => $staff]], 'active' => ['tasks.*']],
+                        ['label' => 'Profile', 'routes' => [['name' => 'admin.security', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['admin.security']],
                     ],
                 ],
             ],

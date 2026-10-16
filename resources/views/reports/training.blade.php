@@ -143,10 +143,10 @@
                                         <div class="flex items-center">
                                             @if($snap->task)
                                                 <span class="text-[10px] uppercase bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-2 border border-gray-200">Task</span>
-                                                <span class="truncate max-w-[200px]" title="{{ $item->name }}">{{ $item->name }}</span>
+                                                <span class="min-w-0 break-words max-w-[200px]" title="{{ $item->name }}">{{ $item->name }}</span>
                                             @else
                                                 <span class="text-[10px] uppercase bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded mr-2 border border-gray-200">Video</span>
-                                                <span class="truncate max-w-[200px]" title="{{ $item->title }}">{{ $item->title }}</span>
+                                                <span class="min-w-0 break-words max-w-[200px]" title="{{ $item->title }}">{{ $item->title }}</span>
                                             @endif
                                         </div>
                                     </td>

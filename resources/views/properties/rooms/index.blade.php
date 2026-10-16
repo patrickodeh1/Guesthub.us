@@ -71,7 +71,7 @@
                                 </button>
                             @endrole
                             <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $r->name }}</h3>
+                                <h3 class="font-semibold text-gray-900 dark:text-gray-100 break-words">{{ $r->name }}</h3>
                                 <div class="flex items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                                     <span>{{ $r->tasks_count }} tasks</span>
                                     @role('admin')

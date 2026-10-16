@@ -26,6 +26,14 @@
         @include('sessions._jobs_list', ['jobs' => $pastJobs, 'isPast' => true])
         <div class="mt-4">{{ $pastJobs->links() }}</div>
     @else
+        @if(($pendingOffers ?? collect())->isNotEmpty())
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-red-700 mb-1">Needs your response</h3>
+            <p class="text-sm text-gray-500 mb-4">Reply Y or N to the text message to accept or decline. These are not scheduled jobs until you accept.</p>
+            @include('sessions._jobs_list', ['jobs' => $pendingOffers, 'isCurrent' => false])
+        </div>
+        @endif
+
         <div class="mb-8">
             <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">Current Jobs</h3>
             @if($currentJobs->isEmpty())
