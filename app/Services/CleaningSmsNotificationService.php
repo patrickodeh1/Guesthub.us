@@ -305,7 +305,14 @@ class CleaningSmsNotificationService
         $property = $session->property;
         $time = $session->scheduled_time ? $session->scheduled_time->format('g:i A') : '';
         $lead = $minutesAway >= 50 ? '1 hour' : "{$minutesAway} minutes";
-        $message = "Reminder: your cleaning at {$property->internal_display_name} starts in {$lead}" . ($time ? " ({$time})." : '.');
+        if (! \App\Services\CleaningMessages::enabled('start_reminder')) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('start_reminder', [
+            'property_name' => $property->internal_display_name,
+            'lead' => $lead,
+            'time' => $time,
+        ]);
 
         self::dispatchToCleaner($session, 'start_reminder_1h', $message);
     }
@@ -323,11 +330,16 @@ class CleaningSmsNotificationService
         $housekeeper = $session->housekeeper;
         $guest = $session->booking?->guest_name ?? ($session->no_guest ? 'No guest' : 'N/A');
 
-        $message = "Cleaning is almost finished at {$property->internal_display_name}.\n"
-            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
-            . "Guest: {$guest}\n"
-            . "Time: " . TimezoneHelper::format(now(), $property) . "\n"
-            . "Job ID: #{$session->id}";
+        if (! \App\Services\CleaningMessages::enabled('almost_done')) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('almost_done', [
+            'property_name' => $property->internal_display_name,
+            'cleaner' => $housekeeper->name ?? 'N/A',
+            'guest' => $guest,
+            'time' => TimezoneHelper::format(now(), $property),
+            'job_id' => $session->id,
+        ]);
 
         self::dispatch($session, 'almost_done', $message);
     }

@@ -135,22 +135,24 @@ class CleaningFlowService
             if (! $user) {
                 return;
             }
+            if (! Setting::get('notify_assignments', true)
+                || ! CleaningMessages::enabled($changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'))) {
+                return;
+            }
             $phone = self::phoneFor($user);
             if (! $phone) {
                 Log::info("CleaningFlow: cleaner {$user->id} has no phone, assignment text skipped.");
                 $session->forceFill(['assignment_status' => 'pending_confirmation'])->saveQuietly();
-                self::alertAdmins("{$user->name} has no phone number on file, so they could not be texted the cleaning at {$session->property->internal_display_name}. Add a phone number, or confirm the job manually.");
+                self::alertAdmins('admin_no_phone', ['cleaner' => $user->name, 'property_name' => $session->property->internal_display_name]);
                 return;
             }
 
             $p = $session->property;
             $when = self::whenLabel($session->scheduled_date, $session->scheduled_time);
-            if ($changed && $oldWhen) {
-                $msg = "Scheduled cleaning for {$p->internal_display_name} on {$oldWhen} has been moved to {$when}. To accept, reply Y or if you're not available reply N.";
-            } else {
-                $label = $changed ? 'Updated cleaning' : 'New cleaning';
-                $msg = "{$label} available at {$p->internal_display_name}, {$when}. Accept this job? Reply Y or N";
-            }
+            $msg = CleaningMessages::render(
+                $changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'),
+                ['property_name' => $p->internal_display_name, 'when' => $when, 'old_when' => $oldWhen ?? '']
+            );
 
             $result = SmsNotificationService::deliver($phone, $msg, 'cleaning');
             NotificationLog::create([
@@ -166,7 +168,7 @@ class CleaningFlowService
             ]);
 
             if (! empty($result['error'])) {
-                self::alertAdmins("The assignment text to {$user->name} for {$p->internal_display_name} on {$when} failed to send. Job will need to be confirmed manually.");
+                self::alertAdmins('admin_send_failed', ['cleaner' => $user->name, 'property_name' => $p->internal_display_name, 'when' => $when]);
             }
             $session->forceFill(['assignment_status' => 'pending_confirmation', 'cleaner_notified_at' => now()])->saveQuietly();
         } catch (\Throwable $e) {
@@ -213,7 +215,9 @@ class CleaningFlowService
             $user = $users->firstWhere('id', $pending->first()->housekeeper_id) ?? $users->first();
 
             if (! $isAnswer) {
-                SmsNotificationService::deliver($phone, 'Please reply Y to confirm or N to decline your cleaning assignment.', 'cleaning');
+                if (CleaningMessages::enabled('cleaner_reply_help')) {
+                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_reply_help'), 'cleaning');
+                }
                 return true;
             }
 
@@ -227,15 +231,19 @@ class CleaningFlowService
             if ($yes) {
                 $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
                 Log::info("SMS-LOG in CONFIRMED: {$user->name} accepted cleaning session {$session->id}.");
-                self::alertAdmins("{$user->name} accepted the cleaning at {$name} on {$day}.");
-                SmsNotificationService::deliver($phone, "Confirmed: {$name} on {$day}. Thank you!", 'cleaning');
+                self::alertAdmins('admin_accepted', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day]);
+                if (CleaningMessages::enabled('cleaner_confirmed')) {
+                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_confirmed', ['property_name' => $name, 'when' => $day]), 'cleaning');
+                }
                 return true;
             }
 
             $session->forceFill(['assignment_status' => 'declined'])->saveQuietly();
             Log::info("SMS-LOG in DECLINED: {$user->name} declined cleaning session {$session->id}.");
-            SmsNotificationService::deliver($phone, "Thank you, We will schedule another cleaner.", 'cleaning');
-            self::alertAdmins("{$user->name} declined the cleaning at {$name} on {$day}.");
+            if (CleaningMessages::enabled('cleaner_declined')) {
+                SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_declined', ['property_name' => $name, 'when' => $day]), 'cleaning');
+            }
+            self::alertAdmins('admin_declined', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day]);
             return true;
         } catch (\Throwable $e) {
             Log::error('CleaningFlow reply failed: '.$e->getMessage());
@@ -259,7 +267,7 @@ class CleaningFlowService
             if (! \Illuminate\Support\Facades\Cache::add($key, 1, now()->addDays(3))) {
                 continue;
             }
-            self::alertAdmins(($x->housekeeper?->name ?? 'Cleaner')." hasn't confirmed ".$x->property->internal_display_name.' cleaning for '.self::whenLabel($x->scheduled_date, $x->scheduled_time));
+            self::alertAdmins('admin_unconfirmed', ['cleaner' => $x->housekeeper?->name ?? 'Cleaner', 'property_name' => $x->property->internal_display_name, 'when' => self::whenLabel($x->scheduled_date, $x->scheduled_time)]);
             $sent++;
         }
         return $sent;
@@ -292,8 +300,12 @@ class CleaningFlowService
         $booking->forceFill(['unit_ready_sent_at' => now()])->saveQuietly();
     }
 
-    private static function alertAdmins(string $message): void
+    private static function alertAdmins(string $key, array $vars = []): void
     {
+        if (! CleaningMessages::enabled($key)) {
+            return;
+        }
+        $message = CleaningMessages::render($key, $vars);
         $numbers = collect([Setting::getValue('contact_phone'), config('services.telnyx.admin_notify_number')])
             ->filter()->unique(fn ($n) => SmsConsentService::normalizePhone($n));
         foreach ($numbers as $n) {

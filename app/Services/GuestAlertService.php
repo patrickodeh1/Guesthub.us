@@ -88,17 +88,17 @@ class GuestAlertService
             'default_staff_message' => '{guest_name} paid their incidentals deposit online for {property_name}.',
         ],
         'early_checkin_granted' => [
-            'label' => 'Early check-in granted',
+            'label' => 'Early check-in approved (fee/payment step)',
             'default_guest_message' => 'Hi {guest_first_name}, your early check-in request for {property_name} has been approved. Please visit your check-in link to complete payment: {guest_link}',
             'default_staff_message' => 'Early check-in was granted for {guest_name} at {property_name}.',
         ],
         'late_checkout_granted' => [
-            'label' => 'Late checkout granted',
+            'label' => 'Late check-out approved (fee/payment step)',
             'default_guest_message' => 'Hi {guest_first_name}, your late checkout request for {property_name} has been approved.',
             'default_staff_message' => 'Late checkout was granted for {guest_name} at {property_name}.',
         ],
         'checkin_time_approved' => [
-            'label' => 'Requested check-in time approved',
+            'label' => 'Requested arrival time approved',
             'default_guest_message' => 'Hi {guest_first_name}, your requested check-in time of {requested_time} for {property_name} has been approved.',
             'default_staff_message' => "{guest_name}'s requested check-in time of {requested_time} for {property_name} was approved.",
         ],
@@ -108,7 +108,7 @@ class GuestAlertService
             'default_staff_message' => "{guest_name}'s requested check-in time of {requested_time} for {property_name} was denied.",
         ],
         'checkout_time_approved' => [
-            'label' => 'Requested check-out time approved',
+            'label' => 'Requested departure time approved',
             'default_guest_message' => 'Hi {guest_first_name}, your requested check-out time of {requested_time} for {property_name} has been approved.',
             'default_staff_message' => "{guest_name}'s requested check-out time of {requested_time} for {property_name} was approved.",
         ],
@@ -301,13 +301,16 @@ class GuestAlertService
         }
         unset($row['message']);
 
+        // Only convert genuinely old rows (admin_* present, contact_* absent).
+        // Current-format rows keep their saved admin_* values.
         if (isset($row['admin_sms']) && ! isset($row['contact_sms'])) {
             $row['contact_sms'] = $row['admin_sms'];
+            unset($row['admin_sms']);
         }
         if (isset($row['admin_email']) && ! isset($row['contact_email'])) {
             $row['contact_email'] = $row['admin_email'];
+            unset($row['admin_email']);
         }
-        unset($row['admin_sms'], $row['admin_email']);
 
         return $row;
     }

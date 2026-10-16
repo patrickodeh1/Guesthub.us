@@ -21,6 +21,8 @@ class NotificationSettingsController extends Controller
             'alertLabels' => GuestAlertService::labels(),
             'alertConfig' => GuestAlertService::config(),
             'staffRoles' => GuestAlertService::STAFF_ROLES,
+            'cleaningEvents' => \App\Services\CleaningMessages::EVENTS,
+            'cleaningConfig' => \App\Services\CleaningMessages::config(),
         ]);
     }
 
@@ -30,6 +32,11 @@ class NotificationSettingsController extends Controller
             'alerts' => ['required', 'array'],
             'alerts.*.guest_message' => ['nullable', 'string', 'max:1000'],
             'alerts.*.staff_message' => ['nullable', 'string', 'max:1000'],
+            'alerts.*._complete' => ['nullable', 'boolean'],
+            'cleaning' => ['nullable', 'array'],
+            'cleaning.*.message' => ['nullable', 'string', 'max:1000'],
+            'cleaning.*.enabled' => ['nullable', 'boolean'],
+            'cleaning.*._complete' => ['nullable', 'boolean'],
         ];
         foreach ([
             'notify_cleaning_started_global',
@@ -63,8 +70,17 @@ class NotificationSettingsController extends Controller
         }
 
         $config = [];
+        $existing = GuestAlertService::config();
+        $skipped = [];
         foreach (GuestAlertService::EVENTS as $key => $meta) {
-            $row = $data['alerts'][$key] ?? [];
+            $row = $data['alerts'][$key] ?? null;
+
+            // Row missing or cut off (PHP max_input_vars): keep what is saved instead of zeroing it.
+            if (! is_array($row) || empty($row['_complete'])) {
+                $config[$key] = $existing[$key];
+                $skipped[] = $key;
+                continue;
+            }
             $config[$key] = [
                 'guest_message' => $row['guest_message'] ?? $meta['default_guest_message'],
                 'staff_message' => $row['staff_message'] ?? $meta['default_staff_message'],
@@ -77,9 +93,12 @@ class NotificationSettingsController extends Controller
         }
 
         GuestAlertService::putConfig($config);
+        \App\Services\CleaningMessages::put($data['cleaning'] ?? []);
 
         ActivityLog::record('guest_alerts_updated', 'Guest lifecycle alert messages and send preferences were updated.', 'settings');
 
-        return back()->with('success', 'Notification settings saved.');
+        return back()->with('success', 'Notification settings saved.'.($skipped
+            ? ' WARNING: '.count($skipped).' events were not received and kept their old values ('.implode(', ', $skipped).'). Raise max_input_vars on the server.'
+            : ''));
     }
 }
