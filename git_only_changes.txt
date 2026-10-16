@@ -1,2 +1,0 @@
-public/build/assets/app-By3-85ip.css
-public/build/assets/cleaning-app-eTQSI9y4.js
