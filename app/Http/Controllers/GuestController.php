@@ -192,13 +192,13 @@ class GuestController extends Controller
         if ($newCheckinPreference !== $booking->checkin_time_preference) {
             $updates['checkin_time_status'] = $booking->requiresCheckinTimeApproval($newCheckinPreference)
                 ? 'pending'
-                : null;
+                : (filled($newCheckinPreference) ? 'approved' : null);
         }
 
         if ($newCheckoutPreference !== $booking->checkout_time_preference) {
             $updates['checkout_time_status'] = $booking->requiresCheckoutTimeApproval($newCheckoutPreference)
                 ? 'pending'
-                : null;
+                : (filled($newCheckoutPreference) ? 'approved' : null);
         }
 
         if ($parkingAnswer) {

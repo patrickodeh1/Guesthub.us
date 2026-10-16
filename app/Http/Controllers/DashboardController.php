@@ -96,7 +96,7 @@ class DashboardController extends Controller
                 ->where('housekeeper_id', $u->id);
 
             $active = (clone $base)->where(function ($q) {
-                $q->whereNull('assignment_status')->orWhere('assignment_status', '!=', 'pending_confirmation');
+                $q->whereNull('assignment_status')->orWhereNotIn('assignment_status', ['pending_confirmation', 'declined']);
             });
             $pendingOffers = (clone $base)->where('assignment_status', 'pending_confirmation')
                 ->whereDate('scheduled_date', '>=', $today)

@@ -433,12 +433,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
                 'captured_at' => now(),
             ]);
 
-            // Trigger SMS notification for first photo (once per session)
-            try {
-                CleaningSmsNotificationService::sendPhotoStarted($session);
-            } catch (\Throwable $e) {
-                Log::warning('SMS notification failed for photo started: ' . $e->getMessage());
-            }
+            // Verification/checklist photos do not send the photos-started text; only the finished photos do (PhotoController).
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -535,12 +530,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
                 'captured_at' => now(),
             ]);
 
-            // Trigger SMS notification for first photo (once per session)
-            try {
-                CleaningSmsNotificationService::sendPhotoStarted($session);
-            } catch (\Throwable $e) {
-                Log::warning('SMS notification failed for photo started: ' . $e->getMessage());
-            }
+            // Verification/checklist photos do not send the photos-started text; only the finished photos do (PhotoController).
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -814,6 +804,15 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
             ['user_id' => $user->id, 'task_id' => $task->id, 'instructional_video_id' => $videoId],
             ['views_completed' => 0]
         );
+        // Instructions changed since this cleaner's count was recorded: start over.
+        $curVer = $videoId
+            ? (int) (\App\Models\InstructionalVideo::find($videoId)?->training_version ?? 1)
+            : (int) ($task->training_version ?? 1);
+        if ($familiarity->training_version === null) {
+            $familiarity->forceFill(['training_version' => $curVer])->save();
+        } elseif ((int) $familiarity->training_version !== $curVer) {
+            $familiarity->forceFill(['views_completed' => 0, 'training_version' => $curVer, 'last_reset_at' => now()])->save();
+        }
         $familiarity->increment('views_completed');
         $familiarity->update(['last_viewed_at' => now()]);
 
@@ -895,11 +894,17 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
         $viewsCompleted = $familiarity->views_completed;
         $isFamiliar = $requiredViews <= 0 || $viewsCompleted >= $requiredViews;
 
+        // Required reads reached on an instruction task: check it off automatically.
+        if (! $videoId && $isFamiliar && $task->type === 'instructions' && ! $item->checked) {
+            $item->forceFill(['checked' => true, 'checked_at' => now()])->save();
+        }
+
         return response()->json([
             'success' => true,
             'views_completed' => $viewsCompleted,
             'required_views' => $requiredViews,
-            'is_familiar' => $isFamiliar
+            'is_familiar' => $isFamiliar,
+            'checked' => (bool) $item->checked,
         ]);
     }
 
@@ -950,6 +955,15 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
             ['user_id' => $user->id, 'task_id' => $task->id, 'instructional_video_id' => $videoId],
             ['views_completed' => 0]
         );
+        // Instructions changed since this cleaner's count was recorded: start over.
+        $curVer = $videoId
+            ? (int) (\App\Models\InstructionalVideo::find($videoId)?->training_version ?? 1)
+            : (int) ($task->training_version ?? 1);
+        if ($familiarity->training_version === null) {
+            $familiarity->forceFill(['training_version' => $curVer])->save();
+        } elseif ((int) $familiarity->training_version !== $curVer) {
+            $familiarity->forceFill(['views_completed' => 0, 'training_version' => $curVer, 'last_reset_at' => now()])->save();
+        }
         $familiarity->increment('views_completed');
         $familiarity->update(['last_viewed_at' => now()]);
 
@@ -1032,11 +1046,17 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
         $viewsCompleted = $familiarity->views_completed;
         $isFamiliar = $requiredViews <= 0 || $viewsCompleted >= $requiredViews;
 
+        // Required reads reached on an instruction task: check it off automatically.
+        if (! $videoId && $isFamiliar && $task->type === 'instructions' && ! $item->checked) {
+            $item->forceFill(['checked' => true, 'checked_at' => now()])->save();
+        }
+
         return response()->json([
             'success' => true,
             'views_completed' => $viewsCompleted,
             'required_views' => $requiredViews,
-            'is_familiar' => $isFamiliar
+            'is_familiar' => $isFamiliar,
+            'checked' => (bool) $item->checked,
         ]);
     }
 }

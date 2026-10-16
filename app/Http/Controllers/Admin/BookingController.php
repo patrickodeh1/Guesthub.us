@@ -387,6 +387,7 @@ class BookingController extends Controller
             // this form doesn't submit it.
             'parking_charge_override'        => ['nullable', 'numeric', 'min:0'],
             'incidentals_charge'             => ['nullable', 'numeric', 'min:0'],
+            'additional_deposit'             => ['nullable', 'numeric', 'min:0'],
             'early_checkin_tier'             => ['nullable', 'in:8am_12pm,12pm_2pm,2pm_4pm,8am,12pm'],
             'early_checkin_charge_override'  => ['nullable', 'numeric', 'min:0'],
             'early_checkin_billing_mode'     => ['nullable', 'in:charge,deduct_from_hold'],
@@ -395,6 +396,11 @@ class BookingController extends Controller
             'late_checkout_actual_time'      => ['nullable', 'date'],
             'late_checkout_charge_override'  => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        // Bookings from before the additional-deposit ledger keep their original behavior untouched.
+        if (! $booking->usesAdditionalDeposit()) {
+            unset($data['additional_deposit']);
+        }
 
         $this->enforcePreCheckinCap(array_merge(
             $booking->only(['property_id', 'check_in_date', 'check_out_date', 'parking_needed', 'early_checkin_billing_mode']),
@@ -1113,10 +1119,12 @@ class BookingController extends Controller
             return;
         }
 
-        $incidentalsCents = (int) round(((float) ($data['incidentals_charge'] ?? 0)) * 100);
+        $holdField = array_key_exists('additional_deposit', $data) ? 'additional_deposit' : 'incidentals_charge';
+        $holdAmount = (float) ($data['incidentals_charge'] ?? 0) + (float) ($data['additional_deposit'] ?? 0);
+        $incidentalsCents = (int) round($holdAmount * 100);
         if ($incidentalsCents > $capCents) {
             throw ValidationException::withMessages([
-                'incidentals_charge' => 'Incidentals cannot exceed the deposit threshold of $'.number_format($capCents / 100, 2).'.',
+                $holdField => ($holdField === 'additional_deposit' ? 'Additional deposit' : 'Incidentals').' cannot exceed the deposit threshold of $'.number_format($capCents / 100, 2).'.',
             ]);
         }
 
@@ -1131,13 +1139,13 @@ class BookingController extends Controller
 
         $subtotalCents = (int) round((
             $parkingCharge
-            + ((float) ($data['incidentals_charge'] ?? 0))
+            + $holdAmount
             + ($booking->earlyCheckinIsDeductedFromHold() ? 0 : ($booking->effectiveEarlyCheckinCharge() ?? 0))
         ) * 100);
 
         if ($subtotalCents > $capCents) {
             throw ValidationException::withMessages([
-                'incidentals_charge' => 'Incidentals, parking, and early check-in total cannot exceed the deposit threshold of $'.number_format($capCents / 100, 2).'.',
+                $holdField => 'Additional deposit/incidentals, parking, and early check-in total cannot exceed the deposit threshold of $'.number_format($capCents / 100, 2).'.',
             ]);
         }
     }

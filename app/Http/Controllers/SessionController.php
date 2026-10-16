@@ -54,7 +54,7 @@ class SessionController extends Controller
             ->get();
 
         $pendingOffers = $activeJobs->where('assignment_status', 'pending_confirmation')->values();
-        $activeJobs = $activeJobs->where('assignment_status', '!=', 'pending_confirmation');
+        $activeJobs = $activeJobs->whereNotIn('assignment_status', ['pending_confirmation', 'declined']);
 
         $currentJobs = collect();
         $upcomingJobs = collect();

@@ -20,6 +20,34 @@ class TaskMedia extends Model
 
     protected $appends = ['url', 'thumbnail'];
 
+    protected static function booted(): void
+    {
+        // Adding or removing instruction pictures/videos makes cleaners re-read the task.
+        static::created(fn (self $m) => self::bumpTaskVersion($m->task_id));
+        static::deleted(fn (self $m) => self::bumpTaskVersion($m->task_id));
+        // Every video saved anywhere (task, room, property, template clone) gets converted to an iPhone-safe MP4.
+        static::created(function (self $media): void {
+            if ($media->type !== 'video') {
+                return;
+            }
+            try {
+                $path = self::normalizePath($media->getRawOriginal('url'));
+                if ($path) {
+                    \App\Jobs\ConvertTaskVideo::dispatchAfterResponse($path);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('VIDEO_CONVERT_DISPATCH: '.$e->getMessage());
+            }
+        });
+    }
+
+    private static function bumpTaskVersion($taskId): void
+    {
+        if ($taskId) {
+            \Illuminate\Support\Facades\DB::table('tasks')->where('id', $taskId)->increment('training_version');
+        }
+    }
+
     public function task()
     {
         return $this->belongsTo(Task::class);

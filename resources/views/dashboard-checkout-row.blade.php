@@ -42,15 +42,20 @@
             <div class="mr-auto min-w-0 sm:mr-0 sm:text-right">
                 <p class="min-w-0 break-words text-sm font-semibold {{ ! empty($row['cleaner_pending']) ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['cleaner'] }}</p>
                 <p class="text-xs text-slate-500">
-                    {{ \Illuminate\Support\Str::headline($session->status ?? 'scheduled') }}
-                    @if($session->scheduled_time) &middot; {{ $session->scheduled_time->format('g:i A') }} @endif
+                    @if($session->scheduled_time){{ $session->scheduled_time->format('g:i A') }}@endif
                 </p>
             </div>
             @php($asn = $session->assignment_status ?? null)
-            @if($asn === 'pending_confirmation')
+            @if(($session->status ?? null) === 'in_progress')
+                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">In progress</span>
+            @elseif(($session->status ?? null) === 'completed')
+                <span class="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-800">Completed</span>
+            @elseif($asn === 'pending_confirmation')
                 <span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">Awaiting acceptance</span>
             @elseif($asn === 'confirmed')
-                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">Accepted</span>
+                <span class="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-bold text-slate-700">Accepted</span>
+            @elseif($asn === 'declined')
+                <span class="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">Declined</span>
             @else
                 <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Covered</span>
             @endif

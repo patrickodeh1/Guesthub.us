@@ -330,13 +330,19 @@ document.addEventListener('alpine:init', () => {
                         const data = taskEl._x_dataStack[0];
                         if (data !== undefined) {
                             data.instructionViewed = true;
-                            data.isFamiliar = true;
+                            data.isFamiliar = res.is_familiar !== undefined ? !!res.is_familiar : true;
+                            if (res.required_views !== undefined) data.requiredViews = res.required_views;
+                            if (res.checked) data.checked = true;
                             if (res.views_completed !== undefined) {
                                 data.viewsCompleted = res.views_completed;
                             }
                         }
                     }
-                    window.checklistHandler?.showSuccess('Instruction marked as read.');
+                    window.checklistHandler?.showSuccess(
+                        res.is_familiar === false && res.required_views
+                            ? `Read ${res.views_completed} of ${res.required_views}.`
+                            : 'Instruction marked as read.'
+                    );
                     this.close();
                 } else {
                     window.checklistHandler?.showError(res.message || 'Failed to mark instruction as read. Please try again.');

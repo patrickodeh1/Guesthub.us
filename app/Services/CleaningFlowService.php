@@ -227,11 +227,12 @@ class CleaningFlowService
             if ($yes) {
                 $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
                 Log::info("SMS-LOG in CONFIRMED: {$user->name} accepted cleaning session {$session->id}.");
+                self::alertAdmins("{$user->name} accepted the cleaning at {$name} on {$day}.");
                 SmsNotificationService::deliver($phone, "Confirmed: {$name} on {$day}. Thank you!", 'cleaning');
                 return true;
             }
 
-            $session->forceFill(['housekeeper_id' => null, 'assignment_status' => 'unassigned'])->saveQuietly();
+            $session->forceFill(['assignment_status' => 'declined'])->saveQuietly();
             Log::info("SMS-LOG in DECLINED: {$user->name} declined cleaning session {$session->id}.");
             SmsNotificationService::deliver($phone, "Thank you, We will schedule another cleaner.", 'cleaning');
             self::alertAdmins("{$user->name} declined the cleaning at {$name} on {$day}.");

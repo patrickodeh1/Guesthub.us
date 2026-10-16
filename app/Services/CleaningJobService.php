@@ -95,10 +95,10 @@ class CleaningJobService
             'housekeeper_id' => $data['housekeeper_id'],
             'scheduled_date' => $data['scheduled_date'],
             'scheduled_time' => $data['scheduled_time'] ?? null,
-            'status' => $session?->status ?? 'pending',
+            'status' => $data['status'] ?? $session?->status ?? 'pending',
             'checkout_id' => $session?->checkout_id,
             'booking_id' => $session?->booking_id ?? ($data['booking_id'] ?? null),
-            'sporadic_tasks' => $session?->sporadic_tasks ?? [],
+            'sporadic_tasks' => array_key_exists('sporadic_tasks', $data) ? ($data['sporadic_tasks'] ?? []) : ($session?->sporadic_tasks ?? []),
         ];
 
         if (! $session) {

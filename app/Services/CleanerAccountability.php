@@ -30,7 +30,7 @@ class CleanerAccountability
                 return self::describe($s, 'Cleaned by', 'No cleaner assigned');
             }
 
-            if ($in < $today) {
+            if ($in < $today || ($b->isMarkedCheckedIn() && ! $b->checked_out_at)) {
                 return null; // in house
             }
 

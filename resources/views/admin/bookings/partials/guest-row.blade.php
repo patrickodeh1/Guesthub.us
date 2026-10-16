@@ -15,7 +15,7 @@
                 @if(! $booking->isCancelled() && auth()->user()?->hasAnyRole(['admin', 'owner', 'company']))
                     <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-assign', {detail: {booking_id: {{ $booking->id }}}}))" class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="users" class="h-4 w-4" />Assign cleaner</button>
                 @endif
-                <button type="button" onclick="copyGuestUrl(this, '{{ $booking->publicUrl() }}')" class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="copy" class="h-4 w-4" /><span data-copy-label>Copy Guest URL</span></button>
+                <a href="{{ $booking->publicUrl() }}" target="_blank" rel="noopener" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><x-icon name="external-link" class="h-4 w-4" />Open as guest</a>
 
                 <div class="my-1 border-t border-slate-100"></div>
 

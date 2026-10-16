@@ -36,7 +36,7 @@ class Booking extends Model
         'access_blocked_at', 'access_blocked_reason',
         'photo_id_front_approved_at', 'photo_id_front_declined_reason',
         'photo_id_back_approved_at', 'photo_id_back_declined_reason',
-        'parking_charge', 'parking_charge_override', 'incidentals_charge', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at', 'checkout_source', 'late_checkout_deducted_at',
+        'parking_charge', 'parking_charge_override', 'incidentals_charge', 'additional_deposit', 'checkin_reminder_sent_at', 'checkout_reminder_sent_at', 'checkout_source', 'late_checkout_deducted_at',
         'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
@@ -84,6 +84,8 @@ class Booking extends Model
             'parking_charge_override' => 'decimal:2',
             'damages' => 'array',
             'incidentals_charge' => 'decimal:2',
+            'additional_deposit' => 'decimal:2',
+            'additional_deposit_mode' => 'boolean',
             'early_checkin_charge_override' => 'decimal:2',
             'late_checkout_charge_override' => 'decimal:2',
             'ledger_published_at' => 'datetime',
@@ -132,7 +134,7 @@ class Booking extends Model
      */
     public function effectiveIncidentalsCharge(): ?float
     {
-        if ($this->incidentals_charge !== null) {
+        if (! $this->usesAdditionalDeposit() && $this->incidentals_charge !== null) {
             return (float) $this->incidentals_charge; // admin typed a number: it wins
         }
 
@@ -146,11 +148,37 @@ class Booking extends Model
      */
     public function suggestedIncidentalsCharge(): float
     {
-        $buffer = (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
+        $buffer = $this->additionalDeposit();
         $floor = (float) ($this->property?->required_incidentals_hold_amount ?? 0);
-        $fees = ($this->effectiveParkingCharge() ?? 0) + ($this->effectiveEarlyCheckinCharge() ?? 0) + $this->localResidentSurcharge();
+        $fees = ($this->effectiveParkingCharge() ?? 0) + ($this->effectiveEarlyCheckinCharge() ?? 0) + $this->localResidentSurcharge() + $this->lateCheckoutInHold();
 
         return round(max($floor, $fees + $buffer), 2);
+    }
+
+    /**
+     * Bookings created after the additional-deposit ledger went live derive
+     * the incidentals hold (parking + early check-in + local resident +
+     * additional deposit) and the hold itself is read-only. Older bookings
+     * keep the original editable-hold behavior (additional_deposit_mode = false).
+     * Unknown (partial select) falls back to the old behavior.
+     */
+    public function usesAdditionalDeposit(): bool
+    {
+        return (bool) ($this->additional_deposit_mode ?? $this->wasRecentlyCreated);
+    }
+
+    /** Approved (authorized) late checkout fee that the hold must cover. New-mode bookings only; old-mode bookings are unchanged. */
+    public function lateCheckoutInHold(): float
+    {
+        return $this->usesAdditionalDeposit() ? (float) $this->authorizedLateCheckoutCharge() : 0.0;
+    }
+
+    /** Make-up amount on top of the fees: per-booking value, else the standard buffer ($100 default). */
+    public function additionalDeposit(): float
+    {
+        return $this->additional_deposit !== null
+            ? (float) $this->additional_deposit
+            : (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
     }
 
     /**
@@ -866,6 +894,11 @@ class Booking extends Model
             return;
         }
 
+        $floor = $this->standardCheckoutInstant();
+        if ($floor && $instant->lt($floor)) {
+            $instant = $floor;
+        }
+
         if ($auto) {
             $at = $instant->copy()->addMinutes(90); // charge up to the cutoff, not the cron's timing
         }
@@ -1187,8 +1220,8 @@ class Booking extends Model
             || ($this->isApproved() && ! $this->isBackgroundCheckComplete())
             || ($this->isBackgroundCheckComplete() && ! $this->isDepositVerified())
             || ($this->isCheckinDay() && in_array($this->status, ['guest_approved', 'currently_hosting'], true) && ! $this->gps_verified)
-            || $this->checkin_time_status === 'pending'
-            || $this->checkout_time_status === 'pending'
+            || $this->checkinApprovalPending()
+            || $this->checkoutApprovalPending()
             || ($this->id_scan_status === 'manual_review' && ! $this->isApproved());
     }
 
@@ -1206,8 +1239,8 @@ class Booking extends Model
             $this->status === 'awaiting_deposit' => 'Awaiting deposit',
             $this->isApproved() && ! $this->isBackgroundCheckComplete() => 'Background check pending',
             $this->isBackgroundCheckComplete() && ! $this->isDepositVerified() => 'Deposit not verified',
-            $this->checkin_time_status === 'pending' => 'Early check-in request pending',
-            $this->checkout_time_status === 'pending' => 'Late checkout request pending',
+            $this->checkinApprovalPending() => 'Early check-in request pending',
+            $this->checkoutApprovalPending() => 'Late checkout request pending',
             $this->isCheckinDay() && in_array($this->status, ['guest_approved', 'currently_hosting'], true) && ! $this->gps_verified => 'Not yet marked arrived',
             default => null,
         };
@@ -1475,6 +1508,31 @@ class Booking extends Model
         return $this->isTimeAfter($requestedTime, $this->standardCheckoutTime());
     }
 
+    /** Requested check-in is earlier than standard, so it needs approval (and a charge). */
+    public function checkinNeedsApproval(): bool
+    {
+        return filled($this->checkin_time_preference)
+            && $this->requiresCheckinTimeApproval($this->checkin_time_preference);
+    }
+
+    /** Requested check-out is later than standard, so it needs approval (and a charge). */
+    public function checkoutNeedsApproval(): bool
+    {
+        return filled($this->checkout_time_preference)
+            && $this->requiresCheckoutTimeApproval($this->checkout_time_preference);
+    }
+
+    /** True only while an approval-requiring request is still undecided. Use this to decide what admin sees. */
+    public function checkinApprovalPending(): bool
+    {
+        return $this->checkinNeedsApproval() && $this->checkin_time_status === 'pending';
+    }
+
+    public function checkoutApprovalPending(): bool
+    {
+        return $this->checkoutNeedsApproval() && $this->checkout_time_status === 'pending';
+    }
+
     private function isTimeBefore(?string $requestedTime, string $standardTime): bool
     {
         if (! filled($requestedTime)) {
@@ -1509,7 +1567,7 @@ class Booking extends Model
      */
     public function effectiveCheckinTime(): string
     {
-        if ($this->checkin_time_preference && $this->checkin_time_status === 'approved') {
+        if ($this->checkin_time_preference && (! $this->checkinNeedsApproval() || $this->checkin_time_status === 'approved')) {
             return $this->checkin_time_preference;
         }
 
@@ -1608,7 +1666,7 @@ class Booking extends Model
      */
     public function effectiveCheckoutTime(): string
     {
-        if ($this->checkout_time_preference && $this->checkout_time_status === 'approved') {
+        if ($this->checkout_time_preference && (! $this->checkoutNeedsApproval() || $this->checkout_time_status === 'approved')) {
             return $this->checkout_time_preference;
         }
 

@@ -454,54 +454,7 @@
             @endif
         </div>
     </div>
-    <x-drawer title="Assign cleaner" open="assignOpen" on-close="closeAssign()" id="calendar-assign-drawer">
-        <form class="space-y-5" @submit.prevent="submit()">
-            <div class="rounded-lg bg-slate-50 p-3 text-sm">
-                <p x-show="!form.picking" class="font-semibold text-slate-900" x-text="form.property_name"></p>
-                <div x-show="form.picking" class="mb-2">
-                    <label for="cal-assign-property" class="field-label">Property</label>
-                    <select id="cal-assign-property" class="input mt-1 w-full" x-model.number="form.property_id" @change="pickProperty()">
-                        <option value="">Select a property</option>
-                        <template x-for="p in properties" :key="p.id">
-                            <option :value="p.id" :disabled="!p.has_owner" x-text="p.name + (p.has_owner ? '' : ' (no owner)')"></option>
-                        </template>
-                    </select>
-                </div>
-                <p class="text-slate-600" x-text="form.date"></p>
-            </div>
-            <div>
-                <label for="cal-assign-cleaner" class="field-label">Cleaner</label>
-                <select id="cal-assign-cleaner" class="input mt-1 w-full" x-model.number="form.housekeeper_id" required>
-                    <option value="">Select a cleaner</option>
-                    <template x-for="cleaner in form.cleaners" :key="cleaner.id">
-                        <option :value="cleaner.id" x-text="cleaner.name"></option>
-                    </template>
-                </select>
-                <p x-show="form.property_id && form.cleaners.length === 0" class="mt-2 text-sm text-amber-700">No active cleaners are assigned to this property. Assign a cleaner to the property first.</p>
-            </div>
-            <div>
-                <label for="cal-assign-time" class="field-label">Scheduled time</label>
-                <input id="cal-assign-time" type="time" class="input mt-1 w-full" x-model="form.scheduled_time">
-            </div>
-            <div x-show="conflictsActive" x-cloak role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p class="font-semibold">This assignment has conflicts:</p>
-                <ul class="mt-2 list-disc space-y-1 pl-5">
-                    <template x-for="c in conflicts" :key="c.message"><li x-text="c.message"></li></template>
-                </ul>
-                <p class="mt-2 text-amber-800">Review them, then choose Assign anyway or change the cleaner, date or time.</p>
-            </div>
-            <p x-show="error" x-text="error" role="alert" class="text-sm font-medium text-red-700"></p>
-            <div class="flex justify-end gap-3">
-                <button type="button" class="btn-secondary" @click="closeAssign()" :disabled="saving">Cancel</button>
-                <button type="button" class="btn-primary" x-show="conflictsActive" @click="submit(true)" :disabled="saving">
-                    <span x-text="saving ? 'Saving...' : 'Assign anyway'"></span>
-                </button>
-                <button type="submit" class="btn-primary" x-show="!conflictsActive" :disabled="saving || !form.housekeeper_id || form.cleaners.length === 0">
-                    <span x-text="saving ? 'Saving...' : 'Save assignment'"></span>
-                </button>
-            </div>
-        </form>
-    </x-drawer>
+    <x-schedule-drawer />
 
     <div x-data="calendarAddGuest(@js($pickerList))" @open-add-guest.window="openAdd()">
         <x-drawer title="Add guest" open="addOpen" on-close="closeAdd()" id="calendar-add-guest-drawer">
@@ -675,19 +628,11 @@
                     saving: false,
                     error: '',
                     form: { property_id: '', property_name: '', date: '', session_id: null, booking_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [] },
-                    openAssign(data) {
-                        this.form = { ...data, housekeeper_id: data.housekeeper_id ?? '', scheduled_time: data.scheduled_time ?? '' };
-                        this.error = '';
-                        this.assignOpen = true;
-                    },
+                    openAssign(data) { window.dispatchEvent(new CustomEvent('open-schedule', { detail: { property_id: data.property_id, date: data.date, session_id: data.session_id, booking_id: data.booking_id, housekeeper_id: data.housekeeper_id, time: data.scheduled_time } })); },
                     closeAssign() {
                         if (!this.saving) this.assignOpen = false;
                     },
-                    openCreate(date) {
-                        this.form = { property_id: '', property_name: '', date: date, session_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [], picking: true };
-                        this.error = '';
-                        this.assignOpen = true;
-                    },
+                    openCreate(date) { window.dispatchEvent(new CustomEvent('open-schedule', { detail: { date: date } })); },
                     pickProperty() {
                         const p = this.properties.find(x => x.id === this.form.property_id);
                         this.form.cleaners = p ? p.cleaners : [];

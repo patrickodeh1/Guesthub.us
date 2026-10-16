@@ -10,6 +10,7 @@ use App\Services\ActivityLogService;
 use App\Services\CleaningJobService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -24,6 +25,9 @@ class CalendarAssignController extends Controller
             'scheduled_time' => ['nullable', 'date_format:H:i'],
             'session_id' => ['nullable', 'integer', 'exists:cleaning_sessions,id'],
             'booking_id' => ['nullable', 'integer', 'exists:bookings,id'],
+            'status' => ['nullable', Rule::in(['pending', 'in_progress', 'completed'])],
+            'sporadic_tasks' => ['nullable', 'array'],
+            'sporadic_tasks.*' => ['string'],
             'confirm_conflicts' => ['nullable', 'boolean'],
         ]);
 
@@ -36,10 +40,7 @@ class CalendarAssignController extends Controller
 
         $session = null;
         if (! empty($data['session_id'])) {
-            $session = CleaningSession::query()
-                ->where('property_id', $data['property_id'])
-                ->whereKey($data['session_id'])
-                ->first();
+            $session = CleaningSession::query()->whereKey($data['session_id'])->first();
             abort_unless($session, 404, 'That cleaning job no longer exists.');
         }
 
@@ -124,35 +125,87 @@ class CalendarAssignController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** Data the guest-list / booking-page assign drawer needs for one booking. */
+    /**
+     * Everything the unified scheduling drawer needs. Ways in:
+     *  - session_id: edit an existing cleaning job
+     *  - booking_id: the cleaning for one booking's checkout (property is locked)
+     *  - property_id (+ date): a new job, or fresh context after the property or date changed
+     */
     public function options(Request $request): JsonResponse
     {
-        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403);
-        $bookingId = (int) $request->query('booking_id');
-        $booking = \App\Models\Booking::with('property')->findOrFail($bookingId);
-        abort_unless(
-            Property::query()->visibleTo($request->user())->whereKey($booking->property_id)->exists(),
-            403
-        );
+        $user = $request->user();
+        abort_unless($user?->hasAnyRole(['admin', 'owner', 'company']), 403);
 
-        $session = CleaningSession::query()->where('booking_id', $booking->id)->latest('id')->first();
-        $time = $session?->scheduled_time?->format('H:i')
-            ?? \Carbon\Carbon::parse($booking->effectiveCheckoutTime())->format('H:i');
-        $cleaners = \App\Models\User::query()->active()
-            ->whereIn('id', \Illuminate\Support\Facades\DB::table('property_user')->where('property_id', $booking->property_id)->pluck('user_id'))
-            ->orderBy('name')->get()
-            ->filter(fn ($u) => $u->hasAnyRole(['housekeeper']))
-            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'has_phone' => (bool) ($u->phone_number ?: $u->phone)])->values();
+        $session = null;
+        $booking = null;
+        $propertyLocked = false;
+
+        if ($sessionId = (int) $request->query('session_id')) {
+            $session = CleaningSession::with(['housekeeper', 'booking'])->findOrFail($sessionId);
+            $booking = $session->booking;
+        } elseif ($bookingId = (int) $request->query('booking_id')) {
+            $booking = \App\Models\Booking::with('property')->findOrFail($bookingId);
+            $session = CleaningSession::query()->where('booking_id', $booking->id)->latest('id')->first();
+            $propertyLocked = true;
+        }
+
+        $propertyId = $session?->property_id ?? $booking?->property_id ?? ((int) $request->query('property_id') ?: null);
+        if ($propertyId) {
+            abort_unless(Property::query()->visibleTo($user)->whereKey($propertyId)->exists(), 403);
+        }
+        $property = $propertyId ? Property::find($propertyId) : null;
+
+        $queryDate = (string) $request->query('date');
+        $queryDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', $queryDate) ? $queryDate : null;
+        $date = $session?->scheduled_date?->toDateString()
+            ?? $booking?->check_out_date?->toDateString()
+            ?? $queryDate;
+
+        // The guest this cleaning follows: the linked booking, else the guest checking out that day.
+        $guest = $booking;
+        if (! $guest && ! $session && $propertyId && $date) {
+            $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+            $guest = \App\Models\Booking::query()
+                ->where('property_id', $propertyId)
+                ->whereDate('check_out_date', $date)
+                ->whereNull('cancelled_at')
+                ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead))
+                ->first();
+        }
+
+        $time = $session?->scheduled_time?->format('H:i');
+        if (! $time) {
+            if ($guest) {
+                $time = \Carbon\Carbon::parse($guest->effectiveCheckoutTime())->format('H:i');
+            } elseif (! $session) {
+                $time = '10:00';
+            }
+        }
+
+        $cleaners = collect();
+        if ($propertyId) {
+            $cleaners = \App\Models\User::query()->active()
+                ->whereIn('id', \Illuminate\Support\Facades\DB::table('property_user')->where('property_id', $propertyId)->pluck('user_id'))
+                ->orderBy('name')->get()
+                ->filter(fn ($u) => $u->hasAnyRole(['housekeeper']))
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'has_phone' => (bool) ($u->phone_number ?: $u->phone)])->values();
+        }
 
         return response()->json([
-            'property_id' => $booking->property_id,
-            'property_name' => $booking->property?->name,
-            'guest' => $booking->guest_name,
+            'properties' => Property::query()->visibleTo($user)->orderBy('name')->get(['id', 'name', 'owner_id'])
+                ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name, 'has_owner' => (bool) $p->owner_id])->values(),
+            'property_locked' => $propertyLocked,
+            'property_id' => $propertyId,
+            'property_name' => $property?->name,
+            'guest' => $guest?->guest_name,
+            'booking_id' => $guest?->id,
             'session_id' => $session?->id,
+            'status' => $session?->status,
             'housekeeper_id' => $session?->housekeeper_id,
             'housekeeper_name' => $session?->housekeeper?->name,
             'assignment_status' => $session?->assignment_status,
-            'date' => ($session?->scheduled_date ?? $booking->check_out_date)->toDateString(),
+            'sporadic_tasks' => $session?->sporadic_tasks ?? [],
+            'date' => $date,
             'time' => $time,
             'cleaners' => $cleaners,
         ]);

@@ -77,7 +77,7 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Property photos are now being captured for {$property->internal_display_name}.\n"
+        $message = "Finished photos have started at {$property->internal_display_name}.\n"
             . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
             . "Time: " . TimezoneHelper::format(now(), $property);
 

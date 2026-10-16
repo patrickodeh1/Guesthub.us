@@ -29,12 +29,7 @@
     quickAssignKey() { return JSON.stringify([this.form.property_id, this.form.date, this.form.housekeeper_id, this.form.scheduled_time || '']); },
     get quickAssignConfirmable() { return this.quickAssignConflicts.length > 0 && this.quickAssignConflictKey === this.quickAssignKey(); },
     form: { property_id: '', property_name: '', date: '', session_id: null, housekeeper_id: '', scheduled_time: '', cleaners: [] },
-    openQuickAssign(data) {
-        this.form = { ...data, housekeeper_id: data.housekeeper_id ?? '' };
-        this.quickAssignError = '';
-        this.quickAssignConflicts = [];
-        this.quickAssignOpen = true;
-    },
+    openQuickAssign(data) { window.dispatchEvent(new CustomEvent('open-schedule', { detail: { property_id: data.property_id, date: data.date, session_id: data.session_id, booking_id: data.booking_id, housekeeper_id: data.housekeeper_id, time: data.scheduled_time } })); },
     closeQuickAssign() {
         if (!this.quickAssignSaving) this.quickAssignOpen = false;
     },
@@ -135,46 +130,5 @@
         @endif
     @endforeach
 
-    <x-drawer title="Assign cleaner" open="quickAssignOpen" on-close="closeQuickAssign()" id="quick-assign-drawer">
-        <form class="space-y-5" @submit.prevent="submitQuickAssign()">
-            <div class="rounded-lg bg-slate-50 p-3 text-sm">
-                <p class="font-semibold text-slate-900" x-text="form.property_name"></p>
-                <p class="text-slate-600" x-text="form.date"></p>
-                <p class="text-slate-600">Choose an eligible cleaner assigned to this property.</p>
-            </div>
-            <div>
-                <label for="quick-assign-cleaner" class="field-label">Cleaner</label>
-                <select id="quick-assign-cleaner" class="input mt-1 w-full" x-model.number="form.housekeeper_id" required>
-                    <option value="">Select a cleaner</option>
-                    <template x-for="cleaner in form.cleaners" :key="cleaner.id">
-                        <option :value="cleaner.id" x-text="cleaner.name"></option>
-                    </template>
-                </select>
-                <p x-show="form.cleaners.length === 0" class="mt-2 text-sm text-amber-700">
-                    No active cleaners are assigned to this property. Assign a cleaner to the property first.
-                </p>
-            </div>
-            <div>
-                <label for="quick-assign-time" class="field-label">Scheduled time</label>
-                <input id="quick-assign-time" type="time" class="input mt-1 w-full" x-model="form.scheduled_time">
-            </div>
-            <div x-show="quickAssignConfirmable" x-cloak role="alert" class="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                <p class="font-semibold">This assignment has conflicts:</p>
-                <ul class="mt-2 list-disc space-y-1 pl-5">
-                    <template x-for="c in quickAssignConflicts" :key="c.message"><li x-text="c.message"></li></template>
-                </ul>
-                <p class="mt-2 text-amber-800">Review them, then choose Assign anyway or change the cleaner, date or time.</p>
-            </div>
-            <p x-show="quickAssignError" x-text="quickAssignError" role="alert" class="text-sm font-medium text-red-700"></p>
-            <div class="flex justify-end gap-3">
-                <button type="button" class="btn-secondary" @click="closeQuickAssign()" :disabled="quickAssignSaving">Cancel</button>
-                <button type="button" class="btn-primary" x-show="quickAssignConfirmable" @click="submitQuickAssign(true)" :disabled="quickAssignSaving">
-                    <span x-text="quickAssignSaving ? 'Saving…' : 'Assign anyway'"></span>
-                </button>
-                <button type="submit" class="btn-primary" x-show="!quickAssignConfirmable" :disabled="quickAssignSaving || !form.housekeeper_id || form.cleaners.length === 0">
-                    <span x-text="quickAssignSaving ? 'Saving…' : 'Save assignment'"></span>
-                </button>
-            </div>
-        </form>
-    </x-drawer>
+    <x-schedule-drawer />
 </div>

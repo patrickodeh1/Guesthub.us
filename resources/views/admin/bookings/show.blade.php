@@ -5,10 +5,10 @@
     </a>
 
     @php
-        $checkinNeedsReview = $booking->checkin_time_status === 'pending';
-        $checkoutNeedsReview = $booking->checkout_time_status === 'pending';
-        $showCheckinReq = filled($booking->checkin_time_preference) && in_array($booking->checkin_time_status, ['pending', 'approved']);
-        $showCheckoutReq = filled($booking->checkout_time_preference) && in_array($booking->checkout_time_status, ['pending', 'approved']);
+        $checkinNeedsReview = $booking->checkinApprovalPending();
+        $checkoutNeedsReview = $booking->checkoutApprovalPending();
+        $showCheckinReq = $booking->checkinApprovalPending();
+        $showCheckoutReq = $booking->checkoutApprovalPending();
     @endphp
 
     <div class="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:items-start">
@@ -146,8 +146,8 @@
                 <h2 class="section-title">Guest details</h2>
                 @php
                     $gdDone = ['approved', 'declined', 'denied', 'rejected'];
-                    $gdShowInReq  = $booking->checkin_time_preference  && ! in_array($booking->checkin_time_status, $gdDone, true);
-                    $gdShowOutReq = $booking->checkout_time_preference && ! in_array($booking->checkout_time_status, $gdDone, true);
+                    $gdShowInReq  = $booking->checkinApprovalPending();
+                    $gdShowOutReq = $booking->checkoutApprovalPending();
                 @endphp
                 <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div class="flex items-center rounded-lg border border-slate-200 p-3">
@@ -271,13 +271,14 @@
                         @endif
 
                         @php
-                            $sgBuffer = (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
+                            $sgBuffer = $booking->additionalDeposit();
                             $sgFloor = (float) ($booking->property->required_incidentals_hold_amount ?? 0);
                             $sgPark = (float) ($booking->effectiveParkingCharge() ?? 0);
                             $sgEarly = (float) ($booking->effectiveEarlyCheckinCharge() ?? 0);
                             $sgTotal = $booking->suggestedIncidentalsCharge();
                             $sgLocal = (float) $booking->localResidentSurcharge();
-                            $sgHelp = 'Parking $'.number_format($sgPark, 2).' + early check-in $'.number_format($sgEarly, 2).($sgLocal > 0 ? ' + local resident $'.number_format($sgLocal, 2) : '').' + $'.number_format($sgBuffer, 2).' buffer = $'.number_format($sgPark + $sgEarly + $sgLocal + $sgBuffer, 2).'. It is never lower than the property default hold ($'.number_format($sgFloor, 2).'). Type your own amount in Incidentals hold to override it.';
+                            $sgLate = $booking->lateCheckoutInHold();
+                            $sgHelp = 'Parking $'.number_format($sgPark, 2).' + early check-in $'.number_format($sgEarly, 2).($sgLocal > 0 ? ' + local resident $'.number_format($sgLocal, 2) : '').($sgLate > 0 ? ' + late checkout $'.number_format($sgLate, 2) : '').' + $'.number_format($sgBuffer, 2).($booking->usesAdditionalDeposit() ? ' additional deposit' : ' buffer').' = $'.number_format($sgPark + $sgEarly + $sgLocal + $sgLate + $sgBuffer, 2).'. It is never lower than the property default hold ($'.number_format($sgFloor, 2).'). '.($booking->usesAdditionalDeposit() ? 'Change the Additional deposit to adjust it.' : 'Type your own amount in Incidentals hold to override it.');
                         @endphp
                         @if($sgLocal > 0)
                         <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
@@ -285,6 +286,21 @@
                             <span class="font-semibold text-slate-950">${{ number_format($sgLocal, 2) }}</span>
                         </div>
                         @endif
+                        @if($booking->usesAdditionalDeposit())
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                            <span class="flex items-center gap-2 text-slate-500"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-400" />Additional deposit<x-help text="Make-up amount added on top of parking, early check-in and any local-resident fee. Defaults to the standard buffer; tap the pencil to change it for this booking." /></span>
+                            <span class="flex items-center gap-1 font-semibold text-slate-950">
+                                $<input type="number" step="0.01" min="0" id="lf-additional_deposit" name="additional_deposit" value="{{ old('additional_deposit', $booking->additional_deposit) }}" placeholder="{{ number_format($booking->additionalDeposit(), 2, '.', '') }}" class="ledger-field pointer-events-none w-24 border-none bg-transparent p-0 text-right font-semibold text-slate-950 placeholder:font-semibold placeholder:text-slate-950" tabindex="-1">
+                                @if($canEdit && ! $holdLocked)
+                                    <button type="button" id="lf-additional_deposit-btn" onclick="unlockLedgerField('lf-additional_deposit')" class="ml-1 text-slate-400 hover:text-slate-700" aria-label="Edit additional deposit"><span class="lf-pencil"><x-icon name="edit" class="h-3.5 w-3.5" /></span><span class="lf-check hidden"><x-icon name="check" class="h-3.5 w-3.5" /></span></button>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 border-b border-t-2 border-slate-200 border-b-slate-100 py-3">
+                            <span class="flex items-center gap-2 font-bold text-slate-900"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-500" />Incidentals hold<x-help :text="$sgHelp" /></span>
+                            <span class="font-bold text-slate-950">${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}</span>
+                        </div>
+                        @else
                         <div class="flex items-center justify-between gap-3 border-b border-t-2 border-slate-200 border-b-slate-100 py-3">
                             <span class="flex items-center gap-2 font-bold text-slate-900"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-500" />Incidentals hold<x-help :text="$sgHelp" /></span>
                             <span class="flex items-center gap-1 font-bold text-slate-950">
@@ -294,13 +310,14 @@
                                 @endif
                             </span>
                         </div>
+                        @endif
 
 
                         
                     </form>
                     @if($booking->ledgerDeductionsExceedHold() && ! $holdLocked)
                         <div class="my-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                            <span class="font-semibold">Heads up:</span> deductions (${{ number_format($booking->holdDeductions(), 2) }}) exceed the incidentals hold (${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}). Consider raising the hold.
+                            <span class="font-semibold">Heads up:</span> deductions (${{ number_format($booking->holdDeductions(), 2) }}) exceed the incidentals hold (${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}). {{ $booking->usesAdditionalDeposit() ? 'Consider raising the additional deposit.' : 'Consider raising the hold.' }}
                         </div>
                     @endif
                     
