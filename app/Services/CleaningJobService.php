@@ -330,6 +330,7 @@ class CleaningJobService
             ->where('property_id', $data['property_id'])
             ->where('housekeeper_id', $data['housekeeper_id'])
             ->whereDate('scheduled_date', $data['scheduled_date'])
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->when($session, fn ($query) => $query->where('id', '<>', $session->id))
             ->exists();
 

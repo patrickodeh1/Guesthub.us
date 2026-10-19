@@ -21,7 +21,7 @@ export default function propertyPropertyTaskForm({ suggestUrl, storeUrl, csrf, p
             is_default: initialData.is_default || false,
             visible_to_owner: initialData.visible_to_owner !== undefined ? initialData.visible_to_owner : true,
             visible_to_housekeeper: initialData.visible_to_housekeeper !== undefined ? initialData.visible_to_housekeeper : true,
-            show_after_step_id: initialData.show_after_step_id || '',
+            show_after_step_id: initialData.show_after_step_id ? String(initialData.show_after_step_id) : '0',
         },
 
         init() {
@@ -35,7 +35,7 @@ export default function propertyPropertyTaskForm({ suggestUrl, storeUrl, csrf, p
                 is_default: initialData.is_default || false,
                 visible_to_owner: initialData.visible_to_owner !== undefined ? initialData.visible_to_owner : true,
                 visible_to_housekeeper: initialData.visible_to_housekeeper !== undefined ? initialData.visible_to_housekeeper : true,
-            show_after_step_id: initialData.show_after_step_id || '',
+            show_after_step_id: initialData.show_after_step_id ? String(initialData.show_after_step_id) : '0',
             };
         },
 
@@ -81,7 +81,7 @@ export default function propertyPropertyTaskForm({ suggestUrl, storeUrl, csrf, p
                 // Add visibility
                 formData.append('visible_to_owner', this.formData.visible_to_owner ? '1' : '0');
                 formData.append('visible_to_housekeeper', this.formData.visible_to_housekeeper ? '1' : '0');
-                formData.append('show_after_step_id', this.formData.show_after_step_id || '');
+                formData.append('show_after_step_id', this.formData.show_after_step_id === '' || this.formData.show_after_step_id == null ? '0' : String(this.formData.show_after_step_id));
 
                 // Add media files from the file input
                 const mediaInput = event.target.querySelector('input[name="media[]"]');

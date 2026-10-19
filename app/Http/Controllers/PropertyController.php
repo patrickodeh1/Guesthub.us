@@ -789,7 +789,7 @@ class PropertyController extends Controller
             'visible_to_owner' => (bool)($validated['visible_to_owner'] ?? true),
             'visible_to_housekeeper' => (bool)($validated['visible_to_housekeeper'] ?? true),
         ];
-        if ($request->has('show_after_step_id')) {
+        if ($request->filled('show_after_step_id')) {
             $pivotData['show_after_step_id'] = $request->filled('show_after_step_id') ? (int) $request->input('show_after_step_id') : null;
         }
         $property->propertyTasks()->updateExistingPivot($task->id, $pivotData);

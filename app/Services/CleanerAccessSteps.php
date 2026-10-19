@@ -24,12 +24,17 @@ class CleanerAccessSteps
         $parking = false;
         $property = $session->property;
         $preStart = self::isPreStart($session);
+        $hidePreGps = ! $preStart
+            && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+            && (self::locationVerified($session) || $session->status === 'in_progress')
+            && \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps');
         // Before verification the assigned cleaner sees only the "show before GPS" steps (filtered below).
 
         $steps = InstructionStep::where('property_id', $session->property_id)
             ->whereIn('type', $parking ? ['checkin', 'parking'] : ['checkin'])
             ->where('active', true)
             ->when($preStart, fn ($q) => $q->where('show_before_gps', true))
+            ->when($hidePreGps, fn ($q) => $q->where(fn ($w) => $w->where('show_before_gps', false)->orWhere('action', 'door_lock')))
             ->where('for_cleaner', true)
             ->orderByRaw("case when type = 'checkin' then 0 else 1 end")
             ->orderBy('sort_order')
@@ -111,6 +116,14 @@ class CleanerAccessSteps
             ->whereNull('room_id')->where('checked', true)
             ->pluck('task_id')->map(fn ($i) => (int) $i)->all();
         $visibleIds = array_map('intval', array_column($steps, 'step_id'));
+        $hiddenIds = [];
+        if ($kind === 'checkin' && \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')
+            && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+            && (self::locationVerified($session) || $session->status === 'in_progress')) {
+            $hiddenIds = InstructionStep::where('property_id', $session->property_id)
+                ->where('show_before_gps', true)->where(fn ($q) => $q->whereNull('action')->orWhere('action', '!=', 'door_lock'))
+                ->pluck('id')->map(fn ($i) => (int) $i)->all();
+        }
 
         $atStart = [];
         $atEnd = [];
@@ -139,7 +152,7 @@ class CleanerAccessSteps
                 $after[$afterId][] = $entry;
             } elseif ($isExit) {
                 $atEnd[] = $entry;
-            } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true)) {
+            } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true) && ! in_array($afterId, $hiddenIds, true)) {
                 continue; // its step is not visible yet (before location check); show it later
             } else {
                 $atStart[] = $entry;

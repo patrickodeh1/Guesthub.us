@@ -255,8 +255,39 @@
 
         @include('sessions.partials.photo-tutorial')
 
+        @php
+            $ghStartBlocked = false; $ghStartBlockMsg = '';
+            if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
+                && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+                && ! auth()->user()->hasRole('admin')) {
+                $ghTz = $session->property?->timezone ?: config('app.display_timezone');
+                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $ghTz);
+                $ghNow = now($ghTz);
+                $ghOpens = $ghAt->copy()->subHours(2);
+                $ghCloses = $ghAt->copy()->addHours(2);
+                $ghWhen = fn ($c) => ($c->isSameDay($ghNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
+                if ($ghNow->lt($ghOpens)) {
+                    $ghStartBlocked = true;
+                    $ghStartBlockMsg = 'You cannot start yet. Your scheduled start is '.$ghAt->format('g:i A').'. You can begin '.$ghWhen($ghOpens).'.';
+                } elseif ($ghNow->gt($ghCloses)) {
+                    $ghStartBlocked = true;
+                    $ghStartBlockMsg = 'You can no longer begin this cleaning. The start window ended '.$ghWhen($ghCloses).' (2 hours after the scheduled start). Please contact your manager.';
+                }
+            }
+        @endphp
+        @if ($ghStartBlocked)
+            <style>#verify-location-card, #gps-start { display: none !important; }</style>
+            <div class="guest-portal-card mb-4">
+                <div class="p-6 text-left">
+                    <p class="guest-status-kicker">Your cleaning</p>
+                    <h2 class="guest-status-title">{{ $session->property?->internal_display_name ?? $session->property?->name }}</h2>
+                    <p role="status" class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">{{ $ghStartBlockMsg }}</p>
+                </div>
+            </div>
+        @endif
+
         {{-- gh-first-screen: cleaning details, shown first to the assigned cleaner before anything else --}}
-        @if ($session->status === 'pending' && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+        @if (! $ghStartBlocked && $session->status === 'pending' && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
             && ! \App\Services\CleanerAccessSteps::locationVerified($session))
             @php
                 $fsProp = $session->property;
@@ -307,7 +338,7 @@
         @endif
 
         {{-- Getting in: parking question + access steps for the cleaner --}}
-        @if ($session->status !== 'completed')
+        @if ($session->status !== 'completed' && ! $ghStartBlocked)
             @php
                 $ghHideGettingIn = $session->status === 'pending'
                     && auth()->check()
@@ -386,14 +417,14 @@
                                 $startTz = $session->property?->timezone ?: config('app.display_timezone');
                                 $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
                                 $startNow = now($startTz);
-                                $startLocked = $startNow->lt($startAt->copy()->subHour()) || $startNow->gt($startAt->copy()->addHour());
+                                $startLocked = $startNow->lt($startAt->copy()->subHours(2)) || $startNow->gt($startAt->copy()->addHours(2));
                                 if ($startLocked) {
-                                    $opensAt = $startAt->copy()->subHour();
-                                    $closesAt = $startAt->copy()->addHour();
+                                    $opensAt = $startAt->copy()->subHours(2);
+                                    $closesAt = $startAt->copy()->addHours(2);
                                     $fmtWhen = fn ($c) => ($c->isSameDay($startNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
                                     $startMsg = $startNow->lt($opensAt)
-                                        ? 'Begin is locked until 1 hour before your scheduled start ('.$startAt->format('g:i A').'). You can begin '.$fmtWhen($opensAt).'.'
-                                        : 'You can no longer begin this cleaning. The start window ended '.$fmtWhen($closesAt).' (1 hour after the scheduled start). Please contact your manager.';
+                                        ? 'Begin is locked until 2 hours before your scheduled start ('.$startAt->format('g:i A').'). You can begin '.$fmtWhen($opensAt).'.'
+                                        : 'You can no longer begin this cleaning. The start window ended '.$fmtWhen($closesAt).' (2 hours after the scheduled start). Please contact your manager.';
                                 }
                             }
                         @endphp

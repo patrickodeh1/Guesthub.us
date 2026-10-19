@@ -273,7 +273,7 @@
             </label>
             <select id="property-task-show-after" x-model="formData.show_after_step_id"
                     class="w-full max-w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 sm:px-4 py-2.5 text-sm">
-                <option value="">Very first thing, before any step</option>
+                <option value="0">Very first thing, before any step</option>
                 <optgroup label="1. Before they get to the unit (show after)">
                     @foreach($accessSteps->where('show_before_gps', true) as $st)
                         <option value="{{ $st->id }}">{{ $st->title }}</option>

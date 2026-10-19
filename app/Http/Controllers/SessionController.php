@@ -1022,7 +1022,7 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
 
-        // Start window: 1 hour either side of the scheduled time, in the property's local time.
+        // Start window: 2 hours either side of the scheduled time, in the property's local time.
         if ($session->scheduled_date && $session->scheduled_time
             && (int) $session->housekeeper_id === (int) auth()->id()
             && ! auth()->user()->hasRole('admin')) {
@@ -1032,10 +1032,10 @@ class SessionController extends Controller
                 $tz
             );
             $nowLocal = now($tz);
-            if ($nowLocal->lt($scheduled->copy()->subHour()) || $nowLocal->gt($scheduled->copy()->addHour())) {
+            if ($nowLocal->lt($scheduled->copy()->subHours(2)) || $nowLocal->gt($scheduled->copy()->addHours(2))) {
                 return back()->withErrors(['gps' => 'You can start this cleaning between '
-                    .$scheduled->copy()->subHour()->format('g:i A').' and '
-                    .$scheduled->copy()->addHour()->format('g:i A').' (property time).']);
+                    .$scheduled->copy()->subHours(2)->format('g:i A').' and '
+                    .$scheduled->copy()->addHours(2)->format('g:i A').' (property time).']);
             }
         }
 

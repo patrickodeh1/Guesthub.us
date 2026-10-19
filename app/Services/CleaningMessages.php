@@ -21,13 +21,13 @@ class CleaningMessages
             'label' => 'Cleaning updated',
             'audience' => 'To cleaner',
             'tokens' => ['property_name', 'when', 'session_link'],
-            'default' => 'Updated cleaning available at {property_name}, {when}. Accept this job? Reply Y or N',
+            'default' => 'CHANGE TO YOUR EXISTING CLEANING (not a new job) at {property_name}: it is now {when}. You do not have an extra assignment. Reply Y to confirm the change or N if you cannot make it.',
         ],
         'assignment_moved' => [
-            'label' => 'Cleaning moved to a new time',
+            'label' => 'Cleaning moved to a new date or time',
             'audience' => 'To cleaner',
             'tokens' => ['property_name', 'when', 'old_when', 'session_link'],
-            'default' => "Scheduled cleaning for {property_name} on {old_when} has been moved to {when}. To accept, reply Y or if you're not available reply N.",
+            'default' => "SCHEDULE CHANGE (not a new job): your existing cleaning at {property_name} has moved from {old_when} to {when}. You do not have an extra assignment. Reply Y to confirm the new time or N if you cannot make it.",
         ],
         'start_reminder' => [
             'label' => 'Cleaning starts soon (reminder)',
