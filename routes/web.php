@@ -255,6 +255,7 @@ Route::middleware(['auth', 'role'])->prefix('admin')->name('admin.')->group(func
     Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show')->middleware(['role:admin,owner,company', 'property.access']);
     Route::get('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'index'])->name('photo-guide.index')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'store'])->name('photo-guide.store')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/photo-guide/link', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'link'])->name('photo-guide.link')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/photo-guide/rooms/{roomId}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'saveRoom'])->name('photo-guide.room')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company');
     Route::post('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'updateReference'])->name('photo-guide.update')->middleware('role:admin,owner,company');

@@ -332,6 +332,29 @@ class Property extends Model
         return $this->internal_name ?: $this->name;
     }
 
+    // Maps source-property room id => this property's room id (matched by name), null if no match.
+    public function guideRoomMap(): array
+    {
+        if (! $this->photo_guide_source_id) return [];
+        $src = Property::find($this->photo_guide_source_id);
+        if (! $src) return [];
+        $mine = $this->rooms->mapWithKeys(fn ($r) => [mb_strtolower(trim($r->name)) => $r->id]);
+        return $src->rooms->mapWithKeys(fn ($r) => [$r->id => $mine[mb_strtolower(trim($r->name))] ?? null])->all();
+    }
+
+    public function photoGuideSource()
+    {
+        return $this->belongsTo(Property::class, 'photo_guide_source_id');
+    }
+
+    // Reads the linked property's guide if one is set, otherwise this property's own.
+    public function effectivePhotoReferences()
+    {
+        $ownerId = $this->photo_guide_source_id ?: $this->id;
+        return PropertyPhotoReference::where('property_id', $ownerId)
+            ->orderBy('sort_order')->orderBy('id');
+    }
+
     public function photoReferences()
     {
         return $this->hasMany(PropertyPhotoReference::class)->orderBy('sort_order')->orderBy('id');

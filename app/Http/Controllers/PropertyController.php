@@ -268,7 +268,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'is_default'   => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
@@ -395,7 +395,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'tasks' => ['required', 'string'], // JSON string
-            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'default_is_sporadic' => ['nullable', 'boolean'],
         ]);
 
@@ -483,7 +483,7 @@ class PropertyController extends Controller
 
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'is_default'   => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
@@ -612,7 +612,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
+            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'phase' => ['required', Rule::in(['pre_cleaning', 'during_cleaning', 'post_cleaning'])],
             'is_sporadic' => ['nullable', 'boolean'],
             'is_default' => ['nullable', 'boolean'],
@@ -721,7 +721,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
+            'type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'phase' => ['required', Rule::in(['pre_cleaning', 'during_cleaning', 'post_cleaning'])],
             'is_sporadic' => ['nullable', 'boolean'],
             'is_default' => ['nullable', 'boolean'],

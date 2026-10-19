@@ -76,6 +76,7 @@
                             <option value="room" @selected($task->type === 'room')>Room</option>
                             <option value="inventory" @selected($task->type === 'inventory')>Inventory</option>
                             <option value="verify" @selected($task->type === 'verify')>Verify</option>
+                            <option value="verify_video" @selected($task->type === 'verify_video')>Verify (Video)</option>
                         </select>
                     </div>
 

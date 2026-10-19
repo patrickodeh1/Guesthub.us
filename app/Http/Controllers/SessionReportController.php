@@ -425,6 +425,22 @@ class SessionReportController extends Controller
             }
         }
 
+        if (str_starts_with($blob['mime_type'] ?? '', 'video/')
+            && ($rangeHeader = request()->header('Range'))
+            && preg_match('/bytes=(\d*)-(\d*)/', $rangeHeader, $rm)) {
+            $size = strlen($content);
+            $start = $rm[1] === '' ? max(0, $size - (int) $rm[2]) : (int) $rm[1];
+            $end = ($rm[1] === '' || $rm[2] === '') ? $size - 1 : min((int) $rm[2], $size - 1);
+            if ($start <= $end && $start < $size) {
+                return response(substr($content, $start, $end - $start + 1), 206, [
+                    'Content-Type' => $blob['mime_type'],
+                    'Content-Range' => "bytes {$start}-{$end}/{$size}",
+                    'Content-Length' => $end - $start + 1,
+                    'Accept-Ranges' => 'bytes',
+                ]);
+            }
+        }
+
         return response($content, 200, [
             'Content-Type' => $blob['mime_type'] ?? 'application/octet-stream',
             'Content-Disposition' => 'inline; filename="' . basename($normalizedPath) . '"',

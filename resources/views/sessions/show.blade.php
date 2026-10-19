@@ -139,7 +139,6 @@
             $navStages = [
                 'pre_cleaning' => 'Pre-Cleaning',
                 'rooms' => 'Rooms',
-                'during_cleaning' => 'Arrival / Exit Jobs',
                 'post_cleaning' => 'Post Cleaning',
                 'photos' => 'Photos',
                 'summary' => 'Summary'

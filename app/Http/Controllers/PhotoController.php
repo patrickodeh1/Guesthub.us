@@ -28,7 +28,7 @@ class PhotoController extends Controller
         $this->assertSessionAccess($session);
         if (!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
             && is_null($session->photo_tutorial_viewed_at)
-            && $session->property->photoReferences()->exists()) {
+            && $session->property->effectivePhotoReferences()->exists()) {
             abort(403, 'Please review the photo guide before taking photos.');
         }
         $request->validate([

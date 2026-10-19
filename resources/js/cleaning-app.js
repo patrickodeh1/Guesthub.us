@@ -365,11 +365,12 @@ document.addEventListener('alpine:init', () => {
             if (this.type === 'photo') {
                 // Multi-file mode for photo modal
                 files.forEach(file => {
-                    if (!file.type.startsWith('image/')) return;
-                    if (file.size > 10 * 1024 * 1024) {
-                        window.checklistHandler?.showError(`File ${file.name} is too large (max 10MB).`);
+                    if ((this.taskType === 'verify_video') ? !file.type.startsWith('video/') : !file.type.startsWith('image/')) return;
+                    if (file.size > ((this.taskType === 'verify_video') ? 150 : 10) * 1024 * 1024) {
+                        window.checklistHandler?.showError(`File ${file.name} is too large (max ${(this.taskType === 'verify_video') ? '150MB' : '10MB'}).`);
                         return;
                     }
+                    if ((this.taskType === 'verify_video')) { this.previews.forEach(p => { if (p.url?.startsWith('blob:')) URL.revokeObjectURL(p.url); }); this.previews = []; }
                     this.previews.push({
                         file: file,
                         url: URL.createObjectURL(file),
@@ -492,7 +493,7 @@ document.addEventListener('alpine:init', () => {
 
         // Check if photo is mandatory for this task type
         get isPhotoRequired() {
-            return this.taskType === 'verify' || this.taskType === 'inventory';
+            return this.taskType === 'verify' || this.taskType === 'verify_video' || this.taskType === 'inventory';
         },
         // Check if the Upload/Save button should be enabled
         get canSubmitPhoto() {
@@ -503,6 +504,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         async uploadPhoto() {
+            if (this.photoUploading) return;
             const hasPhotos = this.previews.length > 0;
             const hasNote = this.photoNoteValue.trim();
 
@@ -589,8 +591,8 @@ document.addEventListener('alpine:init', () => {
                     }
 
                     const message = failedCount > 0
-                        ? `${uploadedCount} photo(s) uploaded, ${failedCount} failed.`
-                        : `${uploadedCount} photo(s) uploaded successfully.`;
+                        ? `${uploadedCount} ${this.taskType === 'verify_video' ? 'video' : 'photo'}(s) uploaded, ${failedCount} failed.`
+                        : `${uploadedCount} ${this.taskType === 'verify_video' ? 'video' : 'photo'}(s) uploaded successfully.`;
                     window.checklistHandler?.showSuccess(message);
                     this.close();
                 } else {

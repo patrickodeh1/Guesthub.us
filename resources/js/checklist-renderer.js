@@ -179,7 +179,7 @@ export default function checklistRenderer(config = {}) {
                 }
             }
 
-            const stages = ['pre_cleaning', 'rooms', 'during_cleaning', 'photos', 'post_cleaning', 'summary'];
+            const stages = ['pre_cleaning', 'rooms', 'photos', 'post_cleaning', 'summary'];
             const actualStage = this.sessionData?.stage;
             const actualIndex = stages.indexOf(actualStage);
             const viewIndex = stages.indexOf(currentStage);
@@ -596,7 +596,7 @@ export default function checklistRenderer(config = {}) {
                             const rTasksArr = Array.isArray(r.tasks) ? r.tasks : Object.values(r.tasks || {});
                             const rTasks = rTasksArr.filter(t => r.room_tasks.includes(t.id));
                             rTasks.forEach(t => {
-                                if (t.type !== 'instructions' && (t.type === 'verify' || t.type === 'inventory') && !t.checklist_item?.checked) {
+                                if (t.type !== 'instructions' && (t.type === 'verify' || t.type === 'verify_video' || t.type === 'inventory') && !t.checklist_item?.checked) {
                                     incompleteRoomTasks.push({ roomName: r.name, taskName: t.name, taskType: t.type });
                                 }
                             });
@@ -1554,7 +1554,7 @@ export default function checklistRenderer(config = {}) {
                          taskType: '${task.type}',
                          get photoRequirement() {
                              if (this.taskType === 'instructions') return 0;
-                             if (this.taskType === 'verify') return 1;
+                             if (this.taskType === 'verify' || this.taskType === 'verify_video') return 1;
                              if (this.taskType === 'inventory') return 1;
                              return 0;
                          },
@@ -1654,7 +1654,7 @@ export default function checklistRenderer(config = {}) {
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                             </svg>
-                                            <span>Photo Req</span>
+                                            <span x-text="taskType === 'verify_video' ? 'Video Req' : 'Photo Req'"></span>
                                         </span>
                                     </template>
 
@@ -1685,17 +1685,22 @@ export default function checklistRenderer(config = {}) {
                                             @click="openUploadModal()"
                                             class="inline-flex items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer focus:outline-none group"
                                             :class="itemPhotos.length > 0 || noteValue.length > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400'">
-                                        <template x-if="taskType === 'verify' || taskType === 'inventory'">
+                                        <template x-if="taskType === 'verify_video'">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                            </svg>
+                                        </template>
+                                        <template x-if="['verify','inventory'].includes(taskType)">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                             </svg>
                                         </template>
-                                        <template x-if="taskType !== 'verify' && taskType !== 'inventory'">
+                                        <template x-if="!['verify','verify_video','inventory'].includes(taskType)">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                             </svg>
                                         </template>
-                                        <span class="group-hover:underline underline-offset-2" x-text="(taskType === 'verify' || taskType === 'inventory') ? (itemPhotos.length > 0 ? 'Add more photos' : '+ Photo/Note') : '+ Note'"></span>
+                                        <span class="group-hover:underline underline-offset-2" x-text="(['verify','verify_video','inventory'].includes(taskType)) ? (taskType === 'verify_video' ? (itemPhotos.length > 0 ? 'Replace video' : '+ Upload Video') : (itemPhotos.length > 0 ? 'Add more photos' : '+ Photo/Note')) : '+ Note'"></span>
                                         <template x-if="itemPhotos.length > 0">
                                             <span class="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-[9px] px-1 rounded-sm ml-0.5" x-text="itemPhotos.length"></span>
                                         </template>

@@ -228,7 +228,7 @@ class RoomController extends Controller
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
             'visible_to_owner'       => ['nullable', 'boolean'],
@@ -403,7 +403,7 @@ class RoomController extends Controller
 
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
             'visible_to_owner'       => ['nullable', 'boolean'],
@@ -514,7 +514,7 @@ class RoomController extends Controller
 
         $validated = $request->validate([
             'tasks' => ['required', 'string'], // JSON string
-            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions'])],
+            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
             'default_is_sporadic' => ['nullable', 'boolean'],
         ]);
 

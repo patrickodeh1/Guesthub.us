@@ -1118,7 +1118,6 @@ class SessionController extends Controller
         $stages = [
             'pre_cleaning',
             'rooms',
-            'during_cleaning',
             'photos',
             'post_cleaning',
             'summary'
@@ -1389,7 +1388,6 @@ class SessionController extends Controller
             $stages = [
                 'pre_cleaning',
                 'rooms',
-                'during_cleaning',
                 'photos',
                 'post_cleaning',
                 'summary'
@@ -1545,7 +1543,6 @@ class SessionController extends Controller
             $stages = [
                 'pre_cleaning',
                 'rooms',
-                'during_cleaning',
                 'photos',
                 'post_cleaning',
                 'summary'

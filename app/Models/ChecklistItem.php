@@ -62,7 +62,7 @@ class ChecklistItem extends Model
 
     public function isVerificationItem(): bool
     {
-        return $this->task?->type === 'verify';
+        return in_array($this->task?->type, ['verify', 'verify_video'], true);
     }
 
     public function isIncomplete(): bool

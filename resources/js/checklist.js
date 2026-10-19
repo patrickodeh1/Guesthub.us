@@ -708,7 +708,7 @@ export default function checklist(config = {}) {
             try {
                 // If the user is viewing a previous stage, "Next Stage" should just navigate forward locally
                 if (renderer.viewOverride && renderer.viewOverride !== renderer.sessionData.stage) {
-                    const stages = ['pre_cleaning', 'rooms', 'during_cleaning', 'photos', 'post_cleaning', 'summary'];
+                    const stages = ['pre_cleaning', 'rooms', 'photos', 'post_cleaning', 'summary'];
                     const viewIndex = stages.indexOf(renderer.viewOverride);
                     if (viewIndex >= 0 && viewIndex < stages.length - 1) {
                         const nextStage = stages[viewIndex + 1];

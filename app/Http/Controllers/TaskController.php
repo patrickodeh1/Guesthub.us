@@ -21,7 +21,7 @@ class TaskController extends Controller
 
         $tasks = Task::query()
             ->when($q !== '', fn($qq) => $qq->where('name', 'like', "%{$q}%"))
-            ->when(in_array($type, ['room', 'inventory', 'verify', 'instructions', 'lockbox'], true), fn($qq) => $qq->where('type', $type))
+            ->when(in_array($type, ['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'], true), fn($qq) => $qq->where('type', $type))
             ->when($request->room_id ?? false, fn($query) => $query->whereHas('rooms', fn($query) => $query->where('rooms.id', $request->room_id)))
             ->latest()
             ->paginate(20)
@@ -50,7 +50,7 @@ class TaskController extends Controller
         
         $data = $request->validate([
             'name'       => ['required', 'string', 'max:255', Rule::unique('tasks', 'name')],
-            'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
+            'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_default' => ['nullable', 'boolean'],
             'is_sporadic' => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:20000'],
@@ -159,7 +159,7 @@ class TaskController extends Controller
                 $query->where('type', $request->input('type'));
             }),
             ],
-            'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
+            'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_default' => ['nullable', 'boolean'],
             'is_sporadic' => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:20000'],
@@ -262,7 +262,7 @@ class TaskController extends Controller
         $tasks = Task::query()
             ->where('is_default', true)
             ->when($q !== '', fn($qq) => $qq->where('name', 'like', "%{$q}%"))
-            ->when(in_array($type, ['room', 'inventory', 'verify', 'instructions', 'lockbox'], true), fn($qq) => $qq->where('type', $type))
+            ->when(in_array($type, ['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'], true), fn($qq) => $qq->where('type', $type))
             ->orderBy('name')
             ->limit(20)
             ->get(['id', 'name', 'type', 'instructions', 'is_sporadic']);
@@ -284,7 +284,7 @@ class TaskController extends Controller
         $data = $request->validate([
             'task_id'                => ['nullable', 'integer', 'exists:tasks,id'],
             'name'                   => ['required_without:task_id', 'string', 'max:255'],
-            'type'                   => ['required_without:task_id', Rule::in(['room', 'inventory', 'verify', 'instructions', 'lockbox'])],
+            'type'                   => ['required_without:task_id', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'instructions'           => ['nullable', 'string', 'max:2000'],
             'visible_to_owner'       => ['nullable', 'boolean'],
             'visible_to_housekeeper' => ['nullable', 'boolean'],

@@ -18,11 +18,58 @@ class PhotoReferenceController extends Controller
             'property' => $property,
             'references' => $property->photoReferences,
             'rooms' => $property->rooms()->orderBy('name')->get(),
-        ]);
+        ] + $this->guidePanelData($property));
+    }
+
+    private function guidePanelData(Property $property): array
+    {
+        $user = request()->user();
+        $linkedSource = $property->photo_guide_source_id ? Property::find($property->photo_guide_source_id) : null;
+        $usedByCount = Property::where('photo_guide_source_id', $property->id)->count();
+        $sourceOptions = collect();
+        if (! $linkedSource && ! $usedByCount) {
+            $q = $user->hasRole('admin') ? Property::query() : Property::visibleTo($user);
+            $sourceOptions = $q->whereNull('properties.photo_guide_source_id')
+                ->where('properties.id', '!=', $property->id)
+                ->whereHas('photoReferences')
+                ->orderBy('properties.name')->get();
+        }
+        $unmatched = [];
+        if ($linkedSource) {
+            $map = $property->guideRoomMap();
+            $used = $linkedSource->photoReferences()->whereNotNull('room_id')->where('room_id', '!=', 0)->pluck('room_id')->unique();
+            foreach ($used as $rid) {
+                if (empty($map[$rid])) {
+                    $unmatched[] = optional($linkedSource->rooms->firstWhere('id', $rid))->name ?? 'Unknown room';
+                }
+            }
+        }
+        return compact('linkedSource', 'usedByCount', 'sourceOptions', 'unmatched');
+    }
+
+    public function link(Request $request, Property $property)
+    {
+        $data = $request->validate(['source_id' => ['nullable', 'integer']]);
+        $sourceId = $data['source_id'] ?? null;
+
+        if ($sourceId) {
+            abort_if((int) $sourceId === (int) $property->id, 422, 'A property cannot use its own guide as a link.');
+            $user = $request->user();
+            $source = Property::findOrFail($sourceId);
+            abort_unless($user->hasRole('admin') || Property::visibleTo($user)->whereKey($sourceId)->exists(), 403, 'You do not have access to that property.');
+            abort_if($source->photo_guide_source_id, 422, 'That property is itself linked to another guide.');
+            abort_if(Property::where('photo_guide_source_id', $property->id)->exists(), 422, 'Other properties use this guide, so it cannot link to another one.');
+            abort_unless($source->photoReferences()->exists(), 422, 'That property has no guide photos yet.');
+        }
+
+        $property->forceFill(['photo_guide_source_id' => $sourceId ?: null])->save();
+
+        return back()->with('status', $sourceId ? 'Now using ' . $source->name . "'s photo guide." : 'Unlinked. This property uses its own photos.');
     }
 
     public function store(Request $request, Property $property)
     {
+        abort_if($property->photo_guide_source_id, 422, 'This property uses a linked guide. Unlink it to add its own photos.');
         $request->validate([
             'images'       => ['required', 'array'],
             'images.*'     => ['image', 'max:15360'],
@@ -68,6 +115,7 @@ class PhotoReferenceController extends Controller
 
     public function saveRoom(Request $request, Property $property, int $roomId)
     {
+        abort_if($property->photo_guide_source_id, 422, 'This property uses a linked guide.');
         $room = $property->rooms()->whereKey($roomId)->firstOrFail();
 
         $data = $request->validate([

@@ -110,7 +110,8 @@
                     </h3>
 
                     @php
-                        $isMandatory = $task->type === 'verify' || $task->type === 'inventory';
+                        $isVideo = $task->type === 'verify_video';
+                        $isMandatory = in_array($task->type, ['verify', 'verify_video', 'inventory'], true);
                         $hasPhotos = $item && $item->photos->count() > 0;
                     @endphp
 
@@ -119,7 +120,7 @@
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                             </svg>
-                            Photo Required
+                            {{ $isVideo ? 'Video Required' : 'Photo Required' }}
                         </span>
                     @endif
 
@@ -163,10 +164,10 @@
                             {{ $disabled ? 'disabled' : '' }}
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                @if($isVideo)<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>@else<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>@endif
                             </svg>
-                            <span class="text-xs font-bold uppercase tracking-tight">Photo</span>
+                            <span class="text-xs font-bold uppercase tracking-tight">{{ $isVideo ? 'Video' : 'Photo' }}</span>
                             @if($hasPhotos)
                                 <span class="bg-green-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">{{ $item->photos->count() }}</span>
                             @endif
@@ -226,12 +227,16 @@
                             <div class="grid grid-cols-3 gap-2">
                                 @foreach($item->photos as $photo)
                                     <div class="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group bg-gray-100 dark:bg-gray-800">
-                                        <button type="button" @click="galleryOpen = true; gallerySrc = '{{ $photo->url }}'" class="block w-full">
+                                        @if(preg_match('/\.(mp4|mov|webm|3gp|m4v)$/i', (string) $photo->path))
+<video src="{{ $photo->url }}" class="w-full h-24 object-cover" controls playsinline preload="metadata"></video>
+@else
+<button type="button" @click="galleryOpen = true; gallerySrc = '{{ $photo->url }}'" class="block w-full">
                                             <img src="{{ $photo->url }}" alt="Attached photo"
                                                  class="w-full h-24 object-cover transition-transform group-hover:scale-105"
                                                  onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\' viewBox=\'0 0 400 300\'%3E%3Crect width=\'100%25\' height=\'100%25\' fill=\'%23f1f5f9\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'14\' fill=\'%2364748b\'%3EMissing%3C/text%3E%3C/svg%3E';"
                                                  loading="lazy" />
                                         </button>
+@endif
                                         @if($photo->note)
                                             <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
                                                 <p class="text-[10px] text-white truncate text-center">{{ $photo->note }}</p>
@@ -330,7 +335,7 @@
     >
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6" @click.stop>
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Upload Photo</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ $isVideo ? 'Upload Video' : 'Upload Photo' }}</h3>
                 <button
                     type="button"
                     @click="photoModalOpen = false; photoFile = null; if(photoPreview && photoPreview.startsWith('blob:')) URL.revokeObjectURL(photoPreview); photoPreview = null; photoNote = '';"
@@ -371,7 +376,7 @@
 
                 {{-- Photo Input - Camera Only --}}
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Take Photo</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ $isVideo ? 'Record Video' : 'Take Photo' }}</label>
                     <div
                         class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition-colors"
                         @click="$refs.photoInput.click()"
@@ -382,23 +387,23 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                 </svg>
-                                <p class="mt-2 text-sm font-medium">Tap to take photo</p>
+                                <p class="mt-2 text-sm font-medium">{{ $isVideo ? 'Tap to record video' : 'Tap to take photo' }}</p>
                             </div>
                         </template>
                         <template x-if="photoPreview">
-                            <img :src="photoPreview" class="max-h-48 mx-auto rounded-lg" alt="Photo preview" />
+                            @if($isVideo)<video :src="photoPreview" class="max-h-48 mx-auto rounded-lg" controls playsinline muted></video>@else<img :src="photoPreview" class="max-h-48 mx-auto rounded-lg" alt="Photo preview" />@endif
                         </template>
                     </div>
                     <input
                         type="file"
                         name="photo"
-                        accept="image/*"
-                        :capture="!window.__userCanUpload ? 'environment' : null"
+                        accept="{{ $isVideo ? 'video/*' : 'image/*' }}"
+                        @if(!$isVideo) :capture="!window.__userCanUpload ? 'environment' : null" @endif
                         class="hidden"
                         x-ref="photoInput"
                         @change="
                             photoFile = $event.target.files[0];
-                            if (photoFile && !window.__userCanUpload && photoFile.lastModified && (Date.now() - photoFile.lastModified) > 300000) {
+                            if (photoFile && !window.__userCanUpload && {{ $isVideo ? 'false' : 'true' }} && photoFile.lastModified && (Date.now() - photoFile.lastModified) > 300000) {
                                 alert('Please take a new photo with the camera. Photos from your gallery are not allowed.');
                                 $event.target.value = '';
                                 photoFile = null;
@@ -442,7 +447,7 @@
                         :disabled="photoUploading || !photoFile || !photoNote.trim()"
                         class="px-4 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <span x-show="!photoUploading">Upload Photo</span>
+                        <span x-show="!photoUploading">{{ $isVideo ? 'Upload Video' : 'Upload Photo' }}</span>
                         <span x-show="photoUploading">Uploading...</span>
                     </button>
                 </div>

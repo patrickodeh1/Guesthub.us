@@ -1,14 +1,27 @@
 @php
-    $roomInfo = $session->property->rooms->mapWithKeys(fn ($rm) => [$rm->id => [
-        'name' => $rm->name,
-        'seconds' => max(1, (int) ($rm->photo_guide_seconds ?? 8)),
-    ]]);
-    $refs = $session->property->photoReferences->map(fn ($r) => [
-        'url' => $r->imageUrl(),
-        'caption' => $r->caption,
-        'instructions' => $r->instructions,
-        'room_id' => $r->room_id,
-    ])->values();
+    $prop = $session->property;
+    $linked = (bool) $prop->photo_guide_source_id;
+    $roomMap = $linked ? $prop->guideRoomMap() : [];
+    $srcRooms = $linked ? ($prop->photoGuideSource?->rooms->keyBy('id') ?? collect()) : collect();
+    $roomInfo = $prop->rooms->mapWithKeys(function ($rm) use ($roomMap, $srcRooms) {
+        $secs = $rm->photo_guide_seconds;
+        $srcId = array_search($rm->id, $roomMap);
+        if ($srcId !== false && $srcRooms->has($srcId)) $secs = $srcRooms[$srcId]->photo_guide_seconds ?? $secs;
+        return [$rm->id => ['name' => $rm->name, 'seconds' => max(1, (int) ($secs ?? 8))]];
+    });
+    $refs = $prop->effectivePhotoReferences()->get()->map(function ($r) use ($linked, $roomMap) {
+        $rid = $r->room_id;
+        if ($linked && $rid) {
+            $rid = $roomMap[$rid] ?? null;
+            if (! $rid) return null;
+        }
+        return [
+            'url' => $r->imageUrl(),
+            'caption' => $r->caption,
+            'instructions' => $r->instructions,
+            'room_id' => $rid,
+        ];
+    })->filter()->values();
     $isCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
     $active = $session->status === 'in_progress';
     $viewed = !is_null($session->photo_tutorial_viewed_at);

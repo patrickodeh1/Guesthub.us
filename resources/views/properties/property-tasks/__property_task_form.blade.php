@@ -238,6 +238,7 @@
                 <option value="room">Task (Standard checklist item)</option>
                 <option value="inventory">Inventory (Prompt housekeeper for input quantity)</option>
                 <option value="verify">Verify (Requires a photo upload to complete)</option>
+                <option value="verify_video">Verify (Requires a video upload to complete)</option>
                 <option value="instructions">Instructions Only (Informational block for staff)</option>
                 <option value="lockbox">Lockbox code change (cleaner enters the new code)</option>
             </select>

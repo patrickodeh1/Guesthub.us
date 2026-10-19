@@ -11,6 +11,41 @@
     @if (session('status')) <p class="mb-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('status') }}</p> @endif
     @if ($errors->any()) <p class="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{{ $errors->first() }}</p> @endif
 
+    <div class="card card-pad mb-8 space-y-3">
+        <h2 class="text-lg font-semibold text-slate-950">Share a photo guide between properties</h2>
+        @if ($linkedSource)
+            <p class="text-sm text-slate-700">This property uses the photo guide from <strong>{{ $linkedSource->name }}</strong>. Edit it there and the changes show here automatically. Rooms are matched by name.</p>
+            @if (count($unmatched))
+                <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">No matching room on this property for: {{ implode(', ', $unmatched) }}. Those photos are not shown to cleaners here. Rename a room to match to fix it.</p>
+            @endif
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('admin.photo-guide.index', $linkedSource) }}" class="btn-secondary">Open {{ $linkedSource->name }}'s guide</a>
+                <form method="POST" action="{{ route('admin.photo-guide.link', $property) }}">
+                    @csrf
+                    <input type="hidden" name="source_id" value="">
+                    <button class="btn-secondary" onclick="return confirm('Stop using the linked guide?')">Unlink and use own photos</button>
+                </form>
+            </div>
+        @elseif ($usedByCount)
+            <p class="text-sm text-slate-700">{{ $usedByCount }} other {{ \Illuminate\Support\Str::plural('property', $usedByCount) }} use this guide. Changes here update them too.</p>
+        @elseif ($sourceOptions->count())
+            <form method="POST" action="{{ route('admin.photo-guide.link', $property) }}" class="flex flex-col gap-2 sm:flex-row">
+                @csrf
+                <select name="source_id" class="input w-full" required>
+                    <option value="" disabled selected>Use another property's guide...</option>
+                    @foreach ($sourceOptions as $opt)
+                        <option value="{{ $opt->id }}">{{ $opt->name }}</option>
+                    @endforeach
+                </select>
+                <button class="btn-primary shrink-0">Use this guide</button>
+            </form>
+            <p class="text-xs text-slate-500">Cleaners here will see that property's photos and instructions. This property's own photos below are not used while linked.</p>
+        @else
+            <p class="text-sm text-slate-500">No other property has a photo guide to share yet.</p>
+        @endif
+    </div>
+
+    @if (! $linkedSource)
     <form method="POST" action="{{ route('admin.photo-guide.store', $property) }}" enctype="multipart/form-data" class="card card-pad mb-8 space-y-5">
         @csrf
         <h2 class="text-lg font-semibold text-slate-950">Room instructions and photos</h2>
@@ -85,6 +120,7 @@
     @empty
         <div class="card card-pad text-center text-slate-500">No guide photos yet.</div>
     @endforelse
+    @endif
 
     <div id="pg-modal" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(15,23,42,.5);align-items:center;justify-content:center;padding:16px">
         <div style="background:#fff;border-radius:16px;width:100%;max-width:760px;max-height:92vh;overflow:auto;padding:20px">
@@ -112,6 +148,7 @@
     var rooms = @json($rooms->mapWithKeys(fn ($r) => ['r' . $r->id => ['text' => $r->photo_guide_text, 'seconds' => $r->photo_guide_seconds ?? 8]]));
     var urlTpl = @json(route('admin.photo-guide.room', [$property, 0]));
     var sel = document.querySelector('select[name="room_id"]');
+    if (!sel) return;
     var form = sel.closest('form');
     var fileEl = form.querySelector('input[type=file]');
     var fields = document.getElementById('pg-room-fields');

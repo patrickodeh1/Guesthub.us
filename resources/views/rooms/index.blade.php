@@ -222,6 +222,7 @@
                             <option value="room">Room</option>
                             <option value="inventory">Inventory</option>
                             <option value="verify">Verify</option>
+                            <option value="verify_video">Verify (Video)</option>
                         </select>
                     </div>
                 </div>

@@ -72,6 +72,19 @@ class ChecklistController extends Controller
             $nowChecked = ! $item->checked;
         }
 
+        if ($nowChecked && in_array($task->type, ['verify', 'verify_video'], true)) {
+            $hasFile = method_exists($item, 'photos')
+                ? $item->photos()->exists()
+                : \App\Models\ChecklistItemPhoto::where('checklist_item_id', $item->id)->exists();
+            if (! $hasFile) {
+                $msg = $task->type === 'verify_video' ? 'A video is required before you can complete this task.' : 'A photo is required before you can complete this task.';
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg, 'checked' => false], 422);
+                }
+                return back()->withErrors(['photo' => $msg]);
+            }
+        }
+
         if ($nowChecked) {
             $trainingService = app(\App\Services\TrainingValidationService::class);
             $pendingTraining = $trainingService->getPendingDuringTaskTraining($session, $task, $user, $item);
@@ -173,6 +186,19 @@ class ChecklistController extends Controller
             $nowChecked = $request->boolean('force_checked');
         } else {
             $nowChecked = ! $item->checked;
+        }
+
+        if ($nowChecked && in_array($task->type, ['verify', 'verify_video'], true)) {
+            $hasFile = method_exists($item, 'photos')
+                ? $item->photos()->exists()
+                : \App\Models\ChecklistItemPhoto::where('checklist_item_id', $item->id)->exists();
+            if (! $hasFile) {
+                $msg = $task->type === 'verify_video' ? 'A video is required before you can complete this task.' : 'A photo is required before you can complete this task.';
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg, 'checked' => false], 422);
+                }
+                return back()->withErrors(['photo' => $msg]);
+            }
         }
 
         if ($nowChecked) {
@@ -403,7 +429,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
         }
 
         $request->validate([
-            'photo' => 'nullable|image|max:10240', // 10MB max
+            'photo' => $task->type === 'verify_video' ? 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,video/3gpp,video/x-m4v|max:150000' : 'nullable|image|max:10240',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -422,7 +448,14 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
 
         // If a photo was uploaded, process and store it
         if ($request->hasFile('photo')) {
-            $photo = $this->processAndStorePhoto($request->file('photo'), $session);
+            $photo = $task->type === 'verify_video' ? $this->storeChecklistVideo($request->file('photo'), $session) : $this->processAndStorePhoto($request->file('photo'), $session);
+
+            if ($task->type === 'verify_video') {
+                ChecklistItemPhoto::where('checklist_item_id', $item->id)->get()->each(function ($old) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old->path);
+                    $old->delete();
+                });
+            }
 
             $photoRecord = ChecklistItemPhoto::create([
                 'checklist_item_id' => $item->id,
@@ -502,7 +535,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
         }
 
         $request->validate([
-            'photo' => 'nullable|image|max:10240', // 10MB max
+            'photo' => $task->type === 'verify_video' ? 'nullable|file|mimetypes:video/mp4,video/quicktime,video/webm,video/3gpp,video/x-m4v|max:150000' : 'nullable|image|max:10240',
             'note' => 'nullable|string|max:1000',
         ]);
 
@@ -521,7 +554,14 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
 
         // If a photo was uploaded, process and store it
         if ($request->hasFile('photo')) {
-            $photo = $this->processAndStorePhoto($request->file('photo'), $session);
+            $photo = $task->type === 'verify_video' ? $this->storeChecklistVideo($request->file('photo'), $session) : $this->processAndStorePhoto($request->file('photo'), $session);
+
+            if ($task->type === 'verify_video') {
+                ChecklistItemPhoto::where('checklist_item_id', $item->id)->get()->each(function ($old) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($old->path);
+                    $old->delete();
+                });
+            }
 
             $photoRecord = ChecklistItemPhoto::create([
                 'checklist_item_id' => $item->id,
@@ -590,7 +630,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     private function completeTaskOnPhoto(ChecklistItemPhoto $photoRecord, Task $task, CleaningSession $session): void
     {
         try {
-            if ($task->type !== 'verify') {
+            if (! in_array($task->type, ['verify', 'verify_video'], true)) {
                 return;
             }
             $item = ChecklistItem::find($photoRecord->checklist_item_id);
@@ -610,6 +650,12 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('completeTaskOnPhoto failed: ' . $e->getMessage());
         }
+    }
+
+    private function storeChecklistVideo($file, CleaningSession $session): array
+    {
+        $path = \Illuminate\Support\Facades\Storage::disk('public')->putFile('checklist-videos/' . $session->id, $file);
+        return ['path' => $path];
     }
 
     public function deletePhoto(Request $request, CleaningSession $session, Room $room, Task $task, ChecklistItemPhoto $photo)

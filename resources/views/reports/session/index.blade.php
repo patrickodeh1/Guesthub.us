@@ -2738,7 +2738,12 @@
                                             @if($photoUrl)
                                                 <article class="pair-card">
                                                     <button type="button" class="pair-slot js-photo-open" data-url="{{ $photoUrl }}" data-title="{{ $fullTitle }}" data-meta="{{ $fullMeta }}" data-download="{{ $downloadUrl }}">
-                                                        <img src="{{ $photoUrl }}" alt="Required Photo" loading="lazy">
+                                                        @if(preg_match('/\.(mp4|mov|webm|3gp|m4v)$/i', (string) ($photo->path ?? '')))
+                                                            <video src="{{ $photoUrl }}#t=0.1" preload="metadata" muted playsinline style="width:100%;height:100%;object-fit:cover;pointer-events:none"></video>
+                                                            <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6);pointer-events:none">&#9654;</span>
+                                                        @else
+                                                            <img src="{{ $photoUrl }}" alt="Required Photo" loading="lazy">
+                                                        @endif
                                                     </button>
                                                     <div class="pair-footer">
                                                         <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
@@ -3137,6 +3142,7 @@
         <button type="button" id="lightboxNext" class="lightbox-nav lightbox-next" aria-label="Next">&#8250;</button>
         <div class="lightbox-inner">
             <img id="lightboxImage" class="lightbox-image" src="" alt="Report photo preview">
+            <video id="lightboxVideo" class="lightbox-image" controls playsinline style="display:none"></video>
             <div class="lightbox-meta">
                 <span id="lightboxCaption"></span>
                 <span id="lightboxCounter" class="lightbox-counter"></span>
@@ -3193,7 +3199,15 @@
             if (index < 0 || index >= galleryItems.length) return;
             currentGalleryIndex = index;
             const item = galleryItems[index];
-            lightboxImage.src = item.url;
+            const lbVideo = document.getElementById('lightboxVideo');
+            const isVid = /\.(mp4|mov|webm|3gp|m4v)(\?|$)/i.test(item.url);
+            if (lbVideo) {
+                lbVideo.pause();
+                lbVideo.style.display = isVid ? '' : 'none';
+                if (isVid) { lbVideo.src = item.url; } else { lbVideo.removeAttribute('src'); lbVideo.load(); }
+            }
+            lightboxImage.style.display = isVid ? 'none' : '';
+            if (!isVid) lightboxImage.src = item.url;
             
             let captionHtml = '';
             if (item.title) captionHtml += '<strong>' + item.title + '</strong>';
@@ -3330,6 +3344,15 @@
             });
         }
     });
+</script>
+<script>
+(function () {
+    var lb = document.getElementById('lightbox'), v = document.getElementById('lightboxVideo');
+    if (!lb || !v) return;
+    new MutationObserver(function () {
+        if (lb.getAttribute('aria-hidden') === 'true') v.pause();
+    }).observe(lb, { attributes: true, attributeFilter: ['aria-hidden', 'class'] });
+})();
 </script>
 </body>
 </html>

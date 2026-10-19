@@ -56,7 +56,7 @@
                      @keydown.escape.window="close()">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
                         <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                            <span x-text="isPhotoRequired ? 'Upload Photo' : 'Add Note / Photo'"></span>
+                            <span x-text="(taskType === 'verify_video') ? 'Upload Video' : (isPhotoRequired ? 'Upload Photo' : 'Add Note / Photo')"></span>
                         </h3>
 
                         <!-- Preview existing data -->
@@ -86,12 +86,12 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                                        <span class="font-semibold text-blue-600 dark:text-blue-400" x-text="previews.length > 0 ? 'Tap to add more' : 'Tap to select photos'"></span>
+                                        <span class="font-semibold text-blue-600 dark:text-blue-400" x-text="(taskType === 'verify_video') ? (previews.length > 0 ? 'Tap to choose a different video' : 'Tap to choose a video to upload') : (previews.length > 0 ? 'Tap to add more' : (window.__userCanUpload ? 'Tap to select photos' : 'Tap to take a photo'))"></span>
                                     </p>
-                                    <p class="text-[10px] text-gray-400 mt-0.5" x-text="window.__userCanUpload ? 'Select multiple photos at once' : 'Take a photo, then add more if needed'">Select multiple photos at once</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5" x-text="(taskType === 'verify_video') ? 'Choose one video file from your phone' : (window.__userCanUpload ? 'Select multiple photos at once' : 'Take a photo, then add more if needed')">Select multiple photos at once</p>
                                 </div>
-                                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" :multiple="window.__userCanUpload"
-                                       :capture="!window.__userCanUpload ? 'environment' : null"
+                                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" :accept="(taskType === 'verify_video') ? 'video/*' : 'image/*'" :multiple="window.__userCanUpload && !(taskType === 'verify_video')"
+                                       :capture="(taskType === 'verify_video') ? null : (!window.__userCanUpload ? 'environment' : null)"
                                        @change="handleFileChange($event)"
                                        id="global-task-photo-input" />
                             </div>
@@ -101,12 +101,13 @@
                         <template x-if="previews.length > 0">
                             <div class="mb-4">
                                 <div class="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                    <span x-text="previews.length"></span> photo(s) selected
+                                    <span x-text="previews.length"></span> <span x-text="(taskType === 'verify_video') ? 'video(s)' : 'photo(s)'"></span> selected
                                 </div>
                                 <div class="grid grid-cols-3 gap-2">
                                     <template x-for="(preview, index) in previews" :key="index">
                                         <div class="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-                                            <img :src="preview.url" class="w-full aspect-square object-cover" :alt="preview.name" />
+                                            <img x-show="!(taskType === 'verify_video')" :src="preview.url" class="w-full aspect-square object-cover" :alt="preview.name" />
+                                            <video x-show="(taskType === 'verify_video')" :src="preview.url" class="w-full aspect-square object-cover" muted playsinline></video>
                                             <button type="button"
                                                     @click.stop="removePreview(index)"
                                                     class="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md transition-all z-10">
@@ -356,3 +357,10 @@
                             class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300 transition-colors">×</button>
                 </div>
             </div>
+
+<script>
+document.addEventListener('alpine:init', function () { Alpine.store('pm', { video: false }); });
+window.addEventListener('open-photo-modal', function (e) {
+    try { if (window.Alpine && Alpine.store('pm')) Alpine.store('pm').video = (e.detail && e.detail.taskType) === 'verify_video'; } catch (err) {}
+});
+</script>
