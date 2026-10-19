@@ -312,6 +312,7 @@ class CleaningSmsNotificationService
             'property_name' => $property->internal_display_name,
             'lead' => $lead,
             'time' => $time,
+            'session_link' => route('sessions.show', $session),
         ]);
 
         self::dispatchToCleaner($session, 'start_reminder_1h', $message);

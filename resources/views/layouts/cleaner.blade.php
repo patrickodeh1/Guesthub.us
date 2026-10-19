@@ -41,7 +41,19 @@
 </head>
 <body class="guest-canvas text-slate-950 antialiased" x-data="mainState" x-on:resize.window="handleWindowResize">
 <script>
-    window.__userCanUpload = {{ auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner']) ? 'true' : 'false' }};
+    window.__userCanUpload = {{ auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'manager']) ? 'true' : 'false' }};
+    document.addEventListener('change', function (e) {
+        var el = e.target;
+        if (window.__userCanUpload || !el || el.tagName !== 'INPUT' || el.type !== 'file' || !el.hasAttribute('capture')) return;
+        var old = Array.prototype.some.call(el.files || [], function (f) {
+            return f.lastModified && (Date.now() - f.lastModified) > 300000;
+        });
+        if (old) {
+            e.stopPropagation();
+            el.value = '';
+            alert('Please take a new photo with the camera. Photos from your gallery are not allowed.');
+        }
+    }, true);
 </script>
 
 <main class="guest-stage">

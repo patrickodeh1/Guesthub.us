@@ -380,7 +380,7 @@ class SessionController extends Controller
 
         // Separate property-level tasks by phase
         $preCleaningTasks = $propertyTasks->where('phase', 'pre_cleaning');
-        $duringCleaningTasks = $propertyTasks->where('phase', 'during_cleaning');
+        $duringCleaningTasks = $propertyTasks->where('phase', 'during_cleaning')->reject(fn ($t) => $t->type === 'lockbox');
         $postCleaningTasks = $propertyTasks->where('phase', 'post_cleaning');
 
         // Count property-level tasks (exclude type='instructions' — those are informational-only,
@@ -851,7 +851,7 @@ class SessionController extends Controller
 
         // Separate property-level tasks by phase
         $preCleaningTasks = $propertyTasks->where('phase', 'pre_cleaning');
-        $duringCleaningTasks = $propertyTasks->where('phase', 'during_cleaning');
+        $duringCleaningTasks = $propertyTasks->where('phase', 'during_cleaning')->reject(fn ($t) => $t->type === 'lockbox');
         $postCleaningTasks = $propertyTasks->where('phase', 'post_cleaning');
 
         // Separate tasks by type
@@ -1200,6 +1200,27 @@ class SessionController extends Controller
         }
 
         return redirect()->route('sessions.show', $session);
+    }
+
+    /** The assigned cleaner gives a job back before starting it. It returns to the pool unassigned. */
+    public function cancelAssignment(CleaningSession $session)
+    {
+        $this->assertSessionAccess($session);
+        abort_unless((int) $session->housekeeper_id === (int) auth()->id(), 403);
+
+        if ($session->started_at || $session->status !== 'pending') {
+            return redirect()->route('sessions.show', $session)->with('error', 'This job has already started, so it can no longer be cancelled.');
+        }
+
+        $cleaner = auth()->user();
+        $session->update([
+            'housekeeper_id' => null,
+            'assignment_status' => 'unassigned',
+            'cleaner_notified_at' => null,
+        ]);
+        \App\Services\CleaningFlowService::notifyCleanerCancelled($session->fresh(), $cleaner);
+
+        return redirect()->route('sessions.index')->with('ok', 'The job was cancelled and sent back to be reassigned.');
     }
 
     public function trainingRequired(CleaningSession $session)
@@ -1594,7 +1615,7 @@ class SessionController extends Controller
 
     private function stageHasContent(CleaningSession $session, string $stage): bool
     {
-        if ($stage === 'during_cleaning' && $session->status === 'in_progress' && $session->property->propertyTasks()->where('phase', 'during_cleaning')->where('tasks.type', 'lockbox')->exists()) {
+        if (false) { // lockbox now handled in the access/exit wizard
             return true;
         }
         $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];
@@ -1635,6 +1656,7 @@ class SessionController extends Controller
                 // Check if there are any during_cleaning property tasks
                 $count = $session->property->propertyTasks()
                     ->where('phase', 'during_cleaning')
+                    ->where(function ($q) { $q->whereNull('tasks.type')->orWhere('tasks.type', '!=', 'lockbox'); })
                     ->where(function($query) use ($sporadicTaskIds) {
                         $query->where('is_sporadic', false)
                               ->orWhereNull('is_sporadic')
@@ -1775,6 +1797,7 @@ class SessionController extends Controller
             case 'during_cleaning':
                 $propertyTasks = $session->property->propertyTasks()
                     ->where('phase', 'during_cleaning')
+                    ->where(function ($q) { $q->whereNull('tasks.type')->orWhere('tasks.type', '!=', 'lockbox'); })
                     ->pluck('id');
 
                 $completedCount = $session->checklistItems

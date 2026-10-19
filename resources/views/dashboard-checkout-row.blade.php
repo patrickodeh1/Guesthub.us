@@ -40,7 +40,7 @@
     <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:justify-end">
         @if($row['covered'])
             <div class="mr-auto min-w-0 sm:mr-0 sm:text-right">
-                <p class="min-w-0 break-words text-sm font-semibold {{ ! empty($row['cleaner_pending']) ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['cleaner'] }}</p>
+                @if(! empty($row['cleaner_pending']))<p class="min-w-0 break-words text-sm italic text-slate-400">{{ $row['cleaner'] }} · pending acceptance</p>@else<p class="min-w-0 break-words text-sm font-semibold text-emerald-700">{{ $row['cleaner'] }}</p>@endif
                 <p class="text-xs text-slate-500">
                     @if($session->scheduled_time){{ $session->scheduled_time->format('g:i A') }}@endif
                 </p>

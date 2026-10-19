@@ -17,8 +17,8 @@
 
         <div>
             <label class="text-sm font-semibold text-slate-700" for="pg-room">Room</label>
-            <select id="pg-room" name="room_id" class="input mt-1 w-full">
-                <option value="">All rooms</option>
+            <select id="pg-room" name="room_id" class="input mt-1 w-full" required>
+                <option value="" disabled selected>Select a room</option>
                 @foreach ($rooms as $room)
                     <option value="{{ $room->id }}">{{ $room->name }}</option>
                 @endforeach
@@ -34,7 +34,7 @@
                     <input type="number" id="pg-seconds" min="1" max="600" value="8" class="input mt-0 w-24">
                 </div>
             </div>
-            <p id="pg-all-note" class="mt-1 text-sm text-slate-500">Pick a room to write its instructions. Photos added under All rooms show in every room.</p>
+            <p id="pg-all-note" class="mt-1 text-sm text-slate-500">Select a room to write its instructions and add photos.</p>
         </div>
 
         <div>

@@ -24,9 +24,9 @@ class CleanerAccessSteps
         $parking = false;
         $property = $session->property;
         $preStart = self::isPreStart($session);
-        if ($preStart) { return []; } // gh-verify-first: no access steps until location is verified
+        // Before verification the assigned cleaner sees only the "show before GPS" steps (filtered below).
 
-        return InstructionStep::where('property_id', $session->property_id)
+        $steps = InstructionStep::where('property_id', $session->property_id)
             ->whereIn('type', $parking ? ['checkin', 'parking'] : ['checkin'])
             ->where('active', true)
             ->when($preStart, fn ($q) => $q->where('show_before_gps', true))
@@ -36,6 +36,7 @@ class CleanerAccessSteps
             ->with('images')
             ->get()
             ->map(fn ($s) => [
+                'step_id' => $s->id,
                 'type'    => $s->type,
                 'title'   => $s->title,
                 'content' => self::render($s, $property, $preStart),
@@ -46,6 +47,8 @@ class CleanerAccessSteps
             ])
             ->values()
             ->all();
+
+        return self::withPreEntryTasks($steps, $session);
     }
 
     /**
@@ -65,7 +68,7 @@ class CleanerAccessSteps
 
         $property = $session->property;
 
-        return InstructionStep::where('property_id', $session->property_id)
+        $steps = InstructionStep::where('property_id', $session->property_id)
             ->where('type', 'checkout')
             ->where('for_cleaner', true)
             ->where('active', true)
@@ -73,6 +76,7 @@ class CleanerAccessSteps
             ->with('images')
             ->get()
             ->map(fn ($s) => [
+                'step_id' => $s->id,
                 'type'    => $s->type,
                 'title'   => $s->title,
                 'content' => $s->renderContentForProperty($property),
@@ -83,6 +87,73 @@ class CleanerAccessSteps
             ])
             ->values()
             ->all();
+
+        return self::withPreEntryTasks($steps, $session, 'checkout');
+    }
+
+    /** Extra tasks (phase during_cleaning) shown as wizard steps right after the step chosen for each. $kind is 'checkin' (access steps) or 'checkout' (exit steps). */
+    private static function withPreEntryTasks(array $steps, CleaningSession $session, string $kind = 'checkin'): array
+    {
+        $tasks = $session->property->propertyTasks()
+            ->where('tasks.phase', 'during_cleaning')
+            ->wherePivot('visible_to_housekeeper', true)
+            ->get();
+        if ($tasks->isEmpty()) {
+            return $steps;
+        }
+
+        $ids = fn (string $type) => InstructionStep::where('property_id', $session->property_id)
+            ->where('type', $type)->where('for_cleaner', true)->where('active', true)
+            ->pluck('id')->map(fn ($i) => (int) $i)->all();
+        $checkinIds = $ids('checkin');
+        $checkoutIds = $ids('checkout');
+        $doneIds = \App\Models\ChecklistItem::where('session_id', $session->id)
+            ->whereNull('room_id')->where('checked', true)
+            ->pluck('task_id')->map(fn ($i) => (int) $i)->all();
+        $visibleIds = array_map('intval', array_column($steps, 'step_id'));
+
+        $atStart = [];
+        $atEnd = [];
+        $after = [];
+        foreach ($tasks as $t) {
+            $afterId = (int) ($t->pivot->show_after_step_id ?? 0);
+            $isExit = $afterId === -1 || in_array($afterId, $checkoutIds, true);
+            if ($isExit !== ($kind === 'checkout')) {
+                continue;
+            }
+            $text = trim((string) ($t->pivot->instructions ?: $t->instructions));
+            $entry = [
+                'step_id'   => null,
+                'type'      => $kind,
+                'title'     => $t->name,
+                'content'   => $text !== '' ? nl2br(e($text)) : '',
+                'image'     => null,
+                'images'    => [],
+                'action'    => 'content',
+                'task_url'  => route('checklist.property-task.toggle', [$session, $t]),
+                'task_done' => in_array((int) $t->id, $doneIds, true),
+                'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', $session) : null,
+                'lockbox_key' => 'lockbox_saved_' . $session->id,
+            ];
+            if ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
+                $after[$afterId][] = $entry;
+            } elseif ($isExit) {
+                $atEnd[] = $entry;
+            } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true)) {
+                continue; // its step is not visible yet (before location check); show it later
+            } else {
+                $atStart[] = $entry;
+            }
+        }
+
+        $out = $atStart;
+        foreach ($steps as $st) {
+            $out[] = $st;
+            foreach ($after[(int) ($st['step_id'] ?? 0)] ?? [] as $e) {
+                $out[] = $e;
+            }
+        }
+        return array_merge($out, $atEnd);
     }
 
     /** The assigned cleaner sees only "show before GPS" steps until the session is started at the property. */

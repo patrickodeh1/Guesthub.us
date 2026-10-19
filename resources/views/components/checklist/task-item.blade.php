@@ -360,6 +360,7 @@
                         photoPreview = null;
                         photoNote = '';
                         window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Photo uploaded successfully' } }));
+                        @if($isMandatory) setTimeout(() => window.location.reload(), 700); @endif
                     }).catch((error) => {
                         photoUploading = false;
                         window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: error.message || 'Failed to upload photo' } }));
@@ -397,6 +398,11 @@
                         x-ref="photoInput"
                         @change="
                             photoFile = $event.target.files[0];
+                            if (photoFile && !window.__userCanUpload && photoFile.lastModified && (Date.now() - photoFile.lastModified) > 300000) {
+                                alert('Please take a new photo with the camera. Photos from your gallery are not allowed.');
+                                $event.target.value = '';
+                                photoFile = null;
+                            }
                             if (photoFile) {
                                 if (photoPreview && photoPreview.startsWith('blob:')) {
                                     URL.revokeObjectURL(photoPreview);

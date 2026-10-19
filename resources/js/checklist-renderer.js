@@ -281,7 +281,7 @@ export default function checklistRenderer(config = {}) {
                     renderedHtml = this.renderRooms();
                     break;
                 case 'during_cleaning':
-                    renderedHtml = this.renderPropertyTasks('during_cleaning', 'Mid-Cleaning Tasks');
+                    renderedHtml = this.renderPropertyTasks('during_cleaning', 'Arrival / Exit Jobs');
                     break;
                 case 'photos':
                     renderedHtml = this.renderPhotosRoomByRoom();

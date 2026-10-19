@@ -88,9 +88,9 @@
                                     <p class="text-sm text-gray-500 dark:text-gray-400">
                                         <span class="font-semibold text-blue-600 dark:text-blue-400" x-text="previews.length > 0 ? 'Tap to add more' : 'Tap to select photos'"></span>
                                     </p>
-                                    <p class="text-[10px] text-gray-400 mt-0.5">Select multiple photos at once</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5" x-text="window.__userCanUpload ? 'Select multiple photos at once' : 'Take a photo, then add more if needed'">Select multiple photos at once</p>
                                 </div>
-                                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" multiple
+                                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" accept="image/*" :multiple="window.__userCanUpload"
                                        :capture="!window.__userCanUpload ? 'environment' : null"
                                        @change="handleFileChange($event)"
                                        id="global-task-photo-input" />

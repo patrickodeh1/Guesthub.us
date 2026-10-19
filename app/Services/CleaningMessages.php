@@ -14,32 +14,32 @@ class CleaningMessages
         'assignment_new' => [
             'label' => 'New cleaning assigned',
             'audience' => 'To cleaner',
-            'tokens' => ['property_name', 'when'],
+            'tokens' => ['property_name', 'when', 'session_link'],
             'default' => 'New cleaning available at {property_name}, {when}. Accept this job? Reply Y or N',
         ],
         'assignment_updated' => [
             'label' => 'Cleaning updated',
             'audience' => 'To cleaner',
-            'tokens' => ['property_name', 'when'],
+            'tokens' => ['property_name', 'when', 'session_link'],
             'default' => 'Updated cleaning available at {property_name}, {when}. Accept this job? Reply Y or N',
         ],
         'assignment_moved' => [
             'label' => 'Cleaning moved to a new time',
             'audience' => 'To cleaner',
-            'tokens' => ['property_name', 'when', 'old_when'],
+            'tokens' => ['property_name', 'when', 'old_when', 'session_link'],
             'default' => "Scheduled cleaning for {property_name} on {old_when} has been moved to {when}. To accept, reply Y or if you're not available reply N.",
         ],
         'start_reminder' => [
             'label' => 'Cleaning starts soon (reminder)',
             'audience' => 'To cleaner',
-            'tokens' => ['property_name', 'lead', 'time'],
-            'default' => 'Reminder: your cleaning at {property_name} starts in {lead} ({time}).',
+            'tokens' => ['property_name', 'lead', 'time', 'session_link'],
+            'default' => 'Reminder: your cleaning at {property_name} starts in {lead} ({time}). View job: {session_link}',
         ],
         'cleaner_confirmed' => [
             'label' => 'Cleaner replied Y (confirmation)',
             'audience' => 'To cleaner',
-            'tokens' => ['property_name', 'when'],
-            'default' => 'Confirmed: {property_name} on {when}. Thank you!',
+            'tokens' => ['property_name', 'when', 'session_link'],
+            'default' => 'Confirmed: {property_name} on {when}. Thank you! View job: {session_link}',
         ],
         'cleaner_declined' => [
             'label' => 'Cleaner replied N (thank you)',
@@ -68,8 +68,20 @@ class CleaningMessages
         'admin_declined' => [
             'label' => 'Cleaner declined a job',
             'audience' => 'To contact desk',
-            'tokens' => ['cleaner', 'property_name', 'when'],
-            'default' => '{cleaner} declined the cleaning at {property_name} on {when}.',
+            'tokens' => ['cleaner', 'property_name', 'when', 'session_link'],
+            'default' => '{cleaner} declined the cleaning at {property_name} on {when}. View job: {session_link}',
+        ],
+        'admin_needs_cleaner' => [
+            'label' => 'Cleaning needs a cleaner',
+            'audience' => 'To contact desk',
+            'tokens' => ['property_name', 'when', 'assign_link'],
+            'default' => 'New cleaning needs a cleaner: {property_name}, {when}. Assign: {assign_link}',
+        ],
+        'admin_cleaner_cancelled' => [
+            'label' => 'Cleaner cancelled a job',
+            'audience' => 'To contact desk',
+            'tokens' => ['cleaner', 'property_name', 'when', 'assign_link'],
+            'default' => '{cleaner} cancelled the cleaning at {property_name} on {when}. It needs a new cleaner. Assign: {assign_link}',
         ],
         'admin_unconfirmed' => [
             'label' => 'Cleaner has not confirmed',

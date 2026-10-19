@@ -139,7 +139,7 @@
             $navStages = [
                 'pre_cleaning' => 'Pre-Cleaning',
                 'rooms' => 'Rooms',
-                'during_cleaning' => 'During Cleaning',
+                'during_cleaning' => 'Arrival / Exit Jobs',
                 'post_cleaning' => 'Post Cleaning',
                 'photos' => 'Photos',
                 'summary' => 'Summary'
@@ -256,70 +256,71 @@
 
         @include('sessions.partials.photo-tutorial')
 
+        {{-- gh-first-screen: cleaning details, shown first to the assigned cleaner before anything else --}}
+        @if ($session->status === 'pending' && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+            && ! \App\Services\CleanerAccessSteps::locationVerified($session))
+            @php
+                $fsProp = $session->property;
+                $fsLogo = \App\Support\Branding::logoUrl();
+                $fsSite = \App\Support\Branding::siteName();
+                $fsDate = $session->scheduled_date ? $session->scheduled_date->format('l, F j, Y') : 'Not set';
+                $fsTime = $session->scheduled_time ? $session->scheduled_time->format('g:i A') : 'Not set';
+            @endphp
+            <style id="gh-first-screen-hide">#getting-in, #pending-gate { display: none !important; }</style>
+            <div id="gh-first-screen" class="guest-portal-card">
+                <div class="guest-status-bar">
+                    <div>
+                        @if ($fsLogo)
+                            <img src="{{ $fsLogo }}" alt="{{ $fsSite }}" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                </div>
+                <div class="p-6 text-left">
+                    <p class="guest-status-kicker">Your cleaning</p>
+                    <h2 class="guest-status-title">{{ $fsProp?->internal_display_name ?? $fsProp?->name }}</h2>
+                    <dl class="mt-4 space-y-2 text-sm text-slate-700">
+                        <div class="flex justify-between gap-4"><dt class="text-slate-500">Date</dt><dd class="font-medium">{{ $fsDate }}</dd></div>
+                        <div class="flex justify-between gap-4"><dt class="text-slate-500">Start time</dt><dd class="font-medium">{{ $fsTime }}</dd></div>
+                    </dl>
+                    <button type="button" id="gh-first-proceed" class="guest-primary-btn is-go mt-6 w-full">Proceed</button>
+                    <form method="POST" action="{{ route('sessions.cancel-assignment', $session) }}" class="mt-6 border-t border-slate-200 pt-4 text-center"
+                          onsubmit="return confirm('Cancel this job? It will go back to the office to be given to another cleaner.');">
+                        @csrf
+                        <button type="submit" class="text-sm font-semibold text-red-700 underline">I can't make this job. Cancel it</button>
+                    </form>
+                </div>
+            </div>
+            <script>
+            (function () {
+                var key = 'gh-first-screen-{{ $session->id }}';
+                function proceed() {
+                    try { sessionStorage.setItem(key, '1'); } catch (e) {}
+                    var st = document.getElementById('gh-first-screen-hide'); if (st) st.remove();
+                    var c = document.getElementById('gh-first-screen'); if (c) c.remove();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                var seen = false;
+                try { seen = sessionStorage.getItem(key) === '1'; } catch (e) {}
+                if (seen) { proceed(); return; }
+                document.getElementById('gh-first-proceed').addEventListener('click', proceed);
+            })();
+            </script>
+        @endif
+
         {{-- Getting in: parking question + access steps for the cleaner --}}
         @if ($session->status !== 'completed')
             @php
                 $ghHideGettingIn = $session->status === 'pending'
                     && auth()->check()
                     && (int) $session->housekeeper_id === (int) auth()->id()
-                    && ! \App\Services\CleanerAccessSteps::locationVerified($session);
+                    && ! \App\Services\CleanerAccessSteps::locationVerified($session)
+                    && count($accessSteps ?? []) === 0;
             @endphp
             @unless ($ghHideGettingIn)
                 @include('sessions.partials.getting-in')
             @endunless
             @include('sessions.partials.door')
             @include('sessions.partials.lockbox')
-            @php
-                $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
-                $exitIsCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
-            @endphp
-            @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
-                <div id="exit-wizard-panel" style="display:none" class="mb-4">
-                    <x-step-wizard :steps="$exitWiz" type="exit" kicker="Before you leave" done-label="Complete session" next-section="exit-wizard-panel" />
-                    <div class="mt-3 text-center"><button type="button" id="exit-wizard-back" class="guest-outline-btn">Back to photos</button></div>
-                </div>
-                <div id="exit-confirm-modal" style="display:none" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
-                    <div class="guest-portal-card w-full max-w-sm p-6 text-center">
-                        <p class="guest-status-kicker">Complete session</p>
-                        <h2 class="guest-status-title">Are you finished?</h2>
-                        <p class="mt-2 text-sm text-slate-600">Confirm that every task is done and you are ready to leave.</p>
-                        <div class="mt-5 flex gap-3">
-                            <button type="button" id="exit-confirm-cancel" class="guest-outline-btn flex-1">Cancel</button>
-                            <button type="button" id="exit-confirm-ok" class="guest-primary-btn is-go flex-1">Complete session</button>
-                        </div>
-                    </div>
-                </div>
-                <script>
-                (function () {
-                    function renderer() { return document.querySelector('[x-data*="checklistRenderer"]'); }
-                    function panel() { return document.getElementById('exit-wizard-panel'); }
-                    function modal() { return document.getElementById('exit-confirm-modal'); }
-                    window.ghShowExitWizard = function () {
-                        var r = renderer(), p = panel(); if (!r || !p) return;
-                        r.style.display = 'none'; p.style.display = '';
-                        var root = document.getElementById('step-wizard-exit'); if (root) root.style.display = '';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    };
-                    function hideWizard() { var r = renderer(), p = panel(); if (r) r.style.display = ''; if (p) p.style.display = 'none'; }
-                    document.addEventListener('click', function (e) {
-                        var t = e.target;
-                        if (t.closest('#exit-wizard-back')) { hideWizard(); return; }
-                        if (t.closest('#exit-confirm-cancel')) { modal().style.display = 'none'; return; }
-                        if (t.closest('#exit-confirm-ok')) {
-                            modal().style.display = 'none';
-                            hideWizard();
-                            var r = renderer(); if (r && r._x_dataStack) { r._x_dataStack[0]._exitAcked = true; }
-                            if (window.checklistHandler) window.checklistHandler.saveProgress();
-                            return;
-                        }
-                        if (t.closest('#wizard-done-exit') && panel() && panel().contains(t)) {
-                            e.preventDefault(); e.stopImmediatePropagation();
-                            modal().style.display = '';
-                        }
-                    }, true);
-                })();
-                </script>
-            @endif
         @endif
 
         {{-- PENDING: Start gate --}}
@@ -379,7 +380,7 @@
 
                         @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id(); @endphp
                         @php
-                            $startLocked = false;
+                            $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
                                 && (int) $session->housekeeper_id === (int) auth()->id()
                                 && ! auth()->user()->hasRole('admin')) {
@@ -387,6 +388,14 @@
                                 $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
                                 $startNow = now($startTz);
                                 $startLocked = $startNow->lt($startAt->copy()->subHour()) || $startNow->gt($startAt->copy()->addHour());
+                                if ($startLocked) {
+                                    $opensAt = $startAt->copy()->subHour();
+                                    $closesAt = $startAt->copy()->addHour();
+                                    $fmtWhen = fn ($c) => ($c->isSameDay($startNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
+                                    $startMsg = $startNow->lt($opensAt)
+                                        ? 'Begin is locked until 1 hour before your scheduled start ('.$startAt->format('g:i A').'). You can begin '.$fmtWhen($opensAt).'.'
+                                        : 'You can no longer begin this cleaning. The start window ended '.$fmtWhen($closesAt).' (1 hour after the scheduled start). Please contact your manager.';
+                                }
                             }
                         @endphp
                         @if ($locationVerified)
@@ -400,6 +409,9 @@
                                 <button type="submit" id="start-btn" class="guest-primary-btn is-go w-full" @disabled($startLocked) @if($startLocked) style="opacity:.5;cursor:not-allowed" @endif>Begin</button>
                             @endif
                             <p class="mt-3 text-sm text-gray-500 dark:text-gray-400" id="location-status"></p>
+                            @if($startLocked && $startMsg)
+                                <p role="status" class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">{{ $startMsg }}</p>
+                            @endif
                         </form>
                         @else
                         <div id="verify-location-card">
@@ -492,7 +504,7 @@
                 $ghHdrLogo = \App\Support\Branding::logoUrl();
                 $ghHdrSite = \App\Support\Branding::siteName();
             @endphp
-            <div class="guest-portal-card">
+            <div class="guest-portal-card" id="gh-header-card">
                 <div class="guest-status-bar">
                     <div>
                         @if ($ghHdrLogo)
@@ -553,6 +565,107 @@
                     </div>
                 </div>
             </div>
+
+            {{-- gh-screens: details card hidden on the photo prompt and exit wizard; prompt gets the logo and Go back below --}}
+            <script>
+            (function () {
+                var logo = @js($ghHdrLogo ?? null), site = @js($ghHdrSite ?? '');
+                setInterval(function () {
+                    var hdr = document.getElementById('gh-header-card');
+                    var box = document.getElementById('checklist-container');
+                    var panel = document.getElementById('exit-wizard-panel');
+                    var exitOn = !!panel && panel.style.display !== 'none';
+                    var wrap = box && box.firstElementChild;
+                    var promptOn = !!box && box.textContent.indexOf('before the report is closed') !== -1
+                        && !!wrap && wrap.children.length >= 2 && box.offsetParent !== null;
+                    if (hdr) hdr.style.display = (exitOn || promptOn) ? 'none' : '';
+                    if (!promptOn) return;
+                    wrap.style.display = 'flex'; wrap.style.flexDirection = 'column'; wrap.style.gap = '1.5rem';
+                    wrap.children[0].style.order = '2';
+                    wrap.children[1].style.order = '1';
+                    if (logo && !wrap.querySelector('.gh-prompt-logo')) {
+                        var d = document.createElement('div');
+                        d.className = 'gh-prompt-logo mb-5 flex justify-center';
+                        d.innerHTML = '<img src="' + logo + '" alt="' + site + '" class="h-8 max-w-[140px] w-auto object-contain">';
+                        wrap.children[1].insertBefore(d, wrap.children[1].firstChild);
+                    }
+                }, 250);
+            })();
+            </script>
+            {{-- gh-summary-popup: the summary stage is shown as a popup for unfinished sessions --}}
+            <script>
+            (function () {
+                setInterval(function () {
+                    var box = document.getElementById('checklist-container');
+                    var wrap = box && box.firstElementChild;
+                    var card = wrap && wrap.firstElementChild;
+                    if (!wrap || !card) return;
+                    var on = box.textContent.indexOf('All Stages Complete!') !== -1;
+                    if (on) {
+                        wrap.style.cssText = 'position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.7);display:flex;align-items:flex-start;justify-content:center;padding:.75rem;overflow-y:auto';
+                        card.style.cssText = 'width:100%;max-width:32rem;margin:auto;max-height:94vh;overflow-y:auto;padding:1.25rem';
+                        wrap.dataset.ghPopup = '1';
+                    } else if (wrap.dataset.ghPopup) {
+                        wrap.removeAttribute('style'); card.removeAttribute('style'); delete wrap.dataset.ghPopup;
+                    }
+                }, 250);
+            })();
+            </script>
+            {{-- Exit wizard: shown under the header card when the cleaner finishes --}}
+            @php
+                $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
+                $exitIsCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+            @endphp
+            @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
+                <div id="exit-wizard-panel" style="display:none" class="mb-4">
+                    <x-step-wizard :steps="$exitWiz" type="exit" kicker="Before you leave" done-label="Complete session" next-section="exit-wizard-panel" />
+                    <div class="mt-3 text-center"><button type="button" id="exit-wizard-back" class="guest-outline-btn">Back to photos</button></div>
+                </div>
+                <div id="exit-confirm-modal" style="display:none" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
+                    <div class="guest-portal-card w-full max-w-sm p-6 text-center">
+                        <p class="guest-status-kicker">Complete session</p>
+                        <h2 class="guest-status-title">Are you finished?</h2>
+                        <p class="mt-2 text-sm text-slate-600">Confirm that every task is done and you are ready to leave.</p>
+                        <div class="mt-5 flex gap-3">
+                            <button type="button" id="exit-confirm-cancel" class="guest-outline-btn flex-1">Cancel</button>
+                            <button type="button" id="exit-confirm-ok" class="guest-primary-btn is-go flex-1">Complete session</button>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                (function () {
+                    function renderer() { return document.querySelector('[x-data*="checklistRenderer"]'); }
+                    function panel() { return document.getElementById('exit-wizard-panel'); }
+                    function modal() { return document.getElementById('exit-confirm-modal'); }
+                    window.ghShowExitWizard = function () {
+                        var r = renderer(), p = panel(); if (!r || !p) return;
+                        r.style.display = 'none'; p.style.display = '';
+                        var root = document.getElementById('step-wizard-exit'); if (root) root.style.display = '';
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    };
+                    function hideWizard() { var r = renderer(), p = panel(); if (r) r.style.display = ''; if (p) p.style.display = 'none'; }
+                    document.addEventListener('click', function (e) {
+                        var t = e.target;
+                        if (t.closest('#exit-wizard-back')) { hideWizard(); return; }
+                        if (t.closest('#exit-confirm-cancel')) { modal().style.display = 'none'; return; }
+                        if (t.closest('#exit-confirm-ok')) {
+                            modal().style.display = 'none';
+                            hideWizard();
+                            var r = renderer(); if (r && r._x_dataStack) { r._x_dataStack[0]._exitAcked = true; }
+                            if (window.checklistHandler) window.checklistHandler.saveProgress();
+                            return;
+                        }
+                        if (t.closest('#wizard-done-exit') && panel() && panel().contains(t)) {
+                            e.preventDefault(); e.stopImmediatePropagation();
+                            hideWizard();
+                            var r2 = renderer(); if (r2 && r2._x_dataStack) { r2._x_dataStack[0]._exitAcked = true; }
+                            if (window.checklistHandler) window.checklistHandler.saveProgress();
+                            return;
+                        }
+                    }, true);
+                })();
+                </script>
+            @endif
 
             {{-- Checklist Container - Rendered by JavaScript --}}
             @php

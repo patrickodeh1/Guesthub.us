@@ -60,7 +60,7 @@
             <p class="text-sm font-semibold text-blue-700">{{ $row['hint'] }}</p>
         @endif
         @if($cl)
-            <p class="text-sm {{ ($cl['tone'] ?? '') === 'red' ? 'font-semibold text-red-600' : (($cl['tone'] ?? '') === 'green' ? 'font-semibold text-emerald-700' : 'text-slate-500') }}">{{ $cl['text'] }}</p>
+            <p class="text-sm {{ ($cl['tone'] ?? '') === 'red' ? 'font-semibold text-red-600' : (($cl['tone'] ?? '') === 'green' ? 'font-semibold text-emerald-700' : (str_contains((string) ($cl['text'] ?? ''), 'pending acceptance') ? 'italic text-slate-400' : 'text-slate-500')) }}">{{ $cl['text'] }}</p>
         @endif
 </div>
 </div>

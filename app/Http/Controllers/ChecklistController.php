@@ -26,7 +26,7 @@ class ChecklistController extends Controller
         // Authorization: Allow if user is housekeeper assigned to this session or admin/owner
         $user = auth()->user();
         $isAssignedHousekeeper = $session->housekeeper_id === $user->id;
-        $isOwnerOrAdmin = $user->hasRole(['admin', 'owner', 'company']);
+        $isOwnerOrAdmin = $user->hasRole(['admin', 'owner', 'company', 'manager']);
         
         if (!$isAssignedHousekeeper && !$isOwnerOrAdmin) {
             return response()->json(['message' => 'Unauthorized access to this session.'], 403);
@@ -132,7 +132,7 @@ class ChecklistController extends Controller
         // Authorization: Allow if user is housekeeper assigned to this session or admin/owner
         $user = auth()->user();
         $isAssignedHousekeeper = $session->housekeeper_id === $user->id;
-        $isOwnerOrAdmin = $user->hasRole(['admin', 'owner', 'company']);
+        $isOwnerOrAdmin = $user->hasRole(['admin', 'owner', 'company', 'manager']);
         
         if (!$isAssignedHousekeeper && !$isOwnerOrAdmin) {
             return response()->json(['message' => 'Unauthorized access to this session.'], 403);
@@ -383,7 +383,7 @@ class ChecklistController extends Controller
         $ok = $u && (
             $u->hasRole('admin')
             || (int) $session->housekeeper_id === (int) $u->id
-            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+            || ($u->hasAnyRole(['owner', 'company', 'manager']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
         );
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
@@ -432,6 +432,8 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
                 'note' => $request->input('note'),
                 'captured_at' => now(),
             ]);
+
+            $this->completeTaskOnPhoto($photoRecord, $task, $session);
 
             // Verification/checklist photos do not send the photos-started text; only the finished photos do (PhotoController).
 
@@ -530,6 +532,8 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
                 'captured_at' => now(),
             ]);
 
+            $this->completeTaskOnPhoto($photoRecord, $task, $session);
+
             // Verification/checklist photos do not send the photos-started text; only the finished photos do (PhotoController).
 
             if ($request->expectsJson()) {
@@ -579,6 +583,35 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     /**
      * Delete a photo for a specific task (room-level).
      */
+    /**
+     * A photo saved on a verify/inventory task completes that task.
+     * Never throws: the upload must succeed even if this fails.
+     */
+    private function completeTaskOnPhoto(ChecklistItemPhoto $photoRecord, Task $task, CleaningSession $session): void
+    {
+        try {
+            if ($task->type !== 'verify') {
+                return;
+            }
+            $item = ChecklistItem::find($photoRecord->checklist_item_id);
+            if (!$item || $item->checked) {
+                return;
+            }
+            $pending = app(\App\Services\TrainingValidationService::class)
+                ->getPendingDuringTaskTraining($session, $task, auth()->user(), $item);
+            if (!empty($pending)) {
+                return;
+            }
+            $item->update([
+                'checked'    => true,
+                'checked_at' => now(),
+                'user_id'    => auth()->id(),
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('completeTaskOnPhoto failed: ' . $e->getMessage());
+        }
+    }
+
     public function deletePhoto(Request $request, CleaningSession $session, Room $room, Task $task, ChecklistItemPhoto $photo)
     {
         $this->assertSessionAccess($session);

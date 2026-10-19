@@ -260,7 +260,9 @@ class DashboardDayService
             if ($i['assign']) {
                 $cleaner = ['text' => 'No cleaner assigned', 'tone' => 'red'];
             } elseif ($i['ok']) {
-                $cleaner = ['text' => $i['ok_name'] ?? $i['ok'], 'tone' => isset($i['ok_name']) ? (! empty($i['ok_pending']) ? 'red' : 'green') : 'slate'];
+                $cleaner = ! empty($i['ok_pending']) && isset($i['ok_name'])
+                    ? ['text' => $i['ok_name'].' · pending acceptance', 'tone' => 'slate']
+                    : ['text' => $i['ok_name'] ?? $i['ok'], 'tone' => isset($i['ok_name']) ? 'green' : 'slate'];
             }
         }
 
@@ -285,7 +287,9 @@ class DashboardDayService
                 $cleaner = ['text' => 'No cleaner assigned', 'tone' => 'red'];
                 $assign = $this->assignData($cr);
             } else {
-                $cleaner = ['text' => (string) $cr['cleaner'], 'tone' => ! empty($cr['cleaner_pending']) ? 'red' : 'green'];
+                $cleaner = ! empty($cr['cleaner_pending'])
+                    ? ['text' => $cr['cleaner'].' · pending acceptance', 'tone' => 'slate']
+                    : ['text' => (string) $cr['cleaner'], 'tone' => 'green'];
             }
         }
 

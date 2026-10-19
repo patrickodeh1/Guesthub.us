@@ -21,6 +21,9 @@ class CleaningFlowService
 {
     private const DEAD_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
 
+    /** Set to true to create an unassigned checkout session automatically for every booking. */
+    private const AUTO_CREATE_CHECKOUT_SESSIONS = true;
+
     /** One checkout clean per booking, on the checkout date and time. */
     public static function syncForBooking(Booking $booking): ?CleaningSession
     {
@@ -30,7 +33,7 @@ class CleaningFlowService
                 return null;
             }
 
-            $session = CleaningSession::where('booking_id', $booking->id)->first();
+            $session = self::checkoutSessionFor($booking);
 
             if ($booking->cancelled_at || in_array($booking->status, self::DEAD_STATUSES, true)) {
                 if ($session && ! $session->started_at && $session->status !== 'completed') {
@@ -57,12 +60,33 @@ class CleaningFlowService
                     return $manual;
                 }
 
+                // A clean already booked for this day under another guest (e.g. scheduled on the earlier
+                // guest's check-in day): move it to the guest who is actually checking out, keeping the cleaner.
+                $otherCheckouts = Booking::where('property_id', $property->id)
+                    ->where('id', '<>', $booking->id)->whereNull('cancelled_at')
+                    ->whereDate('check_out_date', $date)->pluck('id');
+                $moved = CleaningSession::where('property_id', $property->id)
+                    ->whereDate('scheduled_date', $date)
+                    ->whereNotNull('booking_id')->where('booking_id', '<>', $booking->id)
+                    ->whereNotIn('booking_id', $otherCheckouts)
+                    ->where('no_guest', false)->whereNull('started_at')
+                    ->whereNotIn('status', ['cancelled', 'completed'])
+                    ->orderByRaw('housekeeper_id is null')->orderBy('id')->first();
+                if ($moved) {
+                    $moved->forceFill(['booking_id' => $booking->id])->saveQuietly();
+                    return $moved;
+                }
+
+                if (! self::AUTO_CREATE_CHECKOUT_SESSIONS) {
+                    return null; // sessions are created by an admin only
+                }
+
                 if (! $property->owner_id) {
                     Log::warning("CleaningFlow: property {$property->id} has no owner, checkout session not created.");
                     return null;
                 }
 
-                return CleaningSession::create([
+                $created = CleaningSession::create([
                     'property_id' => $property->id,
                     'owner_id' => $property->owner_id,
                     'housekeeper_id' => null,
@@ -72,6 +96,20 @@ class CleaningFlowService
                     'booking_id' => $booking->id,
                     'assignment_status' => 'unassigned',
                 ]);
+
+                // Tell the contact desk once that this cleaning still needs a cleaner.
+                try {
+                    $created = $created->fresh() ?? $created;
+                    self::alertAdmins('admin_needs_cleaner', [
+                        'property_name' => $property->internal_display_name,
+                        'when' => self::whenLabel($created->scheduled_date, $created->scheduled_time),
+                        'assign_link' => url('/manage/sessions').'?assign='.$created->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('CleaningFlow needs-cleaner alert failed: '.$e->getMessage());
+                }
+
+                return $created;
             }
 
             if (! $session->started_at && $session->status !== 'completed') {
@@ -100,6 +138,29 @@ class CleaningFlowService
             Log::error('CleaningFlow sync failed: '.$e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * The one session the sync owns for a booking: its checkout clean.
+     * Mid-stay cleans made by hand can share the booking id, so they must not be mistaken for it.
+     */
+    public static function checkoutSessionFor(Booking $booking): ?CleaningSession
+    {
+        $sessions = CleaningSession::where('booking_id', $booking->id)->orderBy('id')->get();
+        if ($sessions->isEmpty()) {
+            return null;
+        }
+        $live = $sessions->filter(fn ($s) => $s->status !== 'cancelled');
+        $date = $booking->check_out_date?->toDateString();
+        if ($date) {
+            $onDay = $live->first(fn ($s) => $s->scheduled_date?->toDateString() === $date);
+            if ($onDay) {
+                return $onDay;
+            }
+        }
+
+        // Checkout moved: the first session made for the booking is the checkout clean, later ones are mid-stay.
+        return $live->first() ?? $sessions->first();
     }
 
     /** Tag a manually created session to the departing (or current) guest. */
@@ -151,7 +212,7 @@ class CleaningFlowService
             $when = self::whenLabel($session->scheduled_date, $session->scheduled_time);
             $msg = CleaningMessages::render(
                 $changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'),
-                ['property_name' => $p->internal_display_name, 'when' => $when, 'old_when' => $oldWhen ?? '']
+                ['property_name' => $p->internal_display_name, 'when' => $when, 'old_when' => $oldWhen ?? '', 'session_link' => route('sessions.show', $session)]
             );
 
             $result = SmsNotificationService::deliver($phone, $msg, 'cleaning');
@@ -233,7 +294,7 @@ class CleaningFlowService
                 Log::info("SMS-LOG in CONFIRMED: {$user->name} accepted cleaning session {$session->id}.");
                 self::alertAdmins('admin_accepted', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day]);
                 if (CleaningMessages::enabled('cleaner_confirmed')) {
-                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_confirmed', ['property_name' => $name, 'when' => $day]), 'cleaning');
+                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_confirmed', ['property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)]), 'cleaning');
                 }
                 return true;
             }
@@ -243,7 +304,7 @@ class CleaningFlowService
             if (CleaningMessages::enabled('cleaner_declined')) {
                 SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_declined', ['property_name' => $name, 'when' => $day]), 'cleaning');
             }
-            self::alertAdmins('admin_declined', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day]);
+            self::alertAdmins('admin_declined', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)]);
             return true;
         } catch (\Throwable $e) {
             Log::error('CleaningFlow reply failed: '.$e->getMessage());
@@ -298,6 +359,22 @@ class CleaningFlowService
         }
         GuestAlertService::send('checkin_ready', $booking);
         $booking->forceFill(['unit_ready_sent_at' => now()])->saveQuietly();
+    }
+
+    /** A cleaner gave the job back: tell the contact desk so it can be reassigned. */
+    public static function notifyCleanerCancelled(CleaningSession $session, User $cleaner): void
+    {
+        try {
+            $session->loadMissing('property');
+            self::alertAdmins('admin_cleaner_cancelled', [
+                'cleaner' => $cleaner->name,
+                'property_name' => $session->property?->internal_display_name ?? 'the property',
+                'when' => $session->scheduled_date ? self::whenLabel($session->scheduled_date, $session->scheduled_time) : '',
+                'assign_link' => url('/manage/sessions').'?assign='.$session->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CleaningFlow notifyCleanerCancelled failed: '.$e->getMessage());
+        }
     }
 
     private static function alertAdmins(string $key, array $vars = []): void

@@ -57,6 +57,15 @@
                             <p class="mt-2 text-sm font-semibold {{ !empty($step['photo_done']) ? 'text-emerald-700' : 'text-slate-500' }}" data-photo-status="{{ $i }}">{{ !empty($step['photo_done']) ? 'Photo saved' : 'A photo is required before you can continue.' }}</p>
                         </div>
                     @endif
+                    @if(!empty($step['task_url']))
+                        <div class="mt-5 text-center">
+                            @if(!empty($step['lockbox_url']) && empty($step['task_done']))
+                                <input type="text" id="task-code-{{ $i }}" maxlength="255" autocomplete="off" inputmode="numeric" placeholder="New code" class="mb-3 block w-full rounded-lg border border-gray-300 px-3 py-2 text-center text-base">
+                            @endif
+                            <button type="button" class="guest-primary-btn is-go inline-flex" data-task-btn data-url="{{ $step['task_url'] }}" @if(!empty($step['lockbox_url'])) data-lockbox="{{ $step['lockbox_url'] }}" data-lbkey="{{ $step['lockbox_key'] }}" @endif data-step="{{ $i }}" @if(!empty($step['task_done'])) disabled style="opacity:.6" @endif>{{ !empty($step['task_done']) ? 'Done' : (!empty($step['lockbox_url']) ? 'Save code' : 'Mark done') }}</button>
+                            <p class="mt-2 text-sm font-semibold {{ !empty($step['task_done']) ? 'text-emerald-700' : 'text-slate-500' }}" data-task-status="{{ $i }}">{{ !empty($step['task_done']) ? 'Task completed' : 'Mark this task done to continue.' }}</p>
+                        </div>
+                    @endif
                 </div>
             </div>
             @endforeach
@@ -117,7 +126,7 @@
         });
     });
 
-    var photoNeeded = {!! json_encode(array_map(fn ($s) => !empty($s['photo_url']) && empty($s['photo_done']), array_values($steps))) !!};
+    var photoNeeded = {!! json_encode(array_map(fn ($s) => (!empty($s['photo_url']) && empty($s['photo_done'])) || (!empty($s['task_url']) && empty($s['task_done'])), array_values($steps))) !!};
     function applyPhotoGate() {
         var last = current === total - 1;
         var btn = document.getElementById((last ? "wizard-done-" : "wizard-next-") + type);
@@ -125,6 +134,32 @@
         if (photoNeeded[current]) { btn.disabled = true; btn.style.opacity = ".5"; }
         else if (type !== "checkout") { btn.disabled = false; btn.style.opacity = "1"; }
     }
+    document.querySelectorAll("#step-wizard-" + type + " [data-task-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            var idx = parseInt(btn.dataset.step, 10);
+            var st = document.querySelector("#step-wizard-" + type + " [data-task-status='" + idx + "']");
+            btn.disabled = true;
+            if (st) st.textContent = "Saving...";
+            var fd = new FormData(); fd.append("force_checked", "1");
+            var lb = btn.dataset.lockbox, pre = Promise.resolve();
+            if (lb) {
+                var inp = document.getElementById("task-code-" + idx), code = inp ? inp.value.trim() : "";
+                if (!code) { btn.disabled = false; if (st) st.textContent = "Enter the new code first."; return; }
+                if (!confirm("Save this as the new lockbox code?")) { btn.disabled = false; if (st) st.textContent = "Mark this task done to continue."; return; }
+                pre = fetch(lb, { method: "POST", headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify({ lockbox_code: code }) })
+                    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok || d.ok === false) { throw new Error(d.message || "Could not save the code."); } try { localStorage.setItem(btn.dataset.lbkey, "1"); } catch (e) {} }); });
+            }
+            pre.then(function () { return fetch(btn.dataset.url, { method: "POST", body: fd, headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" } }); })
+                .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; }); })
+                .then(function (res) {
+                    if (!res.ok || res.d.success === false) { throw new Error(res.d.message || "Could not save. Try again."); }
+                    photoNeeded[idx] = false; btn.textContent = "Done"; btn.style.opacity = ".6";
+                    if (st) { st.textContent = "Task completed"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; }
+                    applyPhotoGate();
+                })
+                .catch(function (e) { btn.disabled = false; if (st) st.textContent = e.message || "Could not save. Try again."; });
+        });
+    });
     document.querySelectorAll("#step-wizard-" + type + " [data-photo-input]").forEach(function (inp) {
         inp.addEventListener("change", function () {
             if (!inp.files.length) return;

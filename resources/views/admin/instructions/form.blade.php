@@ -154,8 +154,8 @@
         </label>
 
         <label class="mt-3 flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4 text-sm font-semibold">
-            <span>Show before GPS check
-                <span class="block text-xs font-normal text-slate-500">Visible before the guest or cleaner arrives, ahead of the "I have arrived" step.</span>
+            <span>Before arrival (shown before the location check)
+                <span class="block text-xs font-normal text-slate-500">Shown before the "I have arrived" location check, such as directions and parking. Leave unticked for steps shown once they are at the property, such as the door and lockbox.</span>
             </span>
             <input type="checkbox" name="show_before_gps" value="1" @checked(old('show_before_gps', $step->show_before_gps ?? false)) class="rounded border-slate-300">
         </label>

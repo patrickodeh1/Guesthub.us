@@ -235,7 +235,7 @@
 <script>
 (function () {
   var f = document.getElementById('ns'); if (!f) return;
-  var S = {guest_name:'Maya Rodriguez',guest_first_name:'Maya',property_name:'Lakeview Cottage',property_guest_name:'Lakeview Cottage',property_internal_name:'Lakeview 2B',check_in_date:'Fri, Oct 24',check_in_time:'4:00 PM',check_out_date:'Mon, Oct 27',check_out_time:'11:00 AM',parking_status:'Approved',step_name:'Background Check',guest_link:'guesthub.us/g/abc123',admin_link:'guesthub.us/admin/b/42',id_side:'front',decline_reason:'photo is blurry',pending_text:'your ID is still needed.',result:'approved',requested_time:'2:00 PM',cleaner:'Ana',when:'Fri, Oct 24 at 10:00 AM',old_when:'Fri, Oct 24 at 9:00 AM',lead:'1 hour',time:'10:00 AM',guest:'Maya Rodriguez',job_id:'1042'};
+  var S = {guest_name:'Maya Rodriguez',guest_first_name:'Maya',property_name:'Lakeview Cottage',property_guest_name:'Lakeview Cottage',property_internal_name:'Lakeview 2B',check_in_date:'Fri, Oct 24',check_in_time:'4:00 PM',check_out_date:'Mon, Oct 27',check_out_time:'11:00 AM',parking_status:'Approved',step_name:'Background Check',guest_link:'guesthub.us/g/abc123',admin_link:'guesthub.us/admin/b/42',id_side:'front',decline_reason:'photo is blurry',pending_text:'your ID is still needed.',result:'approved',requested_time:'2:00 PM',cleaner:'Ana',when:'Fri, Oct 24 at 10:00 AM',old_when:'Fri, Oct 24 at 9:00 AM',lead:'1 hour',time:'10:00 AM',guest:'Maya Rodriguez',job_id:'1042',assign_link:'guesthub.us/manage/sessions?assign=1042',session_link:'guesthub.us/sessions/1042'};
   var $ = function (s, r) { return (r || f).querySelector(s); };
   var $$ = function (s, r) { return [].slice.call((r || f).querySelectorAll(s)); };
   var eds = {}, rows = {}, snap = {}, base = {}, dirty = {}, state = 'all', q = '';
@@ -361,10 +361,77 @@
   }
   f.addEventListener('input', onChange);
   f.addEventListener('change', onChange);
+
+  /* custom variable picker: replaces native select popup, which closes instantly on wide layouts */
+  (function () {
+    var st = document.createElement('style');
+    st.textContent = '.tokbtn{font-size:13px;border:1px solid #cbd5e1;border-radius:8px;padding:5px 10px;background:#fff;color:#1e293b;cursor:pointer;font-family:inherit}'
+      + '.tokbtn:hover{background:#f8fafc}'
+      + '.tokmenu{position:fixed;z-index:9999;min-width:220px;max-height:280px;overflow-y:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:4px 0;font-size:13px}'
+      + '.tokgrp{padding:6px 12px 3px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b}'
+      + '.tokopt{padding:6px 12px;cursor:pointer;color:#1e293b}'
+      + '.tokopt:hover{background:#eff6ff;color:#1d4ed8}';
+    document.head.appendChild(st);
+
+    var menu = null, openBtn = null;
+    function close() {
+      if (menu) { menu.remove(); menu = null; }
+      if (openBtn) { openBtn.setAttribute('aria-expanded', 'false'); openBtn = null; }
+    }
+    function item(o, sel) {
+      var d = document.createElement('div');
+      d.className = 'tokopt'; d.setAttribute('role', 'option'); d.textContent = o.textContent;
+      d.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      d.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        sel.value = o.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+      });
+      return d;
+    }
+    function open(btn, sel) {
+      close();
+      openBtn = btn; btn.setAttribute('aria-expanded', 'true');
+      menu = document.createElement('div');
+      menu.className = 'tokmenu'; menu.setAttribute('role', 'listbox');
+      Array.prototype.forEach.call(sel.children, function (n) {
+        if (n.tagName === 'OPTGROUP') {
+          var g = document.createElement('div'); g.className = 'tokgrp'; g.textContent = n.label; menu.appendChild(g);
+          Array.prototype.forEach.call(n.children, function (o) { if (o.value) menu.appendChild(item(o, sel)); });
+        } else if (n.tagName === 'OPTION' && n.value) {
+          menu.appendChild(item(n, sel));
+        }
+      });
+      document.body.appendChild(menu);
+      var r = btn.getBoundingClientRect(), mh = menu.offsetHeight, below = window.innerHeight - r.bottom;
+      var top = (below >= mh + 8 || below >= r.top) ? r.bottom + 4 : r.top - mh - 4;
+      menu.style.top = Math.max(8, top) + 'px';
+      menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+    }
+    $$('select.tokpick', f).forEach(function (sel) {
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'tokbtn'; btn.setAttribute('aria-haspopup', 'listbox');
+      btn.textContent = 'Insert variable \u25BE';
+      btn.addEventListener('click', function (ev) {
+        ev.preventDefault(); ev.stopPropagation();
+        if (openBtn === btn) close(); else open(btn, sel);
+      });
+      sel.parentNode.insertBefore(btn, sel);
+      sel.style.display = 'none'; sel.tabIndex = -1;
+    });
+    document.addEventListener('mousedown', function (ev) {
+      if (menu && !menu.contains(ev.target) && !(openBtn && openBtn.contains(ev.target))) close();
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') close(); });
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', function (ev) { if (menu && !menu.contains(ev.target)) close(); }, true);
+  })();
   $('#nsQ').addEventListener('input', function (ev) { q = ev.target.value.trim().toLowerCase(); apply(); });
 
   f.addEventListener('click', function (ev) {
     var t = ev.target, b;
+    if (t.closest && t.closest('.tokpick')) { return; }
     if ((b = t.closest('.sw'))) { ev.preventDefault(); ev.stopPropagation(); var e = eds[b.dataset.id]; setOn(e, !isOn(e)); sync(b.dataset.id); return; }
     if ((b = t.closest('.pill'))) { state = b.dataset.f; $$('.pill').forEach(function (p) { p.classList.toggle('on', p === b); }); apply(); return; }
     if (t.closest('.ns-back')) { f.dataset.view = 'list'; return; }

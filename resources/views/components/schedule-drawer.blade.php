@@ -95,6 +95,133 @@
     </x-drawer>
 </div>
 <script>
+/* custom select menus for drawers: native popups close instantly / pick the wrong option on wide screens */
+(function () {
+  if (window.__cselInit) return; window.__cselInit = true;
+  var st = document.createElement('style');
+  st.textContent = '.csel-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;cursor:pointer}'
+    + '.csel-btn[disabled]{opacity:.6;cursor:not-allowed}'
+    + '.csel-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '.csel-menu{position:fixed;z-index:10000;max-height:280px;overflow-y:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.18);padding:4px 0;font-size:14px}'
+    + '.csel-grp{padding:6px 12px 3px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b}'
+    + '.csel-opt{padding:7px 12px;cursor:pointer;color:#1e293b}'
+    + '.csel-opt.act{background:#eff6ff;color:#1d4ed8}'
+    + '.csel-opt.sel{font-weight:700}'
+    + '.csel-opt.dis{color:#94a3b8;cursor:not-allowed}';
+  document.head.appendChild(st);
+
+  var list = [], menu = null, cur = null, act = -1, items = [];
+
+  function label(sel) { var o = sel.options[sel.selectedIndex]; return o ? o.textContent.trim() : ''; }
+  function sync(e) {
+    if (!e.sel.isConnected) { e.btn.remove(); return false; }
+    var t = label(e.sel) || '\u00A0';
+    if (e.txt.textContent !== t) e.txt.textContent = t;
+    if (e.btn.disabled !== e.sel.disabled) e.btn.disabled = e.sel.disabled;
+    return true;
+  }
+  function close() {
+    if (menu) { menu.remove(); menu = null; }
+    if (cur) { cur.btn.setAttribute('aria-expanded', 'false'); cur = null; }
+    items = []; act = -1;
+  }
+  function setAct(i) {
+    if (act >= 0 && items[act]) items[act].classList.remove('act');
+    act = i;
+    var it = items[i]; if (!it || !menu) return;
+    it.classList.add('act');
+    var top = it.offsetTop, bot = top + it.offsetHeight;
+    if (top < menu.scrollTop) menu.scrollTop = top;
+    else if (bot > menu.scrollTop + menu.clientHeight) menu.scrollTop = bot - menu.clientHeight;
+  }
+  function move(d) {
+    var n = items.length, i = act; if (!n) return;
+    for (var k = 0; k < n; k++) { i = (i + d + n) % n; if (!items[i].__o.disabled) break; }
+    setAct(i);
+  }
+  function choose(e, o) {
+    e.sel.value = o.value;
+    e.sel.dispatchEvent(new Event('input', { bubbles: true }));
+    e.sel.dispatchEvent(new Event('change', { bubbles: true }));
+    sync(e); close(); e.btn.focus();
+  }
+  function open(e) {
+    close(); cur = e; e.btn.setAttribute('aria-expanded', 'true');
+    menu = document.createElement('div'); menu.className = 'csel-menu'; menu.setAttribute('role', 'listbox');
+    function add(o) {
+      var d = document.createElement('div');
+      d.className = 'csel-opt' + (o.selected ? ' sel' : '') + (o.disabled ? ' dis' : '');
+      d.textContent = o.textContent.trim() || '\u00A0';
+      d.setAttribute('role', 'option'); d.__o = o;
+      d.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      d.addEventListener('mouseenter', function () { if (!o.disabled) setAct(items.indexOf(d)); });
+      d.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); if (!o.disabled) choose(e, o); });
+      menu.appendChild(d); items.push(d);
+    }
+    Array.prototype.forEach.call(e.sel.children, function (n) {
+      if (n.tagName === 'OPTGROUP') {
+        var g = document.createElement('div'); g.className = 'csel-grp'; g.textContent = n.label; menu.appendChild(g);
+        Array.prototype.forEach.call(n.children, function (o) { if (o.tagName === 'OPTION') add(o); });
+      } else if (n.tagName === 'OPTION') { add(n); }
+    });
+    document.body.appendChild(menu);
+    var r = e.btn.getBoundingClientRect();
+    menu.style.width = Math.max(r.width, 160) + 'px';
+    var mh = menu.offsetHeight, below = window.innerHeight - r.bottom;
+    var top = (below >= mh + 8 || below >= r.top) ? r.bottom + 4 : r.top - mh - 4;
+    menu.style.top = Math.max(8, top) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+    var si = -1; items.forEach(function (d, i) { if (d.__o.selected) si = i; });
+    if (si >= 0) {
+      setAct(si);
+      menu.scrollTop = Math.max(0, items[si].offsetTop - menu.clientHeight / 2 + items[si].offsetHeight / 2);
+    }
+  }
+  function enhance(sel) {
+    if (sel.__csel || sel.multiple || sel.size > 1 || sel.hasAttribute('data-native')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = (sel.className || '') + ' csel-btn';
+    btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    var txt = document.createElement('span'); txt.className = 'csel-txt';
+    var car = document.createElement('span'); car.textContent = '\u25BE'; car.setAttribute('aria-hidden', 'true');
+    btn.appendChild(txt); btn.appendChild(car);
+    sel.parentNode.insertBefore(btn, sel);
+    sel.style.cssText += ';position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;';
+    sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    var e = { sel: sel, btn: btn, txt: txt }; sel.__csel = e; list.push(e);
+    btn.addEventListener('click', function (ev) { ev.preventDefault(); if (cur === e) close(); else open(e); });
+    sel.addEventListener('change', function () { sync(e); });
+    sync(e);
+  }
+  function scan() { Array.prototype.forEach.call(document.querySelectorAll('[role="dialog"] select'), enhance); }
+
+  var t = null;
+  new MutationObserver(function () { clearTimeout(t); t = setTimeout(scan, 50); }).observe(document.body, { childList: true, subtree: true });
+  setInterval(function () { list = list.filter(sync); }, 200);
+  scan();
+
+  document.addEventListener('mousedown', function (ev) {
+    if (!menu) return;
+    if (menu.contains(ev.target) || (cur && cur.btn.contains(ev.target))) return;
+    close();
+    var eat = function (c) { c.stopPropagation(); c.preventDefault(); };
+    document.addEventListener('click', eat, { capture: true, once: true });
+    setTimeout(function () { document.removeEventListener('click', eat, true); }, 500);
+  }, true);
+  document.addEventListener('keydown', function (ev) {
+    if (!menu) return;
+    var k = ev.key;
+    if (k === 'Escape') { ev.preventDefault(); ev.stopPropagation(); var b = cur && cur.btn; close(); if (b) b.focus(); }
+    else if (k === 'ArrowDown') { ev.preventDefault(); move(1); }
+    else if (k === 'ArrowUp') { ev.preventDefault(); move(-1); }
+    else if (k === 'Enter') { if (act >= 0 && items[act] && !items[act].__o.disabled) { ev.preventDefault(); ev.stopPropagation(); choose(cur, items[act].__o); } }
+    else if (k === 'Tab') { close(); }
+  }, true);
+  window.addEventListener('scroll', function (ev) { if (menu && !menu.contains(ev.target)) close(); }, true);
+  window.addEventListener('resize', close);
+})();
+</script>
+<script>
 window.scheduleDrawer = function (cfg) {
     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' };
     const blank = () => ({ properties: [], property_locked: false, property_name: '', guest: '', booking_id: null, cleaners: [], assignment_status: null });
@@ -118,6 +245,11 @@ window.scheduleDrawer = function (cfg) {
         get conflictsActive() { return this.conflicts.length > 0 && this.conflictKey === this.formKey(); },
         init() {
             const p = new URLSearchParams(window.location.search);
+            if (p.get('assign') && window.location.pathname.indexOf('/manage/sessions') === 0) {
+                const sid = p.get('assign');
+                try { p.delete('assign'); const q = p.toString(); history.replaceState(null, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash); } catch (e) {}
+                setTimeout(() => this.openFrom({ session_id: sid }), 80);
+            }
             if (p.get('new') === '1' && window.location.pathname.indexOf('/manage/sessions') === 0) {
                 setTimeout(() => this.openFrom({ property_id: p.get('new_property'), date: p.get('new_date') }), 80);
             }

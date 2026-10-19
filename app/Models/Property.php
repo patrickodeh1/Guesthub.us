@@ -263,7 +263,7 @@ class Property extends Model
     {
         return $this->belongsToMany(Task::class, 'property_tasks')
             ->withTimestamps()
-            ->withPivot(['sort_order', 'instructions', 'visible_to_owner', 'visible_to_housekeeper'])
+            ->withPivot(['sort_order', 'instructions', 'visible_to_owner', 'visible_to_housekeeper', 'show_after_step_id'])
             ->orderBy('property_tasks.sort_order');
     }
 

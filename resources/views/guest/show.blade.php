@@ -2388,12 +2388,22 @@
             <div id="step-wizard-pregps-wrapper" style="display:none">
                 <x-step-wizard :steps="$preGpsSteps" type="pregps" kicker="Before you arrive" done-label="Continue" next-section="arrival-arrived" />
             </div>
-            <div id="arrival-arrived" style="display:none" class="guest-portal-card mt-4 p-6 text-center">
-                <h1 class="guest-status-title">Almost there!</h1>
-                <p class="mt-3 text-base font-bold text-slate-950">{!! $gpsVerifyMessage !!}</p>
-                <div id="gps-ajax-message" class="hidden"></div>
-                <button id="gps-ajax-verify-btn" type="button" data-url="{{ route('guest.gps', [$booking->booking_id, $booking->token]) }}" data-csrf="{{ csrf_token() }}" class="guest-primary-btn is-go mt-4 w-full">I Have Arrived</button>
-                <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
+            <div id="arrival-arrived" style="display:none" class="guest-portal-card mt-4 text-center">
+                @php $arrLogo = $siteLogo ?? \App\Models\Setting::getValue('site_logo'); @endphp
+                <div class="guest-status-bar">
+                    <div>
+                        @if($arrLogo)
+                            <img src="{{ url('/img/'.$arrLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h1 class="guest-status-title">Almost there!</h1>
+                    <p class="mt-3 text-base font-bold text-slate-950">{!! $gpsVerifyMessage !!}</p>
+                    <div id="gps-ajax-message" class="hidden"></div>
+                    <button id="gps-ajax-verify-btn" type="button" data-url="{{ route('guest.gps', [$booking->booking_id, $booking->token]) }}" data-csrf="{{ csrf_token() }}" class="guest-primary-btn is-go mt-4 w-full">I Have Arrived</button>
+                    <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
+                </div>
             </div>
             <script>
             (function () {

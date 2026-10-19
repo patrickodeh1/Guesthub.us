@@ -47,7 +47,7 @@
                 {{-- During-Cleaning Tasks --}}
                 @if ($duringCleaningTasks->count() > 0)
                     <div>
-                        <h4 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">During-Cleaning Tasks</h4>
+                        <h4 class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">Arrival / Exit Jobs</h4>
                         <div class="space-y-2">
                             @foreach ($duringCleaningTasks as $task)
                                 @php

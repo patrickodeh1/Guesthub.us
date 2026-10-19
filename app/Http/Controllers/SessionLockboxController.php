@@ -13,9 +13,9 @@ class SessionLockboxController extends Controller
         $user = $request->user();
         abort_unless($user && (int) $session->housekeeper_id === (int) $user->id, 403);
 
-        if ($session->status !== 'in_progress') {
-            if ($request->expectsJson()) { return response()->json(['ok' => false, 'message' => 'The lockbox code can only be changed while your cleaning is in progress.'], 403); }
-            return back()->with('error', 'The lockbox code can only be changed while your cleaning is in progress.');
+        if (! in_array($session->status, ['pending', 'in_progress'], true)) {
+            if ($request->expectsJson()) { return response()->json(['ok' => false, 'message' => 'The lockbox code can only be changed while your cleaning is active.'], 403); }
+            return back()->with('error', 'The lockbox code can only be changed while your cleaning is active.');
         }
 
         $data = $request->validate(['lockbox_code' => ['required', 'string', 'max:255']]);

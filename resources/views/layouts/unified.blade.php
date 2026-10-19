@@ -57,7 +57,19 @@
 <body class="bg-slate-50 text-slate-900 antialiased" @if($cleaning ?? false) x-data="mainState" x-on:resize.window="handleWindowResize" @endif>
 @if($cleaning ?? false)
     <script>
-        window.__userCanUpload = {{ auth()->user()->hasAnyRole(['admin', 'owner']) ? 'true' : 'false' }};
+        window.__userCanUpload = {{ auth()->user()->hasAnyRole(['admin', 'owner', 'manager']) ? 'true' : 'false' }};
+    document.addEventListener('change', function (e) {
+        var el = e.target;
+        if (window.__userCanUpload || !el || el.tagName !== 'INPUT' || el.type !== 'file' || !el.hasAttribute('capture')) return;
+        var old = Array.prototype.some.call(el.files || [], function (f) {
+            return f.lastModified && (Date.now() - f.lastModified) > 300000;
+        });
+        if (old) {
+            e.stopPropagation();
+            el.value = '';
+            alert('Please take a new photo with the camera. Photos from your gallery are not allowed.');
+        }
+    }, true);
     </script>
 @endif
 

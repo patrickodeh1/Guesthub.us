@@ -26,12 +26,13 @@ class PhotoReferenceController extends Controller
         $request->validate([
             'images'       => ['required', 'array'],
             'images.*'     => ['image', 'max:15360'],
-            'room_id'      => ['nullable', 'integer'],
+            'room_id'      => ['required', 'integer'],
             'instructions' => ['nullable', 'string', 'max:20000'],
         ]);
 
         $roomId = $request->input('room_id');
-        $roomId = ($roomId && $property->rooms()->whereKey($roomId)->exists()) ? (int) $roomId : null;
+        abort_unless($property->rooms()->whereKey($roomId)->exists(), 422, 'Select a room.');
+        $roomId = (int) $roomId;
         $instructions = strip_tags((string) $request->input('instructions'), '<p><br><strong><b><em><i><u><s><strike><del><span><ul><ol><li><h1><h2><h3><h4><h5><h6><div><a><img><table><thead><tbody><tr><td><th><blockquote><hr><sub><sup><pre><code>');
         $instructions = preg_replace('/\son\w+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $instructions);
         $instructions = preg_replace('/(href|src)\s*=\s*(["\'])\s*javascript:[^"\']*\2/i', '', $instructions);

@@ -676,6 +676,7 @@ class PropertyController extends Controller
                 'instructions' => $validated['instructions'] ?? $task->instructions ?? null,
                 'visible_to_owner' => (bool)($validated['visible_to_owner'] ?? true),
                 'visible_to_housekeeper' => (bool)($validated['visible_to_housekeeper'] ?? true),
+                'show_after_step_id' => $request->filled('show_after_step_id') ? (int) $request->input('show_after_step_id') : null,
             ]
         ]);
 
@@ -727,6 +728,7 @@ class PropertyController extends Controller
             'instructions' => ['nullable', 'string', 'max:5000'],
             'visible_to_owner' => ['nullable', 'boolean'],
             'visible_to_housekeeper' => ['nullable', 'boolean'],
+            'show_after_step_id' => ['nullable', 'integer'],
             'is_pre_arrival' => ['nullable', 'boolean'],
             'is_required_before_start' => ['nullable', 'boolean'],
             'is_required_during_task' => ['nullable', 'boolean'],
@@ -782,11 +784,15 @@ class PropertyController extends Controller
         }
 
         // Update pivot data
-        $property->propertyTasks()->updateExistingPivot($task->id, [
+        $pivotData = [
             'instructions' => $validated['instructions'] ?? null,
             'visible_to_owner' => (bool)($validated['visible_to_owner'] ?? true),
             'visible_to_housekeeper' => (bool)($validated['visible_to_housekeeper'] ?? true),
-        ]);
+        ];
+        if ($request->has('show_after_step_id')) {
+            $pivotData['show_after_step_id'] = $request->filled('show_after_step_id') ? (int) $request->input('show_after_step_id') : null;
+        }
+        $property->propertyTasks()->updateExistingPivot($task->id, $pivotData);
 
         // Process new media uploads
         if ($request->hasFile('media')) {

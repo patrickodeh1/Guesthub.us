@@ -18,7 +18,7 @@ class PhotoController extends Controller
         $ok = $u && (
             $u->hasRole('admin')
             || (int) $session->housekeeper_id === (int) $u->id
-            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+            || ($u->hasAnyRole(['owner', 'company', 'manager']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
         );
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
@@ -26,7 +26,7 @@ class PhotoController extends Controller
     public function store(Request $request, CleaningSession $session, $roomId)
     {
         $this->assertSessionAccess($session);
-        if (!auth()->user()->hasRole('admin')
+        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
             && is_null($session->photo_tutorial_viewed_at)
             && $session->property->photoReferences()->exists()) {
             abort(403, 'Please review the photo guide before taking photos.');

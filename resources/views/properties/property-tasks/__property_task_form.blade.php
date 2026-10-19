@@ -9,6 +9,12 @@
 
 @php
     $isEdit = $mode === 'edit' && $task;
+    $accessSteps = \App\Models\InstructionStep::where('property_id', $property->id)
+        ->where('type', 'checkin')->where('for_cleaner', true)->where('active', true)
+        ->orderBy('sort_order')->get(['id', 'title', 'show_before_gps']);
+    $exitSteps = \App\Models\InstructionStep::where('property_id', $property->id)
+        ->where('type', 'checkout')->where('for_cleaner', true)->where('active', true)
+        ->orderBy('sort_order')->get(['id', 'title']);
     $storeUrl = $isEdit
         ? route('properties.property-tasks.update', [$property, $task])
         : route('properties.property-tasks.store', $property);
@@ -42,6 +48,7 @@
             'instructions' => $pivot->instructions ?? '',
             'visible_to_owner' => (bool) ($pivot->visible_to_owner ?? true),
             'visible_to_housekeeper' => (bool) ($pivot->visible_to_housekeeper ?? true),
+            'show_after_step_id' => $pivot->show_after_step_id ?? '',
         ] : [
             'name' => '',
             'type' => 'room',
@@ -252,9 +259,38 @@
             >
                 <option value="pre_cleaning">Before Cleaning Starts</option>
                 
+                <option value="during_cleaning">Arrival or exit job (choose when below)</option>
                 <option value="post_cleaning">After Cleaning is Done</option>
             </select>
             <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">When should this task be performed during the cleaning session?</p>
+        </div>
+
+        {{-- Pre-entry placement --}}
+        <div x-show="formData.phase === 'during_cleaning'" x-cloak>
+            <label for="property-task-show-after" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                When should the cleaner do this job?
+            </label>
+            <select id="property-task-show-after" x-model="formData.show_after_step_id"
+                    class="w-full max-w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 sm:px-4 py-2.5 text-sm">
+                <option value="">Very first thing, before any step</option>
+                <optgroup label="1. Before they get to the unit (show after)">
+                    @foreach($accessSteps->where('show_before_gps', true) as $st)
+                        <option value="{{ $st->id }}">{{ $st->title }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="2. At the unit, before cleaning starts (show after)">
+                    @foreach($accessSteps->where('show_before_gps', false) as $st)
+                        <option value="{{ $st->id }}">{{ $st->title }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="3. After they leave the unit (show after)">
+                    @foreach($exitSteps as $st)
+                        <option value="{{ $st->id }}">{{ $st->title }}</option>
+                    @endforeach
+                    <option value="-1">At the very end, after all the exit steps</option>
+                </optgroup>
+            </select>
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">The cleaner sees this task on its own screen right after the step you pick.</p>
         </div>
 
         {{-- Sporadic --}}

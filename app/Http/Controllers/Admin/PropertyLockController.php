@@ -20,7 +20,6 @@ class PropertyLockController extends Controller
             'seam_device_id.unique' => 'This lock (device ID) is already assigned to another property.',
         ]);
 
-        $data['label'] = $data['label'] ?: 'Front Door';
 
         $lock = $property->locks()->create($data);
 
@@ -43,7 +42,6 @@ class PropertyLockController extends Controller
             'seam_device_id.unique' => 'This lock (device ID) is already assigned to another property.',
         ]);
 
-        $data['label'] = $data['label'] ?: 'Front Door';
 
         $lock->update($data);
 
