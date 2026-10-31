@@ -148,6 +148,13 @@ class CleanerAccessSteps
                 'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', $session) : null,
                 'lockbox_key' => 'lockbox_saved_' . $session->id,
             ];
+            if (in_array($t->type, ['verify', 'verify_video'], true)) {
+                $entry['task_url'] = null;
+                $entry['task_done'] = false;
+                $entry['photo_url'] = route('checklist.property-task.photo', [$session, $t]);
+                $entry['photo_video'] = $t->type === 'verify_video';
+                $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
+            }
             if ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
                 $after[$afterId][] = $entry;
             } elseif ($isExit) {

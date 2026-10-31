@@ -51,8 +51,8 @@
                     @if(!empty($step['photo_url']))
                         <div class="mt-5 text-center">
                             <label class="guest-primary-btn is-go inline-flex cursor-pointer">
-                                <input type="file" accept="image/*" capture="environment" class="hidden" data-photo-input data-url="{{ $step['photo_url'] }}" data-step="{{ $i }}">
-                                <span>{{ !empty($step['photo_done']) ? 'Retake photo' : 'Take photo to continue' }}</span>
+                                <input type="file" accept="{{ !empty($step['photo_video']) ? 'video/*' : 'image/*' }}" @if(empty($step['photo_video'])) capture="environment" @endif class="hidden" data-photo-input data-url="{{ $step['photo_url'] }}" data-step="{{ $i }}">
+                                <span>{{ !empty($step['photo_video']) ? (!empty($step['photo_done']) ? 'Replace video' : 'Select video to continue') : (!empty($step['photo_done']) ? 'Retake photo' : 'Take photo to continue') }}</span>
                             </label>
                             <p class="mt-2 text-sm font-semibold {{ !empty($step['photo_done']) ? 'text-emerald-700' : 'text-slate-500' }}" data-photo-status="{{ $i }}">{{ !empty($step['photo_done']) ? 'Photo saved' : 'A photo is required before you can continue.' }}</p>
                         </div>
