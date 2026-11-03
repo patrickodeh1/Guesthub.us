@@ -24,6 +24,8 @@ class CleaningFlowService
     /** Set to true to create an unassigned checkout session automatically for every booking. */
     private const AUTO_CREATE_CHECKOUT_SESSIONS = true;
 
+    public static bool $suppressNeedsCleaner = false;
+
     /** One checkout clean per booking, on the checkout date and time. */
     public static function syncForBooking(Booking $booking): ?CleaningSession
     {
@@ -379,6 +381,9 @@ class CleaningFlowService
 
     private static function alertAdmins(string $key, array $vars = []): void
     {
+        if ($key === 'admin_needs_cleaner' && self::$suppressNeedsCleaner) {
+            return;
+        }
         if (! CleaningMessages::enabled($key)) {
             return;
         }

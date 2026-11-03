@@ -286,7 +286,16 @@ class BookingController extends Controller
         if ($data['photo_id_received'] && empty($data['approved_at'])) {
             $data['approved_at'] = now();
         }
-        $booking            = Booking::create($data);
+        $cleanerId = $data['housekeeper_id'] ?? null;
+        unset($data['housekeeper_id']); // not a bookings column
+
+        // Hold back the "needs a cleaner" text when a cleaner was picked on the form.
+        \App\Services\CleaningFlowService::$suppressNeedsCleaner = (bool) $cleanerId;
+        try {
+            $booking = Booking::create($data);
+        } finally {
+            \App\Services\CleaningFlowService::$suppressNeedsCleaner = false;
+        }
         $booking->recalculateParkingCharge();
 
         app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
@@ -304,11 +313,34 @@ class BookingController extends Controller
             ],
         ]);
 
-        if ($request->expectsJson()) {
-            return response()->json(['ok' => true, 'id' => $booking->id]);
+        $notice = 'Guest booking created successfully.';
+        if ($cleanerId) {
+            try {
+                $session = \App\Models\CleaningSession::where('booking_id', $booking->id)
+                    ->where('status', '<>', 'cancelled')->first();
+                if (! $session) {
+                    throw new \RuntimeException('No cleaning was created for this checkout date.');
+                }
+                app(\App\Services\CleaningJobService::class)->quickAssign(auth()->user(), [
+                    'property_id'    => $booking->property_id,
+                    'housekeeper_id' => (int) $cleanerId,
+                    'scheduled_date' => $booking->check_out_date->toDateString(),
+                    'scheduled_time' => $session->scheduled_time?->format('H:i'),
+                ], $session, false);
+                $notice .= ' Cleaner assigned.';
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $notice .= ' The cleaner was NOT assigned: '.collect($e->errors())->flatten()->first();
+            } catch (\Throwable $e) {
+                report($e);
+                $notice .= ' The cleaner was NOT assigned: '.$e->getMessage().' Use Actions > Assign cleaner.';
+            }
         }
 
-        return redirect()->route('admin.guests.show', $booking)->with('success', 'Guest booking created successfully.');
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true, 'id' => $booking->id, 'message' => $notice]);
+        }
+
+        return redirect()->route('admin.guests.show', $booking)->with('success', $notice);
     }
 
     public function show(Booking $booking)
@@ -1223,6 +1255,7 @@ class BookingController extends Controller
             'checkout_time_preference' => ['nullable', 'date_format:H:i'],
             'status'         => ['required', 'in:pending,pre_checkin_complete,awaiting_deposit,guest_approved,currently_hosting,checked_out,cancelled'],
             'notes'          => ['nullable', 'string'],
+            'housekeeper_id' => ['nullable', 'exists:users,id'],
         ]);
     }
 
