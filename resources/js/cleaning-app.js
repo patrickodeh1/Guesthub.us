@@ -283,7 +283,7 @@ document.addEventListener('alpine:init', () => {
             });
             // Update task item itemPhotos when a photo is uploaded via the global modal
             window.addEventListener('photo-uploaded', (e) => {
-                const { taskId, roomId, photo } = e.detail;
+                const { taskId, roomId, photo } = e.detail; this._syncTask(taskId, roomId || 'property', { photo });
                 const taskEl = document.querySelector(`[data-task-id="${taskId}"][data-room-id="${roomId || 'property'}"]`);
                 if (taskEl && taskEl._x_dataStack) {
                     const data = taskEl._x_dataStack[0];
@@ -294,7 +294,7 @@ document.addEventListener('alpine:init', () => {
             });
             // Update task item noteValue when a note is saved
             window.addEventListener('note-saved', (e) => {
-                const { taskId, roomId, note } = e.detail;
+                const { taskId, roomId, note } = e.detail; this._syncTask(taskId, roomId || 'property', { note });
                 const taskEl = document.querySelector(`[data-task-id="${taskId}"][data-room-id="${roomId || 'property'}"]`);
                 if (taskEl && taskEl._x_dataStack) {
                     const data = taskEl._x_dataStack[0];
@@ -303,6 +303,45 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
             });
+        },
+
+        // Write task changes back into the renderer's sessionData so a later
+        // renderChecklist() rebuilds from current state instead of stale server data.
+        _syncTask(taskId, roomId, patch) {
+            try {
+                const rendererEl = document.querySelector('[x-data*="checklistRenderer"]');
+                const sd = rendererEl && rendererEl._x_dataStack && rendererEl._x_dataStack[0]
+                    ? rendererEl._x_dataStack[0].sessionData : null;
+                if (!sd) { console.warn('_syncTask: sessionData not found'); return; }
+                const tid = Number(taskId);
+                const apply = (t) => { if (t && Number(t.id) === tid) this._applyTaskPatch(t, patch); };
+                const toArr = (v) => Array.isArray(v) ? v : Object.values(v || {});
+                if (roomId && roomId !== 'property') {
+                    const rid = Number(roomId);
+                    toArr(sd.rooms).forEach((room) => {
+                        if (room && Number(room.id) === rid) toArr(room.tasks).forEach(apply);
+                    });
+                } else {
+                    Object.values(sd.property_tasks || {}).forEach((tasks) => toArr(tasks).forEach(apply));
+                }
+            } catch (err) {
+                console.error('_syncTask failed:', err);
+            }
+        },
+
+        _applyTaskPatch(t, patch) {
+            if (!t.checklist_item) t.checklist_item = { checked: false, note: null, photos: [] };
+            const ci = t.checklist_item;
+            if (patch.instruction_viewed) ci.instruction_viewed = true;
+            if (patch.is_familiar !== undefined) t.is_familiar = !!patch.is_familiar;
+            if (patch.views_completed !== undefined) t.views_completed = patch.views_completed;
+            if (patch.required_views !== undefined) t.required_views = patch.required_views;
+            if (patch.checked) ci.checked = true;
+            if (patch.note !== undefined) ci.note = patch.note;
+            if (patch.photo) {
+                if (!Array.isArray(ci.photos)) ci.photos = [];
+                if (!ci.photos.some((x) => patch.photo.id && x.id === patch.photo.id)) ci.photos.push(patch.photo);
+            }
         },
 
         async markInstructionRead() {
@@ -325,6 +364,13 @@ document.addEventListener('alpine:init', () => {
             try {
                 const res = await window.api.post(url);
                 if (res.success) {
+                    this._syncTask(this.instructionTaskId, this.instructionRoomId || 'property', {
+                        instruction_viewed: true,
+                        is_familiar: res.is_familiar !== undefined ? !!res.is_familiar : true,
+                        views_completed: res.views_completed,
+                        required_views: res.required_views,
+                        checked: !!res.checked,
+                    });
                     // Update local Alpine data on the task element
                     const taskEl = document.querySelector(`[data-task-id="${this.instructionTaskId}"][data-room-id="${this.instructionRoomId || 'property'}"]`);
                     if (taskEl && taskEl._x_dataStack) {

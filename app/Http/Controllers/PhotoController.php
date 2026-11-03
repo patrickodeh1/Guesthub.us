@@ -40,6 +40,24 @@ class PhotoController extends Controller
         }
     }
 
+    /**
+     * Downscale oversized photos before the timestamp overlay so the overlay,
+     * persistent storage and later downloads all work on a small file.
+     */
+    private function downscale(string $path, int $maxEdge = 1920): void
+    {
+        try {
+            $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Imagick\Driver());
+            $image = $manager->read($path);
+            if (max($image->width(), $image->height()) > $maxEdge) {
+                $image->scaleDown($maxEdge, $maxEdge);
+                $image->toJpeg(80)->save($path);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Room photo downscale failed: ' . $e->getMessage());
+        }
+    }
+
     public function store(Request $request, CleaningSession $session, $roomId)
     {
         $this->assertSessionAccess($session);
@@ -83,6 +101,7 @@ class PhotoController extends Controller
 
             // Apply timestamp overlay with full metadata
             $absolutePath = Storage::disk('public')->path($filename);
+            $this->downscale($absolutePath);
             $session->loadMissing(['property', 'housekeeper']);
             ImageTimestampService::overlay(
                 absolutePath: $absolutePath,

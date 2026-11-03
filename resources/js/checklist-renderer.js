@@ -853,7 +853,7 @@ export default function checklistRenderer(config = {}) {
                                     <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center px-2">
                                         <span class="text-blue-600 dark:text-blue-400 font-medium">Tap to take a photo</span>
                                     </p>
-                                    <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500 mt-1">Take photos — click Upload when ready</p>
+                                    <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500 mt-1">Photos upload automatically</p>
 
                                     <!-- The file input visually covers the entire bounding box securely for mobile tapping -->
                                     <input x-ref="fileInput"
@@ -866,11 +866,11 @@ export default function checklistRenderer(config = {}) {
                                 </div>
 
                                 <!-- Upload Button Moved Above Previews -->
-                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4" x-show="previews.length > 0" x-cloak>
+                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4" x-show="failedCount > 0" x-cloak>
                                     <button type="submit"
-                                            :disabled="previews.length === 0 || uploading"
+                                            :disabled="failedCount === 0 || uploading"
                                             class="w-full sm:flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm shadow-sm">
-                                        <span x-show="!uploading">Upload <span x-text="previews.length"></span> Photo<span x-show="previews.length !== 1">s</span></span>
+                                        <span x-show="!uploading">Retry <span x-text="failedCount"></span> failed photo<span x-show="failedCount !== 1">s</span></span>
                                         <span x-show="uploading" class="flex items-center justify-center gap-2">
                                             <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -881,7 +881,9 @@ export default function checklistRenderer(config = {}) {
                                     </button>
                                 </div>
                                 
-                                <div x-show="uploading && uploadProgress > 0" x-cloak class="mb-4">
+                                <p x-show="pendingCount > 0" x-cloak class="text-xs text-blue-600 dark:text-blue-400 mb-2 text-center">Uploading <span x-text="pendingCount"></span> photo(s) in the background — keep taking photos</p>
+<p x-show="failedCount > 0" x-cloak class="text-xs text-red-600 mb-2 text-center"><span x-text="failedCount"></span> photo(s) failed — tap Retry below</p>
+<div x-show="uploading && uploadProgress > 0" x-cloak class="mb-4">
                                     <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                         <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="'width: ' + uploadProgress + '%'"></div>
                                     </div>
@@ -890,11 +892,12 @@ export default function checklistRenderer(config = {}) {
 
                                 <div x-show="previews.length > 0" x-cloak class="mb-4">
                                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                                        <template x-for="(preview, index) in previews" :key="index">
+                                        <template x-for="(preview, index) in previews" :key="preview.id">
                                             <div class="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-                                                <img :src="preview.url" class="w-full aspect-square object-cover" :alt="'Preview ' + (index + 1)" loading="lazy" />
+                                                <img :src="preview.url || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='" :style="preview.status === 'failed' ? 'outline:3px solid #dc2626;outline-offset:-3px' : (preview.status === 'queued' || preview.status === 'processing' || preview.status === 'uploading' ? 'opacity:.55' : '')" class="w-full aspect-square object-cover" :alt="'Preview ' + (index + 1)" loading="lazy" />
+<span x-show="preview.status === 'done'" x-cloak class="absolute top-1 left-1 bg-green-600 text-white rounded-full p-1 shadow"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></span><span x-show="preview.status === 'queued' || preview.status === 'processing' || preview.status === 'uploading'" x-cloak class="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">Uploading…</span><span x-show="preview.status === 'failed'" x-cloak class="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-red-600 text-white">Failed</span>
                                                 <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <button type="button" @click.stop="removePreview(index)" class="px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium">Remove</button>
+                                                    <button type="button" x-show="preview.status !== 'done' || preview.serverPhoto" @click.stop="removePreview(index)" class="px-2 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium">Remove</button>
                                                 </div>
                                             </div>
                                         </template>
@@ -936,7 +939,7 @@ export default function checklistRenderer(config = {}) {
                     </div>
 
                     <!-- Navigation Buttons -->
-                    <div class="bg-white dark:bg-gray-800 rounded-xl p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-40">
                         <div class="flex items-center justify-between gap-3">
                             <button type="button"
                                     ${currentRoomIndex === 0 ? 'disabled' : ''}
@@ -944,7 +947,7 @@ export default function checklistRenderer(config = {}) {
                                         const rendererEl = document.querySelector('[x-data*=\\'checklistRenderer\\']');
                                         if (rendererEl && rendererEl._x_dataStack) {
                                             const r = rendererEl._x_dataStack[0];
-                                            r._photoRoomIndex = ${currentRoomIndex - 1};
+                                            if (Object.values(window.__photoPending || {}).some(n => n > 0) && !confirm('Some photos have not finished uploading. Leaving this room now will lose them. Leave anyway?')) { return; } r._photoRoomIndex = ${currentRoomIndex - 1};
                                             localStorage.setItem('session_' + r.sessionId + '_photo_room', r._photoRoomIndex);
                                             r.refresh();
                                         }
@@ -958,12 +961,12 @@ export default function checklistRenderer(config = {}) {
 
                             ${currentRoomIndex < rooms.length - 1 ? `
                                 <button type="button"
-                                        ${photoCount < minPhotos ? 'disabled' : ''}
+                                        data-photo-next ${photoCount < minPhotos ? 'disabled' : ''}
                                         @click="
                                             const rendererEl = document.querySelector('[x-data*=\\'checklistRenderer\\']');
                                             if (rendererEl && rendererEl._x_dataStack) {
                                                 const r = rendererEl._x_dataStack[0];
-                                                r._photoRoomIndex = ${currentRoomIndex + 1};
+                                                if (Object.values(window.__photoPending || {}).some(n => n > 0) && !confirm('Some photos have not finished uploading. Leaving this room now will lose them. Leave anyway?')) { return; } r._photoRoomIndex = ${currentRoomIndex + 1};
                                                 localStorage.setItem('session_' + r.sessionId + '_photo_room', r._photoRoomIndex);
                                                 r.refresh();
                                             }
@@ -974,11 +977,11 @@ export default function checklistRenderer(config = {}) {
                                 </button>
                             ` : `
                                 <button type="button"
-                                        ${photoCount < minPhotos ? 'disabled' : ''}
+                                        data-photo-next ${photoCount < minPhotos ? 'disabled' : ''}
                                         @click="
                                             const rendererEl = document.querySelector('[x-data*=\\'checklistRenderer\\']');
                                             if (rendererEl && rendererEl._x_dataStack) {
-                                                rendererEl._x_dataStack[0]._showPhotoUpload = false;
+                                                if (Object.values(window.__photoPending || {}).some(n => n > 0) && !confirm('Some photos have not finished uploading. Leaving this room now will lose them. Leave anyway?')) { return; } rendererEl._x_dataStack[0]._showPhotoUpload = false;
                                                 rendererEl._x_dataStack[0]._showPhotoExtrasPrompt = true;
                                                 rendererEl._x_dataStack[0].renderChecklist();
                                             }
@@ -990,7 +993,7 @@ export default function checklistRenderer(config = {}) {
                             `}
                         </div>
                         ${photoCount < minPhotos ? `
-                            <div class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                            <div data-photo-warning class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                                 <p class="text-xs font-semibold text-amber-700 dark:text-amber-300">⚠️ Please upload at least ${minPhotos} photos of this room before continuing.</p>
                             </div>
                         ` : ''}
@@ -1089,14 +1092,14 @@ export default function checklistRenderer(config = {}) {
                                             <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center px-2 relative z-0">
                                                 <span class="text-blue-600 dark:text-blue-400 font-medium cursor-pointer">Tap to take a photo</span>
                                             </p>
-                                            <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500 mt-1 relative z-0">PNG, JPG, JPEG up to 5MB</p>
+                                            <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-500 mt-1 relative z-0">Photos upload automatically</p>
                                         </div>
 
-                                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4" x-show="previews.length > 0" x-cloak>
+                                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4" x-show="failedCount > 0" x-cloak>
                                             <button type="submit"
-                                                    :disabled="previews.length === 0 || uploading"
+                                                    :disabled="failedCount === 0 || uploading"
                                                     class="w-full sm:flex-1 px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base shadow-sm">
-                                                <span x-show="!uploading">Upload <span x-text="previews.length"></span> Photo<span x-show="previews.length !== 1">s</span></span>
+                                                <span x-show="!uploading">Retry <span x-text="failedCount"></span> failed photo<span x-show="failedCount !== 1">s</span></span>
                                                 <span x-show="uploading" class="flex items-center justify-center gap-2">
                                                     <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1107,7 +1110,9 @@ export default function checklistRenderer(config = {}) {
                                             </button>
                                         </div>
 
-                                        <div x-show="uploading && uploadProgress > 0" x-cloak class="mb-4">
+                                        <p x-show="pendingCount > 0" x-cloak class="text-xs text-blue-600 dark:text-blue-400 mb-2 text-center">Uploading <span x-text="pendingCount"></span> photo(s) in the background — keep taking photos</p>
+<p x-show="failedCount > 0" x-cloak class="text-xs text-red-600 mb-2 text-center"><span x-text="failedCount"></span> photo(s) failed — tap Retry below</p>
+<div x-show="uploading && uploadProgress > 0" x-cloak class="mb-4">
                                             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                                 <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
                                                      :style="'width: ' + uploadProgress + '%'"></div>
@@ -1117,16 +1122,18 @@ export default function checklistRenderer(config = {}) {
 
                                         <div x-show="previews.length > 0" x-cloak class="mb-4">
                                             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-                                                <template x-for="(preview, index) in previews" :key="index">
+                                                <template x-for="(preview, index) in previews" :key="preview.id">
                                                     <div class="relative group rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                                                          x-data="{ fullscreen: false }">
                                                         <button type="button" @click="fullscreen = true" class="w-full">
-                                                            <img :src="preview.url"
+                                                            <img :src="preview.url || 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='"
+                                                                 :style="preview.status === 'failed' ? 'outline:3px solid #dc2626;outline-offset:-3px' : (preview.status === 'queued' || preview.status === 'processing' || preview.status === 'uploading' ? 'opacity:.55' : '')"
                                                                  class="w-full aspect-square object-cover"
                                                                  :alt="'Preview ' + (index + 1)"
                                                                  :width="preview.width || 200"
                                                                  :height="preview.height || 200"
                                                                  loading="lazy" />
+<span x-show="preview.status === 'done'" x-cloak class="absolute top-1 left-1 bg-green-600 text-white rounded-full p-1 shadow"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg></span><span x-show="preview.status === 'queued' || preview.status === 'processing' || preview.status === 'uploading'" x-cloak class="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-black/60 text-white">Uploading…</span><span x-show="preview.status === 'failed'" x-cloak class="absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded bg-red-600 text-white">Failed</span>
                                                         </button>
                                                         <div x-show="fullscreen"
                                                              x-cloak
@@ -1146,7 +1153,7 @@ export default function checklistRenderer(config = {}) {
                                                         </div>
                                                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                             <button type="button"
-                                                                    @click.stop="removePreview(index)"
+                                                                    x-show="preview.status !== 'done' || preview.serverPhoto" @click.stop="removePreview(index)"
                                                                     class="px-2 sm:px-3 py-1 sm:py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs sm:text-sm font-medium">
                                                                 Remove
                                                             </button>

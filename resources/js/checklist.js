@@ -376,7 +376,26 @@ export default function checklist(config = {}) {
             // The stage will only change when user clicks submit
 
             // Re-render immediately from updated in-memory data (no network call)
+            // Preserve scroll position and unsaved note text across the rebuild
+            const scrollY = window.scrollY;
+            const drafts = [];
+            document.querySelectorAll('[data-task-item]').forEach((el) => {
+                const input = el.querySelector('[data-note-input]');
+                if (input && input.value) {
+                    drafts.push([el.dataset.taskId, el.dataset.roomId, input.value]);
+                }
+            });
+
             renderer.renderChecklist();
+
+            setTimeout(() => {
+                drafts.forEach(([tid, rid, val]) => {
+                    const el = document.querySelector(`[data-task-id="${tid}"][data-room-id="${rid}"]`);
+                    const input = el && el.querySelector('[data-note-input]');
+                    if (input && !input.value) input.value = val;
+                });
+                window.scrollTo(0, scrollY);
+            }, 0);
         },
 
         computeStage(sd) {
