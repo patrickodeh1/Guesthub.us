@@ -23,9 +23,27 @@ class PhotoController extends Controller
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
 
+    private function assertEditWindowOpen(CleaningSession $session): void
+    {
+        $user = auth()->user();
+        if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
+            return;
+        }
+        if ($user->hasAnyRole(['admin', 'owner', 'company']) || (int) $session->housekeeper_id !== (int) $user->id) {
+            return;
+        }
+        if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
+            throw new \Symfony\Component\HttpKernel\Exception\HttpResponseException(response()->json([
+                'success' => false,
+                'message' => 'The 30-minute window to edit this report has closed.',
+            ], 403));
+        }
+    }
+
     public function store(Request $request, CleaningSession $session, $roomId)
     {
         $this->assertSessionAccess($session);
+        $this->assertEditWindowOpen($session);
         if (!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
             && is_null($session->photo_tutorial_viewed_at)
             && $session->property->effectivePhotoReferences()->exists()) {
@@ -118,6 +136,7 @@ class PhotoController extends Controller
     public function destroy(CleaningSession $session, RoomPhoto $photo)
     {
         $this->assertSessionAccess($session);
+        $this->assertEditWindowOpen($session);
         // Verify the photo belongs to this session
         if ($photo->session_id !== $session->id) {
             return response()->json(['success' => false, 'message' => 'Photo not found'], 404);

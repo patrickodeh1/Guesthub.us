@@ -14,9 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RequireRole::class,
             'property.access' => \App\Http\Middleware\EnsurePropertyAccess::class,
+            'booking.access' => \App\Http\Middleware\EnsureBookingAccess::class,
+            'private.files' => \App\Http\Middleware\RestrictPrivateFiles::class,
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'force-password-change' => \App\Http\Middleware\ForcePasswordChange::class,
         ]);
+
+        // Deny-by-default resource checks for {session}, {property}, {room} and {task} route parameters.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnforceResourceAccess::class);
         $middleware->prepend(\App\Http\Middleware\CheckPostSize::class);
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\EnsureUserIsActive::class,

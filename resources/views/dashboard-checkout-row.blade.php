@@ -40,7 +40,12 @@
     <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:justify-end">
         @if($row['covered'])
             <div class="mr-auto min-w-0 sm:mr-0 sm:text-right">
-                @if(! empty($row['cleaner_pending']))<p class="min-w-0 break-words text-sm italic text-slate-400">{{ $row['cleaner'] }} · pending acceptance</p>@else<p class="min-w-0 break-words text-sm font-semibold text-emerald-700">{{ $row['cleaner'] }}</p>@endif
+                @php $cleaningGuestLabel = $session && method_exists($session, 'guestLabel') ? $session->guestLabel() : null; @endphp
+                @if(! empty($row['cleaner_pending']))
+                    <p class="min-w-0 break-words text-sm italic text-slate-400">{{ $row['cleaner'] }}@if($cleaningGuestLabel) · {{ $cleaningGuestLabel }}@endif · pending acceptance</p>
+                @else
+                    <p class="min-w-0 break-words text-sm font-semibold text-emerald-700">{{ $row['cleaner'] }}@if($cleaningGuestLabel) <span class="font-normal text-slate-500">· {{ $cleaningGuestLabel }}</span>@endif</p>
+                @endif
                 <p class="text-xs text-slate-500">
                     @if($session->scheduled_time){{ $session->scheduled_time->format('g:i A') }}@endif
                 </p>

@@ -18,7 +18,7 @@ class InstructionalVideoController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company']), 403, 'Unauthorized access.');
+        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Unauthorized access.');
 
         $searchTerm = (string) $request->query('q', '');
         $category = (string) $request->query('category', '');
@@ -60,7 +60,11 @@ class InstructionalVideoController extends Controller
         // Fetch properties the user is allowed to assign to this video
         $propertiesQuery = Property::query()->active();
         if (!$user->hasRole('admin')) {
-            $propertiesQuery->where('owner_id', $user->id);
+            if ($user->hasRole('manager') && ! $user->hasAnyRole(['owner', 'company'])) {
+                $propertiesQuery->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
+            } else {
+                $propertiesQuery->where('owner_id', $user->id);
+            }
         }
         $properties = $propertiesQuery->orderBy('name')->get();
 
@@ -132,7 +136,11 @@ class InstructionalVideoController extends Controller
             // Check that the user has permission to assign these properties
             $allowedPropertyIds = Property::query()->active()
                 ->when(!$user->hasRole('admin'), function ($q) use ($user) {
-                    $q->where('owner_id', $user->id);
+                    if ($user->hasRole('manager') && ! $user->hasAnyRole(['owner', 'company'])) {
+                        $q->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
+                    } else {
+                        $q->where('owner_id', $user->id);
+                    }
                 })
                 ->whereIn('id', $request->properties)
                 ->pluck('id')
@@ -172,7 +180,11 @@ class InstructionalVideoController extends Controller
         // Fetch properties the user is allowed to assign to this video
         $propertiesQuery = Property::query()->active();
         if (!$user->hasRole('admin')) {
-            $propertiesQuery->where('owner_id', $user->id);
+            if ($user->hasRole('manager') && ! $user->hasAnyRole(['owner', 'company'])) {
+                $propertiesQuery->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
+            } else {
+                $propertiesQuery->where('owner_id', $user->id);
+            }
         }
         $properties = $propertiesQuery->orderBy('name')->get();
         $attachedPropertyIds = $video->properties->pluck('id')->toArray();
@@ -275,7 +287,11 @@ class InstructionalVideoController extends Controller
         if ($request->filled('properties')) {
             $propertyIds = Property::query()->active()
                 ->when(!$user->hasRole('admin'), function ($q) use ($user) {
-                    $q->where('owner_id', $user->id);
+                    if ($user->hasRole('manager') && ! $user->hasAnyRole(['owner', 'company'])) {
+                        $q->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
+                    } else {
+                        $q->where('owner_id', $user->id);
+                    }
                 })
                 ->whereIn('id', $request->properties)
                 ->pluck('id')

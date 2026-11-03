@@ -12,6 +12,17 @@ class Room extends Model
 
     protected $fillable = ['name', 'is_default', 'min_photos'];
 
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            if (auth()->check()
+                && empty($model->created_by)
+                && \Illuminate\Support\Facades\Schema::hasColumn($model->getTable(), 'created_by')) {
+                $model->created_by = auth()->id();
+            }
+        });
+    }
+
     public function properties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_room')

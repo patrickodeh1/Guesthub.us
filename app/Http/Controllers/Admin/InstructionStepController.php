@@ -68,6 +68,7 @@ class InstructionStepController extends Controller
     public function index(Request $request)
     {
         $properties = Property::query()
+            ->when(! $request->user()->hasRole('admin'), fn ($query) => $query->whereIn('properties.id', Property::visibleTo($request->user())->select('properties.id')))
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%")

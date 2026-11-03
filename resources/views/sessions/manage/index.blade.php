@@ -128,14 +128,23 @@
                     {{-- Mobile Card View --}}
                     <div class="md:hidden divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach($groupSessions as $s)
+                            @php
+                                $guestLabel = method_exists($s, 'guestLabel') ? $s->guestLabel() : null;
+                                $bookingId = $bookingByJob[$s->id]['id'] ?? null;
+                                $guestDisplay = $guestLabel ?: ($bookingByJob[$s->id]['guest'] ?? null);
+                            @endphp
                             <div class="p-4 bg-white dark:bg-gray-800">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex-1 min-w-0">
                                         <h3 class="font-semibold text-gray-900 dark:text-gray-100 min-w-0 break-words">
                                             {{ $s->property->name }}
                                         </h3>
-                                        @if(isset($bookingByJob[$s->id]))
-                                            <a href="{{ route('admin.guests.show', $bookingByJob[$s->id]['id']) }}" class="mt-0.5 block text-xs font-normal text-indigo-600 hover:underline">Guest: {{ $bookingByJob[$s->id]['guest'] }}</a>
+                                        @if($guestDisplay)
+                                            @if($bookingId)
+                                                <a href="{{ route('admin.guests.show', $bookingId) }}" class="mt-0.5 block text-xs font-normal text-indigo-600 hover:underline">Guest: {{ $guestDisplay }}</a>
+                                            @else
+                                                <p class="mt-0.5 text-xs font-normal text-gray-500 dark:text-gray-400">Guest: {{ $guestDisplay }}</p>
+                                            @endif
                                         @endif
                                         @if($s->scheduled_time)
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
@@ -152,10 +161,10 @@
                                     <div class="flex-shrink-0">
                                         @if($s->report_token && in_array($s->status, ['in_progress', 'completed']))
                                             <a href="{{ route('reports.sessions.show', ['token' => $s->report_token]) }}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity inline-block" title="View Report">
-                                                @include('sessions._assignment_badge', ['s' => $s])
+                                                @include('sessions._assignment_badge', ['s' => $s, 'showGuestLabel' => false])
                                             </a>
                                         @else
-                                            @include('sessions._assignment_badge', ['s' => $s])
+                                            @include('sessions._assignment_badge', ['s' => $s, 'showGuestLabel' => false])
                                         @endif
                                     </div>
                                 </div>
@@ -163,7 +172,7 @@
                                     <div></div>
                                     <x-action-dropdown align="right">
                                         <x-dropdown-link :href="route('sessions.show', $s)">
-    Start cleaning
+    Cleaning Report
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning
@@ -210,6 +219,11 @@
                             </thead>
                             <tbody class="divide-y divide-gray-150 dark:divide-gray-700">
                                 @foreach($groupSessions as $s)
+                                    @php
+                                        $guestLabel = method_exists($s, 'guestLabel') ? $s->guestLabel() : null;
+                                        $bookingId = $bookingByJob[$s->id]['id'] ?? null;
+                                        $guestDisplay = $guestLabel ?: ($bookingByJob[$s->id]['guest'] ?? null);
+                                    @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                         @if($dateLabel === 'No Date Assigned')
                                             <td class="px-4 py-3 text-gray-500">—</td>
@@ -217,9 +231,13 @@
                                         <td class="px-4 py-3 min-w-0 break-words font-medium text-gray-900 dark:text-gray-100">
                                             <div>
                                                 <div>{{ $s->property->name }}</div>
-                                        @if(isset($bookingByJob[$s->id]))
-                                            <a href="{{ route('admin.guests.show', $bookingByJob[$s->id]['id']) }}" class="mt-0.5 block text-xs font-normal text-indigo-600 hover:underline">Guest: {{ $bookingByJob[$s->id]['guest'] }}</a>
-                                        @endif
+                                                @if($guestDisplay)
+                                                    @if($bookingId)
+                                                        <a href="{{ route('admin.guests.show', $bookingId) }}" class="mt-0.5 block text-xs font-normal text-indigo-600 hover:underline">Guest: {{ $guestDisplay }}</a>
+                                                    @else
+                                                        <div class="mt-0.5 text-xs font-normal text-gray-500 dark:text-gray-400">Guest: {{ $guestDisplay }}</div>
+                                                    @endif
+                                                @endif
                                                 @if($s->scheduled_time)
                                                     <div class="text-[10px] text-gray-400 dark:text-gray-500 font-normal flex items-center gap-1 mt-0.5">
                                                         <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -234,17 +252,17 @@
                                         <td class="px-4 py-3 text-center">
                                             @if($s->report_token && in_array($s->status, ['in_progress', 'completed']))
                                                 <a href="{{ route('reports.sessions.show', ['token' => $s->report_token]) }}" target="_blank" rel="noopener noreferrer" class="hover:opacity-80 transition-opacity inline-block" title="View Report">
-                                                    @include('sessions._assignment_badge', ['s' => $s])
+                                                    @include('sessions._assignment_badge', ['s' => $s, 'showGuestLabel' => false])
                                                 </a>
                                             @else
-                                                @include('sessions._assignment_badge', ['s' => $s])
+                                                @include('sessions._assignment_badge', ['s' => $s, 'showGuestLabel' => false])
                                             @endif
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-end whitespace-nowrap gap-2 pr-2">
                                                 <x-action-dropdown align="right">
                                                     <x-dropdown-link :href="route('sessions.show', $s)">
-    Start cleaning
+    Cleaning Report
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning

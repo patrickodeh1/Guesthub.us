@@ -92,7 +92,9 @@ public function editPage(Property $property, Category $category)
             $targetPage->sort_order = (int) ($targetPage->sort_order ?: ($page->sort_order ?? 0));
             $targetPage->active = $page->active;
 
-            if ($mode === 'once') {
+            $targetMode = $target->hasSameOwnerAs($property) ? $mode : 'once';
+
+            if ($targetMode === 'once') {
                 $targetPage->title = $page->title;
                 $targetPage->content = $page->content;
                 $targetPage->image_1 = $page->image_1;

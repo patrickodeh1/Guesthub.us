@@ -56,6 +56,11 @@ class PhotoReferenceController extends Controller
             abort_if((int) $sourceId === (int) $property->id, 422, 'A property cannot use its own guide as a link.');
             $user = $request->user();
             $source = Property::findOrFail($sourceId);
+            abort_unless(
+                $source->hasSameOwnerAs($property),
+                422,
+                'Guides can only be shared between properties of the same owner.'
+            );
             abort_unless($user->hasRole('admin') || Property::visibleTo($user)->whereKey($sourceId)->exists(), 403, 'You do not have access to that property.');
             abort_if($source->photo_guide_source_id, 422, 'That property is itself linked to another guide.');
             abort_if(Property::where('photo_guide_source_id', $property->id)->exists(), 422, 'Other properties use this guide, so it cannot link to another one.');
@@ -106,8 +111,18 @@ class PhotoReferenceController extends Controller
         return back()->with('status', count($request->file('images')) . ' photo(s) added.');
     }
 
+    private function authorizeReference(PropertyPhotoReference $reference): void
+    {
+        abort_unless(
+            auth()->user()->hasRole('admin') || Property::visibleTo(auth()->user())->whereKey($reference->property_id)->exists(),
+            403,
+            'You do not have access to this photo.'
+        );
+    }
+
     public function destroy(PropertyPhotoReference $reference)
     {
+        $this->authorizeReference($reference);
         Storage::disk('public')->delete($reference->image_path);
         $reference->delete();
         return back()->with('status', 'Photo removed.');
@@ -136,6 +151,7 @@ class PhotoReferenceController extends Controller
 
     public function updateReference(Request $request, PropertyPhotoReference $reference)
     {
+        $this->authorizeReference($reference);
         $data = $request->validate(['instructions' => ['nullable', 'string', 'max:20000']]);
 
         $html = strip_tags((string) ($data['instructions'] ?? ''), '<p><br><strong><b><em><i><u><s><strike><del><span><ul><ol><li><h1><h2><h3><h4><h5><h6><div><a><img><table><thead><tbody><tr><td><th><blockquote><hr><sub><sup><pre><code>');

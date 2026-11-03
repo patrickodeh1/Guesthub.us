@@ -74,7 +74,10 @@ class CleaningJobService
         ?CleaningSession $session = null,
         bool $confirmConflicts = false
     ): CleaningSession {
-        $cleaner = User::find($data['housekeeper_id'] ?? null);
+        // Only look up people assigned to this property, so an arbitrary user id cannot be probed.
+        $cleaner = User::query()
+            ->whereIn('id', DB::table('property_user')->where('property_id', $data['property_id'] ?? 0)->select('user_id'))
+            ->find($data['housekeeper_id'] ?? null);
         if ($cleaner && ! ($cleaner->phone_number ?: $cleaner->phone)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'housekeeper_id' => "{$cleaner->name} has no phone number on file, so they can't be texted this assignment. Add a phone number to their profile first.",
@@ -228,6 +231,14 @@ class CleaningJobService
         $properties = Property::query()
             ->whereIn('id', $others->pluck('property_id')->push($propertyId)->unique())
             ->pluck('name', 'id');
+
+        // Conflicts are still detected across tenants, but a property the viewer cannot access is not named.
+        $viewer = auth()->user();
+        if ($viewer && ! $viewer->hasRole('admin')) {
+            $visible = Property::query()->visibleTo($viewer)->whereIn('properties.id', $properties->keys())->pluck('properties.id')->all();
+            $properties = $properties->map(fn ($name, $id) => in_array($id, $visible) ? $name : 'another property');
+        }
+
         $users = User::query()
             ->whereIn('id', $others->pluck('housekeeper_id')->push($cleanerId)->unique())
             ->pluck('name', 'id');

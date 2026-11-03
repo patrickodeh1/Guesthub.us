@@ -19,7 +19,7 @@ class TaskController extends Controller
         $q    = trim((string) $request->query('q', ''));
         $type = $request->query('type');
 
-        $tasks = Task::query()
+        $tasks = \App\Support\OrgScope::visibleTasks($request->user())
             ->when($q !== '', fn($qq) => $qq->where('name', 'like', "%{$q}%"))
             ->when(in_array($type, ['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'], true), fn($qq) => $qq->where('type', $type))
             ->when($request->room_id ?? false, fn($query) => $query->whereHas('rooms', fn($query) => $query->where('rooms.id', $request->room_id)))
@@ -35,7 +35,7 @@ class TaskController extends Controller
      */
     public function create(Request $request)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can create tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, and companies can create tasks.');
         
         return view('tasks.create');
     }
@@ -46,10 +46,15 @@ class TaskController extends Controller
      */
     public function store(Request $request)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can create tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, and companies can create tasks.');
         
         $data = $request->validate([
-            'name'       => ['required', 'string', 'max:255', Rule::unique('tasks', 'name')],
+            'name'       => ['required', 'string', 'max:255', Rule::unique('tasks', 'name')->where(function ($q) use ($request) {
+                // Another owner using the same task name must not block this one.
+                if (! $request->user()->hasRole('admin')) {
+                    $q->whereIn('created_by', \App\Support\OrgScope::userIds($request->user()));
+                }
+            })],
             'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_default' => ['nullable', 'boolean'],
             'is_sporadic' => ['nullable', 'boolean'],
@@ -116,10 +121,21 @@ class TaskController extends Controller
      */
     public function show(Task $task)
     {
+        abort_unless(\App\Support\OrgScope::visibleTasks(auth()->user())->whereKey($task->id)->exists(), 403, 'You do not have access to this task.');
+
         $task->loadCount('rooms');
         $rooms = $task->rooms()
             ->withPivot(['sort_order', 'instructions', 'visible_to_owner', 'visible_to_housekeeper'])
-            ->with('properties:id,name') // if you want to show which properties include those rooms
+            ->when(! auth()->user()->hasRole('admin'), fn ($q) => $q->where(function ($w) {
+                $visible = \App\Models\Property::query()->visibleTo(auth()->user())->select('properties.id');
+                $w->where('rooms.is_default', true)->orWhereHas('properties', fn ($p) => $p->whereIn('properties.id', $visible));
+            }))
+            ->with(['properties' => function ($q) {
+                $q->select('properties.id', 'properties.name');
+                if (! auth()->user()->hasRole('admin')) {
+                    $q->whereIn('properties.id', \App\Models\Property::query()->visibleTo(auth()->user())->select('properties.id'));
+                }
+            }])
             ->orderBy('room_task.sort_order')
             ->orderBy('rooms.name')
             ->paginate(20);
@@ -132,7 +148,7 @@ class TaskController extends Controller
      */
     public function edit(Request $request, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can edit tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, and companies can edit tasks.');
         
         if ($request->ajax() || $request->wantsJson() || $request->hasHeader('X-Requested-With')) {
             return view('tasks.edit-partial', compact('task'));
@@ -146,7 +162,7 @@ class TaskController extends Controller
      */
     public function update(Request $request, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can update tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, and companies can update tasks.');
         
         $data = $request->validate([
             'name'       => [
@@ -154,10 +170,12 @@ class TaskController extends Controller
                 'string',
                 'max:255',
                 Rule::unique('tasks', 'name')
-                ->ignore($task->id)
-                ->where(function ($query) use ($request) {
-                $query->where('type', $request->input('type'));
-            }),
+                    ->ignore($task->id)
+                    ->where(function ($query) use ($request) {
+                        if (! $request->user()->hasRole('admin')) {
+                            $query->whereIn('created_by', \App\Support\OrgScope::userIds($request->user()));
+                        }
+                    }),
             ],
             'type'       => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_default' => ['nullable', 'boolean'],
@@ -241,7 +259,7 @@ class TaskController extends Controller
      */
     public function destroy(Request $request, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can delete tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, and companies can delete tasks.');
         
         // If you want to prevent deletion when attached to rooms, guard here:
         // if ($task->rooms()->exists()) { return back()->with('error', 'Task is in use. Detach first.'); }
@@ -292,6 +310,7 @@ class TaskController extends Controller
 
         if (isset($data['task_id'])) {
             $originalTask = Task::findOrFail($data['task_id']);
+            abort_unless(\App\Support\OrgScope::visibleTasks($request->user())->whereKey($originalTask->id)->exists(), 403, 'You do not have access to that task.');
             if (!$room->is_default) {
                 $task = \App\Http\Controllers\cloneTaskDeeply($originalTask);
             } else {

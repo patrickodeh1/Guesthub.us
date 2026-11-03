@@ -98,7 +98,7 @@ class CalendarController extends Controller
 
         // Base query scoped by acting role
         $q = CleaningSession::query()
-            ->with(['property:id,name,owner_id', 'housekeeper:id,name'])
+            ->with(['property:id,name,owner_id', 'housekeeper:id,name', 'booking', 'checkout'])
             ->whereBetween('scheduled_date', [$gridStart->toDateString(), $gridEnd->toDateString()]);
 
         // Helpers to get visible property IDs
@@ -106,6 +106,10 @@ class CalendarController extends Controller
 
         if ($acting === 'housekeeper') {
             $q->where('housekeeper_id', $u->id);
+        } elseif ($acting === 'owner' && $u->hasRole('manager') && ! $u->hasAnyRole(['owner', 'company'])) {
+            // Managers see the properties linked to them (property_user), possibly across several owners.
+            $visiblePropIds = Property::active()->visibleTo($u)->pluck('properties.id');
+            $q->whereIn('property_id', $visiblePropIds);
         } elseif ($acting === 'owner') {
              if ($u->hasRole('company')) {
                   // Company Logic
@@ -519,7 +523,7 @@ class CalendarController extends Controller
             'agenda' => $agenda,
             'cleanerFilterOptions' => $cleanerFilterOptions,
             'cleaningStatusOptions' => $cleaningStatusOptions,
-            'reservationStatusOptions' => \App\Models\Booking::query()->notArchived()->whereNull('cancelled_at')->whereNotNull('status')->distinct()->pluck('status')->sort()->values()->all(),
+            'reservationStatusOptions' => \App\Support\BookingAccess::query(auth()->user())->notArchived()->whereNull('cancelled_at')->whereNotNull('status')->distinct()->pluck('status')->sort()->values()->all(),
             'availableNights' => $availableNights,
             'availabilityAsOf' => $availabilityAsOf,
             'availabilityMonth' => $availabilityMonth,

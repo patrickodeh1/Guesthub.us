@@ -30,7 +30,7 @@ class DashboardController extends Controller
             if (($isOwner || $isCompany) && $request->query('as') === 'owner') return 'owner';
             return 'admin';
         }
-        if ($isOwner || $isCompany) return 'owner';
+        if ($isOwner || $isCompany || ($u?->hasRole('manager') ?? false)) return 'owner';
         if ($isHK) return 'housekeeper';
 
         // Final fallback: if no role is found, treat as housekeeper to be safe
@@ -46,6 +46,10 @@ class DashboardController extends Controller
         }
         if ($acting === 'owner') {
             $user = User::find($userId);
+            // A manager sees only the properties linked to them (property_user), possibly across several owners.
+            if ($user && $user->hasRole('manager') && ! $user->hasAnyRole(['owner', 'company'])) {
+                return Property::active()->visibleTo($user)->pluck('properties.id');
+            }
             if ($user && $user->hasRole('company')) {
                 return Property::active()->where(function($q) use ($userId) {
                     $q->where('owner_id', $userId)
@@ -76,8 +80,8 @@ class DashboardController extends Controller
     public function __invoke(Request $request)
     {
         $u = Auth::user();
-        $canSeeCleaning = $u->hasAnyRole(['admin', 'owner', 'company', 'housekeeper']);
-        $canSeeGuestPortal = $u->hasAnyRole(['admin', 'owner', 'company']);
+        $canSeeCleaning = $u->hasAnyRole(['admin', 'owner', 'company', 'manager', 'housekeeper']);
+        $canSeeGuestPortal = $u->hasAnyRole(['admin', 'owner', 'company', 'manager']);
 
         if (! $canSeeCleaning) {
             return view('dashboard', [

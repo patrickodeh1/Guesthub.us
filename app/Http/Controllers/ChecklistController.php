@@ -21,6 +21,23 @@ use Illuminate\Support\Facades\Storage;
 
 class ChecklistController extends Controller
 {
+    private function assertReportEditWindow(CleaningSession $session): void
+    {
+        $user = auth()->user();
+        if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
+            return;
+        }
+        if ($user->hasAnyRole(['admin', 'owner', 'company']) || (int) $session->housekeeper_id !== (int) $user->id) {
+            return;
+        }
+        if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
+            throw new \Symfony\Component\HttpKernel\Exception\HttpResponseException(response()->json([
+                'success' => false,
+                'message' => 'The 30-minute window to edit this report has closed.',
+            ], 403));
+        }
+    }
+
     public function toggle(ChecklistToggleRequest $request, CleaningSession $session, Room $room, Task $task)
     {
         // Authorization: Allow if user is housekeeper assigned to this session or admin/owner
@@ -31,6 +48,7 @@ class ChecklistController extends Controller
         if (!$isAssignedHousekeeper && !$isOwnerOrAdmin) {
             return response()->json(['message' => 'Unauthorized access to this session.'], 403);
         }
+        $this->assertReportEditWindow($session);
     
         Log::info("ChecklistController@toggle: Session {$session->id}, Room {$room->id}, Task {$task->id}");
         // RELAXED CHECK: If item exists, allow toggle
@@ -150,6 +168,7 @@ class ChecklistController extends Controller
         if (!$isAssignedHousekeeper && !$isOwnerOrAdmin) {
             return response()->json(['message' => 'Unauthorized access to this session.'], 403);
         }
+        $this->assertReportEditWindow($session);
         
         Log::info("ChecklistController@togglePropertyTask: Session {$session->id}, Task {$task->id}");
         // RELAXED CHECK: If the checklist item ALREADY exists for this session, we allow toggling it,
@@ -261,6 +280,7 @@ class ChecklistController extends Controller
     public function note(ChecklistNoteRequest $request, CleaningSession $session, Room $room, Task $task)
     {
         $this->assertSessionAccess($session);
+        $this->assertReportEditWindow($session);
         $this->assertRoomOnSessionProperty($room, $session);
         
         // Relaxed check for task-room
@@ -320,6 +340,7 @@ class ChecklistController extends Controller
     public function notePropertyTask(ChecklistNoteRequest $request, CleaningSession $session, Task $task)
     {
         $this->assertSessionAccess($session);
+        $this->assertReportEditWindow($session);
         // RELAXED CHECK: If the checklist item ALREADY exists for this session, we allow adding notes,
         // even if the task was theoretically removed from the property definition.
         $itemExists = ChecklistItem::where('session_id', $session->id)
@@ -417,7 +438,8 @@ class ChecklistController extends Controller
 public function taskPhoto(Request $request, CleaningSession $session, Room $room, Task $task)
     {
         $this->assertSessionAccess($session);
-        $this->assertRoomOnSessionProperty($room, $session);
+    $this->assertReportEditWindow($session);
+    $this->assertRoomOnSessionProperty($room, $session);
         // RELAXED CHECK
         $itemExists = ChecklistItem::where('session_id', $session->id)
             ->where('room_id', $room->id)
@@ -520,6 +542,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     public function propertyTaskPhoto(Request $request, CleaningSession $session, Task $task)
     {
         $this->assertSessionAccess($session);
+        $this->assertReportEditWindow($session);
         // RELAXED CHECK
         $itemExists = ChecklistItem::where('session_id', $session->id)
             ->where('task_id', $task->id)
@@ -661,6 +684,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     public function deletePhoto(Request $request, CleaningSession $session, Room $room, Task $task, ChecklistItemPhoto $photo)
     {
         $this->assertSessionAccess($session);
+        $this->assertReportEditWindow($session);
         // First check that this photo belongs to an item that corresponds to the session/room/task
         $item = ChecklistItem::where('session_id', $session->id)
             ->where('room_id', $room->id)
@@ -699,6 +723,7 @@ public function taskPhoto(Request $request, CleaningSession $session, Room $room
     public function deletePropertyTaskPhoto(Request $request, CleaningSession $session, Task $task, ChecklistItemPhoto $photo)
     {
         $this->assertSessionAccess($session);
+        $this->assertReportEditWindow($session);
         $item = ChecklistItem::where('session_id', $session->id)
             ->whereNull('room_id')
             ->where('task_id', $task->id)

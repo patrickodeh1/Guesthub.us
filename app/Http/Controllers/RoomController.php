@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Room;
 use App\Models\Task;
+use App\Models\Property;
+use App\Support\OrgScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -23,11 +25,16 @@ class RoomController extends Controller
                     $query->whereIn('properties.id', \App\Models\Property::visibleTo($request->user())->select('id'));
                 }
             }])
-            ->where(function ($q) {
+            ->where(function ($q) use ($request) {
                 // Show it if it's explicitly a default template
                 $q->where('is_default', true)
                   // Or if it lacks properties (a newly created standalone room)
-                  ->orDoesntHave('properties');
+                  ->orWhere(function ($standalone) use ($request) {
+                      $standalone->doesntHave('properties');
+                      if (! $request->user()->hasRole('admin')) {
+                          $standalone->whereIn('rooms.created_by', \App\Support\OrgScope::userIds($request->user()));
+                      }
+                  });
             })
             ->when($request->search ?? false, function ($query, $search) {
                 $query->where('name', 'like', "%$search%");
@@ -35,7 +42,7 @@ class RoomController extends Controller
             ->latest()
             ->paginate(20);
 
-        $tasks = Task::orderBy('type')->orderBy('name')->get([
+        $tasks = \App\Support\OrgScope::visibleTasks($request->user())->orderBy('type')->orderBy('name')->get([
             'id',
             'name',
             'type',
@@ -50,7 +57,7 @@ class RoomController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can create rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can create rooms.');
 
         $data = $request->validate([
             'name' => [
@@ -85,7 +92,7 @@ class RoomController extends Controller
 
     public function edit(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can edit rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can edit rooms.');
 
         // Load current tasks for this room with their sort_order from pivot
         $room->load(['tasks' => function ($query) {
@@ -111,7 +118,7 @@ class RoomController extends Controller
 
     public function update(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can update rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can update rooms.');
 
         $validated = $request->validate([
             'name' => [
@@ -145,7 +152,7 @@ class RoomController extends Controller
 
     public function destroy(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can delete rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can delete rooms.');
 
         $room->delete();
 
@@ -155,7 +162,7 @@ class RoomController extends Controller
 
     public function bulkAttachTasks(Request $request)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can bulk attach tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can bulk attach tasks.');
 
         $validated = $request->validate([
             'room_ids'   => ['required', 'array', 'min:1'],
@@ -164,7 +171,35 @@ class RoomController extends Controller
             'task_ids.*' => ['integer', 'exists:tasks,id'],
         ]);
 
-        $rooms = Room::whereIn('id', $validated['room_ids'])->get();
+        $user = $request->user();
+        $roomIds = array_values(array_unique(array_map('intval', $validated['room_ids'])));
+        $taskIds = array_values(array_unique(array_map('intval', $validated['task_ids'])));
+        $rooms = Room::whereIn('id', $roomIds)->get();
+        $tasks = OrgScope::visibleTasks($user)->whereIn('tasks.id', $taskIds)->get()->keyBy('id');
+
+        abort_unless($tasks->count() === count($taskIds), 403, 'You do not have access to one or more tasks.');
+
+        if (! $user->hasRole('admin')) {
+            $visiblePropertyIds = Property::query()->visibleTo($user)->select('properties.id');
+
+            foreach ($rooms as $room) {
+                abort_if($room->is_default, 403, 'Default rooms can only be changed by an administrator.');
+
+                if ($room->properties()->exists()) {
+                    abort_if(
+                        $room->properties()->whereNotIn('properties.id', $visiblePropertyIds)->exists(),
+                        403,
+                        'You do not have access to one or more rooms.'
+                    );
+                } else {
+                    abort_unless(
+                        in_array((int) $room->created_by, OrgScope::userIds($user), true),
+                        403,
+                        'You do not have access to one or more rooms.'
+                    );
+                }
+            }
+        }
 
         foreach ($rooms as $room) {
             if (!$room->is_default) {
@@ -172,10 +207,9 @@ class RoomController extends Controller
                 $nextSort = (int) $room->tasks()->max('room_task.sort_order');
                 $alreadyAttachedNames = $room->tasks()->pluck('name')->map(fn($n) => strtolower($n))->all();
                 
-                foreach ($validated['task_ids'] as $taskId) {
-                    $originalTask = \App\Models\Task::find($taskId);
-                    if (!$originalTask) continue;
-                    
+                foreach ($taskIds as $taskId) {
+                    $originalTask = $tasks->get($taskId);
+
                     if (in_array(strtolower($originalTask->name), $alreadyAttachedNames)) continue;
                     
                     $clone = \App\Http\Controllers\cloneTaskDeeply($originalTask);
@@ -188,7 +222,7 @@ class RoomController extends Controller
                     $alreadyAttachedNames[] = strtolower($originalTask->name);
                 }
             } else {
-                $room->tasks()->syncWithoutDetaching($validated['task_ids']);
+                $room->tasks()->syncWithoutDetaching($taskIds);
             }
         }
 
@@ -224,7 +258,7 @@ class RoomController extends Controller
      */
     public function storeTask(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can add tasks to rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can add tasks to rooms.');
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
@@ -249,6 +283,14 @@ class RoomController extends Controller
 
         // Issue 1 Fix: Lookup existing task by name to strictly avoid duplication
         $name = trim($validated['name']);
+
+        if ($request->filled('template_task_id')) {
+            abort_unless(
+                OrgScope::visibleTasks($request->user())->whereKey($request->input('template_task_id'))->exists(),
+                403,
+                'You do not have access to that task template.'
+            );
+        }
         
         return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $room, $validated, $name) {
             $task = null;
@@ -380,7 +422,7 @@ class RoomController extends Controller
      */
     public function editTask(Request $request, Room $room, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can edit tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can edit tasks.');
         abort_unless($room->tasks()->where('tasks.id', $task->id)->exists(), 404, 'Task not found in the specified room.');
 
         $task->load(['media' => fn($q) => $q->orderBy('sort_order')]);
@@ -398,7 +440,7 @@ class RoomController extends Controller
      */
     public function updateTask(Request $request, Room $room, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can update tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can update tasks.');
         abort_unless($room->tasks()->where('tasks.id', $task->id)->exists(), 404, 'Task not found in the specified room.');
 
         $data = $request->validate([
@@ -490,13 +532,14 @@ class RoomController extends Controller
      */
     public function detachTask(Request $request, Room $room, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can detach tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can detach tasks.');
+        abort_unless($room->tasks()->where('tasks.id', $task->id)->exists(), 404, 'Task not found in the specified room.');
 
         $taskName = $task->name;
         $room->tasks()->detach($task->id);
         
-        // Only delete the task record if it's an isolated task created explicitly for this room.
-        if (! $task->is_default) {
+        if (! $task->is_default && ! $task->rooms()->exists() && ! $task->properties()->exists()
+            && ! $task->getAttribute('property_id')) {
             $task->delete();
         }
         
@@ -510,7 +553,7 @@ class RoomController extends Controller
      */
     public function bulkStoreTask(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can bulk add tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners and companies can bulk add tasks.');
 
         $validated = $request->validate([
             'tasks' => ['required', 'string'], // JSON string

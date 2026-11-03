@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\ChecklistItem;
 use App\Services\CleaningJobService;
 
+// Manager access: managers see only the properties linked to them (Property::visibleTo).
 class ManageSessionController extends Controller
 {
     /**
@@ -60,6 +61,7 @@ class ManageSessionController extends Controller
 
         $q = CleaningSession::query()
             ->with([
+                'booking', 'checkout',
                 'property:id,name,owner_id',
                 'housekeeper:id,name',
             ])
@@ -67,7 +69,9 @@ class ManageSessionController extends Controller
             ->when(
                 $acting === 'owner',
                 function($qry) use ($u) {
-                    if ($u->hasRole('company')) {
+                    if ($u->hasRole('manager') && ! $u->hasAnyRole(['owner', 'company'])) {
+                        $qry->whereIn('cleaning_sessions.property_id', Property::query()->visibleTo($u)->select('properties.id'));
+                    } elseif ($u->hasRole('company')) {
                         $qry->where(function($q) use ($u) {
                             $q->where('cleaning_sessions.owner_id', $u->id)
                               ->orWhereIn('cleaning_sessions.owner_id', function($sub) use ($u) {
@@ -123,7 +127,9 @@ class ManageSessionController extends Controller
 
         $properties = Property::query()->active()
             ->when($acting === 'owner', function($qry) use ($u) {
-                if ($u->hasRole('company')) {
+                if ($u->hasRole('manager') && ! $u->hasAnyRole(['owner', 'company'])) {
+                    $qry->whereIn('properties.id', Property::query()->visibleTo($u)->select('properties.id'));
+                } elseif ($u->hasRole('company')) {
                     $qry->where(function($q) use ($u) {
                         $q->where('owner_id', $u->id)
                           ->orWhereIn('owner_id', function($sub) use ($u) {
@@ -265,7 +271,9 @@ class ManageSessionController extends Controller
 
         $properties = Property::query()->active()
             ->when($acting === 'owner', function($qry) use ($u) {
-                if ($u->hasRole('company')) {
+                if ($u->hasRole('manager') && ! $u->hasAnyRole(['owner', 'company'])) {
+                    $qry->whereIn('properties.id', Property::query()->visibleTo($u)->select('properties.id'));
+                } elseif ($u->hasRole('company')) {
                     $qry->where(function($q) use ($u) {
                         $q->where('owner_id', $u->id)
                           ->orWhereIn('owner_id', function($sub) use ($u) {
@@ -339,6 +347,11 @@ class ManageSessionController extends Controller
             'sporadic_tasks.*'=> ['string'],
         ]);
 
+        abort_unless(
+            $request->user()->hasRole('admin') || Property::query()->visibleTo($request->user())->whereKey($data['property_id'])->exists(),
+            403,
+            'You do not have access to that property.'
+        );
         $cleaningJobService->create($u, $data);
 
         $rt = (string) $request->input('_return_to');
@@ -365,12 +378,17 @@ class ManageSessionController extends Controller
             if (!$isAuthorized && $u->hasRole('company')) {
                 $isAuthorized = User::where('id', $session->property->owner_id)->where('owner_id', $u->id)->exists();
             }
+            if (! $isAuthorized && $u->hasRole('manager')) {
+                $isAuthorized = Property::query()->visibleTo($u)->whereKey($session->property_id)->exists();
+            }
             abort_unless($isAuthorized, 403);
         }
 
         $properties = Property::query()->active()
             ->when($acting === 'owner', function($qry) use ($u) {
-                if ($u->hasRole('company')) {
+                if ($u->hasRole('manager') && ! $u->hasAnyRole(['owner', 'company'])) {
+                    $qry->whereIn('properties.id', Property::query()->visibleTo($u)->select('properties.id'));
+                } elseif ($u->hasRole('company')) {
                     $qry->where(function($q) use ($u) {
                         $q->where('owner_id', $u->id)
                           ->orWhereIn('owner_id', function($sub) use ($u) {
@@ -442,6 +460,11 @@ class ManageSessionController extends Controller
             'sporadic_tasks.*'=> ['string'],
         ]);
 
+        abort_unless(
+            $request->user()->hasRole('admin') || Property::query()->visibleTo($request->user())->whereKey($data['property_id'])->exists(),
+            403,
+            'You do not have access to that property.'
+        );
         $cleaningJobService->update($request->user(), $session, $data);
 
         return redirect()->to(
@@ -459,6 +482,9 @@ class ManageSessionController extends Controller
              $isAuthorized = ($session->property->owner_id === $u->id);
             if (!$isAuthorized && $u->hasRole('company')) {
                 $isAuthorized = User::where('id', $session->property->owner_id)->where('owner_id', $u->id)->exists();
+            }
+            if (! $isAuthorized && $u->hasRole('manager')) {
+                $isAuthorized = Property::query()->visibleTo($u)->whereKey($session->property_id)->exists();
             }
             abort_unless($isAuthorized, 403);
         }

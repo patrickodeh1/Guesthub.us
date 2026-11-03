@@ -27,10 +27,10 @@ export default function checklistRenderer(config = {}) {
         updateStepBtnVisibility(shouldBeVisible) {
             const stepBtn = document.querySelector('button#stepBtn');
             if (!stepBtn) return;
-            const isEditReport = new URLSearchParams(window.location.search).get('edit_report') === '1' && this.sessionData?.is_admin;
+            const isEditReport = new URLSearchParams(window.location.search).get('edit_report') === '1' && (this.sessionData?.can_edit_report || this.sessionData?.is_admin);
             if (isEditReport) {
                 stepBtn.classList.remove('hidden');
-                stepBtn.innerHTML = 'Submit Session';
+                stepBtn.innerHTML = 'Close Report';
             } else {
                 stepBtn.classList.add('hidden'); // ALWAYS HIDE for cleaners
             }
@@ -331,7 +331,7 @@ export default function checklistRenderer(config = {}) {
                         return t.some(x => !x.checklist_item?.checked);
                     });
                 }
-                if (incomplete) {
+                if (incomplete && !(this.isEditReport && this.sessionData.can_edit_report)) {
                     outHtml = outHtml.replace(btn('saveProgress\\(\\)'), (m) => {
                         if (!/Next Stage/.test(m) || /^<button[^>]*\\sdisabled/.test(m)) return m;
                         return m.replace('<button', '<button disabled data-task-gate style="opacity:.5;cursor:not-allowed"');
@@ -620,7 +620,7 @@ export default function checklistRenderer(config = {}) {
                             ` : ''}
                             <div class="mt-6">
                                 <button type="button"
-                                        @click="${hasBlocking ? 'showWarning = true' : 'window.checklistHandler.saveProgress()'}"
+                                        @click="${(hasBlocking && !(this.isEditReport && this.sessionData.can_edit_report)) ? 'showWarning = true' : 'window.checklistHandler.saveProgress()'}"
                                         class="w-full px-6 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-semibold text-lg shadow-sm cursor-pointer flex items-center justify-center gap-2">
                                     Next Stage <span class="text-xl">→</span>
                                 </button>
@@ -1310,13 +1310,27 @@ export default function checklistRenderer(config = {}) {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                             </div>
-                            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">${isCompleted ? 'Session Completed!' : 'All Stages Complete!'}</h2>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">${isCompleted ? 'Session Closed!' : 'All Stages Complete!'}</h2>
                             <p class="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-8">
                                 ${isCompleted 
-                                    ? 'This session has been completed. You can still add notes or go back to add more photos.'
+                                    ? (this.sessionData.can_edit_report ? 'This session has been closed. Use the pencil to add a note or the camera to add photos.' : 'This session has been closed.')
                                     : 'You have completed all stages of this cleaning session. Please add any notes and submit when ready.'}
                             </p>
-                            ${isCompleted && this.sessionData.is_admin ? `
+                            ${isCompleted && this.sessionData.can_edit_report ? `
+                            <div class="flex items-center justify-center gap-4 mb-4">
+                                <button type="button" title="Add note" aria-label="Add note"
+                                    @click="const b = document.getElementById('gh-note-box'); if (b) { b.classList.toggle('hidden'); b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }"
+                                    class="w-14 h-14 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 transition-colors cursor-pointer">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <a href="${window.APP_BASE}/sessions/${this.sessionId}?edit_report=1&stage=photos" title="Add photos" aria-label="Add photos"
+                                    class="w-14 h-14 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800 transition-colors">
+                                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path><circle cx="19" cy="6" r="4.5" fill="currentColor" stroke="none"></circle><path stroke="#fff" stroke-linecap="round" stroke-width="1.6" d="M19 4v4M17 6h4"></path></svg>
+                                </a>
+                            </div>
+                            ${(!this.sessionData.is_admin && this.sessionData.edit_window_ends_at) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Editing is available until ${new Date(this.sessionData.edit_window_ends_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>` : ''}
+                            ` : (isCompleted ? `<p class="text-xs text-gray-500 dark:text-gray-400 mb-4">The 30-minute window to edit this report has closed.</p>` : '')}
+                            ${isCompleted && this.sessionData.can_edit_report ? `
                             <a href="${window.APP_BASE}/sessions/${this.sessionId}?edit_report=1"
                                class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold shadow-md mb-4">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1351,8 +1365,8 @@ export default function checklistRenderer(config = {}) {
                             </div>
                         ` : ''}
 
-                        <!-- Notes Section (always visible) -->
-                        <div class="max-w-2xl mx-auto mb-8 text-left">
+                        <!-- Notes Section -->
+                        <div id="gh-note-box" class="max-w-2xl mx-auto mb-8 text-left ${isCompleted ? 'hidden' : ''}">
                             <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-6 bg-gray-50 dark:bg-gray-800/50">
                                 <div class="flex items-start gap-3 mb-4">
                                     <svg class="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1370,7 +1384,7 @@ export default function checklistRenderer(config = {}) {
                                     <textarea 
                                         x-model="note"
                                         rows="4"
-                                        placeholder="Enter your notes here..."
+                                        placeholder="Enter your notes here..." @input="$el.dataset.dirty = '1'"
                                         class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     ></textarea>
 
@@ -1386,7 +1400,7 @@ export default function checklistRenderer(config = {}) {
                                                 window.api.post('/sessions/${this.sessionId}/save-note', { note: note })
                                                 .then(res => {
                                                     if (res.success) {
-                                                        window.checklistHandler?.showSuccess('Note saved successfully.');
+                                                        window.checklistHandler?.showSuccess('Note saved successfully.'); { const ta = $el.closest('#gh-note-box')?.querySelector('textarea'); if (ta) ta.dataset.dirty = '0'; }
                                                         $el.textContent = 'Saved!';
                                                         setTimeout(() => { $el.textContent = 'Save Note'; $el.disabled = false; }, 2000);
                                                     } else {
@@ -1467,7 +1481,7 @@ export default function checklistRenderer(config = {}) {
                         </div>
 
                         <!-- Add More Pictures Prompt -->
-                        <div class="max-w-2xl mx-auto mb-6">
+                        <div class="max-w-2xl mx-auto mb-6 ${isCompleted ? 'hidden' : ''}">
                             <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10 text-left">
                                 <div>
                                     <h4 class="text-lg font-semibold text-blue-900 dark:text-blue-100">Would you like to add more pictures?</h4>
@@ -1525,7 +1539,7 @@ export default function checklistRenderer(config = {}) {
             const hasInstructions = task.instructions && task.instructions.trim().length > 0;
             const hasMedia = task.media && task.media.length > 0;
             const showDetails = hasInstructions || hasMedia;
-            const isViewOnly = this.sessionData.is_view_only || false;
+            const isViewOnly = (this.sessionData.is_view_only && !(this.isEditReport && this.sessionData.can_edit_report)) || false;
             const taskDisabled = disabled || isViewOnly;
 
             // Check if user has added a note

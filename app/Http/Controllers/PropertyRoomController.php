@@ -11,8 +11,9 @@ class PropertyRoomController extends Controller
 {
     public function store(Request $request, Property $property)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can add rooms to properties.');
-        
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, companies and managers can add rooms to properties.');
+        abort_unless(Property::visibleTo($request->user())->whereKey($property->id)->exists(), 403, 'You do not have access to this property.');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'is_default' => ['nullable', Rule::in(['0', '1'])],

@@ -9,16 +9,59 @@ use Illuminate\Http\Request;
 
 class MediaController extends Controller
 {
+    public function callAction($method, $parameters)
+    {
+        abort_unless(auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'You cannot use the media library.');
+
+        return $this->{$method}(...array_values($parameters));
+    }
+
+    private function isAdmin(): bool
+    {
+        return (bool) auth()->user()?->hasRole('admin');
+    }
+
+    // Files: admin sees all, everyone else only the files they uploaded.
+    private function files()
+    {
+        return MediaFile::query()->when(! $this->isAdmin(), fn ($q) => $q->where('created_by', auth()->id()));
+    }
+
+    // Folders to browse: their own, plus any folder that holds one of their files (e.g. the shared "Category Icons" folder).
+    private function folders()
+    {
+        return MediaFolder::query()->when(! $this->isAdmin(), fn ($q) => $q->where(function ($w) {
+            $w->where('media_folders.created_by', auth()->id())
+              ->orWhereIn('media_folders.id', MediaFile::query()->where('created_by', auth()->id())->whereNotNull('media_folder_id')->select('media_folder_id'));
+        }));
+    }
+
+    // Folders they may rename, move or delete: only the ones they created.
+    private function ownedFolders()
+    {
+        return MediaFolder::query()->when(! $this->isAdmin(), fn ($q) => $q->where('created_by', auth()->id()));
+    }
+
+    private function authorizeFile(MediaFile $file): void
+    {
+        abort_unless($this->isAdmin() || (int) $file->created_by === (int) auth()->id(), 403, 'You do not have access to this file.');
+    }
+
+    private function authorizeFolder(MediaFolder $folder): void
+    {
+        abort_unless($this->isAdmin() || (int) $folder->created_by === (int) auth()->id(), 403, 'You do not have access to this folder.');
+    }
+
     public function index(Request $request)
     {
         $folderId = $request->integer('folder_id') ?: null;
-        $folder = $folderId ? MediaFolder::findOrFail($folderId) : null;
+        $folder = $folderId ? $this->folders()->findOrFail($folderId) : null;
 
         return view('admin.media.index', [
             'currentFolder' => $folder,
             'breadcrumb' => $this->breadcrumb($folder),
-            'folders' => MediaFolder::where('parent_id', $folderId)->orderBy('name')->get(),
-            'files' => MediaFile::where('media_folder_id', $folderId)->latest()->get(),
+            'folders' => $this->folders()->where('parent_id', $folderId)->orderBy('name')->get(),
+            'files' => $this->files()->where('media_folder_id', $folderId)->latest()->get(),
         ]);
     }
 
@@ -29,6 +72,10 @@ class MediaController extends Controller
             'parent_id' => ['nullable', 'exists:media_folders,id'],
         ]);
 
+        if (! empty($data['parent_id'])) {
+            abort_unless($this->folders()->whereKey($data['parent_id'])->exists(), 403, 'You do not have access to that folder.');
+        }
+
         MediaFolder::create($data);
 
         return back()->with('success', 'Folder created.');
@@ -36,6 +83,7 @@ class MediaController extends Controller
 
     public function destroyFolder(MediaFolder $folder)
     {
+        $this->authorizeFolder($folder);
         $parentId = $folder->parent_id;
         $folder->delete();
 
@@ -49,6 +97,10 @@ class MediaController extends Controller
             'image' => ['required', 'image', 'max:10240'],
             'media_folder_id' => ['nullable', 'exists:media_folders,id'],
         ]);
+
+        if (! empty($data['media_folder_id'])) {
+            abort_unless($this->folders()->whereKey($data['media_folder_id'])->exists(), 403, 'You do not have access to that folder.');
+        }
 
         $path = $request->file('image')->store('media-library', 'public');
 
@@ -76,6 +128,7 @@ class MediaController extends Controller
 
     public function destroyFile(MediaFile $file)
     {
+        $this->authorizeFile($file);
 if ($this->isInUse($file->path)) {
             return back()->with('error', 'This image is in use in a category, amenity, instruction step, property or setting, so it was not deleted.');
         }
@@ -88,11 +141,11 @@ if ($this->isInUse($file->path)) {
     public function picker(Request $request)
     {
         $folderId = $request->integer('folder_id') ?: null;
-        $folder = $folderId ? MediaFolder::findOrFail($folderId) : null;
+        $folder = $folderId ? $this->folders()->findOrFail($folderId) : null;
 
-        $folders = MediaFolder::where('parent_id', $folderId)->orderBy('name')->get(['id', 'name']);
+        $folders = $this->folders()->where('parent_id', $folderId)->orderBy('name')->get(['id', 'name']);
 
-        $files = MediaFile::where('media_folder_id', $folderId)
+        $files = $this->files()->where('media_folder_id', $folderId)
             ->latest()
             ->get()
             ->map(fn($f) => ['id' => $f->id, 'url' => $f->url(), 'name' => $f->original_name, 'path' => $f->path]);
@@ -116,9 +169,12 @@ if ($this->isInUse($file->path)) {
         ]);
 
         $targetFolderId = $data['target_folder_id'] ?? null;
+        if ($targetFolderId) {
+            abort_unless($this->folders()->whereKey($targetFolderId)->exists(), 403, 'You do not have access to that folder.');
+        }
 
         if (!empty($data['file_ids'])) {
-            MediaFile::whereIn('id', $data['file_ids'])->update(['media_folder_id' => $targetFolderId]);
+            $this->files()->whereIn('id', $data['file_ids'])->update(['media_folder_id' => $targetFolderId]);
         }
 
         if (!empty($data['folder_ids'])) {
@@ -133,7 +189,7 @@ if ($this->isInUse($file->path)) {
                 }
                 $folderIds = array_filter($folderIds, fn ($id) => ! in_array((int) $id, $blocked, true));
             }
-            MediaFolder::whereIn('id', $folderIds)->update(['parent_id' => $targetFolderId]);
+            $this->ownedFolders()->whereIn('id', $folderIds)->update(['parent_id' => $targetFolderId]);
         }
 
         return back()->with('success', 'Selected items moved.');
@@ -150,7 +206,7 @@ if ($this->isInUse($file->path)) {
 
         if (!empty($data['file_ids'])) {
             $kept = 0;
-            $files = MediaFile::whereIn('id', $data['file_ids'])->get();
+            $files = $this->files()->whereIn('id', $data['file_ids'])->get();
             foreach ($files as $file) {
                 if ($this->isInUse($file->path)) {
                     $kept++;
@@ -162,7 +218,7 @@ if ($this->isInUse($file->path)) {
         }
 
         if (!empty($data['folder_ids'])) {
-            MediaFolder::whereIn('id', $data['folder_ids'])->get()->each->delete();
+            $this->ownedFolders()->whereIn('id', $data['folder_ids'])->get()->each->delete();
         }
 
         return back()->with('success', 'Selected items deleted.' . (! empty($kept) ? " {$kept} image(s) in use were kept." : ''));

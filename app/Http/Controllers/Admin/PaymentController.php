@@ -8,9 +8,27 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
+    /** Charges the signed-in user may see: admin all, everyone else only those on bookings at their visible properties. */
+    private function charges(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        $query = Charge::query();
+
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+
+        return $query->whereHas('booking', fn ($b) => $b->whereIn(
+            'property_id',
+            \App\Models\Property::visibleTo($user)->select('properties.id')
+        ));
+    }
+
     public function index(Request $request)
     {
-        $charges = Charge::query()
+        $charges = $this->charges()
             ->with(['booking:id,booking_id,guest_name,property_id', 'booking.property:id,name'])
             ->when($request->search, fn ($q, $s) => $q->whereHas('booking', fn ($inner) => $inner
                 ->where('guest_name', 'like', "%{$s}%")
@@ -25,9 +43,9 @@ class PaymentController extends Controller
             ->withQueryString();
 
         $totals = [
-            'success_cents' => Charge::where('status', Charge::STATUS_SUCCESS)->sum('amount_cents'),
-            'pending_cents' => Charge::where('status', Charge::STATUS_PENDING)->sum('amount_cents'),
-            'failed_count' => Charge::where('status', Charge::STATUS_FAILED)->count(),
+            'success_cents' => $this->charges()->where('status', Charge::STATUS_SUCCESS)->sum('amount_cents'),
+            'pending_cents' => $this->charges()->where('status', Charge::STATUS_PENDING)->sum('amount_cents'),
+            'failed_count' => $this->charges()->where('status', Charge::STATUS_FAILED)->count(),
         ];
 
         return view('admin.payments.index', [

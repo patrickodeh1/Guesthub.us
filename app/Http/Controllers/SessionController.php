@@ -76,6 +76,29 @@ class SessionController extends Controller
     /**
      * Get session data as JSON for API requests
      */
+    private const REPORT_EDIT_WINDOW_MINUTES = 30;
+
+    /** True while a completed session is inside the post-close edit window. */
+    private function editWindowOpen(CleaningSession $session): bool
+    {
+        return $session->status === 'completed'
+            && $session->ended_at !== null
+            && $session->ended_at->copy()->addMinutes(self::REPORT_EDIT_WINDOW_MINUTES)->isFuture();
+    }
+
+    /** Admin/owner/company: always. Assigned cleaner: only inside the 30-minute window. */
+    private function canEditReport(CleaningSession $session): bool
+    {
+        $u = auth()->user();
+        if (! $u) {
+            return false;
+        }
+        if ($u->hasAnyRole(['admin', 'owner', 'company'])) {
+            return true;
+        }
+        return (int) $session->housekeeper_id === (int) $u->id && $this->editWindowOpen($session);
+    }
+
     private function assertSessionAccess(CleaningSession $session): void
     {
         $u = auth()->user();
@@ -326,6 +349,14 @@ class SessionController extends Controller
      */
     private function prepareSessionData(CleaningSession $session, ?string $overrideStage = null): array
     {
+        // Completed sessions rest on the summary stage (edit mode may have moved it).
+        if ($overrideStage === null
+            && $session->status === 'completed'
+            && $session->stage !== 'summary'
+            && request()->query('edit_report') != '1') {
+            $session->forceFill(['stage' => 'summary'])->saveQuietly();
+        }
+
         $session->loadMissing(['checklistItems.photos', 'property.propertyTasks.media']);
         $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];
 
@@ -472,11 +503,19 @@ class SessionController extends Controller
             $stage = $urlStage;
         } elseif ($session->status === 'completed') {
             $stage = 'summary';
-            if (request()->query('edit_report') == '1' && auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+            if (request()->query('edit_report') == '1' && auth()->check() && $this->canEditReport($session)) {
                 // Use the actual DB stage if it was updated by advanceStage/goBackStage,
                 // otherwise default to 'rooms' for initial page load
                 $dbStage = $session->stage ?? 'rooms';
-                $stage = ($dbStage === 'summary') ? 'rooms' : ($legacyMap[$dbStage] ?? $dbStage);
+                if ($dbStage === 'summary') {
+                    // Edit mode always starts at the first stage (pre-cleaning), skipping empty ones.
+                    $stage = 'pre_cleaning';
+                    foreach (['pre_cleaning', 'rooms', 'photos', 'post_cleaning'] as $candidateStage) {
+                        if ($this->stageHasContent($session, $candidateStage)) { $stage = $candidateStage; break; }
+                    }
+                } else {
+                    $stage = $legacyMap[$dbStage] ?? $dbStage;
+                }
             }
         } elseif (!empty($session->stage)) {
             $stage = $legacyMap[$session->stage] ?? $session->stage;
@@ -485,7 +524,7 @@ class SessionController extends Controller
             // force it back to 'rooms' and fix the DB so it doesn't happen again.
             if ($stage === 'summary' && ! in_array($session->status, ['completed', 'in_progress'], true)) {
                 $stage = 'rooms';
-                $session->update(['stage' => 'rooms', 'ended_at' => null]);
+                $session->update(auth()->user()->hasAnyRole(['admin', 'owner', 'company']) ? ['stage' => 'rooms', 'ended_at' => null] : ['stage' => 'rooms']);
             }
         } else {
             // Auto-detect stage based on remaining work (legacy behavior)
@@ -787,6 +826,8 @@ class SessionController extends Controller
             'is_view_only' => $isViewOnly,
             'is_too_early' => $isTooEarly,
             'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']),
+            'can_edit_report' => $this->canEditReport($session),
+            'edit_window_ends_at' => $session->ended_at ? $session->ended_at->copy()->addMinutes(self::REPORT_EDIT_WINDOW_MINUTES)->toIso8601String() : null,
         ];
     }
 
@@ -1376,7 +1417,7 @@ class SessionController extends Controller
 
             // Allow admins/owners editing reports to bypass the in_progress check
             $isAdminEditingReport = ($request->input('edit_report') == '1' || $request->query('edit_report') == '1')
-                && auth()->user()->hasAnyRole(['admin', 'owner', 'company']);
+                && $this->canEditReport($session);
 
             if ($session->status !== 'in_progress' && !$isAdminEditingReport) {
                 return response()->json([
@@ -1535,6 +1576,10 @@ class SessionController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
 
+            if ($session->status === 'completed' && ! $this->canEditReport($session)) {
+                return response()->json(['success' => false, 'message' => 'The 30-minute window to edit this report has closed.'], 403);
+            }
+
             // Allow going back from completed sessions (e.g. to add more photos)
             if (!in_array($session->status, ['in_progress', 'completed'])) {
                 return response()->json(['success' => false, 'message' => 'Session cannot be modified.'], 400);
@@ -1559,7 +1604,7 @@ class SessionController extends Controller
                         // If session was completed, revert to in_progress
                         // BUT skip revert when admin is just editing the report
                         $isAdminEditingReport = ($request->input('edit_report') == '1' || $request->query('edit_report') == '1')
-                            && auth()->user()->hasAnyRole(['admin', 'owner', 'company']);
+                            && $this->canEditReport($session);
 
                         if ($session->status === 'completed' && !$isAdminEditingReport) {
                             $session->status = 'in_progress';
@@ -1848,6 +1893,10 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
         try {
+            if ($session->status === 'completed' && ! $this->canEditReport($session)) {
+                return response()->json(['success' => false, 'message' => 'The 30-minute window to edit this report has closed.'], 403);
+            }
+
             // Authorize - only the assigned housekeeper can save notes
             // if ($session->housekeeper_id !== auth()->id()) {
             //     return response()->json([

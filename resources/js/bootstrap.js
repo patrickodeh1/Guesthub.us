@@ -18,3 +18,23 @@ window.api = {
     patch: (url, data, config) => unwrap(window.axios.patch(url, data, config)),
 };
 window.axios.defaults.headers.common['Accept'] = 'application/json';
+
+// Track in-flight api calls so "Close Report" can wait for pending saves/uploads.
+(function () {
+    if (!window.api || window.api.__tracked) return;
+    window.__ghPending = new Set();
+    Object.keys(window.api).forEach(function (k) {
+        var fn = window.api[k];
+        if (typeof fn !== 'function') return;
+        window.api[k] = function () {
+            var p = fn.apply(this, arguments);
+            if (p && typeof p.then === 'function') {
+                window.__ghPending.add(p);
+                var done = function () { window.__ghPending.delete(p); };
+                p.then(done, done);
+            }
+            return p;
+        };
+    });
+    window.api.__tracked = true;
+})();

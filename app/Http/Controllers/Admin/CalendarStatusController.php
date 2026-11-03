@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CleaningSession;
+use App\Models\Property;
 use App\Services\ActivityLogService;
 use App\Services\CleaningJobService;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,11 @@ class CalendarStatusController extends Controller
         ]);
 
         $session = CleaningSession::query()->findOrFail($data['session_id']);
+        abort_unless(
+            Property::query()->visibleTo($actor)->whereKey($session->property_id)->exists(),
+            403,
+            'You do not have access to that cleaning job.'
+        );
         $old = $session->status;
 
         try {

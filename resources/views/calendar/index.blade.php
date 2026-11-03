@@ -402,7 +402,7 @@
                                                             @endif
                                                             @if ($acting !== 'housekeeper')
                                                                 <div class="text-xs text-gray-500 dark:text-gray-400 min-w-0 break-words">
-                                                                    To: {{ $s->housekeeper?->name ?? 'Unassigned' }}
+                                                                    To: {{ $s->housekeeper?->name ?? 'Unassigned' }}@if(method_exists($s, 'guestLabel') && $s->guestLabel()) &middot; Guest: {{ $s->guestLabel() }}@endif
                                                                 </div>
                                                             @endif
                                                         </div>

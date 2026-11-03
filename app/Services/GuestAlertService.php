@@ -183,13 +183,13 @@ class GuestAlertService
      * Roles that can be individually toggled as alert recipients, in
      * addition to the guest and the Contact desk.
      */
-    public const STAFF_ROLES = ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
+    public const STAFF_ROLES = ['admin', 'company', 'owner', 'manager', 'housekeeper'];
 
     /**
      * All recipient sources a toggle can exist for: the guest, the Contact
      * desk, and each staff role.
      */
-    public const RECIPIENT_SOURCES = ['guest', 'contact', 'admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
+    public const RECIPIENT_SOURCES = ['guest', 'contact', 'admin', 'company', 'owner', 'manager', 'housekeeper'];
 
     /**
      * Default toggle state for an event when nothing has been configured

@@ -506,6 +506,23 @@
                 <a href="{{ $booking->publicUrl() }}" target="_blank" rel="noopener" class="btn-primary mt-4 w-full justify-center gap-2 sm:w-auto"><x-icon name="external-link" class="h-4 w-4" />Open as guest</a>
             </section>
 
+    <section class="card card-pad mb-6">
+        <h2 class="section-title">Cleanings</h2>
+        @forelse(($cleanings ?? collect()) as $cleaning)
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 first:mt-2 first:border-t-0 first:pt-0">
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-950">{{ $cleaning->scheduled_date?->format('M j, Y') ?? 'Unscheduled' }}</p>
+                    <p class="text-sm text-slate-500">Cleaner: {{ $cleaning->housekeeper?->name ?? 'Unassigned' }} &middot; {{ ucfirst(str_replace('_', ' ', $cleaning->status)) }}</p>
+                </div>
+                @if($cleaning->report_token && in_array($cleaning->status, ['in_progress', 'completed'], true))
+                    <a href="{{ route('sessions.show', ['session' => $cleaning->id]) }}" class="btn-secondary">Cleaning Report</a>
+                @endif
+            </div>
+        @empty
+            <p class="mt-2 text-sm text-slate-500">No cleaning is linked to this stay yet.</p>
+        @endforelse
+    </section>
+
         </div>
 
         {{-- Sidebar --}}

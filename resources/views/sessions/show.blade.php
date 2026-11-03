@@ -741,8 +741,8 @@
                     {{-- Content will be rendered here by JavaScript --}}
                 </div>
                 <div>
-                    <button @click="saveProgress" id="stepBtn" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium hidden">
-                        Submit
+                    <button @click="window.checklistHandler.closeReport()" id="stepBtn" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium hidden">
+                        Close Report
                     </button>
                 </div>
 

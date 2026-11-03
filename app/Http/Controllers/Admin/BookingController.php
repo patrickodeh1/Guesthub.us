@@ -23,7 +23,7 @@ class BookingController extends Controller
         $showArchived = $request->boolean('archived');
         $hasSearch = filled($request->search);
 
-        $baseQuery = fn () => Booking::with('property')
+        $baseQuery = fn () => $this->visible()->with('property')
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
                 ->where('guest_name', 'like', "%{$search}%")
                 ->orWhere('booking_id', $search)
@@ -44,6 +44,7 @@ class BookingController extends Controller
         // the client asked for one "Today" section with internal priority
         // ordering, not multiple labeled sections.
         $today = $this->todayTabBookings();
+        $this->attachLinkedCleanersToBookings($today);
         $todayTotal = $today->count();
         $todayIds = $today->pluck('id');
         $today = $today->take(5)->values();
@@ -54,7 +55,7 @@ class BookingController extends Controller
         // consistent source of truth for ordering. Guests who have already
         // checked out are deliberately excluded: they only appear in
         // "Today" on the day they check out, then are archived.
-        $thisWeekAll = Booking::with('property')
+        $thisWeekAll = $this->visible()->with('property')
             ->notArchived()
             ->whereNotIn('id', $todayIds)
             ->whereNull('checked_out_at')
@@ -67,18 +68,20 @@ class BookingController extends Controller
             })
             ->values();
         $thisWeekTotal = $thisWeekAll->count();
+        $this->attachLinkedCleanersToBookings($thisWeekAll);
         $thisWeek = $thisWeekAll->take(5)->values();
 
         // "Upcoming" card: all future stays after this week's window,
         // capped to an initial batch of 5 with a "Show More" AJAX endpoint
         // that loads 5 more at a time.
         $upcomingLimit = 5;
-        $upcomingBaseQuery = fn () => Booking::with('property')
+        $upcomingBaseQuery = fn () => $this->visible()->with('property')
             ->notArchived()
             ->whereNull('checked_out_at')
             ->whereDate('check_in_date', '>', today()->addDays(6));
 
         $upcoming = ($upcomingBaseQuery)()->orderBy('check_in_date')->limit($upcomingLimit)->get();
+        $this->attachLinkedCleanersToBookings($upcoming);
         $upcomingTotal = ($upcomingBaseQuery)()->count();
 
         $thisWeekIds = $thisWeekAll->pluck('id')->merge($todayIds);
@@ -89,14 +92,15 @@ class BookingController extends Controller
                 fn ($q) => $q->orderBy('check_in_date'))
             ->paginate(15)
             ->withQueryString();
+        $this->attachLinkedCleanersToBookings($bookings);
 
-        $properties = Property::orderBy('name')->get();
+        $properties = Property::visibleTo(auth()->user())->orderBy('name')->get();
 
         $stats = [
-            'total_guests'     => Booking::notArchived()->count(),
-            'todays_arrivals'  => Booking::notArchived()->whereDate('check_in_date', today())->count(),
-            'waiting_approval' => Booking::notArchived()->where('status', 'pre_checkin_complete')->whereNull('approved_at')->count(),
-            'checked_in'       => Booking::notArchived()
+            'total_guests'     => $this->visible()->notArchived()->count(),
+            'todays_arrivals'  => $this->visible()->notArchived()->whereDate('check_in_date', today())->count(),
+            'waiting_approval' => $this->visible()->notArchived()->where('status', 'pre_checkin_complete')->whereNull('approved_at')->count(),
+            'checked_in'       => $this->visible()->notArchived()
                 ->where(fn ($q) => $q->where('manually_checked_in', true)->orWhere('status', 'currently_hosting'))
                 ->whereNull('checked_out_at')
                 ->count(),
@@ -113,7 +117,7 @@ class BookingController extends Controller
      */
     private function todayTabBookings()
     {
-        return Booking::with('property')
+        return $this->visible()->with('property')
             ->notArchived()
             ->where(fn ($q) => $q
                 ->whereDate('check_in_date', today())
@@ -137,9 +141,11 @@ class BookingController extends Controller
         // continues in the same priority order as the initial page load
         // rather than falling back to plain check_in_date ordering.
         $bookings = $this->todayTabBookings();
+        $this->attachLinkedCleanersToBookings($bookings);
 
         $total = $bookings->count();
         $batch = $bookings->slice($offset, $limit);
+        $this->attachLinkedCleanersToBookings($batch);
 
         return response()->json([
             'html' => $batch->map(fn ($booking) => view('admin.bookings.partials.week-guest-row', ['booking' => $booking, 'context' => 'today'])->render())->implode(''),
@@ -153,7 +159,7 @@ class BookingController extends Controller
         $offset = max(0, (int) $request->query('offset', 0));
         $limit = min(12, max(1, (int) $request->query('limit', 5)));
 
-        $bookings = Booking::with('property')
+        $bookings = $this->visible()->with('property')
             ->notArchived()
             ->whereNotIn('id', $this->todayTabBookings()->pluck('id'))
             ->whereNull('checked_out_at')
@@ -166,8 +172,10 @@ class BookingController extends Controller
             })
             ->values();
 
+        $this->attachLinkedCleanersToBookings($bookings);
         $total = $bookings->count();
         $batch = $bookings->slice($offset, $limit);
+        $this->attachLinkedCleanersToBookings($batch);
         $html = $batch->map(fn ($booking) => view('admin.bookings.partials.week-guest-row', [
             'booking' => $booking,
             'context' => 'this-week',
@@ -193,7 +201,7 @@ class BookingController extends Controller
             return response()->json([]);
         }
 
-        $results = Booking::with('property')
+        $results = $this->visible()->with('property')
             ->where(fn ($q) => $q
                 ->where('guest_name', 'like', "%{$search}%")
                 ->orWhere('booking_id', $search)
@@ -201,15 +209,19 @@ class BookingController extends Controller
                 ->orWhere('email', 'like', "%{$search}%"))
             ->orderBy('check_in_date', 'desc')
             ->limit(8)
-            ->get()
-            ->map(fn ($b) => [
-                'id'       => $b->id,
-                'name'     => $b->guest_name,
-                'property' => $b->property?->name,
-                'stay'     => $b->stayRangeLabel(),
-                'status'   => $b->statusLabel(),
-                'url'      => route('admin.guests.show', $b),
-            ]);
+            ->get();
+
+        $cleanerNames = $this->bookingCleanerNames($results);
+
+        $results = $results->map(fn ($b) => [
+            'id'       => $b->id,
+            'name'     => $b->guest_name,
+            'property' => $b->property?->name,
+            'stay'     => $b->stayRangeLabel(),
+            'status'   => $b->statusLabel(),
+            'cleaner'  => $cleanerNames[$b->id] ?? null,
+            'url'      => route('admin.guests.show', $b),
+        ]);
 
         return response()->json($results);
     }
@@ -223,7 +235,7 @@ class BookingController extends Controller
         $offset = max(0, (int) $request->query('offset', 0));
         $limit  = min(12, max(1, (int) $request->query('limit', 5)));
 
-        $bookings = Booking::with('property')
+        $bookings = $this->visible()->with('property')
             ->notArchived()
             ->whereNull('checked_out_at')
             ->whereDate('check_in_date', '>', today()->addDays(6))
@@ -232,7 +244,9 @@ class BookingController extends Controller
             ->take($limit)
             ->get();
 
-        $total = Booking::notArchived()
+        $this->attachLinkedCleanersToBookings($bookings);
+
+        $total = $this->visible()->notArchived()
             ->whereNull('checked_out_at')
             ->whereDate('check_in_date', '>', today()->addDays(6))
             ->count();
@@ -253,7 +267,7 @@ class BookingController extends Controller
     {
         return view('admin.bookings.form', [
             'booking'          => new Booking(),
-            'properties'       => Property::where('active', true)->orderBy('name')->get(),
+            'properties'       => Property::visibleTo(auth()->user())->where('active', true)->orderBy('name')->get(),
             'instructionSteps' => collect(),
         ]);
     }
@@ -313,9 +327,11 @@ class BookingController extends Controller
         // Needed by the inline Guest Details edit panel's Property dropdown
         // (task: merged edit/view page) -- same source list the old
         // separate edit page used.
-        $properties = Property::where('active', true)->orderBy('name')->get();
+        $properties = Property::visibleTo(auth()->user())->where('active', true)->orderBy('name')->get();
 
-        return view('admin.bookings.show', compact('booking', 'guestLogs', 'properties'));
+        $cleanings = $booking->linkedCleanings()->with('housekeeper:id,name')->orderByDesc('scheduled_date')->get();
+
+        return view('admin.bookings.show', compact('booking', 'guestLogs', 'properties', 'cleanings'));
     }
 
     public function update(Request $request, Booking $booking)
@@ -1068,6 +1084,110 @@ class BookingController extends Controller
         return response()->file(\Storage::path($booking->license_plate_photo_path));
     }
 
+    /** Bookings the signed-in user may see (admin: all; others: only on properties visible to them). */
+    private function visible(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        return \App\Support\BookingAccess::query($user);
+    }
+
+    /**
+     * Efficiently resolve the most recent linked cleaner for a page batch of bookings
+     * without issuing one query per row. Matches Booking::linkedCleanings() semantics.
+     */
+    private function bookingCleanerNames(\Illuminate\Support\Collection $bookings): array
+    {
+        if ($bookings->isEmpty()) {
+            return [];
+        }
+
+        $bookingIds = $bookings->pluck('id')->filter()->all();
+        if ($bookingIds === []) {
+            return [];
+        }
+
+        $propertyDateMatches = $bookings
+            ->filter(fn ($booking) => $booking->property_id && $booking->check_out_date)
+            ->mapWithKeys(fn ($booking) => [$booking->id => [
+                'property_id' => $booking->property_id,
+                'date' => $booking->check_out_date->toDateString(),
+            ]])
+            ->all();
+
+        $sessions = \App\Models\CleaningSession::query()
+            ->where(function ($query) use ($bookingIds, $propertyDateMatches) {
+                if ($bookingIds !== []) {
+                    $query->whereIn('booking_id', $bookingIds);
+                }
+
+                if ($propertyDateMatches !== []) {
+                    $query->orWhere(function ($matchQuery) use ($propertyDateMatches) {
+                        $matchQuery->whereNull('booking_id')->where(function ($dateQuery) use ($propertyDateMatches) {
+                            foreach ($propertyDateMatches as $match) {
+                                $dateQuery->orWhere(function ($inner) use ($match) {
+                                    $inner->where('property_id', $match['property_id'])
+                                        ->whereDate('scheduled_date', $match['date']);
+                                });
+                            }
+                        });
+                    });
+                }
+            })
+            ->orderByDesc('scheduled_date')
+            ->orderByDesc('id')
+            ->with('housekeeper:id,name')
+            ->get();
+
+        $cleanerNames = [];
+        foreach ($sessions as $session) {
+            if ($session->booking_id) {
+                $cleanerNames[$session->booking_id] = $session->housekeeper?->name;
+                continue;
+            }
+
+            foreach ($propertyDateMatches as $bookingId => $match) {
+                if (isset($cleanerNames[$bookingId])) {
+                    continue;
+                }
+
+                if ((int) $session->property_id === (int) $match['property_id']
+                    && $session->scheduled_date
+                    && \Illuminate\Support\Carbon::parse($session->scheduled_date)->toDateString() === $match['date']) {
+                    $cleanerNames[$bookingId] = $session->housekeeper?->name;
+                    break;
+                }
+            }
+        }
+
+        return $cleanerNames;
+    }
+
+    private function attachLinkedCleanersToBookings($bookings): void
+    {
+        if ($bookings instanceof \Illuminate\Contracts\Pagination\LengthAwarePaginator) {
+            $bookings = $bookings->getCollection();
+        }
+
+        if ($bookings instanceof \Illuminate\Support\Collection && $bookings->isNotEmpty()) {
+            $cleanerNames = $this->bookingCleanerNames($bookings);
+
+            foreach ($bookings as $booking) {
+                $booking->setRelation('linkedCleanings', collect());
+                $cleanerName = $cleanerNames[$booking->id] ?? null;
+                if ($cleanerName) {
+                    $booking->setRelation('linkedCleanings', collect([
+                        (object) [
+                            'scheduled_date' => $booking->check_out_date?->toDateString(),
+                            'housekeeper' => (object) ['name' => $cleanerName],
+                        ],
+                    ]));
+                }
+            }
+        }
+    }
+
     private function validated(Request $request, ?Booking $booking = null): array
     {
         return $request->validate([
@@ -1080,7 +1200,11 @@ class BookingController extends Controller
             'email'          => ['nullable', 'email', 'max:255'],
             'check_in_date'  => ['required', 'date'],
             'check_out_date' => ['required', 'date', 'after_or_equal:check_in_date'],
-            'property_id'    => ['required', 'exists:properties,id'],
+            'property_id'    => ['required', 'exists:properties,id', function ($attribute, $value, $fail) {
+                if (! Property::visibleTo(auth()->user())->whereKey($value)->exists()) {
+                    $fail('You do not have access to that property.');
+                }
+            }],
             'id_type'        => ['required', 'in:state_id,passport'],
             // parking_needed / parking_charge_override / incidentals_charge /
             // early_checkin_tier / late_checkout_type / late_checkout_hours /

@@ -2,7 +2,7 @@
     $canManage = auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']);
 @endphp
 @if (! $canManage)
-    <a href="{{ route('sessions.show', $s) }}" class="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">Start cleaning</a>
+    <a href="{{ route('sessions.show', $s) }}" class="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">Cleaning Report</a>
 @else
 <div x-data="{ open: false }" class="relative inline-block text-left" @click.outside="open = false" @keydown.escape.window="open = false">
     <button type="button" @click.stop="open = !open" :aria-expanded="open" aria-label="Cleaning actions"
@@ -11,7 +11,7 @@
     </button>
     <div x-show="open" style="display:none"
          class="absolute right-0 z-30 mt-1 w-52 rounded-lg border border-gray-200 bg-white py-1 text-left shadow-lg dark:border-gray-700 dark:bg-gray-800">
-        <a href="{{ route('sessions.show', $s) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Start cleaning</a>
+        <a href="{{ route('sessions.show', $s) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Cleaning Report</a>
         @if ($canManage)
             <a href="{{ route('manage.sessions.edit', $s) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Edit cleaning</a>
             @if ($s->status === 'pending' && ! $s->gps_override_enabled)

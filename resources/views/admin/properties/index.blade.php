@@ -5,7 +5,9 @@
             <h1 class="page-title">Properties</h1>
             <p class="page-subtitle">Manage addresses, maps, images, GPS points, and smart locks for each property.</p>
         </div>
-        <a href="{{ route('admin.properties.create') }}" class="btn-primary">Add Property</a>
+        @if(\App\Support\RoleAccess::canManageProperties(auth()->user()))
+            <a href="{{ route('admin.properties.create') }}" class="btn-primary">Add Property</a>
+        @endif
     </div>
 
     <div class="card card-pad mb-5">
@@ -25,7 +27,11 @@
                 <img src="{{ $property->heroImageUrl() }}" alt="" class="block h-44 w-full rounded-t-xl bg-slate-100 object-cover sm:h-48 {{ $property->active ? '' : 'opacity-60' }}">
                 <div class="flex flex-1 flex-col p-4 {{ $property->active ? '' : 'opacity-60' }}">
                     <div class="flex items-start justify-between gap-3">
-                        <a href="{{ route('admin.properties.edit', $property) }}" class="min-w-0 break-words text-lg font-semibold text-slate-950 hover:underline">{{ $property->name }}</a>
+                        @if(\App\Support\RoleAccess::canManageProperties(auth()->user()))
+                            <a href="{{ route('admin.properties.edit', $property) }}" class="min-w-0 break-words text-lg font-semibold text-slate-950 hover:underline">{{ $property->name }}</a>
+                        @else
+                            <p class="min-w-0 break-words text-lg font-semibold text-slate-950">{{ $property->name }}</p>
+                        @endif
                         <span class="badge shrink-0 {{ $property->active ? 'badge-active' : 'badge-inactive' }}">{{ $property->active ? 'Active' : 'Inactive' }}</span>
                     </div>
                     <p class="mt-1 break-words text-sm text-slate-500">{{ $property->fullAddress() }}</p>
@@ -49,12 +55,16 @@
                      x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-2 sm:scale-95">
                     <div class="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300 sm:hidden"></div>
                     <p class="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Setup</p>
-                    <a href="{{ route('admin.properties.edit', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Edit property</a>
-                    <button type="button" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50" @click="open = false; openDuplicateModal(@js(route('admin.properties.duplicate', $property)), @js($property->name))">Duplicate</button>
+                    @if(\App\Support\RoleAccess::canManageProperties(auth()->user()))
+                        <a href="{{ route('admin.properties.edit', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Edit property</a>
+                        <button type="button" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50" @click="open = false; openDuplicateModal(@js(route('admin.properties.duplicate', $property)), @js($property->name))">Duplicate</button>
+                    @endif
                     <button type="button" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50" @click="open = false; $dispatch('open-preview-panel', 'assign-rooms-{{ $property->id }}')">Add room</button>
                     <a href="{{ route('properties.rooms.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Rooms</a>
-                    <a href="{{ route('admin.properties.availability.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Availability</a>
-                    <a href="{{ route('properties.notifications.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Notifications</a>
+                    @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+                        <a href="{{ route('admin.properties.availability.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Availability</a>
+                        <a href="{{ route('properties.notifications.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Notifications</a>
+                    @endif
 
                     <p class="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Cleaning</p>
                     <a href="{{ route('properties.property-tasks.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Property tasks</a>
@@ -66,12 +76,12 @@
                     <a href="{{ route('admin.instructions.show', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Check-in / check-out details</a>
 
                     <p class="mt-1 border-t border-slate-100 px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
-                    @if($property->active)
+                    @if(\App\Support\RoleAccess::canManageProperties(auth()->user()) && $property->active)
                     <form method="post" action="{{ route('properties.destroy', $property) }}" onsubmit="return confirm(@js('Mark ' . $property->name . ' inactive? It stays in the system and can be reactivated.'))">
                         @csrf @method('delete')
                         <button class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50">Mark inactive</button>
                     </form>
-                    @else
+                    @elseif(\App\Support\RoleAccess::canManageProperties(auth()->user()))
                     <form method="post" action="{{ route('properties.activate', $property) }}" onsubmit="return confirm(@js('Reactivate ' . $property->name . '?'))">
                         @csrf
                         <button class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50">Reactivate</button>

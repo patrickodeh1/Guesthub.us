@@ -169,7 +169,7 @@
                         ['GPS verification keeps failing',           'Confirm property GPS coordinates are set in the Properties module. Ask the guest to allow location access in their browser. Use manual override if time-sensitive.'],
                         ['Photo ID upload fails for guest',          'File must be JPG, PNG, WEBP, or PDF under 5MB. Ask the guest to compress the image or try a different browser (Safari on iOS sometimes blocks uploads).'],
                         ['Guest can\'t see the welcome guide',       'The guide only unlocks after successful GPS verification or manual check-in approval. Check the booking status; it must be "checked_in".'],
-                        ['Team member can\'t access a section',      'Review their role in Team Management. Manager and Staff roles have restricted access. Only Owner accounts can access Users and Settings.'],
+                        ['Team member can\'t access a section',      'Review their role in Team Management. Managers have restricted access. Only Admin accounts can access Settings and global configuration.'],
                         ['Activity log shows repeated failed logins','This may indicate a brute-force attempt. Review the IP address in the log and consider blocking at your hosting firewall level.'],
                     ] as [$q, $a])
                         <div class="rounded-xl border border-slate-200 p-4">

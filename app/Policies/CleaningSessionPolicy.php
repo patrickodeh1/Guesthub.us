@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\CleaningSession;
+use App\Models\Property;
 
 class CleaningSessionPolicy
 {
@@ -12,7 +13,11 @@ class CleaningSessionPolicy
      */
     public function view(User $user, CleaningSession $session): bool
     {
-        return $session->housekeeper_id === $user->id 
-            || $user->hasAnyRole(['admin', 'owner', 'company']);
+        if ($session->housekeeper_id === $user->id || $user->hasRole('admin')) {
+            return true;
+        }
+
+        return $user->hasAnyRole(['owner', 'company', 'manager'])
+            && Property::query()->visibleTo($user)->whereKey($session->property_id)->exists();
     }
 }

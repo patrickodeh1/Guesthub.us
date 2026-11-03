@@ -91,7 +91,7 @@
                                                         <svg class="w-3 h-3 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                                         </svg>
-                                                        <span>{{ $session->housekeeper->name }}</span>
+                                                        <span>{{ $session->housekeeper->name }}@if(method_exists($session, 'guestLabel') && $session->guestLabel()) &middot; {{ $session->guestLabel() }}@endif</span>
                                                     </span>
                                                 @endif
                                             </div>

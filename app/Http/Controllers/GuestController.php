@@ -23,7 +23,7 @@ class GuestController extends Controller
 {
     public function show(string $bookingId, string $token)
     {
-        $booking = $this->booking($bookingId, $token);
+        $booking = $this->booking($bookingId, $token, true);
         return $this->renderPortal($booking);
     }
 
@@ -1456,7 +1456,7 @@ class GuestController extends Controller
 
         return $this->lockStatusCache[$lock->id] = $status;
     }
-    private function booking(string $bookingId, string $token): Booking
+    private function booking(string $bookingId, string $token, bool $allowLoginFallback = false): Booking
     {
         $booking = Booking::with('property')
             ->where('booking_id', $bookingId)
@@ -1471,6 +1471,15 @@ class GuestController extends Controller
         if ($sessionBooking && $sessionBooking->booking_id === $bookingId) {
             return $sessionBooking;
         }
+        if (! $allowLoginFallback) {
+            ActivityLogService::security('invalid_token_access', "Rejected guest request with a bad token for booking: {$bookingId}.", [
+                'actor_type' => 'guest',
+                'severity'   => 'warning',
+                'metadata'   => ['booking_id' => $bookingId],
+            ]);
+            abort(404);
+        }
+
         $fallbackBooking = Booking::with('property')->where('booking_id', $bookingId)->first();
         if (! $fallbackBooking) {
             ActivityLogService::security('invalid_token_access', "Invalid guest token access attempt for booking: {$bookingId}.", [

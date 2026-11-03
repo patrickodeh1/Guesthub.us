@@ -133,6 +133,62 @@ class CleaningSession extends Model
         return $this->belongsTo(\App\Models\User::class, 'gps_override_approved_by');
     }
 
+    public function checkout(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\PropertyCheckout::class, 'checkout_id');
+    }
+
+    protected $guestBookingCache = false;
+
+    /**
+     * The guest stay tied to this cleaning: the explicit booking link first,
+     * else a same-property booking checking out on the cleaning date.
+     */
+    public function guestBooking(): ?\App\Models\Booking
+    {
+        if ($this->guestBookingCache !== false) {
+            return $this->guestBookingCache;
+        }
+        $b = $this->booking;
+        if (! $b && $this->property_id && $this->scheduled_date) {
+            $b = \App\Models\Booking::query()
+                ->where('property_id', $this->property_id)
+                ->whereDate('check_out_date', $this->scheduled_date)
+                ->whereNull('cancelled_at')
+                ->orderByDesc('id')
+                ->first();
+        }
+        return $this->guestBookingCache = $b;
+    }
+
+    /** @return array{guest: ?string, stay: ?string, booking: ?\App\Models\Booking} */
+    public function guestInfo(): array
+    {
+        $b = $this->guestBooking();
+        if ($b) {
+            return ['guest' => $b->guest_name, 'stay' => $b->stayRangeLabel(), 'booking' => $b];
+        }
+        $c = $this->checkout;
+        if ($c && $c->guest_name) {
+            return [
+                'guest' => $c->guest_name,
+                'stay' => $c->checkout_date ? 'Check-out ' . \Illuminate\Support\Carbon::parse($c->checkout_date)->format('M j, Y') : null,
+                'booking' => null,
+            ];
+        }
+        return ['guest' => null, 'stay' => null, 'booking' => null];
+    }
+
+    /** "Guest Name · stay dates" or null when no guest is tied to this cleaning. */
+    public function guestLabel(): ?string
+    {
+        $i = $this->guestInfo();
+        if (! $i['guest']) {
+            return null;
+        }
+        return trim($i['guest'] . ($i['stay'] ? ' · ' . $i['stay'] : ''));
+    }
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Booking::class);

@@ -599,6 +599,34 @@ export default function checklist(config = {}) {
         },
 
         /**
+         * Close Report: leave edit mode and return to the session page (no stage advance).
+         */
+        closeReport() {
+            const sessionId = this.getSessionId();
+            if (!sessionId) { this.showError('Session ID not found'); return; }
+            const btn = document.getElementById('stepBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="inline-block animate-spin mr-2">↻</span> Closing...';
+            }
+            const waitPending = async () => {
+                const t0 = Date.now();
+                while (window.__ghPending && window.__ghPending.size && Date.now() - t0 < 15000) {
+                    await Promise.allSettled([...window.__ghPending]);
+                }
+            };
+            const go = async () => { await waitPending(); window.location.href = `${window.APP_BASE}/sessions/${sessionId}`; };
+            const ta = document.querySelector('#gh-note-box textarea');
+            if (ta && ta.dataset.dirty === '1' && ta.value.trim()) {
+                window.api.post(`/sessions/${sessionId}/save-note`, { note: ta.value })
+                    .then(() => go())
+                    .catch(() => { this.showError('Could not save your note. Please save it before closing.'); if (btn) { btn.disabled = false; btn.innerHTML = 'Close Report'; } });
+                return;
+            }
+            go();
+        },
+
+        /**
          * Save progress and advance to the next stage
          */
         async saveProgress() {
@@ -614,20 +642,10 @@ export default function checklist(config = {}) {
                 return;
             }
 
-            // BYPASS: If Admin is in Edit Report mode, save progress just means finishing the edit session
+            // EDIT REPORT MODE: Next Stage really advances (no task gating); Close Report is closeReport().
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('edit_report') === '1' && renderer.sessionData.is_admin) {
-                const submitButton = document.getElementById('stepBtn');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<span class="inline-block animate-spin mr-2">↻</span> Submitting...';
-                }
-                const sessionId = this.getSessionId();
-                if (sessionId) {
-                    window.location.href = `${window.APP_BASE}/sessions/${sessionId}`;
-                }
-                return;
-            }
+            const isEditModeNow = urlParams.get('edit_report') === '1'
+                && (renderer.sessionData.can_edit_report || renderer.sessionData.is_admin);
 
             // Client-side validation: Check if there are any incomplete verify/inventory tasks in the current stage
             const sd = renderer.sessionData;
@@ -652,14 +670,14 @@ export default function checklist(config = {}) {
                 });
             }
 
-            if (incompleteMandatory.length > 0) {
+            if (!isEditModeNow && incompleteMandatory.length > 0) {
                 this.showError('Please complete all mandatory tasks and view all required instructions before advancing.');
                 // Optionally scroll to the first incomplete task, or just scroll to bottom to see error
                 window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 return;
             }
 
-            if (currentStage === 'photos') {
+            if (!isEditModeNow && currentStage === 'photos') {
                 let pendingPhotos = [];
                 let rooms = sd.rooms || [];
                 if (!Array.isArray(rooms)) rooms = Object.values(rooms);
@@ -699,7 +717,8 @@ export default function checklist(config = {}) {
                 return;
             }
 
-            const submitButton = document.getElementById('stepBtn');
+            const submitButton = window.event?.target?.closest?.('button') || null;
+            const submitOrigHtml = submitButton ? submitButton.innerHTML : '';
             if (submitButton) {
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<span class="inline-block animate-spin mr-2">↻</span> Advancing...';
@@ -720,7 +739,7 @@ export default function checklist(config = {}) {
                         
                         if (submitButton) {
                             submitButton.disabled = false;
-                            submitButton.textContent = 'Submit';
+                            submitButton.innerHTML = submitOrigHtml;
                         }
                         
                         renderer.renderChecklist();
@@ -748,7 +767,7 @@ export default function checklist(config = {}) {
 
                     if (submitButton) {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Submit';
+                        submitButton.innerHTML = submitOrigHtml;
                     }
 
                     renderer.renderChecklist();
@@ -763,7 +782,7 @@ export default function checklist(config = {}) {
 
                 if (submitButton) {
                     submitButton.disabled = false;
-                    submitButton.textContent = 'Submit';
+                    submitButton.innerHTML = submitOrigHtml;
                 }
             }
         },

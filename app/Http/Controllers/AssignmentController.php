@@ -25,7 +25,7 @@ class AssignmentController extends Controller
             ->with(['property' => function ($q) {
                 $q->withCount(['rooms', 'propertyTasks']);
             }])
-            ->with('housekeeper:id,name')
+            ->with(['housekeeper:id,name', 'booking', 'checkout'])
             ->orderBy('scheduled_date', 'asc')
             ->orderBy('scheduled_time', 'asc');
 

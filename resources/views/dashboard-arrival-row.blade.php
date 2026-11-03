@@ -21,9 +21,16 @@
         @else
             <p class="min-w-0 break-words text-sm text-slate-600">{!! $booking->dashboardArrivalLine($today) !!}</p>
         @endif
-        @php $acct = \App\Services\CleanerAccountability::forBooking($booking, $today); @endphp
+        @php
+            $acct = \App\Services\CleanerAccountability::forBooking($booking, $today);
+            $latestCleaning = $booking->relationLoaded('linkedCleanings') ? $booking->linkedCleanings->sortByDesc('scheduled_date')->first() : null;
+            $cleanerName = $latestCleaning?->housekeeper?->name;
+        @endphp
         @if($acct)
             <p class="min-w-0 break-words text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
+        @endif
+        @if($cleanerName)
+            <p class="min-w-0 break-words text-xs text-slate-500">Cleaner: {{ $cleanerName }}</p>
         @endif
 
     </a>

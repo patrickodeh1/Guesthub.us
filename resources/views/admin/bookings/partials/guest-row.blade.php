@@ -1,5 +1,12 @@
+@php
+    $latestCleaning = $booking->relationLoaded('linkedCleanings') ? $booking->linkedCleanings->sortByDesc('scheduled_date')->first() : null;
+    $cleanerName = $latestCleaning?->housekeeper?->name;
+@endphp
 <tr>
     <td><a class="font-semibold text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
+        @if($cleanerName)
+            <p class="text-xs text-slate-500">Cleaner: {{ $cleanerName }}</p>
+        @endif
         @php $acct = \App\Services\CleanerAccountability::forBooking($booking, now()->setTimezone(config('app.display_timezone'))->toDateString()); @endphp
         @if($acct)
             <p class="text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\TaskMedia;
+use App\Models\User;
+use App\Support\OrgScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,6 +13,9 @@ class TaskMediaController extends Controller
 {
     public function store(Request $request, Task $task)
     {
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, companies and managers can add task media.');
+        abort_unless($this->taskVisibleToUser($request->user(), $task), 403, 'You do not have access to this task.');
+
         // Validate the array and each file
         $request->validate([
             'media'      => ['required', 'array', 'min:1'],
@@ -54,8 +59,12 @@ class TaskMediaController extends Controller
         return back()->with('status', 'Media uploaded');
     }
 
-    public function destroy(Task $task, TaskMedia $media)
+    public function destroy(Request $request, Task $task, TaskMedia $media)
     {
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, companies and managers can remove task media.');
+        abort_unless($this->taskVisibleToUser($request->user(), $task), 403, 'You do not have access to this task.');
+        abort_unless((int) $media->task_id === (int) $task->id, 404, 'That media does not belong to this task.');
+
         $rawUrl = TaskMedia::normalizePath($media->getRawOriginal('url'));
 
         // Check how many other TaskMedia records use the same physical file
@@ -90,5 +99,14 @@ class TaskMediaController extends Controller
 
         $media->delete();
         return back()->with('status', 'Media removed');
+    }
+
+    private function taskVisibleToUser(User $user, Task $task): bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        return OrgScope::visibleTasks($user)->whereKey($task->id)->exists();
     }
 }

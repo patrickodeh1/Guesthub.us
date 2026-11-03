@@ -2433,6 +2433,14 @@
             <div class="hero-top">
                 <div>
                     <h1 class="report-title">{{ $reportDisplayName }}</h1>
+                    @php $__gi = $session->guestInfo(); @endphp
+                    @if($__gi['guest'] || $session->housekeeper)
+                        <p class="report-parties" style="margin:6px 0 0;font-size:14px;line-height:1.5;color:inherit;opacity:.9;">
+                            @if($__gi['guest'])<strong>Guest:</strong> {{ $__gi['guest'] }}@if($__gi['stay']) &middot; {{ $__gi['stay'] }}@endif @endif
+                            @if($__gi['guest'] && $session->housekeeper) &nbsp;|&nbsp; @endif
+                            @if($session->housekeeper)<strong>Cleaner:</strong> {{ $session->housekeeper->name }}@endif
+                        </p>
+                    @endif
                     <div class="report-date">{{ $reportBrandName }} · Report Date: {{ $reportDateText }}</div>
                 </div>
             </div>

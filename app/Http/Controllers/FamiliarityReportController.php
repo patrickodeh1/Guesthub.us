@@ -37,6 +37,11 @@ class FamiliarityReportController extends Controller
                     ->whereHas('roles', fn($q) => $q->where('name', 'housekeeper'))
                     ->pluck('id');
                 $query->whereIn('user_id', $housekeeperIds);
+            } elseif ($authUser->hasRole('manager')) {
+                $visible = Property::query()->visibleTo($authUser)->select('properties.id');
+                $query->whereIn('user_id', \Illuminate\Support\Facades\DB::table('property_user')->whereIn('property_id', $visible)->select('user_id'));
+            } else {
+                $query->whereRaw('1 = 0');
             }
         }
 
@@ -85,6 +90,10 @@ class FamiliarityReportController extends Controller
                 });
             } elseif ($authUser->hasRole('owner')) {
                 $cleanersQuery->where('owner_id', $authUser->id);
+            } elseif ($authUser->hasRole('manager')) {
+                $cleanersQuery->whereIn('users.id', \Illuminate\Support\Facades\DB::table('property_user')->whereIn('property_id', Property::query()->visibleTo($authUser)->select('properties.id'))->select('user_id'));
+            } else {
+                $cleanersQuery->whereRaw('1 = 0');
             }
         }
         $cleaners = $cleanersQuery->get();

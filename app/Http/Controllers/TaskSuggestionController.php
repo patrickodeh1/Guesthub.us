@@ -3,20 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Support\OrgScope;
 use Illuminate\Http\Request;
 
 class TaskSuggestionController extends Controller
 {
     public function index(Request $request)
     {
-        $q = trim((string)$request->query('q', ''));
+        $q = trim((string) $request->query('q', ''));
+        $user = $request->user();
 
-        $query = Task::query();
+        $query = $user->hasRole('admin') ? Task::query() : OrgScope::visibleTasks($user);
 
         if ($q !== '') {
             $query->where('name', 'like', "%$q%");
         } else {
-            // Sort by most recently updated so the most active tasks show up
             $query->orderBy('updated_at', 'desc');
         }
 
@@ -25,9 +26,7 @@ class TaskSuggestionController extends Controller
             }])
             ->limit(200)
             ->get(['id', 'name', 'type', 'is_default', 'instructions', 'is_sporadic'])
-            ->unique(function ($item) {
-                return strtolower(trim($item->name));
-            })
+            ->unique(fn ($item) => strtolower(trim($item->name)))
             ->take(25)
             ->values();
 

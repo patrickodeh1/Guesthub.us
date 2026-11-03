@@ -199,7 +199,7 @@ class PropertyController extends Controller
 
     public function updateRoom(Request $request, Property $property, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can update rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can update rooms.');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -231,7 +231,7 @@ class PropertyController extends Controller
 
     public function destroyRoom(Request $request, Property $property, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can detach rooms.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can detach rooms.');
 
         // Detach room from property
         $property->rooms()->detach($room->id);
@@ -264,7 +264,7 @@ class PropertyController extends Controller
 
     public function storeTask(Request $request, Property $property, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can add tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can add tasks.');
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
@@ -391,7 +391,7 @@ class PropertyController extends Controller
 
     public function bulkStoreTask(Request $request, Property $property, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can bulk add tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can bulk add tasks.');
 
         $validated = $request->validate([
             'tasks' => ['required', 'string'], // JSON string
@@ -477,7 +477,7 @@ class PropertyController extends Controller
 
     public function updateTask(Request $request, Property $property, Room $room, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can update tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can update tasks.');
         abort_unless($property->rooms()->where('rooms.id', $room->id)->exists(), 403, 'Room does not belong to the specified property.');
         abort_unless($room->tasks()->where('tasks.id', $task->id)->exists(), 404, 'Task not found in the specified room.');
 
@@ -584,7 +584,7 @@ class PropertyController extends Controller
 
     public function detachTask(Request $request, Property $property, Room $room, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can detach tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can detach tasks.');
 
         $taskName = $task->name;
         $room->tasks()->detach($task->id);
@@ -596,7 +596,7 @@ class PropertyController extends Controller
     // Property-level tasks (not room-specific)
     public function propertyTasks(Request $request, Property $property)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can manage property tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can manage property tasks.');
 
         $property->load(['propertyTasks.media' => fn($q) => $q->orderBy('sort_order')]);
 
@@ -608,7 +608,7 @@ class PropertyController extends Controller
 
     public function storePropertyTask(Request $request, Property $property)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can add property tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can add property tasks.');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:160'],
@@ -716,7 +716,7 @@ class PropertyController extends Controller
 
     public function updatePropertyTask(Request $request, Property $property, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can update property tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can update property tasks.');
         abort_unless($property->propertyTasks()->where('tasks.id', $task->id)->exists(), 404, 'Task not found for this property.');
 
         $validated = $request->validate([
@@ -830,7 +830,7 @@ class PropertyController extends Controller
 
     public function detachPropertyTask(Request $request, Property $property, Task $task)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can detach property tasks.');
+        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers, and companies can detach property tasks.');
 
         $taskName = $task->name;
         $property->propertyTasks()->detach($task->id);

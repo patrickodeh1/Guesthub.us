@@ -124,7 +124,9 @@ class PropertyController extends Controller
                 $targetPage->sort_order = $targetPage->sort_order ?: $page->sort_order;
                 $targetPage->active = $page->active;
 
-                if ($mode === 'once') {
+                $targetMode = $target->hasSameOwnerAs($property) ? $mode : 'once';
+
+                if ($targetMode === 'once') {
                     $targetPage->content = $source->content;
                     $targetPage->image_1 = $source->image_1;
                     $targetPage->image_2 = $source->image_2;
@@ -159,8 +161,10 @@ class PropertyController extends Controller
 
     public function index(Request $request)
     {
+        $user = $request->user();
+        $visiblePropertyIds = Property::query()->visibleTo($user)->select('properties.id');
         $properties = Property::query()
-            ->visibleTo($request->user())
+            ->visibleTo($user)
             ->with(['owner', 'rooms'])
             ->withCount(['rooms', 'propertyTasks'])
             ->when($request->search, fn ($query, $search) => $query->where(fn ($inner) => $inner
@@ -173,8 +177,19 @@ class PropertyController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $roomLinks = \Illuminate\Support\Facades\DB::table('property_room')->get()->groupBy('room_id');
-        $rooms = \App\Models\Room::orderBy('name')->get()->map(fn ($room) => [
+        $roomLinks = \Illuminate\Support\Facades\DB::table('property_room')
+            ->whereIn('property_id', $visiblePropertyIds)
+            ->get()
+            ->groupBy('room_id');
+        $roomsQuery = \App\Models\Room::query();
+        if (! $user->hasRole('admin')) {
+            $roomsQuery->where(function ($query) use ($visiblePropertyIds, $user) {
+                $query->where('rooms.is_default', true)
+                    ->orWhereIn('rooms.created_by', \App\Support\OrgScope::userIds($user))
+                    ->orWhereHas('properties', fn ($properties) => $properties->whereIn('properties.id', $visiblePropertyIds));
+            });
+        }
+        $rooms = $roomsQuery->orderBy('name')->get()->map(fn ($room) => [
             'id' => $room->id,
             'name' => $room->name,
             'is_default' => (bool) ($room->is_default ?? false),
@@ -186,6 +201,8 @@ class PropertyController extends Controller
 
     public function create()
     {
+        abort_unless(request()->user()?->hasAnyRole(['admin', 'owner', 'company']), 403, 'Managers cannot create properties.');
+
         return view('admin.properties.form', [
             'property' => new Property(),
             'owners' => $this->ownerOptions(request()),
@@ -194,11 +211,17 @@ class PropertyController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403, 'Managers cannot create properties.');
+
         $data = $this->validated($request);
         $data['timezone'] = $this->detectTimezone($data['latitude'] ?? null, $data['longitude'] ?? null, $data['timezone'] ?? null);
         $property = Property::create($data);
+        // Managers see properties through the property_user link, so link the one they just created.
+        if ($request->user()?->hasRole('manager') && ! $request->user()->hasRole('admin')) {
+            $property->users()->syncWithoutDetaching([$request->user()->id]);
+        }
 
-        foreach (\App\Models\Category::all() as $category) {
+        foreach (\App\Models\Category::whereNull('created_by')->get() as $category) {
             $property->categories()->attach($category->id, ['active' => true]);
         }
 
@@ -210,6 +233,8 @@ class PropertyController extends Controller
 
     public function edit(Property $property, Request $request)
     {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403, 'Managers cannot edit properties.');
+
         $this->ensureVisible($request, $property);
 
         return view('admin.properties.form', [
@@ -221,6 +246,8 @@ class PropertyController extends Controller
 
     public function update(Request $request, Property $property)
     {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403, 'Managers cannot edit properties.');
+
         $this->ensureVisible($request, $property);
         $data = $this->validated($request, $property);
         $data['timezone'] = $this->detectTimezone($data['latitude'] ?? null, $data['longitude'] ?? null, $data['timezone'] ?? null);
@@ -254,6 +281,8 @@ class PropertyController extends Controller
 
     public function duplicate(Request $request, Property $property)
     {
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403, 'Managers cannot duplicate properties.');
+
         $this->ensureVisible($request, $property);
         $data = $request->validate([
             'count' => ['required', 'integer', 'min:1', 'max:50'],
@@ -434,6 +463,12 @@ class PropertyController extends Controller
 
         if ($request->user()?->hasRole('owner') && ! $request->user()->hasAnyRole(['admin', 'company'])) {
             $data['owner_id'] = $request->user()->id;
+        }
+
+        // Non-admins may only assign a property to an owner they are allowed to see, never an arbitrary user id.
+        if (! empty($data['owner_id']) && $request->user() && ! $request->user()->hasRole('admin')
+            && ! array_key_exists((int) $data['owner_id'], $this->ownerOptions($request))) {
+            abort(403, 'You cannot assign a property to that owner.');
         }
 
         if ($request->hasFile('photo')) {

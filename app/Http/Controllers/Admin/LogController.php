@@ -15,7 +15,7 @@ class LogController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        abort_unless($user && $user->canViewLogs() || $user?->hasRole('owner'), 403);
+        abort_unless($user && ($user->canViewLogs() || $user->hasAnyRole(['owner', 'company', 'manager'])), 403);
 
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
@@ -34,8 +34,8 @@ class LogController extends Controller
 
         return view('admin.logs.index', [
             'logs' => $logs,
-            'modules' => $this->feed->modules(),
-            'actors' => $this->feed->actors(),
+            'modules' => $this->feed->modules($user),
+            'actors' => $this->feed->actors($user),
             'severities' => ['info', 'success', 'warning', 'danger', 'security'],
         ]);
     }
@@ -43,7 +43,7 @@ class LogController extends Controller
     public function show(string $source, string $id, Request $request)
     {
         $user = $request->user();
-        abort_unless($user && $user->canViewLogs() || $user?->hasRole('owner'), 403);
+        abort_unless($user && ($user->canViewLogs() || $user->hasAnyRole(['owner', 'company', 'manager'])), 403);
 
         $log = $this->feed->find($source, $id, $user);
         abort_unless($log, 404);

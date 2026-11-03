@@ -105,6 +105,21 @@ class Booking extends Model
         return $this->belongsTo(Property::class);
     }
 
+    /** Cleanings tied to this stay: explicit booking link, or same-property cleaning on the check-out date. */
+    public function linkedCleanings(): \Illuminate\Database\Eloquent\Builder
+    {
+        return \App\Models\CleaningSession::query()->where(function ($q) {
+            $q->where('booking_id', $this->id);
+            if ($this->check_out_date) {
+                $q->orWhere(function ($q2) {
+                    $q2->whereNull('booking_id')
+                       ->where('property_id', $this->property_id)
+                       ->whereDate('scheduled_date', $this->check_out_date);
+                });
+            }
+        });
+    }
+
     public function charges(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Charge::class);

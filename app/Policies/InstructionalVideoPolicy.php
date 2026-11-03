@@ -56,7 +56,7 @@ class InstructionalVideoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'owner', 'company']);
+        return $user->hasAnyRole(['admin', 'owner', 'company', 'manager']);
     }
 
     /**
@@ -68,7 +68,7 @@ class InstructionalVideoPolicy
             return true;
         }
 
-        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company']);
+        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company', 'manager']);
     }
 
     /**
@@ -80,7 +80,7 @@ class InstructionalVideoPolicy
             return true;
         }
 
-        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company']);
+        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company', 'manager']);
     }
 
     /**
@@ -92,6 +92,6 @@ class InstructionalVideoPolicy
             return true;
         }
 
-        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company']);
+        return $video->created_by === $user->id && $user->hasAnyRole(['owner', 'company', 'manager']);
     }
 }

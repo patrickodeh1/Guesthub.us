@@ -153,6 +153,7 @@
                     <span class="min-w-0">
                         <span class="block min-w-0 break-words font-semibold text-slate-950">${item.name}</span>
                         <span class="block min-w-0 break-words text-slate-500">${item.property ?? ''} &middot; ${item.stay}</span>
+                        ${item.cleaner ? `<span class="block min-w-0 break-words text-slate-400">Cleaner: ${item.cleaner}</span>` : ''}
                     </span>
                     <span class="badge badge-${item.status ? item.status.toLowerCase().replace(/\\s+/g, '_') : 'inactive'} shrink-0">${item.status}</span>
                 </a>

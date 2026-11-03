@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Room;
 use App\Models\Task;
+use App\Support\OrgScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,12 @@ class RoomTaskAttachController extends Controller
 {
     public function store(Request $request, Room $room)
     {
-        abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can attach tasks.');
+        $user = $request->user();
+        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, companies and managers can attach tasks.');
+        abort_unless($user->hasRole('admin') || (! $room->is_default && (
+            $room->properties()->whereIn('properties.id', \App\Models\Property::visibleTo($user)->select('properties.id'))->exists()
+            || in_array((int) ($room->created_by ?? 0), OrgScope::userIds($user), true)
+        )), 403, 'You do not have access to this room.');
 
         $data = $request->validate([
             'task_ids'    => ['array'],
@@ -25,6 +31,15 @@ class RoomTaskAttachController extends Controller
 
         $taskIds   = $data['task_ids']   ?? [];
         $taskNames = $data['task_names'] ?? [];
+
+        if (! $user->hasRole('admin') && $taskIds !== []) {
+            $allowedTaskIds = OrgScope::visibleTasks($user)
+                ->whereIn('tasks.id', $taskIds)
+                ->pluck('tasks.id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            abort_if(array_diff(array_map('intval', $taskIds), $allowedTaskIds) !== [], 403, 'You do not have access to one or more tasks.');
+        }
 
         $createdTasks = [];
 

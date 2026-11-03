@@ -30,7 +30,7 @@ class TrainingReportController extends Controller
                 // Assuming there's a scope on Property or we check owner_id.
                 // I will fall back to `owner_id` or similar. If not, I can just restrict by what's available.
                 // I'll check property model for owner relationship, but for now:
-                $q->where('owner_id', $user->id);
+                $q->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
             });
         }
 
@@ -147,10 +147,19 @@ class TrainingReportController extends Controller
 
         // Filter options for the view
         $properties = Property::when(!$user->hasRole('admin'), function($q) use ($user) {
-            $q->where('owner_id', $user->id);
+            $q->whereIn('properties.id', Property::query()->visibleTo($user)->select('properties.id'));
         })->orderBy('name')->get();
         
-        $cleaners = User::role('housekeeper')->orderBy('name')->get();
+        $cleaners = User::role('housekeeper')
+            ->when(! $user->hasRole('admin'), function ($q) use ($user) {
+                $visible = Property::query()->visibleTo($user)->select('properties.id');
+                $q->where(function ($w) use ($user, $visible) {
+                    $w->whereIn('users.id', \Illuminate\Support\Facades\DB::table('property_user')->whereIn('property_id', $visible)->select('user_id'))
+                      ->orWhereIn('users.id', \Illuminate\Support\Facades\DB::table('cleaning_sessions')->whereIn('property_id', $visible)->select('housekeeper_id'))
+                      ->orWhere('users.owner_id', $user->id);
+                });
+            })
+            ->orderBy('name')->get();
 
         return view('reports.training', compact(
             'snapshots', 

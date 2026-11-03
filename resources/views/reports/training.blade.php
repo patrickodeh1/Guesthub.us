@@ -137,7 +137,7 @@
                                         <div class="text-xs text-gray-500">{{ \Carbon\Carbon::parse($session->scheduled_date)->format('M d, Y') }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $session->housekeeper->name ?? 'Unassigned' }}
+                                        {{ $session->housekeeper->name ?? 'Unassigned' }}@if(method_exists($session, 'guestLabel') && $session->guestLabel())<div class="text-xs text-gray-500">Guest: {{ $session->guestLabel() }}</div>@endif
                                     </td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center">

@@ -4,6 +4,8 @@
         $checkoutToday = $booking->check_out_date?->isToday() ?? false;
         $shortTime = fn ($t) => str_replace(':00', '', \Carbon\Carbon::parse($t)->format('g:ia'));
         $showCountdown = $context !== 'today' && ! $booking->isMarkedCheckedIn() && ! $booking->checked_out_at && $booking->daysUntilCheckIn() > 0;
+        $latestCleaning = $booking->relationLoaded('linkedCleanings') ? $booking->linkedCleanings->sortByDesc('scheduled_date')->first() : null;
+        $cleanerName = $latestCleaning?->housekeeper?->name;
     @endphp
     <div class="min-w-0 pr-[45%]">
         @if($showCountdown)
@@ -11,6 +13,9 @@
         @endif
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
+        @if($cleanerName)
+            <p class="text-sm text-slate-600">Cleaner: {{ $cleanerName }}</p>
+        @endif
         @php $acct = \App\Services\CleanerAccountability::forBooking($booking, now()->setTimezone(config('app.display_timezone'))->toDateString()); @endphp
         @if($acct)
             <p class="text-xs font-semibold {{ match($acct['tone']) { 'ok', 'green' => 'text-emerald-700', 'red' => 'text-red-600', 'warn' => 'text-amber-700', default => 'text-slate-500' } }}">{{ $acct['text'] }}</p>

@@ -11,10 +11,41 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
+    public function callAction($method, $parameters)
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'You cannot use categories.');
+
+        // The category list is shared by every property, so only admin changes it.
+        if (! in_array($method, ['assign', 'preview'], true)) {
+            abort_unless($user->hasRole('admin'), 403, 'Only administrators can change the category list.');
+        }
+
+        return $this->{$method}(...array_values($parameters));
+    }
+
+    // Non-admin roles may assign only shared administrator defaults.
+    private function visibleCategories()
+    {
+        $user = auth()->user();
+
+        return Category::query()->when(! $user->hasRole('admin'), fn ($q) => $q->whereNull('categories.created_by'));
+    }
+
+    private function authorizeCategory(Category $category): void
+    {
+        $user = auth()->user();
+        abort_unless(
+            $user->hasRole('admin') || ($category->created_by && in_array((int) $category->created_by, \App\Support\OrgScope::userIds($user), true)),
+            403,
+            'This is a default category. Create your own category to customise it.'
+        );
+    }
+
     public function index()
     {
         return view('admin.categories.index', [
-            'categories' => Category::orderBy('sort_order')->get(),
+            'categories' => $this->visibleCategories()->orderBy('sort_order')->get(),
         ]);
     }
 
@@ -37,6 +68,7 @@ class CategoryController extends Controller
 
     public function edit(Category $category, Request $request)
     {
+        $this->authorizeCategory($category);
         return view('admin.categories.form', [
             'category' => $category,
             'returnTo' => $request->headers->get('referer'),
@@ -45,6 +77,7 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
+        $this->authorizeCategory($category);
         $category->update($this->validated($request, $category));
 
         $destination = $request->filled('return_to') ? $request->input('return_to') : route('admin.properties.index');
@@ -54,6 +87,7 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
+        $this->authorizeCategory($category);
         $category->delete();
 
         return back()->with('success', 'Category deleted.');
@@ -68,7 +102,15 @@ class CategoryController extends Controller
         ]);
 
         $property = Property::findOrFail($data['property_id']);
-        $sync = collect($data['category_ids'] ?? [])->mapWithKeys(fn ($id) => [$id => ['active' => true]])->all();
+        abort_unless(
+            $request->user()->hasRole('admin') || Property::visibleTo($request->user())->whereKey($property->id)->exists(),
+            403,
+            'You do not have access to that property.'
+        );
+        $allowedIds = $this->visibleCategories()->pluck('categories.id')->map(fn ($id) => (int) $id)->all();
+        $sync = collect($data['category_ids'] ?? [])
+            ->filter(fn ($id) => in_array((int) $id, $allowedIds, true))
+            ->mapWithKeys(fn ($id) => [$id => ['active' => true]])->all();
         $property->categories()->sync($sync);
 
         return redirect()->route('admin.guest-guide.show', $property->id)->with('success', 'Property categories updated.');
@@ -131,6 +173,12 @@ class CategoryController extends Controller
 
     private function validated(Request $request, ?Category $category = null): array
     {
+        $isAdmin = (bool) auth()->user()?->hasRole('admin');
+        if (! $isAdmin) {
+            // Guest URLs use the slug and it must stay unique, so it is generated for non-admins.
+            $request->merge(['slug' => null]);
+        }
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:255', 'unique:categories,slug,'.($category?->id ?? 'NULL')],
@@ -162,8 +210,19 @@ class CategoryController extends Controller
         }
 
         $data['slug'] = $data['slug'] ?: Str::slug($data['title']);
+        if (! $isAdmin) {
+            if ($category?->exists) {
+                $data['slug'] = $category->slug;
+            } else {
+                $base = $data['slug'] ?: 'category';
+                $n = 1;
+                while (Category::where('slug', $data['slug'])->exists()) {
+                    $data['slug'] = $base . '-' . (++$n);
+                }
+            }
+        }
         $data['active'] = $request->boolean('active');
-        $data['is_global'] = $request->boolean('is_global');
+        $data['is_global'] = $isAdmin ? $request->boolean('is_global') : (bool) ($category?->is_global ?? false);
 
         return $data;
     }

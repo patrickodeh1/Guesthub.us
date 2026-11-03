@@ -5,6 +5,7 @@ import './bootstrap'
 import './property-panels'
 
 import Alpine from 'alpinejs'
+window.Alpine = Alpine
 import collapse from '@alpinejs/collapse'
 import PerfectScrollbar from 'perfect-scrollbar'
 import Sortable from 'sortablejs'

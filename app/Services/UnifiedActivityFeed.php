@@ -62,10 +62,10 @@ class UnifiedActivityFeed
         return $query->first();
     }
 
-    public function modules(): array
+    public function modules(?User $user = null): array
     {
         return DB::query()
-            ->fromSub($this->baseQuery(), 'activity_feed')
+            ->fromSub($this->baseQuery($user), 'activity_feed')
             ->whereNotNull('module')
             ->distinct()
             ->orderBy('module')
@@ -73,10 +73,10 @@ class UnifiedActivityFeed
             ->all();
     }
 
-    public function actors(): array
+    public function actors(?User $user = null): array
     {
         return DB::query()
-            ->fromSub($this->baseQuery(), 'activity_feed')
+            ->fromSub($this->baseQuery($user), 'activity_feed')
             ->whereNotNull('actor_type')
             ->distinct()
             ->orderBy('actor_type')
@@ -114,11 +114,12 @@ class UnifiedActivityFeed
 
         $query = DB::query()->fromSub($portal->unionAll($ops), 'activity_feed');
 
-        if ($user?->hasRole('owner') && ! $user->hasAnyRole(['admin', 'manager'])) {
-            $propertyIds = Property::query()->where('owner_id', $user->id)->pluck('id');
-            $query->whereIn('property_id', $propertyIds);
-        } elseif ($user && ! $user->hasAnyRole(['admin', 'manager'])) {
+        // Admin sees everything. Everyone else only sees events tied to properties they can access.
+        // Events with no property (logins, global settings) are admin-only. A missing user sees nothing.
+        if (! $user) {
             $query->whereRaw('1 = 0');
+        } elseif (! $user->hasRole('admin')) {
+            $query->whereIn('property_id', Property::visibleTo($user)->select('properties.id'));
         }
 
         return $query;

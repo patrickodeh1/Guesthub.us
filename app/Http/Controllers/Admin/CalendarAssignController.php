@@ -42,6 +42,12 @@ class CalendarAssignController extends Controller
         if (! empty($data['session_id'])) {
             $session = CleaningSession::query()->whereKey($data['session_id'])->first();
             abort_unless($session, 404, 'That cleaning job no longer exists.');
+            abort_unless(
+                Property::query()->visibleTo($actor)->whereKey($session->property_id)->exists(),
+                403,
+                'You do not have access to that cleaning job.'
+            );
+            abort_unless((int) $session->property_id === (int) $data['property_id'], 422, 'That cleaning job belongs to a different property.');
         }
 
         if (! $session && ! empty($data['booking_id'])) {
@@ -96,7 +102,7 @@ class CalendarAssignController extends Controller
     /** Admin override: confirm an assignment when the cleaner can't reply by text. */
     public function confirm(Request $request): JsonResponse
     {
-        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company']), 403);
+        abort_unless($request->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403);
         $data = $request->validate(['session_id' => ['required', 'integer', 'exists:cleaning_sessions,id']]);
         $session = CleaningSession::findOrFail($data['session_id']);
         abort_unless(
@@ -134,7 +140,7 @@ class CalendarAssignController extends Controller
     public function options(Request $request): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user?->hasAnyRole(['admin', 'owner', 'company']), 403);
+        abort_unless($user?->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403);
 
         $session = null;
         $booking = null;

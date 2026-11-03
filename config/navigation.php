@@ -12,7 +12,7 @@
 | Settings page exists.
 */
 
-$staff = ['admin', 'owner', 'company'];
+$staff = ['admin', 'owner', 'company', 'manager'];
 
 return [
     'sections' => [
@@ -107,7 +107,7 @@ return [
                         [
                             'label' => 'Categories',
                             'routes' => [
-                                ['name' => 'admin.categories.index', 'roles' => $staff],
+                                ['name' => 'admin.categories.index', 'roles' => ['admin']],
                             ],
                             'active' => ['admin.categories.*'],
                         ],
@@ -132,7 +132,7 @@ return [
                         [
                             'label' => 'Users',
                             'routes' => [
-                                ['name' => 'admin.users.index', 'roles' => ['admin']],
+                                ['name' => 'admin.users.index', 'roles' => ['admin', 'owner', 'company']],
                             ],
                             'active' => ['admin.users.*', 'users.*'],
                         ],
@@ -146,9 +146,16 @@ return [
                         [
                             'label' => 'Activity Logs',
                             'routes' => [
-                                ['name' => 'admin.logs.index', 'roles' => ['admin', 'manager', 'owner']],
+                                ['name' => 'admin.logs.index', 'roles' => ['admin', 'manager', 'owner', 'company']],
                             ],
                             'active' => ['admin.logs.*', 'activity.*'],
+                        ],
+                        [
+                            'label' => 'Payments',
+                            'routes' => [
+                                ['name' => 'admin.payments.index', 'roles' => ['admin', 'owner', 'company', 'manager']],
+                            ],
+                            'active' => ['admin.payments.*'],
                         ],
                         [
                             'label' => 'Cleaning Notification Logs',
@@ -216,10 +223,10 @@ return [
                 [
                     'label' => 'My Account',
                     'icon' => 'users',
-                    'roles' => ['housekeeper', 'manager', 'staff', 'viewer'],
+                    'roles' => ['housekeeper', 'manager'],
                     'exclude_roles' => ['admin'],
                     'routes' => [
-                        ['name' => 'profile.edit', 'roles' => ['housekeeper', 'manager', 'staff', 'viewer']],
+                        ['name' => 'profile.edit', 'roles' => ['housekeeper', 'manager']],
                     ],
                     'active' => ['profile.*'],
                 ],

@@ -195,7 +195,16 @@ class Property extends Model
             });
         }
 
-        return $query;
+        // A property manager sees only the properties they are linked to (property_user),
+        // which can span several owners.
+        if ($user->hasRole('manager')) {
+            return $query->whereIn('properties.id', function ($links) use ($user) {
+                $links->select('property_id')->from('property_user')->where('user_id', $user->id);
+            });
+        }
+
+        // Fail closed: any role not handled above (or no role at all) sees nothing.
+        return $query->whereRaw('1 = 0');
     }
 
     public function bookings(): HasMany
@@ -340,6 +349,13 @@ class Property extends Model
         if (! $src) return [];
         $mine = $this->rooms->mapWithKeys(fn ($r) => [mb_strtolower(trim($r->name)) => $r->id]);
         return $src->rooms->mapWithKeys(fn ($r) => [$r->id => $mine[mb_strtolower(trim($r->name))] ?? null])->all();
+    }
+
+    public function hasSameOwnerAs(self $other): bool
+    {
+        return $this->owner_id !== null
+            && $other->owner_id !== null
+            && (int) $this->owner_id === (int) $other->owner_id;
     }
 
     public function photoGuideSource()

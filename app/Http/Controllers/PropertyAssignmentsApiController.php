@@ -11,11 +11,11 @@ class PropertyAssignmentsApiController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners and companies can access properties.');
+        abort_unless($user && $user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403, 'Only administrators, owners, managers and companies can access properties.');
 
         // Admins can access all properties (even if they also have the "owner" role).
         // Owners (non-admin) can only access their own properties.
-        if (! $user->hasRole('admin') && $user->hasAnyRole(['owner', 'company']) && $property->owner_id !== $user->id) {
+        if (! $user->hasRole('admin') && ! Property::query()->visibleTo($user)->whereKey($property->id)->exists()) {
             abort(403, 'You cannot access properties you do not own.');
         }
     }

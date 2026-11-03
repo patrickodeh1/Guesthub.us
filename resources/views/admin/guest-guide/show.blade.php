@@ -85,9 +85,11 @@
             <div class="card overflow-hidden" data-id="{{ $category->id }}">
                 <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="flex items-center gap-4">
-                        <span class="drag-handle grid h-8 w-6 shrink-0 cursor-grab place-items-center text-slate-400 hover:text-slate-600" title="Drag to reorder">
-                            <x-icon name="menu" class="h-5 w-5" />
-                        </span>
+                        @if(\App\Support\RoleAccess::canManageCategories(auth()->user()))
+                            <span class="drag-handle grid h-8 w-6 shrink-0 cursor-grab place-items-center text-slate-400 hover:text-slate-600" title="Drag to reorder">
+                                <x-icon name="menu" class="h-5 w-5" />
+                            </span>
+                        @endif
                         <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-600 overflow-hidden">
                             @if($category->guest_icon)
                                 <img src="{{ url('/img/'.$category->guest_icon) }}" class="h-full w-full object-cover">
@@ -158,28 +160,32 @@
     </div>
     @endif
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
-    <script>
-    (function () {
-        var el = document.getElementById('sortable-categories');
-        if (!el) return;
-        new Sortable(el, {
-            handle: '.drag-handle',
-            animation: 150,
-            onEnd: function () {
-                var ids = Array.from(el.children).map(function (card) { return card.dataset.id; });
-                fetch('{{ route("admin.categories.reorder") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ category_ids: ids })
-                });
-            }
-        });
-    })();
+    @if(\App\Support\RoleAccess::canManageCategories(auth()->user()))
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+        <script>
+        (function () {
+            var el = document.getElementById('sortable-categories');
+            if (!el) return;
+            new Sortable(el, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function () {
+                    var ids = Array.from(el.children).map(function (card) { return card.dataset.id; });
+                    fetch('{{ route("admin.categories.reorder") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({ category_ids: ids })
+                    });
+                }
+            });
+        })();
+        </script>
+    @endif
 
+    <script>
     function toggleSection(id) {
         var el = document.getElementById(id);
         if (!el) return;

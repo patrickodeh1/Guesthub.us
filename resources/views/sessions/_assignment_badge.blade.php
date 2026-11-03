@@ -1,6 +1,7 @@
 @php
     $as = $s->assignment_status;
     $st = $s->status;
+    $guestLabel = method_exists($s, 'guestLabel') ? $s->guestLabel() : null;
     $progress = match ($st) {
         'pending' => 'Not started',
         default => ucfirst(str_replace('_', ' ', (string) $st)),
@@ -21,5 +22,8 @@
         <span class="inline-flex rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">Needs cleaner</span>
     @else
         <span class="mt-1 block text-xs text-gray-500">{{ $progress }}</span>
+    @endif
+    @if(($showGuestLabel ?? true) && $guestLabel)
+        <div class="mt-1 text-[10px] text-gray-500">Guest: {{ $guestLabel }}</div>
     @endif
 </div>

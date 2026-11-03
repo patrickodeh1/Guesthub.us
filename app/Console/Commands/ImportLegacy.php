@@ -19,7 +19,7 @@ class ImportLegacy extends Command
         'property_availabilities', 'contact_messages', 'privacy_requests', 'early_access_leads',
     ];
 
-    private const ROLE_MAP = ['owner' => 'admin', 'manager' => 'manager', 'staff' => 'staff', 'viewer' => 'viewer'];
+    private const ROLE_MAP = ['owner' => 'admin', 'manager' => 'manager', 'staff' => 'manager'];
 
     public function handle(): int
     {

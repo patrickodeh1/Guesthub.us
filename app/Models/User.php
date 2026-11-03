@@ -18,25 +18,21 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
 
-    public const ROLES = ['admin', 'company', 'owner', 'manager', 'staff', 'viewer', 'housekeeper'];
+    public const ROLES = ['admin', 'company', 'owner', 'manager', 'housekeeper'];
 
     public const ROLE_LABELS = [
         'admin'   => 'Admin / Super Admin',
         'company' => 'Company',
         'owner'   => 'Property Owner',
         'manager' => 'Manager',
-        'staff'   => 'Staff',
-        'viewer'  => 'Viewer',
         'housekeeper' => 'Cleaner',
     ];
 
     public const ROLE_DESCRIPTIONS = [
         'admin'   => 'Full access to everything including users, settings, and all logs.',
-        'company' => 'Company-level access across assigned properties and operations.',
-        'owner'   => 'Manages assigned properties and property operations.',
-        'manager' => 'Can view notifications, manage guest notices, view activity logs and payments, and update calendar status. Cannot manage users, properties, guests or settings.',
-        'staff'   => 'Can view guests and update guest status. Limited access.',
-        'viewer'  => 'Read-only access across the admin panel.',
+        'company' => 'Cleaning company or property-management company. Manages its own listings, users and cleaners, and can reassign jobs among the workers it manages.',
+        'owner'   => 'Owner or property manager. Manages their own properties, guests, bookings and cleaners. No access to global admin settings (logo, colours, global settings, roles).',
+        'manager' => 'Property manager. Same scope as an owner: manages the properties they are linked to, but no access to global admin settings.',
         'housekeeper' => 'Can access assigned cleaning work and task operations.',
     ];
 
@@ -137,37 +133,37 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return $this->hasAnyRole(['admin', 'manager', 'staff']);
+        return $this->hasAnyRole(['admin', 'manager']);
     }
 
     public function canManageUsers(): bool
     {
-        return $this->hasRole('admin');
+        return \App\Support\RoleAccess::canManageTeam($this);
     }
 
     public function canManageSettings(): bool
     {
-        return $this->hasRole('admin');
+        return \App\Support\RoleAccess::canManageSettings($this);
     }
 
     public function canViewLogs(): bool
     {
-        return $this->hasAnyRole(['admin', 'manager']);
+        return \App\Support\RoleAccess::canViewLogs($this);
     }
 
     public function canManageProperties(): bool
     {
-        return $this->hasAnyRole(['admin', 'manager']);
+        return \App\Support\RoleAccess::canManageProperties($this);
     }
 
     public function canManageGuests(): bool
     {
-        return $this->hasAnyRole(['admin', 'manager', 'staff']);
+        return \App\Support\RoleAccess::canManageGuests($this);
     }
 
     public function canDeleteData(): bool
     {
-        return $this->hasRole('admin');
+        return \App\Support\RoleAccess::canDeleteData($this);
     }
 
     // ─── Status helpers ───────────────────────────────────────────────────────
