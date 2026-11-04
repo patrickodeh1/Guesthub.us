@@ -104,7 +104,7 @@
             <label class="field-label mt-5">Requested Check-out Time<input type="time" name="checkout_time_preference" value="{{ old('checkout_time_preference', $booking->checkout_time_preference) }}" class="input"></label>
             @endif
             <label class="field-label mt-5">Status<select name="status" class="input">@foreach(['pending','pre_checkin_complete','awaiting_deposit','guest_approved','currently_hosting','checked_out'] as $status)<option value="{{ $status }}" @selected(old('status', $booking->status ?: 'pending')===$status)>{{ str($status)->replace('_',' ')->title() }}</option>@endforeach</select></label>
-            <button class="btn-primary mt-6 w-full">Save guest</button>
+            <button id="save-guest-btn" class="btn-primary mt-6 w-full">Save guest</button>
             @if($booking->exists)
                 <a href="{{ route('admin.guests.show', $booking) }}" class="btn-secondary mt-3 w-full">View guest URL</a>
             @endif
@@ -134,6 +134,18 @@
                     formatted = '(' + digits;
                 }
                 e.target.value = formatted;
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            var btn = document.getElementById('save-guest-btn');
+            if (!btn || !btn.form) return;
+            btn.form.addEventListener('submit', function () {
+                setTimeout(function () { btn.disabled = true; btn.textContent = 'Saving...'; }, 0);
+            });
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) { btn.disabled = false; btn.textContent = 'Save guest'; }
             });
         })();
     </script>

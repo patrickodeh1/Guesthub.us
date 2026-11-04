@@ -292,7 +292,13 @@ class BookingController extends Controller
         // Hold back the "needs a cleaner" text when a cleaner was picked on the form.
         \App\Services\CleaningFlowService::$suppressNeedsCleaner = (bool) $cleanerId;
         try {
-            $booking = Booking::create($data);
+            $booking = \App\Services\BookingConflictService::withPropertyLock((int) $data['property_id'], function () use ($data) {
+                if (($data['status'] ?? null) !== 'cancelled') {
+                    \App\Services\BookingConflictService::assertFree((int) $data['property_id'], $data['check_in_date'], $data['check_out_date']);
+                }
+
+                return Booking::create($data);
+            });
         } finally {
             \App\Services\CleaningFlowService::$suppressNeedsCleaner = false;
         }
@@ -392,7 +398,17 @@ class BookingController extends Controller
             }
         }
         $oldStay = ['property_id' => $booking->property_id, 'from' => $booking->check_in_date?->toDateString(), 'to' => $booking->check_out_date?->toDateString()];
-        $booking->update($data);
+        // Only re-check when property/dates actually changed, so editing a note on a
+        // booking that already overlaps (legacy data) is never blocked.
+        $stayChanged = (int) $data['property_id'] !== (int) $booking->property_id
+            || \Carbon\Carbon::parse($data['check_in_date'])->toDateString() !== $booking->check_in_date?->toDateString()
+            || \Carbon\Carbon::parse($data['check_out_date'])->toDateString() !== $booking->check_out_date?->toDateString();
+        \App\Services\BookingConflictService::withPropertyLock((int) $data['property_id'], function () use ($booking, $data, $stayChanged) {
+            if ($stayChanged && ($data['status'] ?? $booking->status) !== 'cancelled') {
+                \App\Services\BookingConflictService::assertFree((int) $data['property_id'], $data['check_in_date'], $data['check_out_date'], $booking->id);
+            }
+            $booking->update($data);
+        });
         app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking, $oldStay);
         $booking->recalculateParkingCharge();
         if ($timesChanged) {
@@ -747,7 +763,13 @@ class BookingController extends Controller
             $updates['archived_at'] = null;
         }
 
-        $booking->update($updates);
+        $reviving = $wasCancelled && ! $goingCancelled;
+        \App\Services\BookingConflictService::withPropertyLock((int) $booking->property_id, function () use ($booking, $updates, $reviving) {
+            if ($reviving) {
+                \App\Services\BookingConflictService::assertFree((int) $booking->property_id, $booking->check_in_date, $booking->check_out_date, $booking->id, 'status');
+            }
+            $booking->update($updates);
+        });
         app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
 
         ActivityLogService::admin('status_manually_changed', auth()->user()->name." manually set status to \"".str($data['status'])->replace('_', ' ')->title()."\" for {$booking->guest_name}.", 'guests', [

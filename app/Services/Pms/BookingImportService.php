@@ -75,6 +75,35 @@ class BookingImportService
             ->where('channex_booking_id', $pmsBooking->externalBookingId)
             ->first();
 
+        // A staff member may have typed this reservation in by hand before the
+        // channel manager delivered it. Exact reservation_id match only (no
+        // fuzzy matching): link that row to the PMS instead of creating a
+        // duplicate. The normal update path below then refreshes its dates.
+        if (! $booking) {
+            $code = $pmsBooking->otaReservationCode ?: $pmsBooking->externalBookingId;
+            $manual = $code
+                ? Booking::query()
+                    ->where('reservation_id', $code)
+                    ->whereNull('channex_booking_id')
+                    ->orderBy('id')
+                    ->first()
+                : null;
+
+            if ($manual) {
+                $manual->update([
+                    'source' => $this->providerName,
+                    'channex_booking_id' => $pmsBooking->externalBookingId,
+                ]);
+                $booking = $manual->fresh();
+
+                Log::info('PMS import adopted existing manual booking instead of creating a duplicate', [
+                    'booking_id' => $booking->id,
+                    'reservation_id' => $code,
+                    'external_booking_id' => $pmsBooking->externalBookingId,
+                ]);
+            }
+        }
+
         $attributes = [
             'source' => $this->providerName,
             'channex_booking_id' => $pmsBooking->externalBookingId,
@@ -133,7 +162,26 @@ class BookingImportService
                 $attributes['phone'] = $pmsBooking->guestPhone;
             }
 
-            $booking = Booking::create($attributes);
+            try {
+                $booking = Booking::create($attributes);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                // The webhook and the poller raced on the same new booking and
+                // the other one won. Return what it created.
+                $existing = Booking::query()
+                    ->where('source', $this->providerName)
+                    ->where('channex_booking_id', $pmsBooking->externalBookingId)
+                    ->first();
+                if (! $existing) {
+                    throw $e;
+                }
+                Log::info('PMS booking import: concurrent create detected, using existing row', [
+                    'booking_id' => $existing->id,
+                    'external_booking_id' => $pmsBooking->externalBookingId,
+                ]);
+
+                return $existing;
+            }
+            \App\Services\BookingConflictService::flagImportOverlap($booking);
             app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking);
 
             if ($arrivesCancelled) {
@@ -248,6 +296,10 @@ class BookingImportService
             $oldStay = ['property_id' => $booking->property_id, 'from' => $booking->check_in_date?->toDateString(), 'to' => $booking->check_out_date?->toDateString()];
             $booking->update($attributes);
             app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($booking, $oldStay);
+
+            if (isset($changed['check_in_date']) || isset($changed['check_out_date']) || isset($changed['property_id'])) {
+                \App\Services\BookingConflictService::flagImportOverlap($booking->fresh());
+            }
 
             Log::info('PMS booking updated from channel manager', [
                 'booking_id' => $booking->id,

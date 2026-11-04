@@ -1889,4 +1889,23 @@ class Booking extends Model
     {
         return PhoneFormatter::format($this->phone);
     }
+
+    /** Same definition AvailabilityLedger uses for "this stay holds the nights". */
+    public function scopeHoldingNights($query)
+    {
+        return $query->where(fn ($w) => $w->whereNull('status')->orWhere('status', '!=', 'cancelled'));
+    }
+
+    /** Stays overlapping [$in, $out). Back-to-back (out == in) is NOT an overlap. */
+    public function scopeOverlapping($query, int $propertyId, $in, $out, ?int $ignoreId = null)
+    {
+        $in  = \Carbon\Carbon::parse($in)->toDateString();
+        $out = \Carbon\Carbon::parse($out)->toDateString();
+
+        return $query->where('property_id', $propertyId)
+            ->holdingNights()
+            ->whereDate('check_in_date', '<', $out)
+            ->whereDate('check_out_date', '>', $in)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId));
+    }
 }
