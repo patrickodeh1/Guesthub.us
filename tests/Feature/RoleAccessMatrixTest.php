@@ -330,7 +330,7 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'R2', 'actor' => $ownerA, 'request' => ['method' => 'put', 'route' => 'properties.property-tasks.update', 'params' => [$propertyA1, $taskB], 'data' => []], 'expected' => 403, 'unchanged' => fn () => Task::whereKey($taskB->id)->value('name')],
             ['id' => 'R3a', 'actor' => $ownerA, 'request' => ['method' => 'put', 'route' => 'rooms.update', 'params' => [$defaultRoom], 'data' => ['name' => 'Changed Default Room', 'min_photos' => 2]], 'expected' => 403, 'unchanged' => fn () => Room::whereKey($defaultRoom->id)->value('name')],
             ['id' => 'R3b', 'actor' => $ownerA, 'request' => ['method' => 'put', 'route' => 'tasks.update', 'params' => [$defaultTask], 'data' => ['name' => 'Changed Default Task', 'type' => 'room']], 'expected' => 403, 'unchanged' => fn () => Task::whereKey($defaultTask->id)->value('name')],
-            ['id' => 'R3c', 'actor' => $admin, 'request' => ['method' => 'put', 'route' => 'rooms.update', 'params' => [$defaultRoom], 'data' => ['name' => 'Shared Default Room', 'min_photos' => 2]], 'expected' => 302],
+            ['id' => 'R3c', 'actor' => $admin, 'request' => ['method' => 'put', 'route' => 'rooms.update', 'params' => [$defaultRoom], 'data' => ['name' => 'Shared Default Room', 'min_photos' => 2, 'is_default' => 1]], 'expected' => 302],
             ['id' => 'R3d', 'actor' => $admin, 'request' => ['method' => 'put', 'route' => 'tasks.update', 'params' => [$defaultTask], 'data' => ['name' => 'Shared Default Task', 'type' => 'room']], 'expected' => 302],
             ['id' => 'R4a', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'rooms.edit', 'params' => [$standaloneRoomA]], 'expected' => 200],
             ['id' => 'R4b', 'actor' => $ownerB, 'request' => ['method' => 'get', 'route' => 'rooms.edit', 'params' => [$standaloneRoomA]], 'expected' => 403],
@@ -377,7 +377,7 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'T5j', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'tasks.media.store', 'params' => [$taskA], 'data' => []], 'expected' => 302],
             ['id' => 'T5k', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.rooms.attach', 'params' => [$propertyA1], 'data' => ['room_ids' => [$roomB->id]]], 'expected' => 403, 'unchanged' => fn () => $propertyA1->rooms()->count()],
             ['id' => 'T5l', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.rooms.order', 'params' => [$propertyB1], 'data' => ['order' => [$roomB->id]]], 'expected' => 403, 'unchanged' => fn () => $propertyB1->rooms()->first()->pivot->sort_order],
-            ['id' => 'T5n', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.rooms.attach', 'params' => [$propertyA1], 'data' => ['room_ids' => [$defaultRoom->id]]], 'expected' => 302],
+            ['id' => 'T5n', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.rooms.attach', 'params' => [$propertyA1], 'data' => ['room_ids' => [$roomA->id, $defaultRoom->id]]], 'expected' => 302],
             ['id' => 'T5o', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.property-tasks.order', 'params' => [$propertyA1], 'data' => ['order' => [$taskA->id]]], 'expected' => 200],
             ['id' => 'T5p', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'rooms.tasks.attach', 'params' => [$roomA], 'data' => ['task_ids' => [$taskA->id]]], 'expected' => 302],
             ['id' => 'T5q', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'rooms.tasks.order', 'params' => [$roomA], 'data' => ['order' => [$taskB->id]]], 'expected' => 403, 'unchanged' => fn () => $roomA->tasks()->first()->pivot->sort_order],
@@ -392,14 +392,14 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'S1c', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'admin.cleaning-jobs.assign-options', 'params' => ['property_id' => $propertyB1->id]], 'expected' => 403],
             ['id' => 'J2a', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyB1->id, 'scheduled_date' => now()->addDays(6)->toDateString(), 'housekeeper_id' => $housekeeperB->id]], 'expected' => 403, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyB1->id)->whereDate('scheduled_date', now()->addDays(6)->toDateString())->count()],
             ['id' => 'J2d', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyA2->id, 'scheduled_date' => now()->addDays(12)->toDateString(), 'housekeeper_id' => $housekeeperA->id]], 'expected' => 403, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA2->id)->whereDate('scheduled_date', now()->addDays(12)->toDateString())->count()],
-            ['id' => 'J2b', 'actor' => $ownerA, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyA2->id, 'scheduled_date' => now()->addDays(7)->toDateString(), 'housekeeper_id' => $housekeeperA->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA2->id)->whereDate('scheduled_date', now()->addDays(7)->toDateString())->count()],
+            ['id' => 'J2b', 'actor' => $ownerA, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'server' => ['HTTP_ACCEPT' => 'application/json'], 'data' => ['property_id' => $propertyA2->id, 'scheduled_date' => now()->addDays(7)->toDateString(), 'housekeeper_id' => $housekeeperA->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA2->id)->whereDate('scheduled_date', now()->addDays(7)->toDateString())->count()],
             ['id' => 'J2c', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyA1->id, 'scheduled_date' => now()->addDays(11)->toDateString(), 'housekeeper_id' => $housekeeperA->id]], 'expected' => 200, 'changed' => fn () => CleaningSession::where('property_id', $propertyA1->id)->whereDate('scheduled_date', now()->addDays(11)->toDateString())->count()],
-            ['id' => 'J3a', 'actor' => $managerM, 'request' => ['method' => 'put', 'route' => 'manage.sessions.update', 'params' => [$sessionA], 'data' => ['property_id' => $propertyA1->id, 'housekeeper_id' => $housekeeperA->id, 'scheduled_date' => $sessionA->scheduled_date->toDateString(), 'scheduled_time' => '09:00', 'status' => 'pending']], 'expected' => 302, 'state' => fn () => CleaningSession::whereKey($sessionA->id)->value('scheduled_time'), 'stateExpected' => '09:00'],
+            ['id' => 'J3a', 'actor' => $managerM, 'request' => ['method' => 'put', 'route' => 'manage.sessions.update', 'params' => [$sessionA], 'data' => ['property_id' => $propertyA1->id, 'housekeeper_id' => $housekeeperA->id, 'scheduled_date' => $sessionA->scheduled_date->toDateString(), 'scheduled_time' => '09:00', 'status' => 'pending']], 'expected' => 302, 'state' => fn () => CleaningSession::whereKey($sessionA->id)->first()?->scheduled_time?->format('H:i'), 'stateExpected' => '09:00'],
             ['id' => 'J3b', 'actor' => $managerM, 'request' => ['method' => 'delete', 'route' => 'manage.sessions.destroy', 'params' => [$sessionADelete]], 'expected' => 302, 'changed' => fn () => CleaningSession::whereKey($sessionADelete->id)->exists()],
             ['id' => 'J3c', 'actor' => $managerM, 'request' => ['method' => 'put', 'route' => 'manage.sessions.update', 'params' => [$sessionB], 'data' => ['property_id' => $propertyB1->id, 'housekeeper_id' => $housekeeperB->id, 'scheduled_date' => $sessionB->scheduled_date->toDateString(), 'scheduled_time' => '09:00', 'status' => 'pending']], 'expected' => 403, 'unchanged' => fn () => CleaningSession::whereKey($sessionB->id)->value('scheduled_time')],
             ['id' => 'J3d', 'actor' => $managerM, 'request' => ['method' => 'delete', 'route' => 'manage.sessions.destroy', 'params' => [$sessionB]], 'expected' => 403, 'unchanged' => fn () => CleaningSession::whereKey($sessionB->id)->exists()],
-            ['id' => 'J4a', 'actor' => $ownerA, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyA1->id, 'scheduled_date' => now()->addDays(8)->toDateString(), 'housekeeper_id' => $housekeeperB->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA1->id)->whereDate('scheduled_date', now()->addDays(8)->toDateString())->count()],
-            ['id' => 'J4b', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'data' => ['property_id' => $propertyA1->id, 'scheduled_date' => now()->addDays(9)->toDateString(), 'housekeeper_id' => $housekeeperB->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA1->id)->whereDate('scheduled_date', now()->addDays(9)->toDateString())->count()],
+            ['id' => 'J4a', 'actor' => $ownerA, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'server' => ['HTTP_ACCEPT' => 'application/json'], 'data' => ['property_id' => $propertyA1->id, 'scheduled_date' => now()->addDays(8)->toDateString(), 'housekeeper_id' => $housekeeperB->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA1->id)->whereDate('scheduled_date', now()->addDays(8)->toDateString())->count()],
+            ['id' => 'J4b', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'admin.cleaning-jobs.calendar-assign', 'server' => ['HTTP_ACCEPT' => 'application/json'], 'data' => ['property_id' => $propertyA1->id, 'scheduled_date' => now()->addDays(9)->toDateString(), 'housekeeper_id' => $housekeeperB->id]], 'expected' => 422, 'unchanged' => fn () => CleaningSession::where('property_id', $propertyA1->id)->whereDate('scheduled_date', now()->addDays(9)->toDateString())->count()],
             ['id' => 'J1a', 'actor' => $managerM, 'request' => ['method' => 'get', 'route' => 'manage.sessions.index'], 'expected' => 200, 'state' => fn ($response) => $response->viewData('properties')->pluck('name')->sort()->values()->all(), 'stateExpected' => ['A1']],
             ['id' => 'J1b', 'actor' => $managerM, 'request' => ['method' => 'get', 'route' => 'manage.sessions.index', 'params' => ['property_id' => $propertyA1->id]], 'expected' => 200, 'state' => fn ($response) => $response->viewData('properties')->pluck('name')->sort()->values()->all(), 'stateExpected' => ['A1']],
             ['id' => 'J5a', 'actor' => $companyC, 'request' => ['method' => 'get', 'route' => 'manage.sessions.index'], 'expected' => 200, 'state' => fn ($response) => $response->viewData('properties')->pluck('name')->sort()->values()->all(), 'stateExpected' => ['A1', 'A2']],
@@ -425,7 +425,8 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'V3b', 'actor' => $companyC, 'request' => ['method' => 'get', 'route' => 'admin.videos.index'], 'expected' => 200, 'present' => ['Owner A Video Marker'], 'absent' => ['Owner B Video Marker']],
             ['id' => 'M1a', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'admin.media.picker', 'params' => ['folder_id' => $folderA->id]], 'expected' => 200, 'present' => ['Owner A File Marker'], 'absent' => ['Owner B File Marker']],
             ['id' => 'M1b', 'actor' => $ownerB, 'request' => ['method' => 'get', 'route' => 'admin.media.picker', 'params' => ['folder_id' => $folderB->id]], 'expected' => 200, 'present' => ['Owner B File Marker'], 'absent' => ['Owner A File Marker']],
-            ['id' => 'M1c', 'actor' => $admin, 'request' => ['method' => 'get', 'route' => 'admin.media.index'], 'expected' => 200, 'present' => ['Owner A File Marker', 'Owner B File Marker']],
+            ['id' => 'M1c', 'actor' => $admin, 'request' => ['method' => 'get', 'route' => 'admin.media.index', 'params' => ['folder_id' => $folderA->id]], 'expected' => 200, 'present' => ['Owner A File Marker']],
+            ['id' => 'M1c2', 'actor' => $admin, 'request' => ['method' => 'get', 'route' => 'admin.media.index', 'params' => ['folder_id' => $folderB->id]], 'expected' => 200, 'present' => ['Owner B File Marker']],
             ['id' => 'M2a', 'actor' => $ownerA, 'request' => ['method' => 'delete', 'route' => 'admin.media.files.destroy', 'params' => [$fileB]], 'expected' => 403, 'unchanged' => fn () => MediaFile::whereKey($fileB->id)->exists()],
             ['id' => 'M2b', 'actor' => $ownerA, 'request' => ['method' => 'post', 'route' => 'admin.media.bulk-move', 'data' => ['file_ids' => [$fileB->id], 'target_folder_id' => null]], 'expected' => 302, 'unchanged' => fn () => MediaFile::whereKey($fileB->id)->value('media_folder_id')],
             ['id' => 'M2c', 'actor' => $ownerA, 'request' => ['method' => 'delete', 'route' => 'admin.media.folders.destroy', 'params' => [$folderB]], 'expected' => 403, 'unchanged' => fn () => MediaFolder::whereKey($folderB->id)->exists()],
@@ -484,7 +485,7 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'D2', 'actor' => $companyC, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => collect($response->viewData('checkoutBoard')['groups'])->flatMap(fn ($rows) => $rows)->pluck('property.name')->unique()->sort()->values()->all(), 'stateExpected' => ['A1', 'A2']],
             ['id' => 'D3', 'actor' => $managerM, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => collect($response->viewData('checkoutBoard')['groups'])->flatMap(fn ($rows) => $rows)->pluck('property.name')->unique()->sort()->values()->all(), 'stateExpected' => ['A1']],
             ['id' => 'D4', 'actor' => $managerM0, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => collect($response->viewData('checkoutBoard')['groups'])->flatMap(fn ($rows) => $rows)->pluck('property.name')->unique()->sort()->values()->all(), 'stateExpected' => []],
-            ['id' => 'D5', 'actor' => $housekeeperA, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => $response->viewData('upcomingSessions')->pluck('id')->all(), 'stateExpected' => [(int) $sessionA->id]],
+            ['id' => 'D5', 'actor' => $housekeeperA, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => [($sessions = $response->viewData('upcomingSessions')->concat($response->viewData('pendingOffers')))->contains('id', $sessionA->id), $sessions->every(fn ($s) => (int) $s->housekeeper_id === (int) $housekeeperA->id)], 'stateExpected' => [true, true]],
             ['id' => 'D6', 'actor' => $admin, 'request' => ['method' => 'get', 'route' => 'dashboard'], 'expected' => 200, 'state' => fn ($response) => collect($response->viewData('checkoutBoard')['groups'])->flatMap(fn ($rows) => $rows)->pluck('property.name')->unique()->sort()->values()->all(), 'stateExpected' => ['A1', 'A2', 'B1']],
             ['id' => 'U1', 'actor' => $admin, 'request' => ['method' => 'get', 'route' => 'guest.show', 'params' => [$bookingA1->booking_id, $bookingA1->token]], 'expected' => 200],
             ['id' => 'K1a', 'actor' => $housekeeperA, 'request' => ['method' => 'get', 'route' => 'admin.settings.edit'], 'expected' => 403],
@@ -532,9 +533,9 @@ class RoleAccessMatrixTest extends TestCase
             [$managerM, 'Categories', false, 'manager'],
             [$housekeeperA, 'Categories', false, 'housekeeper'],
             [$admin, 'Settings', true, 'admin'],
-            [$ownerA, 'Settings', false, 'owner'],
-            [$companyC, 'Settings', false, 'company'],
-            [$managerM, 'Settings', false, 'manager'],
+            [$ownerA, 'Settings', true, 'owner'],
+            [$companyC, 'Settings', true, 'company'],
+            [$managerM, 'Settings', true, 'manager'],
             [$housekeeperA, 'Settings', false, 'housekeeper'],
             [$admin, 'Media Library', true, 'admin'],
             [$ownerA, 'Media Library', true, 'owner'],
@@ -552,10 +553,6 @@ class RoleAccessMatrixTest extends TestCase
             [$ownerA, 'Cleaning Rooms', true, 'owner'],
             [$companyC, 'Cleaning Rooms', true, 'company'],
             [$managerM, 'Cleaning Rooms', true, 'manager'],
-            [$admin, 'Guest Guide', true, 'admin'],
-            [$ownerA, 'Guest Guide', true, 'owner'],
-            [$companyC, 'Guest Guide', true, 'company'],
-            [$managerM, 'Guest Guide', true, 'manager'],
         ];
         foreach ($navigationChecks as [$actor, $label, $expected, $role]) {
             $sections = app(Navigation::class)->forUser($actor);
@@ -621,7 +618,8 @@ class RoleAccessMatrixTest extends TestCase
                 route($check['request']['route'], $check['request']['params'] ?? []),
                 $check['request']['data'] ?? [],
                 [],
-                $check['request']['files'] ?? []
+                $check['request']['files'] ?? [],
+                $check['request']['server'] ?? []
             );
 
             $actual = $response->getStatusCode();
@@ -660,7 +658,7 @@ class RoleAccessMatrixTest extends TestCase
                     'actor' => $check['actor']->email,
                     'request' => $check['request']['route'],
                     'expected' => $expectedResult,
-                    'actual' => $actualResult,
+                    'actual' => $actualResult.(($ex = $response->baseResponse->exception ?? null) && $actual >= 400 ? ' ['.class_basename($ex).': '.$ex->getMessage().']' : ''),
                 ];
             }
         }

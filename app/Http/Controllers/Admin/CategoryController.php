@@ -209,7 +209,7 @@ class CategoryController extends Controller
             unset($data['existing_' . $field]);
         }
 
-        $data['slug'] = $data['slug'] ?: Str::slug($data['title']);
+        $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['title']);
         if (! $isAdmin) {
             if ($category?->exists) {
                 $data['slug'] = $category->slug;

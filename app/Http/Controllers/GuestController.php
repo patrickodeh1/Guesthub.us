@@ -23,7 +23,7 @@ class GuestController extends Controller
 {
     public function show(string $bookingId, string $token)
     {
-        $booking = $this->booking($bookingId, $token, true);
+        $booking = $this->booking($bookingId, $token);
         return $this->renderPortal($booking);
     }
 

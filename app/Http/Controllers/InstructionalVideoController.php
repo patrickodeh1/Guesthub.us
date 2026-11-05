@@ -25,9 +25,9 @@ class InstructionalVideoController extends Controller
 
         $query = InstructionalVideo::query();
 
-        // Admin sees all videos, owner/company sees only videos they created
+        // Admin sees all videos; everyone else sees videos created within their organization
         if (!$user->hasRole('admin')) {
-            $query->where('created_by', $user->id);
+            $query->whereIn('created_by', \App\Support\OrgScope::userIds($user));
         }
 
         $videos = $query

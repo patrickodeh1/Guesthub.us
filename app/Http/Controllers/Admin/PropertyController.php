@@ -479,7 +479,7 @@ class PropertyController extends Controller
             unset($data['photo_path']);
         }
 
-        $data['slug'] = $data['slug'] ?: Str::slug($data['name']);
+        $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['name']);
         $data['active'] = $request->boolean('active');
         $data['requires_vehicle_photo'] = $request->boolean('requires_vehicle_photo');
 
