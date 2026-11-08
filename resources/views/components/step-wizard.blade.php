@@ -354,12 +354,14 @@
         if (type === "checkin") {
             runConfirm();
         } else {
-            document.getElementById("step-wizard-" + type).style.display = "none";
-            var wrapper = document.getElementById("step-wizard-" + type + "-wrapper");
-            if (wrapper) wrapper.style.display = "none";
-            var next = document.getElementById("{{ $nextSection }}-wrapper") || document.getElementById("{{ $nextSection }}");
-            if (next) next.style.display = "";
-            window.scrollTo({top: 0, behavior: "smooth"});
+            if (type !== "pregps") {
+                document.getElementById("step-wizard-" + type).style.display = "none";
+                var wrapper = document.getElementById("step-wizard-" + type + "-wrapper");
+                if (wrapper) wrapper.style.display = "none";
+                var next = document.getElementById("{{ $nextSection }}-wrapper") || document.getElementById("{{ $nextSection }}");
+                if (next) next.style.display = "";
+                window.scrollTo({top: 0, behavior: "smooth"});
+            }
         }
     });
 
