@@ -354,7 +354,7 @@
         if (type === "checkin") {
             runConfirm();
         } else {
-            if (type !== "pregps") {
+            if (!(type === "pregps" && document.getElementById("pregps-overlay"))) {
                 document.getElementById("step-wizard-" + type).style.display = "none";
                 var wrapper = document.getElementById("step-wizard-" + type + "-wrapper");
                 if (wrapper) wrapper.style.display = "none";
