@@ -2425,6 +2425,8 @@
                 <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
             </div>
             @endif
+            @else
+            @include('guest.partials.pre-gps')
             @endif
 
         @elseif($state === 'awaiting_deposit')
