@@ -2398,7 +2398,7 @@
                     <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
                 </div>
             </div>
-            @include('guest.partials.pre-gps')
+            @include('guest.partials.pre-gps', ['secondary' => true])
             @else
             <div id="arrival-gps-card" style="display:none" class="mt-4 guest-portal-card text-center">
                 <div class="guest-status-bar">
@@ -2424,6 +2424,16 @@
                 var hint = document.getElementById('arrival-gps-hint');
                 if (card) card.style.display = '';
                 if (hint) hint.style.display = 'none';
+                var cta = document.getElementById('pregps-cta');
+                var btn = document.getElementById('pregps-show-btn');
+                if (cta && btn) {
+                    var note = cta.querySelector('p'); if (note) note.remove();
+                    cta.className = 'mt-3 text-center text-sm text-slate-500';
+                    btn.className = '';
+                    btn.style.cssText = "background:none;border:0;padding:0;cursor:pointer;font:inherit;font-weight:600;color:#334155;text-decoration:underline;";
+                    btn.textContent = 'View instructions';
+                    cta.insertBefore(document.createTextNode('Need the parking details again? '), btn);
+                }
             });
             </script>
             @endif
@@ -2435,6 +2445,8 @@
                 <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
             </div>
             @endif
+            @else
+            @include('guest.partials.pre-gps')
             @endif
         @elseif($state === 'awaiting_deposit')
             <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="deposit_verified"></div>

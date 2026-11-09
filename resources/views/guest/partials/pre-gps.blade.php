@@ -1,8 +1,12 @@
 @if(count($preGpsSteps ?? []) > 0)
+@if(! empty($secondary))
+<p id="pregps-cta" class="mt-3 text-center text-sm text-slate-500">Need the parking details again? <button id="pregps-show-btn" type="button" style="background:none;border:0;padding:0;cursor:pointer;font:inherit;font-weight:600;color:#334155;text-decoration:underline;" aria-haspopup="dialog" aria-controls="pregps-overlay">View instructions</button></p>
+@else
 <div id="pregps-cta" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-center">
     <button id="pregps-show-btn" type="button" class="guest-primary-btn is-go w-full" aria-haspopup="dialog" aria-controls="pregps-overlay">Show instructions and parking details</button>
     <p class="mt-3 text-xs leading-5 text-slate-500">A few things to know before you arrive.</p>
 </div>
+@endif
 
 <div id="pregps-overlay" role="dialog" aria-modal="true" aria-label="Before you arrive" hidden
      style="position:fixed;inset:0;z-index:9990;overflow-y:auto;background:rgba(15,23,42,.6);padding:16px;-webkit-overflow-scrolling:touch;">
