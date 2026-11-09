@@ -131,6 +131,7 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/id-status', [GuestController::class, 'idStatus'])->name('id-status');
     Route::get('/guide/{category:slug}', [GuestController::class, 'category'])->name('category');
     Route::get('/guide/{category:slug}/events', [GuestController::class, 'moreEvents'])->name('category.events');
+    Route::post('/pre-arrival-viewed', [GuestController::class, 'preArrivalViewed'])->middleware('throttle:30,1')->name('pre-arrival-viewed');
 });
 
 Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access', 'property.access'])->prefix('admin')->name('admin.')->group(function () {

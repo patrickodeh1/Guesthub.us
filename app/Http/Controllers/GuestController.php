@@ -1197,6 +1197,25 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         return response()->json(['gps_verified' => (bool) $booking->gps_verified]);
     }
+
+    public function preArrivalViewed(string $bookingId, string $token)
+    {
+        $booking = $this->booking($bookingId, $token);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'pre_arrival_viewed_at') && ! $booking->pre_arrival_viewed_at) {
+            $booking->forceFill(['pre_arrival_viewed_at' => now()])->save();
+
+            ActivityLogService::guest('pre_arrival_viewed', "Guest {$booking->guest_name} viewed the before-arrival instructions.", 'guest_portal', [
+                'booking_id'  => $booking->id,
+                'property_id' => $booking->property_id,
+                'actor_name'  => $booking->guest_name,
+                'actor_email' => $booking->email,
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
     public function idStatus(string $bookingId, string $token)
     {
         $booking = $this->booking($bookingId, $token);

@@ -2381,19 +2381,12 @@
 
             @if($booking->canViewAddress())
             @if(count($preGpsSteps ?? []) > 0)
-            <div id="arrival-pre-cta" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-center">
-                <button id="arrival-show-pre-btn" type="button" class="guest-primary-btn is-go w-full">Show instructions and parking details</button>
-                <p class="mt-3 text-xs leading-5 text-slate-500">A few things to know before you arrive.</p>
-            </div>
-            <div id="step-wizard-pregps-wrapper" style="display:none">
-                <x-step-wizard :steps="$preGpsSteps" type="pregps" kicker="Before you arrive" done-label="Continue" next-section="arrival-arrived" />
-            </div>
-            <div id="arrival-arrived" style="display:none" class="guest-portal-card mt-4 text-center">
-                @php $arrLogo = $siteLogo ?? \App\Models\Setting::getValue('site_logo'); @endphp
+            @if($booking->pre_arrival_viewed_at)
+            <div id="arrival-gps-card" class="mt-4 guest-portal-card text-center">
                 <div class="guest-status-bar">
                     <div>
-                        @if($arrLogo)
-                            <img src="{{ url('/img/'.$arrLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
+                        @if($siteLogo)
+                            <img src="{{ url('/img/'.$siteLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
                         @endif
                     </div>
                 </div>
@@ -2405,18 +2398,35 @@
                     <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
                 </div>
             </div>
+            @include('guest.partials.pre-gps')
+            @else
+            <div id="arrival-gps-card" style="display:none" class="mt-4 guest-portal-card text-center">
+                <div class="guest-status-bar">
+                    <div>
+                        @if($siteLogo)
+                            <img src="{{ url('/img/'.$siteLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                </div>
+                <div class="p-6">
+                    <h1 class="guest-status-title">Almost there!</h1>
+                    <p class="mt-3 text-base font-bold text-slate-950">{!! $gpsVerifyMessage !!}</p>
+                    <div id="gps-ajax-message" class="hidden"></div>
+                    <button id="gps-ajax-verify-btn" type="button" data-url="{{ route('guest.gps', [$booking->booking_id, $booking->token]) }}" data-csrf="{{ csrf_token() }}" class="guest-primary-btn is-go mt-4 w-full">I Have Arrived</button>
+                    <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
+                </div>
+            </div>
+            <p id="arrival-gps-hint" class="mt-4 text-center text-sm font-semibold text-slate-600">Review the instructions to continue check-in.</p>
+            @include('guest.partials.pre-gps')
             <script>
-            (function () {
-                var b = document.getElementById('arrival-show-pre-btn');
-                if (!b) return;
-                b.addEventListener('click', function () {
-                    var m = document.getElementById('arrival-main-card'); if (m) m.style.display = 'none';
-                    var c = document.getElementById('arrival-pre-cta'); if (c) c.style.display = 'none';
-                    var w = document.getElementById('step-wizard-pregps-wrapper'); if (w) w.style.display = '';
-                    window.scrollTo({top: 0, behavior: 'smooth'});
-                });
-            })();
+            document.addEventListener('pregps:viewed', function() {
+                var card = document.getElementById('arrival-gps-card');
+                var hint = document.getElementById('arrival-gps-hint');
+                if (card) card.style.display = '';
+                if (hint) hint.style.display = 'none';
+            });
             </script>
+            @endif
             @else
             <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-center">
                 <p class="text-base font-bold text-slate-950">{!! $gpsVerifyMessage !!}</p>
@@ -2425,10 +2435,7 @@
                 <p class="mt-3 text-xs leading-5 text-slate-500">Please make sure your location is allowed. We will verify on the next page.</p>
             </div>
             @endif
-            @else
-            @include('guest.partials.pre-gps')
             @endif
-
         @elseif($state === 'awaiting_deposit')
             <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="deposit_verified"></div>
             <div class="guest-portal-card">

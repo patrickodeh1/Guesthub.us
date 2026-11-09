@@ -21,7 +21,24 @@
     var closeBtn = document.getElementById('pregps-close-btn');
     var done = document.getElementById('wizard-done-pregps');
     if (!overlay || !show) return;
-    var isOpen = false, pushed = false;
+    var isOpen = false, pushed = false, viewedSent = false;
+
+    function markViewed() {
+        if (viewedSent) return;
+        viewedSent = true;
+        document.dispatchEvent(new CustomEvent('pregps:viewed'));
+        try {
+            fetch("{{ route('guest.pre-arrival-viewed', [$booking->booking_id, $booking->token]) }}", {
+                method: 'POST',
+                keepalive: true,
+                headers: { 'X-CSRF-TOKEN': "{{ csrf_token() }}", 'Accept': 'application/json' }
+            }).catch(function () {});
+        } catch (e) {}
+    }
+    function checkReachedEnd() {
+        var d = document.getElementById('wizard-done-pregps');
+        if (d && d.style.display !== 'none') markViewed();
+    }
 
     function resetWizard() {
         var card = document.getElementById('step-wizard-pregps');
@@ -41,6 +58,7 @@
         document.body.style.overflow = 'hidden';
         try { history.pushState({ pregps: 1 }, ''); pushed = true; } catch (e) { pushed = false; }
         if (closeBtn) closeBtn.focus();
+        checkReachedEnd();
     }
     function closePanel(fromPop) {
         if (!isOpen) return;
@@ -57,6 +75,8 @@
     overlay.addEventListener('click', function (e) { if (e.target === overlay) closePanel(false); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanel(false); });
     window.addEventListener('popstate', function () { if (isOpen) closePanel(true); });
+    var nextBtn = document.getElementById('wizard-next-pregps');
+    if (nextBtn) nextBtn.addEventListener('click', checkReachedEnd);
 })();
 </script>
 @endif
