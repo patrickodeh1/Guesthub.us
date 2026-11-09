@@ -16,6 +16,7 @@ class SyncCheckoutCleaningSessions extends Command
     {
         $n = 0;
         Booking::query()->notArchived()->whereNull('cancelled_at')
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
             ->whereDate('check_out_date', '>=', now(config('app.display_timezone'))->toDateString())
             ->with('property')->get()
             ->each(function ($b) use (&$n) { CleaningFlowService::syncForBooking($b); $n++; });

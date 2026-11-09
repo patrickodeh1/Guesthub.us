@@ -24,7 +24,7 @@ class CheckoutOverviewService
     private const WINDOW_DAYS = 10; // covers the "Next week" tab (days +4 to +10)
 
     /** Bookings in these statuses never need a cleaning. Harmless if a status is unused. */
-    private const EXCLUDED_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+    private const EXCLUDED_STATUSES = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
 
     public function get(User $user): array
     {

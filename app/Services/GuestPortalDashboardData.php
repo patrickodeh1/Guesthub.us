@@ -16,6 +16,7 @@ class GuestPortalDashboardData
 
         $todayGuests = Booking::with('property')
             ->notArchived()
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
             ->whereHas('property', fn ($query) => $query->visibleTo($user))
             ->where(fn ($query) => $query->whereDate('check_in_date', $today)->orWhereDate('check_out_date', $today))
             ->get()
@@ -24,6 +25,7 @@ class GuestPortalDashboardData
 
         $upcomingGuests = Booking::with('property')
             ->notArchived()
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
             ->whereHas('property', fn ($query) => $query->visibleTo($user))
             ->whereNull('checked_out_at')
             ->whereDate('check_in_date', '>', $today)
@@ -36,6 +38,7 @@ class GuestPortalDashboardData
         // which they drop into the normal Today/Tomorrow/Upcoming bucket.
         $priorityGuests = Booking::with('property')
             ->notArchived()
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
             ->whereHas('property', fn ($query) => $query->visibleTo($user))
             ->whereNull('checked_out_at')
             ->get()

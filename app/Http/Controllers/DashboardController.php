@@ -159,7 +159,7 @@ class DashboardController extends Controller
             ->whereIn('property_id', $names->keys())
             ->whereBetween('check_out_date', [Carbon::today()->toDateString(), Carbon::today()->addMonth()->toDateString()])
             ->when(\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'status'),
-                fn ($q) => $q->whereNotIn('status', ['cancelled', 'canceled']))
+                fn ($q) => $q->whereNotIn('status', ['pending_payment', 'cancelled', 'canceled']))
             ->orderBy('check_out_date')
             ->get();
 

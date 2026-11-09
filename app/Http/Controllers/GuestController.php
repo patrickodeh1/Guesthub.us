@@ -94,6 +94,7 @@ class GuestController extends Controller
         abort_unless($rid, 404);
 
         $booking = Booking::where('reservation_id', $rid)->firstOrFail();
+        abort_unless(! $booking->isPendingPayment(), 404);
 
         return $this->renderPortal($booking);
     }
@@ -102,6 +103,7 @@ class GuestController extends Controller
     {
         $rid = $request->input('RID');
         $booking = Booking::where('reservation_id', $rid)->firstOrFail();
+        abort_unless(! $booking->isPendingPayment(), 404);
 
         $data = $request->validate([
             'phone' => ['required', 'string'],
@@ -1482,12 +1484,14 @@ class GuestController extends Controller
             ->where('token', $token)
             ->first();
         if ($booking) {
+            abort_unless(! $booking->isPendingPayment(), 404);
             \App\Services\GuestSessionService::refreshCookie($booking);
             return $booking;
         }
         $cookieToken = request()->cookie(\App\Services\GuestSessionService::COOKIE_NAME);
         $sessionBooking = \App\Services\GuestSessionService::resolve($cookieToken);
         if ($sessionBooking && $sessionBooking->booking_id === $bookingId) {
+            abort_unless(! $sessionBooking->isPendingPayment(), 404);
             return $sessionBooking;
         }
         if (! $allowLoginFallback) {
@@ -1508,6 +1512,7 @@ class GuestController extends Controller
             ]);
             abort(404);
         }
+        abort_unless(! $fallbackBooking->isPendingPayment(), 404);
         ActivityLogService::security('invalid_token_access', "Token mismatch for booking: {$bookingId}, guest routed to login.", [
             'actor_type' => 'guest',
             'severity'   => 'warning',

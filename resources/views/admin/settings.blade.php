@@ -5,6 +5,9 @@
             <h1 class="page-title">Brand and system settings</h1>
             <p class="page-subtitle">Control the default guest brand, GPS verification radius, contact information, and fallback intro text.</p>
         </div>
+        @if(auth()->user()->hasRole('admin'))
+            <a href="{{ route('admin.features.index') }}" class="btn-secondary">Direct booking features</a>
+        @endif
     </div>
 
     <form method="post" enctype="multipart/form-data" action="{{ route('admin.settings.update') }}" class="grid gap-6 xl:grid-cols-[1fr_360px]">

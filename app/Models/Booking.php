@@ -13,6 +13,8 @@ use Illuminate\Support\Str;
 
 class Booking extends Model
 {
+    public const STATUS_PENDING_PAYMENT = 'pending_payment';
+
     /** Booking platforms offered in the guest forms: stored value => label. */
     public const PLATFORMS = [
         'Airbnb'      => 'Airbnb',
@@ -1770,7 +1772,7 @@ class Booking extends Model
             foreach ($bookings as $booking) {
                 // Guest cancellations are archived (or kept) at the moment of
                 // cancellation, not by this checkout-date sweep.
-                if ($booking->isCancelled() || ! $booking->isPastCheckoutTime()) {
+                if ($booking->isCancelled() || $booking->isPendingPayment() || ! $booking->isPastCheckoutTime()) {
                     continue;
                 }
                 $updates = ['archived_at' => now()];
@@ -1789,7 +1791,7 @@ class Booking extends Model
      */
     public function completeCheckout(string $source = 'guest_confirmed_checkout'): bool
     {
-        if ($this->checked_out_at) {
+        if ($this->checked_out_at || $this->isPendingPayment()) {
             return false;
         }
 
@@ -1817,7 +1819,8 @@ class Booking extends Model
     public static function autoCheckoutOverdue(int $graceMinutes = 90): int
     {
         $count = 0;
-        static::where('status', '!=', 'checked_out')
+        static::where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', self::STATUS_PENDING_PAYMENT))
+            ->where('status', '!=', 'checked_out')
             ->whereDate('check_out_date', '>=', now()->subDays(3)->toDateString())
             ->chunkById(100, function ($bookings) use (&$count, $graceMinutes) {
             foreach ($bookings as $booking) {
@@ -1867,6 +1870,11 @@ class Booking extends Model
     public function isDirectBooking(): bool
     {
         return in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
+    }
+
+    public function isPendingPayment(): bool
+    {
+        return $this->status === self::STATUS_PENDING_PAYMENT;
     }
 
     public function platformLabel(): string

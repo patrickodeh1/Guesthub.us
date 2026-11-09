@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Models\User;
 
 class Property extends Model
@@ -215,6 +216,11 @@ class Property extends Model
     public function availabilities(): HasMany
     {
         return $this->hasMany(PropertyAvailability::class);
+    }
+
+    public function listing(): HasOne
+    {
+        return $this->hasOne(PropertyListing::class);
     }
 
     public function categories(): BelongsToMany

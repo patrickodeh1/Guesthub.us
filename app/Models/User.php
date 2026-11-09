@@ -61,6 +61,9 @@ class User extends Authenticatable
         'created_by',
         'notes',
         'dismissed_notification_ids',
+        'stripe_account_id',
+        'stripe_charges_enabled',
+        'stripe_payouts_enabled',
     ];
 
     protected $hidden = [
@@ -82,6 +85,8 @@ class User extends Authenticatable
             'terminated_at'                => 'datetime',
             'dismissed_notification_ids'   => 'array',
             'preferences'                   => 'array',
+            'stripe_charges_enabled'         => 'boolean',
+            'stripe_payouts_enabled'         => 'boolean',
         ];
     }
 
@@ -171,6 +176,16 @@ class User extends Authenticatable
     public function properties(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_user', 'user_id', 'property_id');
+    }
+
+    public function hostFeatures(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(HostFeature::class);
+    }
+
+    public function hostPaymentMethods(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(HostPaymentMethod::class, 'owner_id');
     }
 
     public function managedOwners(): \Illuminate\Database\Eloquent\Relations\BelongsToMany

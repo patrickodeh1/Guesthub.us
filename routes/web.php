@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentController;
 use App\Http\Controllers\Admin\EarlyAccessLeadController;
+use App\Http\Controllers\Admin\FeatureController;
 use App\Http\Controllers\Admin\GuestNoticeController;
 use App\Http\Controllers\Admin\InstructionStepController;
 use App\Http\Controllers\Admin\LogController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\NotificationSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PropertyController;
+use App\Http\Controllers\Admin\PropertyListingController;
 use App\Http\Controllers\Admin\PropertyAvailabilityController;
 use App\Http\Controllers\Admin\PropertyLockController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -198,6 +200,18 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         ->except(['show'])
         ->middlewareFor(['create', 'store', 'edit', 'update'], 'role:admin,owner,company')
         ->middlewareFor('destroy', 'role:admin');
+
+    Route::middleware('role:admin,owner')->group(function () {
+        Route::get('properties/{property}/listing', [PropertyListingController::class, 'edit'])
+            ->middleware('property.access')->name('properties.listing.edit');
+        Route::put('properties/{property}/listing', [PropertyListingController::class, 'save'])
+            ->middleware('property.access')->name('properties.listing.save');
+    });
+
+    Route::middleware('role:admin')->group(function () {
+        Route::get('features', [FeatureController::class, 'index'])->name('features.index');
+        Route::put('features/{feature}', [FeatureController::class, 'update'])->name('features.update');
+    });
 
     // ─── Guests / Bookings ────────────────────────────────────────────────────
     Route::get('guests/search', [BookingController::class, 'searchLive'])->name('guests.search');

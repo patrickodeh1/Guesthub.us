@@ -17,6 +17,10 @@ class CleanerAccountability
     public static function forBooking(Booking $b, string $today): ?array
     {
         try {
+            if ($b->isPendingPayment()) {
+                return null;
+            }
+
             $in = $b->check_in_date?->toDateString();
             $out = $b->check_out_date?->toDateString();
             if (! $in || ! $out) {
@@ -36,6 +40,7 @@ class CleanerAccountability
 
             $next = Booking::where('property_id', $b->property_id)->notArchived()
                 ->whereNull('cancelled_at')->whereNull('checked_out_at')
+                ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
                 ->whereDate('check_in_date', '>=', $today)
                 ->orderBy('check_in_date')->orderBy('id')->first();
             if (! $next || $next->id !== $b->id) {
@@ -44,6 +49,7 @@ class CleanerAccountability
 
             $prev = Booking::where('property_id', $b->property_id)->where('id', '<>', $b->id)
                 ->whereNull('cancelled_at')->whereDate('check_out_date', '<=', $in)
+                ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
                 ->orderByDesc('check_out_date')->orderByDesc('id')->first();
             if (! $prev) {
                 return null;

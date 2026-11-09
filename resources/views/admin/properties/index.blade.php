@@ -59,6 +59,9 @@
                         <a href="{{ route('admin.properties.edit', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Edit property</a>
                         <button type="button" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50" @click="open = false; openDuplicateModal(@js(route('admin.properties.duplicate', $property)), @js($property->name))">Duplicate</button>
                     @endif
+                    @if(auth()->user()->hasAnyRole(['admin', 'owner']))
+                        <a href="{{ route('admin.properties.listing.edit', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Direct booking listing</a>
+                    @endif
                     <button type="button" class="block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-slate-50" @click="open = false; $dispatch('open-preview-panel', 'assign-rooms-{{ $property->id }}')">Add room</button>
                     <a href="{{ route('properties.rooms.index', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Rooms</a>
                     @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))

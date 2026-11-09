@@ -22,7 +22,7 @@ class SendRegistrationReminders extends Command
             ->whereNull('cancelled_at')
             ->whereDate('check_in_date', '>=', $today)
             ->whereDate('check_in_date', '<=', $until)
-            ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', ['guest_approved', 'checked_in', 'checked_out', 'cancelled']))
+            ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', ['pending_payment', 'guest_approved', 'checked_in', 'checked_out', 'cancelled']))
             ->where(fn ($q) => $q->whereNull('last_registration_reminder_at')->orWhere('last_registration_reminder_at', '<=', now()->subHours(20)))
             ->with('property')
             ->get();

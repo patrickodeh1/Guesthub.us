@@ -244,7 +244,10 @@ if ($this->isInUse($file->path)) {
         }
 
         return $db::table('amenities')->where('images', 'like', '%' . str_replace('/', '\\/', $path) . '%')->exists()
-            || $db::table('amenities')->where('images', 'like', '%' . $path . '%')->exists();
+            || $db::table('amenities')->where('images', 'like', '%' . $path . '%')->exists()
+            || $db::table('listing_photos')
+                ->where(fn ($query) => $query->where('path', $path)->orWhere('thumbnail_path', $path))
+                ->exists();
     }
 
     private function breadcrumb(?MediaFolder $folder): array

@@ -16,6 +16,7 @@ class CleaningJobService
     public function create(User $actor, array $data): CleaningSession
     {
         $property = $this->property($actor, (int) $data['property_id']);
+        $this->assertBookingCanBeCleaned($property->id, $data);
         $this->assertPropertyHasTasks($property);
         $this->assertAssignee($property, (int) $data['housekeeper_id']);
         $this->assertUniqueAssignment($data);
@@ -41,6 +42,7 @@ class CleaningJobService
         );
 
         $property = $this->property($actor, (int) $data['property_id']);
+        $this->assertBookingCanBeCleaned($property->id, $data, $session->booking_id);
         $this->assertPropertyHasTasks($property);
         $this->assertAssignee($property, (int) $data['housekeeper_id']);
         $this->assertUniqueAssignment($data, $session);
@@ -112,6 +114,7 @@ class CleaningJobService
                 ->where('status', 'pending')
                 ->whereIn('booking_id', Booking::where('property_id', $data['property_id'])
                     ->whereNull('cancelled_at')
+                    ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
                     ->whereDate('check_in_date', '<=', $d)
                     ->whereDate('check_out_date', '>=', $d)
                     ->select('id'))
@@ -159,7 +162,7 @@ class CleaningJobService
     private function assertSchedulable(array $data): ?Carbon
     {
         $date = Carbon::parse($data['scheduled_date'])->toDateString();
-        $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+        $dead = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
         $live = fn ($q) => $q->whereNull('cancelled_at')
             ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
         $fail = function (string $m) {
@@ -271,6 +274,7 @@ class CleaningJobService
             ->where('property_id', $propertyId)
             ->whereNull('cancelled_at')
             ->notArchived()
+            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
             ->where('check_in_date', '<', $date)
             ->where('check_out_date', '>', $date)
             ->get();
@@ -310,6 +314,25 @@ class CleaningJobService
         }
 
         return $property;
+    }
+
+    private function assertBookingCanBeCleaned(int $propertyId, array $data, ?int $existingBookingId = null): void
+    {
+        $bookingIds = array_filter([$data['booking_id'] ?? null, $existingBookingId]);
+        if ($bookingIds === []) {
+            return;
+        }
+
+        $pending = Booking::query()
+            ->where('property_id', $propertyId)
+            ->whereIn('id', $bookingIds)
+            ->where('status', Booking::STATUS_PENDING_PAYMENT)
+            ->exists();
+        if ($pending) {
+            throw ValidationException::withMessages([
+                'booking_id' => 'A pending payment cannot be assigned a cleaning job.',
+            ]);
+        }
     }
 
     private function assertPropertyHasTasks(Property $property): void

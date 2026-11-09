@@ -14,7 +14,7 @@ class DashboardDayService
 {
     private const LAST_DAY = 14;
 
-    private const EXCLUDED_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+    private const EXCLUDED_STATUSES = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
 
     public function get(User $user, array $checkoutBoard): array
     {

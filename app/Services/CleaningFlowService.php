@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class CleaningFlowService
 {
-    private const DEAD_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+    private const DEAD_STATUSES = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
 
     /** Set to true to create an unassigned checkout session automatically for every booking. */
     private const AUTO_CREATE_CHECKOUT_SESSIONS = true;

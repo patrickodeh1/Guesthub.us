@@ -20,7 +20,7 @@ class SendCheckoutReminders extends Command
         $bookings = Booking::query()
             ->whereDate('check_out_date', $tomorrow)
             ->whereNull('checkout_reminder_sent_at')
-            ->whereNotIn('status', ['cancelled', 'checked_out'])
+            ->whereNotIn('status', ['pending_payment', 'cancelled', 'checked_out'])
             ->with('property')
             ->get();
 

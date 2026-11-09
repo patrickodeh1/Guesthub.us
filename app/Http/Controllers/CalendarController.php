@@ -160,6 +160,7 @@ class CalendarController extends Controller
             $bookingQuery = Booking::query()
                 ->notArchived()
                 ->whereNull('cancelled_at')
+                ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
                 ->with('property:id,name')
                 ->whereBetween('check_out_date', [$gridStart->toDateString(), $gridEnd->toDateString()]);
 
@@ -212,6 +213,7 @@ class CalendarController extends Controller
             $bq = Booking::query()
                 ->notArchived()
                 ->whereNull('cancelled_at')
+                ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', Booking::STATUS_PENDING_PAYMENT))
                 ->with('property:id,name,checkin_time,checkout_time')
                 ->whereDate('check_in_date', '<=', $gridEnd->toDateString())
                 ->when($fProperty, fn ($bq) => $bq->where('property_id', $fProperty))
