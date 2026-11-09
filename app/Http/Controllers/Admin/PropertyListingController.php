@@ -11,6 +11,7 @@ use App\Models\Property;
 use App\Models\PropertyListing;
 use App\Models\User;
 use App\Services\FeatureGate;
+use App\Services\IndexNowService;
 use App\Services\MediaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +90,7 @@ class PropertyListingController extends Controller
         ]);
 
         $published = (bool) $data['published'];
+        $wasPublished = $listing->exists && $listing->published_at !== null;
         $baseRateCents = $this->dollarsToCents($data['base_rate'] ?? null, 'base_rate');
         $cleaningFeeCents = $this->dollarsToCents($data['cleaning_fee'] ?? null, 'cleaning_fee');
         $leaseFeeCents = $this->dollarsToCents($data['lease_application_fee'] ?? null, 'lease_application_fee');
@@ -206,6 +208,10 @@ class PropertyListingController extends Controller
             }
 
             throw $exception;
+        }
+
+        if ($wasPublished !== $published) {
+            app(IndexNowService::class)->notifyListing($listing->fresh());
         }
 
         $removed = $existingPhotos->whereIn('id', $removeIds);
@@ -394,6 +400,8 @@ class PropertyListingController extends Controller
             'path' => $path,
             'thumbnail_path' => $thumbnailPath,
             'alt' => $alt,
+            'width' => $large->width(),
+            'height' => $large->height(),
         ];
     }
 }

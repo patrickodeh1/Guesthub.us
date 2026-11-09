@@ -92,6 +92,11 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'indexnow' => [
+        'key' => env('INDEXNOW_KEY'),
+        'endpoint' => env('INDEXNOW_ENDPOINT', 'https://api.indexnow.org/indexnow'),
+    ],
+
     'ffmpeg' => [
         'binary' => env('FFMPEG_BINARIES', 'ffmpeg'),
     ],
