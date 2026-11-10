@@ -99,13 +99,19 @@ class QuoteService
         $rateRows = PropertyAvailability::query()
             ->where('property_id', $listing->property_id)
             ->whereBetween('date', [$arrival->toDateString(), $departure->copy()->subDay()->toDateString()])
-            ->get(['date', 'rate'])
+            ->get(['date', 'rate', 'rates_source'])
             ->keyBy(fn (PropertyAvailability $row) => $row->date->toDateString());
         $items = [];
         $nightlySubtotal = 0;
         for ($date = $arrival->copy(); $date->lt($departure); $date->addDay()) {
             $key = $date->toDateString();
-            $rate = AvailabilitySearch::rateToCents($rateRows->get($key)?->rate);
+            $rateRow = $rateRows->get($key);
+            $rateSource = $rateRow?->rates_source;
+            // Legacy untagged rates predate provider ownership and remain manual overrides.
+            $rateIsActive = $rateSource === 'manual'
+                || ($rateSource === null && $rateRow?->rate !== null)
+                || ($property?->pricing_provider && $rateSource === $property->pricing_provider);
+            $rate = AvailabilitySearch::rateToCents($rateIsActive ? $rateRow?->rate : null);
             $rate ??= (int) $listing->base_rate_cents;
             $nightlySubtotal += $rate;
             $items[] = [
@@ -129,8 +135,7 @@ class QuoteService
 
         $processingFee = 0;
         if ($paymentMethod === 'card') {
-            $feePercent = $this->percentBasisPoints((string) Setting::getValue('processing_fee_percent', 0));
-            $processingFee = $this->percentageOf($taxableCents + $taxCents, $feePercent);
+            $processingFee = $this->cardProcessingFeeCents($taxableCents + $taxCents);
             if ($processingFee > 0) {
                 $items[] = ['label' => 'Card processing fee', 'amount_cents' => $processingFee];
             }
@@ -143,6 +148,13 @@ class QuoteService
             'subtotal_cents' => $nightlySubtotal,
             'total_cents' => $nightlySubtotal + $cleaningFee + $taxCents + $processingFee,
         ];
+    }
+
+    public function cardProcessingFeeCents(int $amountCents): int
+    {
+        $feePercent = $this->percentBasisPoints((string) Setting::getValue('processing_fee_percent', 0));
+
+        return $this->percentageOf($amountCents, $feePercent);
     }
 
     private function timezone(?string $timezone): string

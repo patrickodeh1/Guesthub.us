@@ -1,32 +1,33 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\CalendarAssignController;
+use App\Http\Controllers\Admin\CalendarStatusController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\DirectBookingAdminController;
 use App\Http\Controllers\Admin\EarlyAccessLeadController;
 use App\Http\Controllers\Admin\FeatureController;
 use App\Http\Controllers\Admin\GuestNoticeController;
 use App\Http\Controllers\Admin\InstructionStepController;
 use App\Http\Controllers\Admin\LogController;
+use App\Http\Controllers\Admin\LeaseApplicationAdminController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\NotificationSettingsController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PhotoReferenceController;
+use App\Http\Controllers\Admin\PropertyAvailabilityController;
 use App\Http\Controllers\Admin\PropertyController;
 use App\Http\Controllers\Admin\PropertyListingController;
-use App\Http\Controllers\Admin\PropertyAvailabilityController;
+use App\Http\Controllers\Admin\PropertyLockboxController;
 use App\Http\Controllers\Admin\PropertyLockController;
+use App\Http\Controllers\Admin\QuickAssignController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TrainingLogController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ChecklistController as CleaningChecklistController;
-use App\Http\Controllers\DashboardController as CleaningDashboardController;
-use App\Http\Controllers\ManageSessionController as CleaningManageSessionController;
-use App\Http\Controllers\ProfileController as CleaningProfileController;
-use App\Http\Controllers\PropertyController as CleaningPropertyController;
-use App\Http\Controllers\SessionController as CleaningSessionController;
-use App\Http\Controllers\CalendarController as CleaningCalendarController;
-use App\Http\Controllers\SessionReportController as CleaningSessionReportController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
@@ -35,23 +36,66 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalendarController as CleaningCalendarController;
 use App\Http\Controllers\ChannexWebhookController;
+use App\Http\Controllers\ChecklistController as CleaningChecklistController;
+use App\Http\Controllers\CleaningSessionGuestController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\DashboardController as CleaningDashboardController;
+use App\Http\Controllers\DirectBookingController;
 use App\Http\Controllers\EarlyAccessController;
+use App\Http\Controllers\FamiliarityReportController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\InstructionalVideoController;
 use App\Http\Controllers\LegalPageController;
+use App\Http\Controllers\ManageSessionController as CleaningManageSessionController;
+use App\Http\Controllers\PhotoController;
 use App\Http\Controllers\PrivacyRequestController;
+use App\Http\Controllers\ProfileController as CleaningProfileController;
+use App\Http\Controllers\PropertyAssignmentsApiController;
+use App\Http\Controllers\PropertyController as CleaningPropertyController;
+use App\Http\Controllers\PropertyNotificationSettingsController;
+use App\Http\Controllers\PropertyRoomAttachController;
+use App\Http\Controllers\PropertyRoomController;
+use App\Http\Controllers\PropertyRoomOrderController;
+use App\Http\Controllers\PropertyTaskOrderController;
+use App\Http\Controllers\ResourcePageController;
+use App\Http\Controllers\ResourcesController;
+use App\Http\Controllers\RoomController;
+use App\Http\Controllers\RoomSuggestionController;
+use App\Http\Controllers\RoomTaskAttachController;
+use App\Http\Controllers\RoomTaskOrderController;
 use App\Http\Controllers\SeamWebhookController;
+use App\Http\Controllers\SessionAccessPhotoController;
+use App\Http\Controllers\SessionController;
+use App\Http\Controllers\SessionController as CleaningSessionController;
+use App\Http\Controllers\SessionDoorController;
+use App\Http\Controllers\SessionLocationController;
+use App\Http\Controllers\SessionLockboxController;
+use App\Http\Controllers\SessionReportController as CleaningSessionReportController;
+use App\Http\Controllers\StripeConnectController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskMediaController;
+use App\Http\Controllers\TaskSuggestionController;
 use App\Http\Controllers\TelnyxWebhookController;
+use App\Http\Controllers\TrainingController;
+use App\Http\Controllers\TrainingReportController;
+use App\Http\Controllers\UserFamiliarityController;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\ForcePasswordChange;
 use App\Models\Booking;
 use App\Models\Category;
 use App\Models\Property;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Support\BookingAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [EarlyAccessController::class, 'show'])->name('early-access');
 Route::get('/terms', [LegalPageController::class, 'terms'])->name('legal.terms');
@@ -103,6 +147,9 @@ Route::post('/webhooks/seam', [SeamWebhookController::class, 'handle'])->name('w
 Route::post('/webhooks/channex', [ChannexWebhookController::class, 'handle'])->name('webhooks.channex');
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
 Route::post('/webhooks/telnyx/sms', [TelnyxWebhookController::class, 'handle'])->name('webhooks.telnyx.sms');
+Route::post('/webhooks/wheelhouse/{secret}', [\App\Http\Controllers\WheelhouseWebhookController::class, 'handle'])
+    ->middleware('throttle:60,1')
+    ->name('webhooks.wheelhouse');
 
 Route::get('/checkin', [GuestController::class, 'checkinByReservation'])->middleware('throttle:60,1')->name('checkin.rid');
 Route::post('/checkin/verify', [GuestController::class, 'verifyReservationLogin'])->middleware('throttle:10,1')->name('checkin.verify');
@@ -134,9 +181,17 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/guide/{category:slug}', [GuestController::class, 'category'])->name('category');
     Route::get('/guide/{category:slug}/events', [GuestController::class, 'moreEvents'])->name('category.events');
     Route::post('/pre-arrival-viewed', [GuestController::class, 'preArrivalViewed'])->middleware('throttle:30,1')->name('pre-arrival-viewed');
+    Route::post('/cancel-direct-booking', [DirectBookingController::class, 'cancel'])->middleware('throttle:5,1')->name('cancel-direct-booking');
 });
 
 Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access', 'property.access'])->prefix('admin')->name('admin.')->group(function () {
+
+    Route::post('connect/onboard', [StripeConnectController::class, 'onboard'])
+        ->name('connect.onboard');
+    Route::get('connect/return', [StripeConnectController::class, 'returned'])
+        ->name('connect.return');
+    Route::get('connect/refresh', [StripeConnectController::class, 'refresh'])
+        ->name('connect.refresh');
 
     // ─── Dashboard ───────────────────────────────────────────────────────────
     Route::redirect('/', '/dashboard')
@@ -170,19 +225,19 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         return response()->json(['ok' => true]);
     })->name('tour.dashboard.restart');
 
-    Route::post('cleaning-jobs/quick-assign', [\App\Http\Controllers\Admin\QuickAssignController::class, 'store'])
+    Route::post('cleaning-jobs/quick-assign', [QuickAssignController::class, 'store'])
         ->middleware('role:admin,owner,company,manager')
         ->name('cleaning-jobs.quick-assign');
 
-    Route::post('cleaning-jobs/calendar-assign', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'store'])
+    Route::post('cleaning-jobs/calendar-assign', [CalendarAssignController::class, 'store'])
         ->middleware('role:admin,owner,company,manager')
         ->name('cleaning-jobs.calendar-assign');
-    Route::get('cleaning-jobs/assign-options', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'options'])
+    Route::get('cleaning-jobs/assign-options', [CalendarAssignController::class, 'options'])
         ->middleware('role:admin,owner,company,manager')->name('cleaning-jobs.assign-options');
-    Route::post('cleaning-jobs/confirm-manually', [\App\Http\Controllers\Admin\CalendarAssignController::class, 'confirm'])
+    Route::post('cleaning-jobs/confirm-manually', [CalendarAssignController::class, 'confirm'])
         ->middleware('role:admin,owner,company,manager')->name('cleaning-jobs.confirm-manually');
 
-    Route::post('cleaning-jobs/calendar-status', [\App\Http\Controllers\Admin\CalendarStatusController::class, 'store'])
+    Route::post('cleaning-jobs/calendar-status', [CalendarStatusController::class, 'store'])
         ->middleware('role:admin,owner,company,manager')
         ->name('cleaning-jobs.calendar-status');
 
@@ -213,6 +268,15 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::put('features/{feature}', [FeatureController::class, 'update'])->name('features.update');
     });
 
+    Route::middleware('role:admin,owner')->prefix('lease-applications')->name('lease-applications.')->group(function () {
+        Route::get('/', [LeaseApplicationAdminController::class, 'index'])->name('index');
+        Route::get('/{application}', [LeaseApplicationAdminController::class, 'show'])->name('show');
+        Route::put('/{application}', [LeaseApplicationAdminController::class, 'update'])->name('update');
+        Route::post('/{application}/fee-received', [LeaseApplicationAdminController::class, 'markFeeReceived'])->name('fee-received');
+        Route::post('/{application}/screening', [LeaseApplicationAdminController::class, 'requestScreening'])->name('screening');
+        Route::get('/{application}/id', [LeaseApplicationAdminController::class, 'idDocument'])->name('id');
+    });
+
     // ─── Guests / Bookings ────────────────────────────────────────────────────
     Route::get('guests/search', [BookingController::class, 'searchLive'])->name('guests.search');
     Route::get('guests/this-week', [BookingController::class, 'thisWeekMore'])->name('guests.this-week');
@@ -234,6 +298,10 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('guests/{booking}/mark-id', [BookingController::class, 'markIdReceived'])->name('guests.mark-id');
     Route::post('guests/{booking}/bypass-vehicle-info', [BookingController::class, 'bypassVehicleInfo'])->name('guests.bypass-vehicle-info');
     Route::post('guests/{booking}/approve', [BookingController::class, 'approveBooking'])->name('guests.approve');
+    Route::post('guests/{booking}/direct-approve', [DirectBookingAdminController::class, 'approve'])->name('guests.direct-approve');
+    Route::post('guests/{booking}/direct-decline', [DirectBookingAdminController::class, 'decline'])->name('guests.direct-decline');
+    Route::post('guests/{booking}/direct-payment-received', [DirectBookingAdminController::class, 'markPaymentReceived'])->name('guests.direct-payment-received');
+    Route::post('guests/{booking}/direct-cancel', [DirectBookingAdminController::class, 'cancel'])->name('guests.direct-cancel');
     Route::post('guests/{booking}/background-check', [BookingController::class, 'markBackgroundCheckComplete'])->name('guests.background-check');
     Route::post('guests/{booking}/deposit-verified', [BookingController::class, 'markDepositVerified'])->name('guests.deposit-verified');
     Route::post('guests/{booking}/approve-checkin', [BookingController::class, 'approveCheckin'])->name('guests.approve-checkin');
@@ -271,12 +339,12 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
 
     // ─── Instruction Steps ───────────────────────────────────────────────────────
     Route::get('properties/{property}/steps', [InstructionStepController::class, 'forProperty'])->name('instructions.show')->middleware(['role:admin,owner,company,manager', 'property.access']);
-    Route::get('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'index'])->name('photo-guide.index')->middleware(['role:admin,owner,company,manager', 'property.access']);
-    Route::post('properties/{property}/photo-guide', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'store'])->name('photo-guide.store')->middleware(['role:admin,owner,company,manager', 'property.access']);
-    Route::post('properties/{property}/photo-guide/link', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'link'])->name('photo-guide.link')->middleware(['role:admin,owner,company,manager', 'property.access']);
-    Route::post('properties/{property}/photo-guide/rooms/{roomId}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'saveRoom'])->name('photo-guide.room')->middleware(['role:admin,owner,company,manager', 'property.access']);
-    Route::delete('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company,manager');
-    Route::post('photo-guide/{reference}', [\App\Http\Controllers\Admin\PhotoReferenceController::class, 'updateReference'])->name('photo-guide.update')->middleware('role:admin,owner,company,manager');
+    Route::get('properties/{property}/photo-guide', [PhotoReferenceController::class, 'index'])->name('photo-guide.index')->middleware(['role:admin,owner,company,manager', 'property.access']);
+    Route::post('properties/{property}/photo-guide', [PhotoReferenceController::class, 'store'])->name('photo-guide.store')->middleware(['role:admin,owner,company,manager', 'property.access']);
+    Route::post('properties/{property}/photo-guide/link', [PhotoReferenceController::class, 'link'])->name('photo-guide.link')->middleware(['role:admin,owner,company,manager', 'property.access']);
+    Route::post('properties/{property}/photo-guide/rooms/{roomId}', [PhotoReferenceController::class, 'saveRoom'])->name('photo-guide.room')->middleware(['role:admin,owner,company,manager', 'property.access']);
+    Route::delete('photo-guide/{reference}', [PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company,manager');
+    Route::post('photo-guide/{reference}', [PhotoReferenceController::class, 'updateReference'])->name('photo-guide.update')->middleware('role:admin,owner,company,manager');
     Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder')->middleware('role:admin,owner,company,manager');
     Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy')->middleware('role:admin,owner,company,manager');
     Route::resource('instructions', InstructionStepController::class)->except(['show'])->middleware('role:admin,owner,company,manager');
@@ -292,7 +360,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store')->middleware(['role:admin,owner,company', 'property.access']);
     Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy')->middleware(['role:admin,owner,company', 'property.access']);
-    Route::patch('properties/{property}/lockbox', [\App\Http\Controllers\Admin\PropertyLockboxController::class, 'update'])->name('properties.lockbox.update')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::patch('properties/{property}/lockbox', [PropertyLockboxController::class, 'update'])->name('properties.lockbox.update')->middleware(['role:admin,owner,company', 'property.access']);
 
     Route::get('properties/{property}/availability', [PropertyAvailabilityController::class, 'index'])->name('properties.availability.index')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/fetch-mapping', [PropertyAvailabilityController::class, 'fetchMapping'])->name('properties.availability.fetch-mapping')->middleware(['role:admin,owner,company', 'property.access']);
@@ -309,16 +377,22 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/save-window', [PropertyAvailabilityController::class, 'saveWindow'])->name('properties.availability.save-window')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/retry-failed', [PropertyAvailabilityController::class, 'retryFailed'])->name('properties.availability.retry-failed')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/release-manual', [PropertyAvailabilityController::class, 'releaseManualRates'])->name('properties.availability.release-manual')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/verify-pricelabs', [PropertyAvailabilityController::class, 'verifyPriceLabsKey'])->name('properties.availability.verify-pricelabs')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-pricing-provider', [PropertyAvailabilityController::class, 'savePricingProvider'])->name('properties.availability.save-pricing-provider')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/sync-pricing', [PropertyAvailabilityController::class, 'syncPriceLabs'])->name('properties.availability.sync-pricing')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-wheelhouse-key', [PropertyAvailabilityController::class, 'saveWheelhouseKey'])->name('properties.availability.save-wheelhouse-key')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/save-wheelhouse-listing', [PropertyAvailabilityController::class, 'saveWheelhouseListing'])->name('properties.availability.save-wheelhouse-listing')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/connect-wheelhouse', [PropertyAvailabilityController::class, 'connectWheelhouse'])->name('properties.availability.connect-wheelhouse')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company,manager');
     Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company,manager');
 
     // ─── Settings ─────────────────────────────────────────────────────────────
     Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit')->middleware('role:admin');
-    Route::match(['put', 'post'], 'settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit')->middleware('role:admin');
-    Route::match(['put', 'post'], 'settings/legal', [\App\Http\Controllers\Admin\SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings/legal', [SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin');
-    Route::match(['put', 'post'], 'settings/notifications', [\App\Http\Controllers\Admin\NotificationSettingsController::class, 'update'])->name('settings.notifications.update')->middleware('role:admin');
+    Route::match(['put', 'post'], 'settings/notifications', [NotificationSettingsController::class, 'update'])->name('settings.notifications.update')->middleware('role:admin');
 
     // ─── Guest Notices (conditional pop-ups / check-in steps) ──────────────
     Route::resource('notices', GuestNoticeController::class)->except(['show'])->middleware('role:admin,manager');
@@ -355,7 +429,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
 
         $authUser = $request->user();
 
-        $guests = \App\Support\BookingAccess::query($authUser)->with('property')
+        $guests = BookingAccess::query($authUser)->with('property')
             ->where(fn ($query) => $query
                 ->where('guest_name', 'like', "%{$q}%")
                 ->orWhere('booking_id', 'like', "%{$q}%")
@@ -398,8 +472,9 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
 });
 Route::get('/img/{path}', [ImageController::class, 'show'])->where('path', '.*')->middleware('private.files');
 Route::get('/og/{path}', [ImageController::class, 'og'])->where('path', '.*')->middleware('private.files');
-if (!function_exists('serveVideoStream')) {
-    function serveVideoStream($fullPath, $mimeType) {
+if (! function_exists('serveVideoStream')) {
+    function serveVideoStream($fullPath, $mimeType)
+    {
         $size = filesize($fullPath);
         $start = 0;
         $end = $size - 1;
@@ -410,17 +485,16 @@ if (!function_exists('serveVideoStream')) {
             'Accept-Ranges' => 'bytes',
         ];
 
-
         header("Content-Type: $mimeType");
-        header("Accept-Ranges: bytes");
-        header("Cache-Control: no-cache, private");
-        header("Content-Encoding: identity");
+        header('Accept-Ranges: bytes');
+        header('Cache-Control: no-cache, private');
+        header('Content-Encoding: identity');
 
         if (isset($_SERVER['HTTP_RANGE'])) {
             $c_start = $start;
             $c_end = $end;
 
-            list(, $range) = explode('=', $_SERVER['HTTP_RANGE'], 2);
+            [, $range] = explode('=', $_SERVER['HTTP_RANGE'], 2);
             if (strpos($range, ',') !== false) {
                 header('HTTP/1.1 416 Requested Range Not Satisfiable');
                 header("Content-Range: bytes $start-$end/$size");
@@ -444,15 +518,15 @@ if (!function_exists('serveVideoStream')) {
             $length = $end - $start + 1;
 
             header('HTTP/1.1 206 Partial Content');
-            header("Content-Length: " . $length);
-            header("Content-Range: bytes $start-$end/" . $size);
+            header('Content-Length: '.$length);
+            header("Content-Range: bytes $start-$end/".$size);
         } else {
             $length = $size;
-            header("Content-Length: " . $length);
+            header('Content-Length: '.$length);
         }
 
         $stream = @fopen($fullPath, 'rb');
-        if (!$stream) {
+        if (! $stream) {
             header('HTTP/1.1 500 Internal Server Error');
             exit;
         }
@@ -462,7 +536,7 @@ if (!function_exists('serveVideoStream')) {
         $i = $start;
         set_time_limit(0);
 
-        while (!feof($stream) && $i <= $end && !connection_aborted()) {
+        while (! feof($stream) && $i <= $end && ! connection_aborted()) {
             $bytesToRead = $buffer;
             if (($i + $bytesToRead) > $end) {
                 $bytesToRead = $end - $i + 1;
@@ -477,12 +551,12 @@ if (!function_exists('serveVideoStream')) {
     }
 }
 Route::get('/file/{path}', function (string $path) {
-    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+    if (! Storage::disk('public')->exists($path)) {
         abort(404);
     }
-    $fullPath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+    $fullPath = Storage::disk('public')->path($path);
 
-    $mimeType = \Illuminate\Support\Facades\File::mimeType($fullPath);
+    $mimeType = File::mimeType($fullPath);
     $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 
     if ($extension === 'mp4' && $mimeType !== 'video/mp4') {
@@ -503,18 +577,18 @@ Route::get('/file/{path}', function (string $path) {
 
     return response()->file($fullPath, [
         'Content-Type' => $mimeType,
-        'Accept-Ranges' => 'bytes'
+        'Accept-Ranges' => 'bytes',
     ]);
 })->where('path', '.*')->middleware('private.files')
-  ->withoutMiddleware([\App\Http\Middleware\EnsureUserIsActive::class, \App\Http\Middleware\ForcePasswordChange::class]);
+    ->withoutMiddleware([EnsureUserIsActive::class, ForcePasswordChange::class]);
 // Serve storage files through Laravel (bypasses symlink issues on shared hosting)
 Route::get('/storage/{path}', function (string $path) {
-    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+    if (! Storage::disk('public')->exists($path)) {
         abort(404);
     }
-    $fullPath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+    $fullPath = Storage::disk('public')->path($path);
 
-    $mimeType = \Illuminate\Support\Facades\File::mimeType($fullPath);
+    $mimeType = File::mimeType($fullPath);
     $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 
     if ($extension === 'mp4' && $mimeType !== 'video/mp4') {
@@ -535,10 +609,10 @@ Route::get('/storage/{path}', function (string $path) {
 
     return response()->file($fullPath, [
         'Content-Type' => $mimeType,
-        'Accept-Ranges' => 'bytes'
+        'Accept-Ranges' => 'bytes',
     ]);
 })->where('path', '.*')->name('storage.serve')->middleware('private.files')
-  ->withoutMiddleware([\App\Http\Middleware\EnsureUserIsActive::class, \App\Http\Middleware\ForcePasswordChange::class]);
+    ->withoutMiddleware([EnsureUserIsActive::class, ForcePasswordChange::class]);
 
 Route::get('/reports/sessions/{token}', [CleaningSessionReportController::class, 'show'])
     ->where('token', '[0-9a-z]+')
@@ -564,7 +638,7 @@ Route::get('/dashboard', CleaningDashboardController::class)->middleware(['auth'
 // Serve FFmpeg assets through Laravel to ensure correct application/wasm MIME type
 Route::get('/ffmpeg-assets/{filename}', function ($filename) {
     $fullPath = public_path("vendor/ffmpeg/{$filename}");
-    if (!file_exists($fullPath)) {
+    if (! file_exists($fullPath)) {
         abort(404);
     }
 
@@ -577,7 +651,7 @@ Route::get('/ffmpeg-assets/{filename}', function ($filename) {
 
     return response()->file($fullPath, [
         'Content-Type' => $mimeType,
-        'Cache-Control' => 'public, max-age=31536000'
+        'Cache-Control' => 'public, max-age=31536000',
     ]);
 })->where('filename', '.*')->name('ffmpeg.assets');
 
@@ -612,29 +686,29 @@ Route::middleware('auth')->group(function () {
     Route::delete('properties/{property}/tasks/{task}', [CleaningPropertyController::class, 'detachPropertyTask'])->middleware('role:admin,owner,company,manager')->name('properties.property-tasks.detach');
 
     // Property Notification Settings
-    Route::get('properties/{property}/notifications', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'page'])->middleware('role:admin,owner,company')->name('properties.notifications.index');
-    Route::get('properties/{property}/notifications/settings', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'getSettings'])->middleware('role:admin,owner,company')->name('properties.notifications.settings');
-    Route::put('properties/{property}/notifications/settings', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'updateSettings'])->middleware('role:admin,owner,company')->name('properties.notifications.update-settings');
-    Route::post('properties/{property}/notifications/recipients', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'addRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.add-recipient');
-    Route::put('properties/{property}/notifications/recipients/{recipient}', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'updateRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.update-recipient');
-    Route::delete('properties/{property}/notifications/recipients/{recipient}', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'deleteRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.delete-recipient');
-    Route::get('properties/{property}/notifications/history', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'history'])->middleware('role:admin,owner,company')->name('properties.notifications.history');
-    Route::post('properties/{property}/notifications/logs/{log}/resend', [\App\Http\Controllers\PropertyNotificationSettingsController::class, 'resend'])->middleware('role:admin,owner,company')->name('properties.notifications.resend');
+    Route::get('properties/{property}/notifications', [PropertyNotificationSettingsController::class, 'page'])->middleware('role:admin,owner,company')->name('properties.notifications.index');
+    Route::get('properties/{property}/notifications/settings', [PropertyNotificationSettingsController::class, 'getSettings'])->middleware('role:admin,owner,company')->name('properties.notifications.settings');
+    Route::put('properties/{property}/notifications/settings', [PropertyNotificationSettingsController::class, 'updateSettings'])->middleware('role:admin,owner,company')->name('properties.notifications.update-settings');
+    Route::post('properties/{property}/notifications/recipients', [PropertyNotificationSettingsController::class, 'addRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.add-recipient');
+    Route::put('properties/{property}/notifications/recipients/{recipient}', [PropertyNotificationSettingsController::class, 'updateRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.update-recipient');
+    Route::delete('properties/{property}/notifications/recipients/{recipient}', [PropertyNotificationSettingsController::class, 'deleteRecipient'])->middleware('role:admin,owner,company')->name('properties.notifications.delete-recipient');
+    Route::get('properties/{property}/notifications/history', [PropertyNotificationSettingsController::class, 'history'])->middleware('role:admin,owner,company')->name('properties.notifications.history');
+    Route::post('properties/{property}/notifications/logs/{log}/resend', [PropertyNotificationSettingsController::class, 'resend'])->middleware('role:admin,owner,company')->name('properties.notifications.resend');
 
     // Housekeeper Sessions
-    Route::get('/assignments', [\App\Http\Controllers\AssignmentController::class, 'index'])->name('assignments.index');
+    Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::get('/sessions', [CleaningSessionController::class, 'index'])->name('sessions.index');
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
-    Route::post('/sessions/{session}/cancel-assignment', [\App\Http\Controllers\SessionController::class, 'cancelAssignment'])->name('sessions.cancel-assignment');
-    Route::post('/sessions/{session}/lockbox', [\App\Http\Controllers\SessionLockboxController::class, 'update'])->name('sessions.lockbox');
-    Route::post('/sessions/{session}/door/{lock}/unlock', [\App\Http\Controllers\SessionDoorController::class, 'unlock'])->name('sessions.door.unlock');
-    Route::post('/sessions/{session}/door/{lock}/lock', [\App\Http\Controllers\SessionDoorController::class, 'lock'])->name('sessions.door.lock');
-    Route::get('/sessions/{session}/door/{lock}/status', [\App\Http\Controllers\SessionDoorController::class, 'status'])->name('sessions.door.status');
-    Route::post('/sessions/{session}/verify-location', [\App\Http\Controllers\SessionLocationController::class, 'verify'])->name('sessions.verify-location');
+    Route::post('/sessions/{session}/cancel-assignment', [SessionController::class, 'cancelAssignment'])->name('sessions.cancel-assignment');
+    Route::post('/sessions/{session}/lockbox', [SessionLockboxController::class, 'update'])->name('sessions.lockbox');
+    Route::post('/sessions/{session}/door/{lock}/unlock', [SessionDoorController::class, 'unlock'])->name('sessions.door.unlock');
+    Route::post('/sessions/{session}/door/{lock}/lock', [SessionDoorController::class, 'lock'])->name('sessions.door.lock');
+    Route::get('/sessions/{session}/door/{lock}/status', [SessionDoorController::class, 'status'])->name('sessions.door.status');
+    Route::post('/sessions/{session}/verify-location', [SessionLocationController::class, 'verify'])->name('sessions.verify-location');
     Route::post('/sessions/{session}/photo-tutorial', [CleaningSessionController::class, 'markPhotoTutorial'])->name('sessions.photo-tutorial');
-    Route::post('/sessions/{session}/access-steps/{step}/photo', [\App\Http\Controllers\SessionAccessPhotoController::class, 'store'])->name('sessions.access-photo');
+    Route::post('/sessions/{session}/access-steps/{step}/photo', [SessionAccessPhotoController::class, 'store'])->name('sessions.access-photo');
     Route::post('/sessions/{session}/complete-onboarding', [CleaningSessionController::class, 'completeOnboarding'])->name('sessions.complete-onboarding');
     Route::post('/sessions/{session}/gps-override', [CleaningSessionController::class, 'grantGpsOverride'])->middleware('role:admin,owner,company')->name('sessions.gps-override');
     Route::post('/sessions/{session}/complete', [CleaningSessionController::class, 'complete'])->name('sessions.complete');
@@ -642,7 +716,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/advance-stage', [CleaningSessionController::class, 'advanceStage'])->name('sessions.advance-stage');
     Route::post('/sessions/{session}/go-back-stage', [CleaningSessionController::class, 'goBackStage'])->name('sessions.go-back-stage');
     Route::post('/sessions/{session}/save-note', [CleaningSessionController::class, 'saveNote'])->name('sessions.save-note');
-
 
     // Checklist data endpoint
     Route::get('/sessions/{session}/data', [CleaningSessionController::class, 'getData'])->name('sessions.data');
@@ -673,96 +746,96 @@ Route::middleware('auth')->group(function () {
         Route::delete('/manage/sessions/{session}', [CleaningManageSessionController::class, 'destroy'])->name('manage.sessions.destroy');
         Route::get('/api/properties/{property}/sporadic-tasks', [CleaningManageSessionController::class, 'getSporadicTasks'])->name('api.properties.sporadic-tasks');
 
-        Route::get('/reports/training', [\App\Http\Controllers\TrainingReportController::class, 'index'])->name('reports.training.index');
-        Route::get('/reports/familiarity', [\App\Http\Controllers\FamiliarityReportController::class, 'index'])->name('reports.familiarity.index');
+        Route::get('/reports/training', [TrainingReportController::class, 'index'])->name('reports.training.index');
+        Route::get('/reports/familiarity', [FamiliarityReportController::class, 'index'])->name('reports.familiarity.index');
     });
 
     Route::get('/calendar', [CleaningCalendarController::class, 'index'])->name('calendar.index');
     Route::get('/api/calendar/events', [CleaningCalendarController::class, 'events'])->name('api.calendar.events');
 
     // Training Routes
-    Route::get('/training', [\App\Http\Controllers\TrainingController::class, 'index'])->name('training.index');
-    Route::get('/training/{type}/{id}', [\App\Http\Controllers\TrainingController::class, 'show'])->name('training.show');
-    Route::post('/training/{type}/{id}/progress', [\App\Http\Controllers\TrainingController::class, 'updateProgress'])->name('training.update_progress');
+    Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
+    Route::get('/training/{type}/{id}', [TrainingController::class, 'show'])->name('training.show');
+    Route::post('/training/{type}/{id}/progress', [TrainingController::class, 'updateProgress'])->name('training.update_progress');
 
     // Admin training log: completed training across all cleaners
-    Route::get('admin/training-logs', [\App\Http\Controllers\Admin\TrainingLogController::class, 'index'])->name('admin.training-logs.index')->middleware('role:admin');
+    Route::get('admin/training-logs', [TrainingLogController::class, 'index'])->name('admin.training-logs.index')->middleware('role:admin');
 
     // User Management Routes
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->middleware('role:admin,owner,company')->name('users.index');
     Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,owner,company')->name('users.create');
     Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->middleware('role:admin,owner,company')->name('users.edit');
 
-    Route::post('/users/{user}/familiarity/reset', [\App\Http\Controllers\UserFamiliarityController::class, 'resetAll'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_all');
-    Route::post('/users/{user}/familiarity/reset/{task}', [\App\Http\Controllers\UserFamiliarityController::class, 'resetTask'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_task');
+    Route::post('/users/{user}/familiarity/reset', [UserFamiliarityController::class, 'resetAll'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_all');
+    Route::post('/users/{user}/familiarity/reset/{task}', [UserFamiliarityController::class, 'resetTask'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_task');
 
     // Final Additional Routes to fix 500 errors
     // Properties -> Rooms sorting
-    Route::match(['post', 'patch'], 'properties/{property}/rooms/order', [\App\Http\Controllers\PropertyRoomOrderController::class, 'update'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.order');
+    Route::match(['post', 'patch'], 'properties/{property}/rooms/order', [PropertyRoomOrderController::class, 'update'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.order');
 
     // Properties -> Property Tasks sorting
-    Route::match(['post', 'patch'], 'properties/{property}/tasks/order', [\App\Http\Controllers\PropertyTaskOrderController::class, 'update'])->middleware('role:admin,owner,company,manager')->name('properties.property-tasks.order');
-    Route::post('properties/{property}/rooms', [\App\Http\Controllers\PropertyRoomController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.store');
-    Route::post('properties/{property}/rooms/attach', [\App\Http\Controllers\PropertyRoomAttachController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.attach');
-    Route::get('api/rooms/suggest', [\App\Http\Controllers\RoomSuggestionController::class, 'index'])->name('rooms.suggest')->middleware('role:admin,owner,company,manager');
+    Route::match(['post', 'patch'], 'properties/{property}/tasks/order', [PropertyTaskOrderController::class, 'update'])->middleware('role:admin,owner,company,manager')->name('properties.property-tasks.order');
+    Route::post('properties/{property}/rooms', [PropertyRoomController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.store');
+    Route::post('properties/{property}/rooms/attach', [PropertyRoomAttachController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('properties.rooms.attach');
+    Route::get('api/rooms/suggest', [RoomSuggestionController::class, 'index'])->name('rooms.suggest')->middleware('role:admin,owner,company,manager');
 
-    Route::match(['post', 'patch'], 'rooms/{room}/tasks/order', [\App\Http\Controllers\RoomTaskOrderController::class, 'updateForRoom'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.order');
-    Route::post('rooms/{room}/tasks/attach', [\App\Http\Controllers\RoomTaskAttachController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.attach');
-    Route::delete('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'detachTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.detach');
-    Route::get('api/tasks/suggest', [\App\Http\Controllers\TaskSuggestionController::class, 'index'])->name('tasks.suggest')->middleware('role:admin,owner,company,manager');
+    Route::match(['post', 'patch'], 'rooms/{room}/tasks/order', [RoomTaskOrderController::class, 'updateForRoom'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.order');
+    Route::post('rooms/{room}/tasks/attach', [RoomTaskAttachController::class, 'store'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.attach');
+    Route::delete('rooms/{room}/tasks/{task}', [RoomController::class, 'detachTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.detach');
+    Route::get('api/tasks/suggest', [TaskSuggestionController::class, 'index'])->name('tasks.suggest')->middleware('role:admin,owner,company,manager');
 
     Route::get('settings', fn () => redirect()->route('admin.settings.edit'))->middleware('role:admin')->name('settings.index');
     Route::post('settings', function () {
         return redirect('/admin/settings');
     })->middleware('role:admin')->name('settings.update');
-    Route::get('activity', [\App\Http\Controllers\ActivityController::class, 'index'])->name('activity.index');
+    Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
     // Photo Management
-    Route::post('sessions/{session}/rooms/{room}/photos', [\App\Http\Controllers\PhotoController::class, 'store'])->name('photos.store');
-    Route::delete('sessions/{session}/photos/{photo}', [\App\Http\Controllers\PhotoController::class, 'destroy'])->name('photos.destroy');
+    Route::post('sessions/{session}/rooms/{room}/photos', [PhotoController::class, 'store'])->name('photos.store');
+    Route::delete('sessions/{session}/photos/{photo}', [PhotoController::class, 'destroy'])->name('photos.destroy');
 
     // Task Media Management
-    Route::post('tasks/{task}/media', [\App\Http\Controllers\TaskMediaController::class, 'store'])->name('tasks.media.store')->middleware('role:admin,owner,company,manager');
-    Route::delete('tasks/{task}/media/{media}', [\App\Http\Controllers\TaskMediaController::class, 'destroy'])->name('tasks.media.destroy')->middleware('role:admin,owner,company,manager');
+    Route::post('tasks/{task}/media', [TaskMediaController::class, 'store'])->name('tasks.media.store')->middleware('role:admin,owner,company,manager');
+    Route::delete('tasks/{task}/media/{media}', [TaskMediaController::class, 'destroy'])->name('tasks.media.destroy')->middleware('role:admin,owner,company,manager');
 
     // API for dynamic form loading
-    Route::get('api/properties/{property}/rooms', [\App\Http\Controllers\PropertyAssignmentsApiController::class, 'rooms'])->middleware('role:admin,owner,company,manager')->name('api.properties.rooms');
-    Route::get('api/properties/{property}/tasks', [\App\Http\Controllers\PropertyAssignmentsApiController::class, 'propertyTasks'])->middleware('role:admin,owner,company,manager')->name('api.properties.tasks');
-    Route::get('api/properties/{property}/assigned-rooms', [\App\Http\Controllers\PropertyAssignmentsApiController::class, 'assignedRooms'])->middleware('role:admin,owner,company,manager')->name('api.properties.assigned-rooms');
-    Route::get('api/properties/{property}/assigned-property-tasks', [\App\Http\Controllers\PropertyAssignmentsApiController::class, 'assignedPropertyTasks'])->middleware('role:admin,owner,company,manager')->name('api.properties.assigned-property-tasks');
+    Route::get('api/properties/{property}/rooms', [PropertyAssignmentsApiController::class, 'rooms'])->middleware('role:admin,owner,company,manager')->name('api.properties.rooms');
+    Route::get('api/properties/{property}/tasks', [PropertyAssignmentsApiController::class, 'propertyTasks'])->middleware('role:admin,owner,company,manager')->name('api.properties.tasks');
+    Route::get('api/properties/{property}/assigned-rooms', [PropertyAssignmentsApiController::class, 'assignedRooms'])->middleware('role:admin,owner,company,manager')->name('api.properties.assigned-rooms');
+    Route::get('api/properties/{property}/assigned-property-tasks', [PropertyAssignmentsApiController::class, 'assignedPropertyTasks'])->middleware('role:admin,owner,company,manager')->name('api.properties.assigned-property-tasks');
 
     // Global Room/Task Management
-    Route::post('rooms/bulk-attach-tasks', [\App\Http\Controllers\RoomController::class, 'bulkAttachTasks'])->middleware('role:admin,owner,company,manager')->name('rooms.bulk-attach-tasks');
+    Route::post('rooms/bulk-attach-tasks', [RoomController::class, 'bulkAttachTasks'])->middleware('role:admin,owner,company,manager')->name('rooms.bulk-attach-tasks');
 
     // Room Task Management Routes
-    Route::get('rooms/{room}/tasks', [\App\Http\Controllers\RoomController::class, 'tasks'])->name('rooms.tasks.index')->middleware('role:admin,owner,company,manager');
-    Route::post('rooms/{room}/tasks', [\App\Http\Controllers\RoomController::class, 'storeTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.store');
-    Route::get('rooms/{room}/tasks/{task}/edit', [\App\Http\Controllers\RoomController::class, 'editTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.edit');
-    Route::put('rooms/{room}/tasks/{task}', [\App\Http\Controllers\RoomController::class, 'updateTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.update');
-    Route::post('rooms/{room}/tasks/bulk', [\App\Http\Controllers\RoomController::class, 'bulkStoreTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.bulk-store');
+    Route::get('rooms/{room}/tasks', [RoomController::class, 'tasks'])->name('rooms.tasks.index')->middleware('role:admin,owner,company,manager');
+    Route::post('rooms/{room}/tasks', [RoomController::class, 'storeTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.store');
+    Route::get('rooms/{room}/tasks/{task}/edit', [RoomController::class, 'editTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.edit');
+    Route::put('rooms/{room}/tasks/{task}', [RoomController::class, 'updateTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.update');
+    Route::post('rooms/{room}/tasks/bulk', [RoomController::class, 'bulkStoreTask'])->middleware('role:admin,owner,company,manager')->name('rooms.tasks.bulk-store');
 
-    Route::resource('rooms', \App\Http\Controllers\RoomController::class)->middleware('role:admin,owner,company,manager');
-    Route::resource('tasks', \App\Http\Controllers\TaskController::class)->middleware('role:admin,owner,company,manager');
+    Route::resource('rooms', RoomController::class)->middleware('role:admin,owner,company,manager');
+    Route::resource('tasks', TaskController::class)->middleware('role:admin,owner,company,manager');
 
     // Resources Pages (Photos, Videos, Guides)
-    Route::get('resources/photos', [\App\Http\Controllers\ResourcePageController::class, 'photos'])->name('resources.photos')->middleware('role:admin');
-    Route::get('resources/videos', [\App\Http\Controllers\ResourcePageController::class, 'videos'])->name('resources.videos');
-    Route::get('resources/guides', [\App\Http\Controllers\ResourcePageController::class, 'guides'])->name('resources.guides');
+    Route::get('resources/photos', [ResourcePageController::class, 'photos'])->name('resources.photos')->middleware('role:admin');
+    Route::get('resources/videos', [ResourcePageController::class, 'videos'])->name('resources.videos');
+    Route::get('resources/guides', [ResourcePageController::class, 'guides'])->name('resources.guides');
 
     // Admin Instructional Video Management
     Route::middleware('role:admin,owner,company,manager')->group(function () {
-        Route::get('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'index'])->name('admin.videos.index');
-        Route::get('admin/videos/create', [\App\Http\Controllers\InstructionalVideoController::class, 'create'])->name('admin.videos.create');
-        Route::post('admin/videos', [\App\Http\Controllers\InstructionalVideoController::class, 'store'])->name('admin.videos.store');
-        Route::get('admin/videos/{video}/edit', [\App\Http\Controllers\InstructionalVideoController::class, 'edit'])->name('admin.videos.edit');
-        Route::post('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'update'])->name('admin.videos.update');
-        Route::delete('admin/videos/{video}', [\App\Http\Controllers\InstructionalVideoController::class, 'destroy'])->name('admin.videos.destroy');
-        Route::post('admin/videos/{video}/publish', [\App\Http\Controllers\InstructionalVideoController::class, 'togglePublish'])->name('admin.videos.publish');
-        Route::get('admin/videos/{video}/status', [\App\Http\Controllers\InstructionalVideoController::class, 'status'])->name('admin.videos.status');
+        Route::get('admin/videos', [InstructionalVideoController::class, 'index'])->name('admin.videos.index');
+        Route::get('admin/videos/create', [InstructionalVideoController::class, 'create'])->name('admin.videos.create');
+        Route::post('admin/videos', [InstructionalVideoController::class, 'store'])->name('admin.videos.store');
+        Route::get('admin/videos/{video}/edit', [InstructionalVideoController::class, 'edit'])->name('admin.videos.edit');
+        Route::post('admin/videos/{video}', [InstructionalVideoController::class, 'update'])->name('admin.videos.update');
+        Route::delete('admin/videos/{video}', [InstructionalVideoController::class, 'destroy'])->name('admin.videos.destroy');
+        Route::post('admin/videos/{video}/publish', [InstructionalVideoController::class, 'togglePublish'])->name('admin.videos.publish');
+        Route::get('admin/videos/{video}/status', [InstructionalVideoController::class, 'status'])->name('admin.videos.status');
     });
 
     // Cleaner API endpoint for property videos
-    Route::get('api/property-videos', [\App\Http\Controllers\ResourcesController::class, 'getPropertyVideos'])->name('api.property-videos');
+    Route::get('api/property-videos', [ResourcesController::class, 'getPropertyVideos'])->name('api.property-videos');
 });
 
-Route::middleware(['auth', 'role:admin,owner,company,manager'])->put('cleaning-sessions/{cleaningSession}/guest', [\App\Http\Controllers\CleaningSessionGuestController::class, 'update'])->name('cleaning-sessions.guest.update');
+Route::middleware(['auth', 'role:admin,owner,company,manager'])->put('cleaning-sessions/{cleaningSession}/guest', [CleaningSessionGuestController::class, 'update'])->name('cleaning-sessions.guest.update');

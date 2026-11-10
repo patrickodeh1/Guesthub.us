@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Support\Branding;
 use App\Support\PhoneFormatter;
-
+use App\Support\RoleAccess;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -21,17 +23,17 @@ class User extends Authenticatable
     public const ROLES = ['admin', 'company', 'owner', 'manager', 'housekeeper'];
 
     public const ROLE_LABELS = [
-        'admin'   => 'Admin / Super Admin',
+        'admin' => 'Admin / Super Admin',
         'company' => 'Company',
-        'owner'   => 'Property Owner',
+        'owner' => 'Property Owner',
         'manager' => 'Manager',
         'housekeeper' => 'Cleaner',
     ];
 
     public const ROLE_DESCRIPTIONS = [
-        'admin'   => 'Full access to everything including users, settings, and all logs.',
+        'admin' => 'Full access to everything including users, settings, and all logs.',
         'company' => 'Cleaning company or property-management company. Manages its own listings, users and cleaners, and can reassign jobs among the workers it manages.',
-        'owner'   => 'Owner or property manager. Manages their own properties, guests, bookings and cleaners. No access to global admin settings (logo, colours, global settings, roles).',
+        'owner' => 'Owner or property manager. Manages their own properties, guests, bookings and cleaners. No access to global admin settings (logo, colours, global settings, roles).',
         'manager' => 'Property manager. Same scope as an owner: manages the properties they are linked to, but no access to global admin settings.',
         'housekeeper' => 'Can access assigned cleaning work and task operations.',
     ];
@@ -69,24 +71,29 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'pricelabs_api_key',
+        'wheelhouse_user_api_key',
+        'wheelhouse_integrators_user_id',
     ];
 
     protected function casts(): array
     {
         return [
-            'email_verified_at'            => 'datetime',
-            'admin_tour_completed_at'      => 'datetime',
-            'dashboard_tour_completed_at'  => 'datetime',
+            'email_verified_at' => 'datetime',
+            'admin_tour_completed_at' => 'datetime',
+            'dashboard_tour_completed_at' => 'datetime',
             'full_system_tour_completed_at' => 'datetime',
-            'last_login_at'                => 'datetime',
-            'password'                     => 'hashed',
-            'must_change_password'         => 'boolean',
-            'is_active'                    => 'boolean',
-            'terminated_at'                => 'datetime',
-            'dismissed_notification_ids'   => 'array',
-            'preferences'                   => 'array',
-            'stripe_charges_enabled'         => 'boolean',
-            'stripe_payouts_enabled'         => 'boolean',
+            'last_login_at' => 'datetime',
+            'password' => 'hashed',
+            'must_change_password' => 'boolean',
+            'is_active' => 'boolean',
+            'terminated_at' => 'datetime',
+            'dismissed_notification_ids' => 'array',
+            'preferences' => 'array',
+            'stripe_charges_enabled' => 'boolean',
+            'stripe_payouts_enabled' => 'boolean',
+            'pricelabs_api_key' => 'encrypted',
+            'wheelhouse_user_api_key' => 'encrypted',
         ];
     }
 
@@ -143,52 +150,52 @@ class User extends Authenticatable
 
     public function canManageUsers(): bool
     {
-        return \App\Support\RoleAccess::canManageTeam($this);
+        return RoleAccess::canManageTeam($this);
     }
 
     public function canManageSettings(): bool
     {
-        return \App\Support\RoleAccess::canManageSettings($this);
+        return RoleAccess::canManageSettings($this);
     }
 
     public function canViewLogs(): bool
     {
-        return \App\Support\RoleAccess::canViewLogs($this);
+        return RoleAccess::canViewLogs($this);
     }
 
     public function canManageProperties(): bool
     {
-        return \App\Support\RoleAccess::canManageProperties($this);
+        return RoleAccess::canManageProperties($this);
     }
 
     public function canManageGuests(): bool
     {
-        return \App\Support\RoleAccess::canManageGuests($this);
+        return RoleAccess::canManageGuests($this);
     }
 
     public function canDeleteData(): bool
     {
-        return \App\Support\RoleAccess::canDeleteData($this);
+        return RoleAccess::canDeleteData($this);
     }
 
     // ─── Status helpers ───────────────────────────────────────────────────────
 
-    public function properties(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function properties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_user', 'user_id', 'property_id');
     }
 
-    public function hostFeatures(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function hostFeatures(): HasMany
     {
         return $this->hasMany(HostFeature::class);
     }
 
-    public function hostPaymentMethods(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function hostPaymentMethods(): HasMany
     {
         return $this->hasMany(HostPaymentMethod::class, 'owner_id');
     }
 
-    public function managedOwners(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function managedOwners(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'housekeeper_owner', 'housekeeper_id', 'owner_id');
     }
@@ -231,6 +238,7 @@ class User extends Authenticatable
         if (count($parts) >= 2) {
             return strtoupper(substr($parts[0], 0, 1).substr(end($parts), 0, 1));
         }
+
         return strtoupper(substr($this->name, 0, 2));
     }
 

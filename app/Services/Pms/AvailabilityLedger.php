@@ -2,9 +2,12 @@
 
 namespace App\Services\Pms;
 
+use App\Models\Booking;
 use App\Models\ChannexOutbox;
 use App\Models\Property;
 use App\Models\PropertyAvailability;
+use App\Services\IcalExportService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,7 +24,7 @@ class AvailabilityLedger
     ];
 
     /**
-     * @param  array<int,string>  $dates   'Y-m-d' strings
+     * @param  array<int,string>  $dates  'Y-m-d' strings
      * @param  array<string,mixed>  $values  any of is_available, status, RESTRICTION_FIELDS (null clears a value)
      */
     public function setDates(Property $property, array $dates, array $values, string $source = 'manual'): void
@@ -45,8 +48,8 @@ class AvailabilityLedger
 
         $now = now();
 
-        // Rate/restriction writes from PriceLabs or the rate editor record who owns them.
-        $rateOwner = (in_array($source, ['pricelabs', 'manual'], true)
+        // Rate/restriction writes record which provider or editor owns them.
+        $rateOwner = (in_array($source, ['pricelabs', 'wheelhouse', 'manual'], true)
             && array_intersect(array_keys($values), self::RESTRICTION_FIELDS))
             ? ['rates_source' => $source] : [];
 
@@ -81,6 +84,54 @@ class AvailabilityLedger
 
             $this->mark($property, $dates, $values);
         });
+
+        app(IcalExportService::class)->invalidate((int) $property->id);
+    }
+
+    public function clearProviderRates(Property $property, string $provider): int
+    {
+        if (! in_array($provider, ['pricelabs', 'wheelhouse'], true)) {
+            return 0;
+        }
+
+        $query = $property->availabilities()
+            ->where('rates_source', $provider)
+            ->where(function ($rates) {
+                $rates->whereNotNull('rate')
+                    ->orWhereNotNull('min_stay_arrival')
+                    ->orWhereNotNull('min_stay_through')
+                    ->orWhereNotNull('max_stay');
+            });
+        $dates = $query->pluck('date')->map(fn ($date) => substr((string) $date, 0, 10))->all();
+
+        if ($dates === []) {
+            return 0;
+        }
+
+        DB::transaction(function () use ($property, $provider, $dates): void {
+            $property->availabilities()
+                ->whereIn('date', $dates)
+                ->where('rates_source', $provider)
+                ->update([
+                    'rate' => null,
+                    'min_stay_arrival' => null,
+                    'min_stay_through' => null,
+                    'max_stay' => null,
+                    'rates_source' => null,
+                    'updated_at' => now(),
+                ]);
+
+            $this->mark($property, $dates, [
+                'rate' => null,
+                'min_stay_arrival' => null,
+                'min_stay_through' => null,
+                'max_stay' => null,
+            ]);
+        });
+
+        app(IcalExportService::class)->invalidate((int) $property->id);
+
+        return count($dates);
     }
 
     /**
@@ -132,7 +183,7 @@ class AvailabilityLedger
     }
 
     /** Recompute nights for a booking (and its previous stay, if it moved). */
-    public function syncBooking(\App\Models\Booking $booking, ?array $old = null): void
+    public function syncBooking(Booking $booking, ?array $old = null): void
     {
         if ($old) {
             $this->syncStay($old);
@@ -166,16 +217,16 @@ class AvailabilityLedger
             return;
         }
 
-        $start = \Carbon\Carbon::parse($from)->startOfDay();
-        $end = \Carbon\Carbon::parse($to)->startOfDay();
+        $start = Carbon::parse($from)->startOfDay();
+        $end = Carbon::parse($to)->startOfDay();
         if ($end->lte($start) || $start->diffInDays($end) > 800) {
             return;
         }
 
         $covered = [];
-        \App\Models\Booking::query()
+        Booking::query()
             ->where('property_id', $propertyId)
-            ->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'cancelled'))
+            ->holdingNights()
             ->whereDate('check_in_date', '<', $end->toDateString())
             ->whereDate('check_out_date', '>', $start->toDateString())
             ->get(['id', 'check_in_date', 'check_out_date'])

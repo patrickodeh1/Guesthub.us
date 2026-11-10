@@ -2,13 +2,18 @@
 
 namespace App\Services;
 
+use App\Mail\DirectBookingMail;
 use App\Mail\SessionCompletedMail;
 use App\Mail\SessionStartedMail;
+use App\Models\Booking;
 use App\Models\CleaningSession;
 use App\Models\NotificationLog;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -21,6 +26,56 @@ use Throwable;
  */
 class EmailNotificationService
 {
+    public static function sendDirectBooking(
+        Booking $booking,
+        string $recipient,
+        string $subject,
+        string $message,
+        string $url,
+        string $action,
+    ): void {
+        $reference = "Direct booking {$booking->booking_id}: {$subject}";
+        $alreadySent = NotificationLog::query()
+            ->where('property_id', $booking->property_id)
+            ->whereNull('cleaning_session_id')
+            ->where('notification_type', 'direct_booking_email')
+            ->where('recipient_email', $recipient)
+            ->where('message_content', $reference)
+            ->where('delivery_status', 'sent')
+            ->exists();
+        if ($alreadySent) {
+            return;
+        }
+
+        try {
+            Mail::to($recipient)->send(new DirectBookingMail($subject, $message, $url, $action));
+            NotificationLog::create([
+                'property_id' => $booking->property_id,
+                'notification_type' => 'direct_booking_email',
+                'recipient_phone' => '',
+                'recipient_email' => $recipient,
+                'message_content' => $reference,
+                'delivery_status' => 'sent',
+                'sent_at' => now(),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('EmailNotificationService: Direct booking email failed', [
+                'booking_id' => $booking->booking_id,
+                'notification_type' => $subject,
+                'exception' => $e::class,
+            ]);
+            NotificationLog::create([
+                'property_id' => $booking->property_id,
+                'notification_type' => 'direct_booking_email',
+                'recipient_phone' => '',
+                'recipient_email' => $recipient,
+                'message_content' => $reference,
+                'delivery_status' => 'failed',
+                'error_message' => Str::limit($e->getMessage(), 500),
+            ]);
+        }
+    }
+
     /**
      * Send "Session Started" email to all admin users.
      */
@@ -80,7 +135,7 @@ class EmailNotificationService
     /**
      * Get all active admin users with a valid email address.
      */
-    private static function getAdminRecipients(): \Illuminate\Database\Eloquent\Collection
+    private static function getAdminRecipients(): Collection
     {
         return User::role('admin')
             ->active()
@@ -107,7 +162,7 @@ class EmailNotificationService
     private static function sendAndLog(
         CleaningSession $session,
         User $admin,
-        \Illuminate\Mail\Mailable $mailable,
+        Mailable $mailable,
         string $notificationType,
     ): void {
         $logData = [
@@ -136,7 +191,7 @@ class EmailNotificationService
 
             NotificationLog::create(array_merge($logData, [
                 'delivery_status' => 'failed',
-                'error_message' => \Illuminate\Support\Str::limit($e->getMessage(), 500),
+                'error_message' => Str::limit($e->getMessage(), 500),
             ]));
         }
     }

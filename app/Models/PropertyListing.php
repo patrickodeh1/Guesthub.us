@@ -57,4 +57,9 @@ class PropertyListing extends Model
     {
         return $this->hasMany(ListingPhoto::class, 'listing_id')->orderBy('sort_order')->orderBy('id');
     }
+
+    public function leaseApplications(): HasMany
+    {
+        return $this->hasMany(LeaseApplication::class, 'listing_id');
+    }
 }

@@ -51,15 +51,13 @@
                 <p class="muted">The exact address is shared with confirmed guests. This map shows an approximate location in {{ $public['city'] }}.</p>
                 <iframe title="Approximate map location in {{ $public['city'] }}" width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border:0;border-radius:14px" src="https://www.openstreetmap.org/export/embed.html?bbox={{ $public['longitude'] - 0.02 }}%2C{{ $public['latitude'] - 0.015 }}%2C{{ $public['longitude'] + 0.02 }}%2C{{ $public['latitude'] + 0.015 }}&layer=mapnik&marker={{ $public['latitude'] }}%2C{{ $public['longitude'] }}"></iframe>
             </section>
-            @if($listing->lease_enabled)
+            @if($listing->lease_enabled && \App\Services\FeatureGate::enabled($listing->property->owner, 'lease_applications'))
                 <section id="lease-application" class="panel" style="margin-top:24px">
                     <h2>Interested in a longer stay?</h2>
                     @if($listing->screening_provider_url)
-                        <p class="muted">Continue to the host's screening provider to apply.</p>
-                        <a class="button" href="{{ $listing->screening_provider_url }}" target="_blank" rel="noopener noreferrer">Apply for a long-term lease</a>
-                    @else
-                        <p class="muted">Contact the host for information about a long-term lease.</p>
+                        <p class="muted">Submit a short application; the host may request screening through their provider. <a href="{{ $listing->screening_provider_url }}" target="_blank" rel="noopener noreferrer">Screening provider</a></p>
                     @endif
+                    <a class="button" href="{{ route('public.lease-application.apply', $listing->listing_slug) }}">Apply for a long-term lease</a>
                 </section>
             @endif
         </article>
@@ -85,7 +83,7 @@
                 <div id="quote-result" hidden>
                     <div id="quote-lines" class="quote-lines"></div>
                     <div class="quote-line quote-total"><span>Estimated total</span><span id="quote-total"></span></div>
-                    <p class="muted">This estimate is informational. Booking and payment will be available in a later release.</p>
+                    <a id="checkout-link" class="button" href="{{ route('public.checkout.show', $listing->listing_slug) }}">Continue to checkout</a>
                 </div>
             </section>
 
@@ -142,6 +140,14 @@
                         lines.append(row);
                     });
                     document.getElementById('quote-total').textContent = currency.format(data.total_cents / 100);
+                    const checkout = document.getElementById('checkout-link');
+                    const checkIn = document.getElementById('quote-check-in').value;
+                    const checkOut = document.getElementById('quote-check-out').value;
+                    const guests = document.getElementById('quote-guests').value;
+                    checkout.href = @json(route('public.checkout.show', $listing->listing_slug))
+                        + '?check_in=' + encodeURIComponent(checkIn)
+                        + '&check_out=' + encodeURIComponent(checkOut)
+                        + '&guests=' + encodeURIComponent(guests);
                     result.hidden = false;
                 } catch (exception) {
                     error.textContent = exception.message;

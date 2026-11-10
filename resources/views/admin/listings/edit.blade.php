@@ -147,6 +147,17 @@
             <section class="card card-pad">
                 <h2 class="section-title">Manual payment methods</h2>
                 <p class="section-copy">Payment methods belong to the property owner and are shared across that owner's listings.</p>
+                @if(auth()->user()->hasRole('owner') && (int) $property->owner_id === (int) auth()->id())
+                    <form method="post" action="{{ route('admin.connect.onboard') }}" class="mt-3">
+                        @csrf
+                        <button class="btn-secondary" type="submit">
+                            {{ auth()->user()->stripe_account_id ? 'Continue Stripe setup' : 'Connect Stripe for card payments' }}
+                        </button>
+                        @if(auth()->user()->stripe_charges_enabled)
+                            <span class="ml-2 text-sm text-emerald-700">Card payments enabled</span>
+                        @endif
+                    </form>
+                @endif
                 @if(! $property->owner_id)
                     <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Assign an owner to this property before adding host payment methods.</p>
                 @endif
@@ -183,6 +194,9 @@
 
             <section class="card card-pad">
                 <h2 class="section-title">Lease applications</h2>
+                @if($listing->exists && $listing->lease_enabled)
+                    <a href="{{ route('admin.lease-applications.index') }}" class="mt-2 inline-flex text-sm font-semibold text-slate-700 underline">Review submitted applications</a>
+                @endif
                 <div class="mt-4 grid gap-5 md:grid-cols-2">
                     <label class="flex items-center gap-2 text-sm font-medium md:col-span-2">
                         <input type="hidden" name="lease_enabled" value="0">

@@ -79,6 +79,42 @@
             </div>
         @endif
 
+        @if($booking->source === 'direct')
+            <section class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <h2 class="text-sm font-bold text-emerald-950">Direct booking payment</h2>
+                <p class="mt-2 text-sm text-emerald-900">
+                    {{ ucfirst($booking->payment_method ?: 'payment pending') }}
+                    · Total ${{ number_format(($booking->total_cents ?? 0) / 100, 2) }}
+                    @if($booking->hold_expires_at)
+                        · Hold expires {{ $booking->localTimestamp($booking->hold_expires_at)?->format('M j, g:i A') }}
+                    @endif
+                </p>
+                @if($booking->payment_confirmed_at)
+                    <p class="mt-1 text-sm font-semibold text-emerald-800">Payment confirmed {{ $booking->localTimestamp($booking->payment_confirmed_at)?->format('M j, Y g:i A') }}</p>
+                @endif
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @if($booking->direct_booking_request && ! $booking->direct_booking_approved_at && $booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT)
+                        <form method="post" action="{{ route('admin.guests.direct-approve', $booking) }}">@csrf<button class="btn-primary">Approve request & send payment link</button></form>
+                        <form method="post" action="{{ route('admin.guests.direct-decline', $booking) }}" class="flex gap-2">
+                            @csrf
+                            <input name="reason" required maxlength="1000" placeholder="Reason for declining" class="input max-w-xs">
+                            <button class="btn-secondary">Decline</button>
+                        </form>
+                    @elseif($booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && $booking->payment_method === 'manual'
+                        && (! $booking->direct_booking_request || $booking->direct_booking_approved_at))
+                        <form method="post" action="{{ route('admin.guests.direct-payment-received', $booking) }}" data-confirm="Confirm the host received this manual payment?">@csrf<button class="btn-primary">Mark payment received</button></form>
+                    @endif
+                    @if(! $booking->isCancelled() && !in_array($booking->status, ['declined', 'expired'], true))
+                        <form method="post" action="{{ route('admin.guests.direct-cancel', $booking) }}" data-confirm="Cancel this booking? Any card payment will be refunded in full.">
+                            @csrf
+                            <input type="hidden" name="reason" value="Cancelled by host.">
+                            <button class="btn-secondary">Cancel booking (full refund)</button>
+                        </form>
+                    @endif
+                </div>
+            </section>
+        @endif
+
         {{-- Expandable edit section: replaces the old separate /edit page for
              existing bookings. Everything below is hidden by default so the
              header looks exactly like before until an admin opens it.

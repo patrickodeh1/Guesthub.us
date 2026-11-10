@@ -80,6 +80,12 @@ return [
         'api_key' => env('PRICELABS_API_KEY'),
     ],
 
+    'wheelhouse' => [
+        'partner_api_key' => env('WHEELHOUSE_PARTNER_API_KEY'),
+        'base_url' => env('WHEELHOUSE_BASE_URL', 'https://api.usewheelhouse.com/ss_api/v1'),
+        'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
+    ],
+
     'channex' => [
         'api_key' => env('CHANNEX_API_KEY'),
         'base_url' => env('CHANNEX_BASE_URL', 'https://staging.channex.io/api/v1'),
@@ -89,7 +95,9 @@ return [
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
+        'client_id' => env('STRIPE_CLIENT_ID'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'connect_webhook_secret' => env('STRIPE_CONNECT_WEBHOOK_SECRET'),
     ],
 
     'indexnow' => [

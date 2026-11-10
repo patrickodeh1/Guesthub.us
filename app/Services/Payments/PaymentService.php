@@ -4,6 +4,10 @@ namespace App\Services\Payments;
 
 use App\Models\Booking;
 use App\Models\Charge;
+use App\Models\LeaseApplication;
+use App\Models\Setting;
+use App\Services\DirectBookingService;
+use App\Services\LeaseApplicationNotificationService;
 use Stripe\StripeClient;
 
 /**
@@ -50,6 +54,157 @@ class PaymentService
     }
 
     /**
+     * Create a host-account PaymentIntent for a direct booking. The amount
+     * and platform fee come only from the persisted server-side booking.
+     *
+     * @return array{client_secret: string, charge: Charge}
+     */
+    public function createDirectBookingIntent(Booking $booking, string $connectedAccountId): array
+    {
+        if ($booking->source !== 'direct' || $booking->status !== Booking::STATUS_PENDING_PAYMENT
+            || ($booking->direct_booking_request && ! $booking->direct_booking_approved_at)
+            || ($booking->hold_expires_at && $booking->hold_expires_at->isPast())) {
+            throw new \LogicException('The booking is not eligible for card payment.');
+        }
+
+        $existing = $booking->charges()
+            ->where('type', Charge::TYPE_ACCOMMODATION)
+            ->where('status', Charge::STATUS_PENDING)
+            ->latest()
+            ->first();
+
+        if ($existing) {
+            if ($existing->stripe_account_id !== $connectedAccountId
+                || $existing->amount_cents !== $booking->total_cents) {
+                throw new \LogicException('The pending booking payment does not match the current charge details.');
+            }
+
+            $intent = $this->client()->paymentIntents->retrieve(
+                $existing->stripe_payment_intent_id,
+                [],
+                ['stripe_account' => $connectedAccountId],
+            );
+            if ($intent->status === 'succeeded') {
+                $this->finalize($existing->stripe_payment_intent_id);
+            }
+
+            return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+        }
+
+        $amountCents = (int) $booking->total_cents;
+        if ($amountCents < 1) {
+            throw new \InvalidArgumentException('A direct booking payment must be greater than zero.');
+        }
+
+        $platformFee = $this->platformFeeCents($amountCents);
+        $parameters = [
+            'amount' => $amountCents,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+            'description' => "Direct booking {$booking->booking_id}",
+            'receipt_email' => $booking->email,
+            'metadata' => [
+                'booking_id' => (string) $booking->id,
+                'booking_reference' => $booking->booking_id,
+                'type' => Charge::TYPE_ACCOMMODATION,
+            ],
+        ];
+        if ($platformFee > 0) {
+            $parameters['application_fee_amount'] = $platformFee;
+        }
+
+        $intent = $this->client()->paymentIntents->create(
+            $parameters,
+            [
+                'stripe_account' => $connectedAccountId,
+                'idempotency_key' => 'direct-booking-'.$booking->id.'-attempt-'.$booking->charges()->where('type', Charge::TYPE_ACCOMMODATION)->count(),
+            ],
+        );
+        $charge = $booking->charges()->create([
+            'type' => Charge::TYPE_ACCOMMODATION,
+            'amount_cents' => $amountCents,
+            'status' => Charge::STATUS_PENDING,
+            'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $connectedAccountId,
+            'billing_moment' => 'direct_booking_checkout',
+            'description' => 'Accommodation and booking fees',
+        ]);
+
+        return ['client_secret' => $intent->client_secret, 'charge' => $charge];
+    }
+
+    /**
+     * Create a connected-account PaymentIntent for a lease application fee.
+     *
+     * @return array{client_secret: string, charge: Charge}
+     */
+    public function createLeaseApplicationIntent(LeaseApplication $application, string $connectedAccountId): array
+    {
+        if ($application->status !== 'submitted'
+            || $application->payment_method !== 'card'
+            || $application->fee_status !== 'pending'
+            || $application->total_fee_cents < 1) {
+            throw new \LogicException('The lease application is not eligible for card payment.');
+        }
+
+        $existing = $application->charges()
+            ->where('type', Charge::TYPE_APPLICATION_FEE)
+            ->where('status', Charge::STATUS_PENDING)
+            ->latest()
+            ->first();
+
+        if ($existing) {
+            if ($existing->stripe_account_id !== $connectedAccountId
+                || $existing->amount_cents !== $application->total_fee_cents) {
+                throw new \LogicException('The pending application fee does not match the current charge details.');
+            }
+
+            $intent = $this->client()->paymentIntents->retrieve(
+                $existing->stripe_payment_intent_id,
+                [],
+                ['stripe_account' => $connectedAccountId],
+            );
+            if ($intent->status === 'succeeded') {
+                $this->finalize($existing->stripe_payment_intent_id);
+            }
+
+            return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+        }
+
+        $intent = $this->client()->paymentIntents->create(
+            [
+                'amount' => (int) $application->total_fee_cents,
+                'currency' => 'usd',
+                'payment_method_types' => ['card'],
+                'description' => "Lease application fee {$application->id}",
+                'receipt_email' => $application->applicant_email,
+                'metadata' => [
+                    'lease_application_id' => (string) $application->id,
+                    'type' => Charge::TYPE_APPLICATION_FEE,
+                ],
+            ],
+            [
+                'stripe_account' => $connectedAccountId,
+                'idempotency_key' => 'lease-application-'.$application->id.'-fee-attempt-'.$application->charges()
+                    ->where('type', Charge::TYPE_APPLICATION_FEE)
+                    ->count(),
+            ],
+        );
+
+        $charge = $application->charges()->create([
+            'type' => Charge::TYPE_APPLICATION_FEE,
+            'amount_cents' => (int) $application->total_fee_cents,
+            'status' => Charge::STATUS_PENDING,
+            'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $connectedAccountId,
+            'billing_moment' => 'lease_application',
+            'description' => 'Lease application fee and card processing fee',
+        ]);
+
+        return ['client_secret' => $intent->client_secret, 'charge' => $charge];
+    }
+
+    /**
      * Create a PaymentIntent without a payment method or confirmation — the
      * correct pattern for an embedded Stripe Payment Element, where the
      * guest enters card details directly into Stripe's own embedded
@@ -93,12 +248,18 @@ class PaymentService
             return null;
         }
 
-        $intent = $this->client()->paymentIntents->retrieve($paymentIntentId);
+        $intent = $this->client()->paymentIntents->retrieve(
+            $paymentIntentId,
+            [],
+            $charge->stripe_account_id ? ['stripe_account' => $charge->stripe_account_id] : [],
+        );
 
-        $charge->update([
-            'status' => $intent->status === 'succeeded' ? Charge::STATUS_SUCCESS : Charge::STATUS_FAILED,
-            'captured_at' => $intent->status === 'succeeded' ? now() : null,
-        ]);
+        if ($charge->status !== Charge::STATUS_SUCCESS && $charge->status !== Charge::STATUS_REFUNDED) {
+            $charge->update([
+                'status' => $intent->status === 'succeeded' ? Charge::STATUS_SUCCESS : Charge::STATUS_FAILED,
+                'captured_at' => $intent->status === 'succeeded' ? now() : null,
+            ]);
+        }
 
         if ($charge->status === Charge::STATUS_SUCCESS && in_array($charge->type, [Charge::TYPE_DEPOSIT, Charge::TYPE_INCIDENTALS], true)) {
             // Whatever the current incidentals_charge is at the moment this
@@ -140,7 +301,76 @@ class PaymentService
             }
         }
 
+        if ($charge->status === Charge::STATUS_SUCCESS && $charge->type === Charge::TYPE_ACCOMMODATION) {
+            app(DirectBookingService::class)->confirmCardPayment($charge->fresh('booking'));
+        }
+
+        if ($charge->type === Charge::TYPE_APPLICATION_FEE && $charge->leaseApplication) {
+            $wasPaid = $charge->leaseApplication->fee_status === 'paid';
+            $charge->leaseApplication->update([
+                'fee_status' => $charge->status === Charge::STATUS_SUCCESS ? 'paid' : 'failed',
+            ]);
+            if ($charge->status === Charge::STATUS_SUCCESS && ! $wasPaid) {
+                app(LeaseApplicationNotificationService::class)
+                    ->feePaid($charge->leaseApplication->fresh());
+            }
+        }
+
         return $charge;
+    }
+
+    public function cancelPendingIntent(Charge $charge): void
+    {
+        if ($charge->status !== Charge::STATUS_PENDING || ! $charge->stripe_payment_intent_id) {
+            return;
+        }
+
+        $this->client()->paymentIntents->cancel(
+            $charge->stripe_payment_intent_id,
+            [],
+            $charge->stripe_account_id ? ['stripe_account' => $charge->stripe_account_id] : [],
+        );
+    }
+
+    public function refund(Charge $charge, int $amountCents): Charge
+    {
+        $remaining = $charge->amount_cents - (int) $charge->refunded_cents;
+        if (! $charge->stripe_account_id || ! $charge->stripe_payment_intent_id
+            || $charge->status !== Charge::STATUS_SUCCESS || $amountCents < 1 || $amountCents > $remaining) {
+            throw new \InvalidArgumentException('This charge cannot be refunded for the requested amount.');
+        }
+
+        $this->client()->refunds->create(
+            [
+                'payment_intent' => $charge->stripe_payment_intent_id,
+                'amount' => $amountCents,
+                'reason' => 'requested_by_customer',
+                'refund_application_fee' => true,
+            ],
+            ['stripe_account' => $charge->stripe_account_id],
+        );
+
+        $refunded = (int) $charge->refunded_cents + $amountCents;
+        $charge->update([
+            'refunded_cents' => $refunded,
+            'status' => $refunded >= $charge->amount_cents
+                ? Charge::STATUS_REFUNDED
+                : Charge::STATUS_PARTIALLY_CAPTURED,
+        ]);
+
+        return $charge->fresh();
+    }
+
+    private function platformFeeCents(int $amountCents): int
+    {
+        $percent = trim((string) Setting::getValue('direct_booking_platform_fee_percent', '0'));
+        if (! preg_match('/\A(\d{1,3})(?:\.(\d{1,2}))?\z/', $percent, $parts)) {
+            return 0;
+        }
+
+        $basisPoints = min(10000, ((int) $parts[1] * 100) + (int) str_pad($parts[2] ?? '', 2, '0'));
+
+        return intdiv(($amountCents * $basisPoints) + 5000, 10000);
     }
 
     /**

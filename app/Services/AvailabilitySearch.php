@@ -45,7 +45,7 @@ class AvailabilitySearch
         $bookedNights = [];
         Booking::query()
             ->where('property_id', $propertyId)
-            ->where(fn ($query) => $query->whereNull('status')->orWhere('status', '!=', 'cancelled'))
+            ->holdingNights()
             ->whereDate('check_in_date', '<=', $end->toDateString())
             ->whereDate('check_out_date', '>', $start->toDateString())
             ->get(['check_in_date', 'check_out_date'])

@@ -10,11 +10,12 @@ class PriceLabsSyncCommand extends Command
 {
     protected $signature = 'pricelabs:sync {--property= : Only this property id} {--force : Ignore the last_refreshed check}';
 
-    protected $description = 'Pull PriceLabs prices and queue only changed dates for Channex';
+    protected $description = 'Pull PriceLabs rates and apply changed dates to the availability ledger';
 
     public function handle(PriceLabsSync $sync): int
     {
         $props = Property::query()
+            ->where('pricing_provider', 'pricelabs')
             ->whereNotNull('pricelabs_listing_id')
             ->when($this->option('property'), fn ($q, $id) => $q->where('id', (int) $id))
             ->get();

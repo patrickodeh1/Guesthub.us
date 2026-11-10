@@ -35,8 +35,13 @@
             <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
                 <span><strong>{{ $pendingCount }}</strong> change(s) waiting to send to Channex</span>
                 <span class="{{ $failedCount ? 'font-semibold text-red-700' : '' }}"><strong>{{ $failedCount }}</strong> failed</span>
-                <span>Last PriceLabs pull:
-                    <strong>{{ $property->pricelabs_synced_at ? \Carbon\Carbon::parse($property->pricelabs_synced_at)->diffForHumans() : 'never' }}</strong></span>
+                @if($property->pricing_provider === 'wheelhouse')
+                    <span>Last Wheelhouse pull:
+                        <strong>{{ $property->wheelhouse_synced_at ? $property->wheelhouse_synced_at->diffForHumans() : 'never' }}</strong></span>
+                @else
+                    <span>Last PriceLabs pull:
+                        <strong>{{ $property->pricelabs_synced_at ? \Carbon\Carbon::parse($property->pricelabs_synced_at)->diffForHumans() : 'never' }}</strong></span>
+                @endif
             </div>
             @if($failedCount)
                 <p class="field-help mt-2 text-red-700">Some changes failed after 10 tries and are no longer retried. @if($lastOutboxError) Last error: {{ $lastOutboxError }}@endif</p>
@@ -62,7 +67,7 @@
                 </div>
             </div>
 
-            <p id="cal-counts" class="field-help mt-2">{{ $blockedCount }} blocked &middot; {{ $bookedCount }} booked in the synced period. Rates come from PriceLabs.</p>
+            <p id="cal-counts" class="field-help mt-2">{{ $blockedCount }} blocked &middot; {{ $bookedCount }} booked in the synced period. Nightly rates come from the selected provider or the listing base rate.</p>
 
             <div class="mt-4 grid grid-cols-7 gap-1 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
                 <template x-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d"><div x-text="d"></div></template>
@@ -105,7 +110,7 @@
         {{-- Rates and restrictions --}}
         <section class="card card-pad">
             <h2 class="section-title">Rates and restrictions</h2>
-            <p class="section-copy">Set a rate or stay rules for a date range. Only the fields you fill in change. Changes reach Channex within about a minute. PriceLabs can overwrite dates it returns on its next pull.</p>
+            <p class="section-copy">Set a rate or stay rules for a date range. Only the fields you fill in change. Manual rates are protected from provider updates. Changes reach Channex within about a minute when this property is mapped there.</p>
             <form method="post" action="{{ route('admin.properties.availability.update-range', $property) }}" class="mt-4 grid gap-4">
                 @csrf
                 <div class="flex flex-wrap gap-3">
@@ -143,10 +148,10 @@
                 </div>
                 <div><button type="submit" class="btn-primary">Save rates and restrictions</button></div>
             </form>
-            <form method="post" action="{{ route('admin.properties.availability.release-manual', $property) }}" class="mt-3" onsubmit="return confirm('Hand every manually set night back to PriceLabs? Its next pull will overwrite them.')">
+            <form method="post" action="{{ route('admin.properties.availability.release-manual', $property) }}" class="mt-3" onsubmit="return confirm('Hand every manually set night back to the selected pricing provider? Its next pull may overwrite them.')">
                 @csrf
-                <button type="submit" class="btn-secondary">Release to PriceLabs</button>
-                <span class="section-copy ml-2">Nights you set here are protected from PriceLabs until you release them.</span>
+                <button type="submit" class="btn-secondary">Release manual rates to provider</button>
+                <span class="section-copy ml-2">Manual rates stay protected until you release them.</span>
             </form>
         </section>
 
@@ -186,6 +191,21 @@
                 <div>
                     <h3 class="font-semibold text-slate-900">Calendar link (iCal)</h3>
                     <p class="section-copy">Import blocked and booked dates from an iCal feed. Use this for the first import, or to re-check a calendar.</p>
+
+                    @if($calendarExportEnabled && $calendarExportUrl)
+                        <div class="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                            <h4 class="font-semibold text-slate-900">Export to Airbnb, Vrbo, or another calendar</h4>
+                            <p class="section-copy mt-1">Copy this private link into the other service's calendar-import settings. It contains reservations and manual blocks as anonymous “Reserved” events.</p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <input id="calendar-export-url" type="url" readonly value="{{ $calendarExportUrl }}" class="input min-w-[280px] flex-1">
+                                <button type="button" class="btn-secondary" data-copy-calendar>Copy link</button>
+                            </div>
+                            <p class="field-help mt-3">In Airbnb or Vrbo, open calendar sync/import, choose to import a calendar, paste this link, and save. These services refresh iCal feeds on their own schedule, so changes are not real-time. Adjust advance notice and same-day cutoff in the listing settings to reduce overlap risk.</p>
+                            <p class="field-help mt-1">Treat this URL like a password. Anyone with the link can see that dates are reserved, but no guest details are included.</p>
+                        </div>
+                    @else
+                        <p class="field-help mt-3">Calendar export is not enabled for this host.</p>
+                    @endif
 
                     <form method="post" action="{{ route('admin.properties.availability.save-ical-url', $property) }}" class="mt-4 flex flex-wrap items-end gap-3">
                         @csrf
@@ -246,7 +266,7 @@
                 {{-- Rate plan --}}
                 <div>
                     <h3 class="font-semibold text-slate-900">Rate plan</h3>
-                    <p class="section-copy">Rates and minimum stays come from PriceLabs. Choose the Channex rate plan they are sent to.</p>
+                    <p class="section-copy">Rates and minimum stays come from the selected pricing provider. Choose the Channex rate plan only when this property sends rates through Channex.</p>
 
                     <form method="post" action="{{ route('admin.properties.availability.fetch-rate-plans', $property) }}" class="mt-3">
                         @csrf
@@ -288,30 +308,106 @@
                     </form>
                 </div>
 
-                {{-- PriceLabs --}}
+                {{-- Pricing provider --}}
                 <div>
-                    <h3 class="font-semibold text-slate-900">PriceLabs rates</h3>
-                    <p class="section-copy">Rates and minimum stays are pulled from PriceLabs every 6 hours and sent to Channex as rate-only updates.</p>
-
-                    
-
-                    <form method="post" action="{{ route('admin.properties.availability.save-pricelabs', $property) }}" class="mt-4 flex flex-wrap items-end gap-3">
+                    <h3 class="font-semibold text-slate-900">Pricing provider</h3>
+                    <p class="section-copy">Choose one source at a time. Switching clears rates owned by the previous provider; manual overrides remain. Quotes use the listing base rate until the selected provider supplies a rate.</p>
+                    <form method="post" action="{{ route('admin.properties.availability.save-pricing-provider', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                         @csrf
-                        <label class="field-label min-w-[200px] flex-1">PriceLabs listing ID
-                            <input type="text" name="pricelabs_listing_id" value="{{ old('pricelabs_listing_id', $property->pricelabs_listing_id) }}" class="input" required>
+                        <label class="field-label w-56">Active provider
+                            <select name="pricing_provider" class="input">
+                                <option value="" @selected(! $property->pricing_provider)>Listing base rate</option>
+                                <option value="pricelabs" @selected($property->pricing_provider === 'pricelabs')>PriceLabs</option>
+                                <option value="wheelhouse" @selected($property->pricing_provider === 'wheelhouse')>Wheelhouse</option>
+                            </select>
                         </label>
-                        <label class="field-label min-w-[160px]">PMS name in PriceLabs
-                            <input type="text" name="pricelabs_pms" value="{{ old('pricelabs_pms', $property->pricelabs_pms) }}" class="input" required>
-                        </label>
-                        <button type="submit" class="btn-secondary">Save</button>
+                        <button type="submit" class="btn-secondary">Save provider</button>
                     </form>
 
-                    <form method="post" action="{{ route('admin.properties.availability.sync-pricelabs', $property) }}" class="mt-3">
-                        @csrf
-                        <button type="submit" class="btn-primary" {{ ($priceLabsKeySet && $property->pricelabs_listing_id && $property->channex_rate_plan_id) ? '' : 'disabled' }}>Pull rates now</button>
-                        @if($property->pricelabs_synced_at)
-                            <span class="field-help ml-2">Last pull {{ \Carbon\Carbon::parse($property->pricelabs_synced_at)->diffForHumans() }}</span>
+                    <h4 class="mt-6 font-semibold text-slate-900">PriceLabs</h4>
+                    <p class="section-copy mt-1">Host API keys take precedence over the platform key. Keys are encrypted at rest; they are never shown again after saving.</p>
+                    <p class="field-help mt-1">
+                        @if($priceLabsHostKeySet)
+                            A host key is saved.
+                        @elseif($priceLabsPlatformKeySet)
+                            Using the configured platform key.
+                        @else
+                            No PriceLabs key is configured.
                         @endif
+                    </p>
+                    <form method="post" action="{{ route('admin.properties.availability.verify-pricelabs', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                        @csrf
+                        <label class="field-label min-w-[260px] flex-1">PriceLabs API key
+                            <input type="password" name="pricelabs_api_key" autocomplete="new-password" class="input" placeholder="{{ $priceLabsKeySet ? 'Leave blank to use the saved key' : 'Paste API key' }}">
+                        </label>
+                        <button type="submit" class="btn-secondary">Verify and load listings</button>
+                    </form>
+                    @if(session('priceLabsListings'))
+                        <form method="post" action="{{ route('admin.properties.availability.save-pricelabs', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                            @csrf
+                            <label class="field-label min-w-[280px] flex-1">PriceLabs listing
+                                <select name="pricelabs_selection" class="input" required>
+                                    <option value="">— Select listing —</option>
+                                    @foreach(session('priceLabsListings') as $option)
+                                        <option value="{{ $option['id'].'|'.$option['pms'] }}">{{ $option['name'] }} ({{ $option['pms'] }})</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <button type="submit" class="btn-secondary">Save listing</button>
+                        </form>
+                    @elseif($property->pricelabs_listing_id)
+                        <p class="field-help mt-2">Linked listing: {{ $property->pricelabs_listing_id }} ({{ $property->pricelabs_pms }})</p>
+                    @endif
+
+                    <form method="post" action="{{ route('admin.properties.availability.sync-pricing', $property) }}" class="mt-3">
+                        @csrf
+                        @php
+                            $activeProviderReady = ($property->pricing_provider === 'pricelabs' && $priceLabsKeySet && $property->pricelabs_listing_id)
+                                || ($property->pricing_provider === 'wheelhouse' && $wheelhousePartnerKeySet && $wheelhouseUserKeySet && $property->wheelhouse_listing_id);
+                        @endphp
+                        <button type="submit" class="btn-primary" {{ $activeProviderReady ? '' : 'disabled' }}>Pull active provider rates now</button>
+                        @if($property->pricing_provider === 'pricelabs' && $property->pricelabs_synced_at)
+                            <span class="field-help ml-2">Last pull {{ \Carbon\Carbon::parse($property->pricelabs_synced_at)->diffForHumans() }}</span>
+                        @elseif($property->pricing_provider === 'wheelhouse' && $property->wheelhouse_synced_at)
+                            <span class="field-help ml-2">Last pull {{ $property->wheelhouse_synced_at->diffForHumans() }}</span>
+                        @endif
+                    </form>
+
+                    <h4 class="mt-6 font-semibold text-slate-900">Wheelhouse</h4>
+                    @if($wheelhousePartnerKeySet)
+                        <p class="section-copy mt-1">Connect an existing Wheelhouse account with its User API Key, or create/update a GuestHub-managed Wheelhouse listing.</p>
+                    @else
+                        <p class="field-help mt-1">GuestHub’s Wheelhouse partner key is not configured. Existing account access and integrator registration are unavailable until credentials are added.</p>
+                    @endif
+                    @if($wheelhouseUserKeySet)
+                        <p class="field-help mt-2">A Wheelhouse User API Key is saved for this host.</p>
+                    @endif
+                    <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-key', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                        @csrf
+                        <label class="field-label min-w-[260px] flex-1">Wheelhouse User API Key
+                            <input type="password" name="wheelhouse_user_api_key" autocomplete="new-password" class="input" placeholder="Paste an existing-account key" required>
+                        </label>
+                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Verify existing account</button>
+                    </form>
+                    @if(session('wheelhouseListings'))
+                        <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-listing', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                            @csrf
+                            <label class="field-label min-w-[280px] flex-1">Existing Wheelhouse listing
+                                <select name="wheelhouse_selection" class="input" required>
+                                    <option value="">— Select listing —</option>
+                                    @foreach(session('wheelhouseListings') as $option)
+                                        <option value="{{ $option['id'].'|'.$option['channel'] }}">{{ $option['title'] }} ({{ $option['channel'] }})</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <button type="submit" class="btn-secondary">Save listing</button>
+                        </form>
+                    @elseif($property->wheelhouse_listing_id)
+                        <p class="field-help mt-2">Linked listing: {{ $property->wheelhouse_listing_id }}{{ $property->wheelhouse_channel ? ' ('.$property->wheelhouse_channel.')' : ' (GuestHub-managed)' }}</p>
+                    @endif
+                    <form method="post" action="{{ route('admin.properties.availability.connect-wheelhouse', $property) }}" class="mt-3">
+                        @csrf
+                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Create/update GuestHub-managed Wheelhouse listing</button>
                     </form>
                 </div>
 
@@ -347,6 +443,18 @@
     @include('admin.properties._availability-ajax')
 
     <script>
+        document.querySelector('[data-copy-calendar]')?.addEventListener('click', async event => {
+            const button = event.currentTarget;
+            const input = document.getElementById('calendar-export-url');
+            try {
+                await navigator.clipboard.writeText(input.value);
+                button.textContent = 'Copied';
+            } catch {
+                input.select();
+                button.textContent = document.execCommand('copy') ? 'Copied' : 'Select and copy';
+            }
+        });
+
         function availCal(days, today) {
             const t = new Date(today + 'T00:00:00');
             const pad = n => String(n).padStart(2, '0');

@@ -2,25 +2,34 @@
 
 namespace App\Models;
 
+use App\Services\ActivityLogService;
+use App\Services\GuestAlertService;
+use App\Services\IcalExportService;
+use App\Support\BookingTimes;
 use App\Support\PhoneFormatter;
-
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 class Booking extends Model
 {
     public const STATUS_PENDING_PAYMENT = 'pending_payment';
 
+    private const NON_HOLDING_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+
     /** Booking platforms offered in the guest forms: stored value => label. */
     public const PLATFORMS = [
-        'Airbnb'      => 'Airbnb',
-        'Vrbo'        => 'VRBO',
+        'Airbnb' => 'Airbnb',
+        'Vrbo' => 'VRBO',
         'Booking.com' => 'Booking.com',
-        'Direct'      => 'Direct booking',
+        'Direct' => 'Direct booking',
     ];
 
     use HasFactory;
@@ -43,6 +52,9 @@ class Booking extends Model
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
         'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
+        'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'processing_fee_cents', 'total_cents',
+        'payment_method', 'host_payment_method_id', 'hold_expires_at', 'payment_confirmed_at', 'guests_count', 'direct_booking_reminded_at',
+        'direct_booking_request', 'direct_booking_approved_at',
     ];
 
     protected function casts(): array
@@ -100,7 +112,35 @@ class Booking extends Model
             'id_expiry_date' => 'date',
             'id_scanned_at' => 'datetime',
             'vehicle_info_bypassed_at' => 'datetime',
-                    ];
+            'accommodation_cents' => 'integer',
+            'cleaning_fee_cents' => 'integer',
+            'tax_cents' => 'integer',
+            'processing_fee_cents' => 'integer',
+            'total_cents' => 'integer',
+            'hold_expires_at' => 'datetime',
+            'payment_confirmed_at' => 'datetime',
+            'guests_count' => 'integer',
+            'direct_booking_reminded_at' => 'datetime',
+            'direct_booking_request' => 'boolean',
+            'direct_booking_approved_at' => 'datetime',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $booking): void {
+            if ($booking->isDirty('property_id')) {
+                app(IcalExportService::class)->invalidate((int) $booking->getOriginal('property_id'));
+            }
+        });
+
+        static::saved(function (self $booking): void {
+            app(IcalExportService::class)->invalidate((int) $booking->property_id);
+        });
+
+        static::deleted(function (self $booking): void {
+            app(IcalExportService::class)->invalidate((int) $booking->property_id);
+        });
     }
 
     public function property(): BelongsTo
@@ -109,23 +149,28 @@ class Booking extends Model
     }
 
     /** Cleanings tied to this stay: explicit booking link, or same-property cleaning on the check-out date. */
-    public function linkedCleanings(): \Illuminate\Database\Eloquent\Builder
+    public function linkedCleanings(): Builder
     {
-        return \App\Models\CleaningSession::query()->where(function ($q) {
+        return CleaningSession::query()->where(function ($q) {
             $q->where('booking_id', $this->id);
             if ($this->check_out_date) {
                 $q->orWhere(function ($q2) {
                     $q2->whereNull('booking_id')
-                       ->where('property_id', $this->property_id)
-                       ->whereDate('scheduled_date', $this->check_out_date);
+                        ->where('property_id', $this->property_id)
+                        ->whereDate('scheduled_date', $this->check_out_date);
                 });
             }
         });
     }
 
-    public function charges(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function charges(): HasMany
     {
         return $this->hasMany(Charge::class);
+    }
+
+    public function hostPaymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(HostPaymentMethod::class);
     }
 
     /**
@@ -196,7 +241,7 @@ class Booking extends Model
     {
         return $this->additional_deposit !== null
             ? (float) $this->additional_deposit
-            : (float) \App\Models\Setting::getValue('incidentals_hold_buffer', 100);
+            : (float) Setting::getValue('incidentals_hold_buffer', 100);
     }
 
     /**
@@ -207,7 +252,7 @@ class Booking extends Model
     public function localResidentSurcharge(): float
     {
         return $this->isLocalResident()
-            ? (float) \App\Models\Setting::getValue('local_resident_surcharge', 200)
+            ? (float) Setting::getValue('local_resident_surcharge', 200)
             : 0.0;
     }
 
@@ -216,7 +261,7 @@ class Booking extends Model
         $miles = $this->idZipDistanceMiles();
 
         return $miles !== null
-            && $miles <= (float) \App\Models\Setting::getValue('local_resident_radius_miles', 90);
+            && $miles <= (float) Setting::getValue('local_resident_radius_miles', 90);
     }
 
     public function idZipDistanceMiles(): ?float
@@ -249,9 +294,9 @@ class Booking extends Model
             return $memo[$zip];
         }
 
-        $hit = \Illuminate\Support\Facades\Cache::remember('zip-coords:' . $zip, now()->addDays(90), function () use ($zip) {
+        $hit = Cache::remember('zip-coords:'.$zip, now()->addDays(90), function () use ($zip) {
             try {
-                $res = \Illuminate\Support\Facades\Http::timeout(4)->get("https://api.zippopotam.us/us/{$zip}");
+                $res = Http::timeout(4)->get("https://api.zippopotam.us/us/{$zip}");
                 if ($res->status() === 404) {
                     return false;
                 }
@@ -289,23 +334,23 @@ class Booking extends Model
     {
         $parts = [];
         if (($parking = $this->effectiveParkingCharge()) > 0) {
-            $parts[] = 'parking $' . number_format($parking, 2);
+            $parts[] = 'parking $'.number_format($parking, 2);
         }
         if (($this->effectiveIncidentalsCharge() ?? 0) > 0) {
-            $parts[] = 'incidentals $' . number_format($this->effectiveIncidentalsCharge(), 2);
+            $parts[] = 'incidentals $'.number_format($this->effectiveIncidentalsCharge(), 2);
         }
         if (($earlyCheckin = $this->effectiveEarlyCheckinCharge()) > 0 && ! $this->earlyCheckinIsDeductedFromHold()) {
-            $parts[] = 'early check-in $' . number_format($earlyCheckin, 2);
+            $parts[] = 'early check-in $'.number_format($earlyCheckin, 2);
         }
 
         $capCents = $this->property && $this->property->deposit_cap_cents !== null
             ? $this->property->deposit_cap_cents
-            : (int) \App\Models\Setting::getValue('default_deposit_cap_cents', 0);
-        $feePercent = (float) \App\Models\Setting::getValue('processing_fee_percent', 0);
+            : (int) Setting::getValue('default_deposit_cap_cents', 0);
+        $feePercent = (float) Setting::getValue('processing_fee_percent', 0);
 
         $summary = $parts ? implode(' + ', $parts) : 'no parking/incidentals/early check-in';
         if ($capCents > 0) {
-            $summary .= ', capped at $' . number_format($capCents / 100, 2);
+            $summary .= ', capped at $'.number_format($capCents / 100, 2);
         }
         if ($feePercent > 0) {
             $summary .= ", plus {$feePercent}% processing fee";
@@ -322,7 +367,7 @@ class Booking extends Model
 
         $capCents = $this->property && $this->property->deposit_cap_cents !== null
             ? $this->property->deposit_cap_cents
-            : (int) \App\Models\Setting::getValue('default_deposit_cap_cents', 0);
+            : (int) Setting::getValue('default_deposit_cap_cents', 0);
 
         $subtotal = $incidentalsCents;
         if ($capCents > 0) {
@@ -341,7 +386,7 @@ class Booking extends Model
      */
     public function applyProcessingFeeCents(int $subtotalCents): int
     {
-        $feePercent = (float) \App\Models\Setting::getValue('processing_fee_percent', 0);
+        $feePercent = (float) Setting::getValue('processing_fee_percent', 0);
         $fee = (int) round($subtotalCents * ($feePercent / 100));
 
         return $subtotalCents + $fee;
@@ -386,10 +431,12 @@ class Booking extends Model
     {
         return $query->whereNull('archived_at');
     }
+
     public function scopeArchived($query)
     {
         return $query->whereNotNull('archived_at');
     }
+
     public function isArchived(): bool
     {
         return filled($this->archived_at);
@@ -407,7 +454,7 @@ class Booking extends Model
 
     public function isCheckedIn(): bool
     {
-        return !is_null($this->checked_in_at);
+        return ! is_null($this->checked_in_at);
     }
 
     public function isApproved(): bool
@@ -479,7 +526,7 @@ class Booking extends Model
 
         $today = now()->setTimezone(config('app.display_timezone'))->startOfDay();
 
-        return \Carbon\Carbon::parse($date)->startOfDay()->lte($today->copy()->addDays(30));
+        return Carbon::parse($date)->startOfDay()->lte($today->copy()->addDays(30));
     }
 
     /**
@@ -584,7 +631,7 @@ class Booking extends Model
      */
     public function nightsCount(): ?int
     {
-        if (!$this->check_in_date || !$this->check_out_date) {
+        if (! $this->check_in_date || ! $this->check_out_date) {
             return null;
         }
 
@@ -618,11 +665,11 @@ class Booking extends Model
      */
     public function calculateParkingCharge(): ?float
     {
-        if (!$this->parking_needed) {
+        if (! $this->parking_needed) {
             return null;
         }
 
-        if (!$this->check_in_date || !$this->check_out_date || !$this->property) {
+        if (! $this->check_in_date || ! $this->check_out_date || ! $this->property) {
             return null;
         }
 
@@ -670,7 +717,7 @@ class Booking extends Model
      */
     public function earlyCheckinCharge(): ?float
     {
-        if (!$this->early_checkin_tier || !$this->property) {
+        if (! $this->early_checkin_tier || ! $this->property) {
             return null;
         }
 
@@ -718,7 +765,7 @@ class Booking extends Model
      */
     protected function standardCheckoutInstant(): ?CarbonInterface
     {
-        if (!$this->check_out_date || !$this->property) {
+        if (! $this->check_out_date || ! $this->property) {
             return null;
         }
 
@@ -737,12 +784,12 @@ class Booking extends Model
      */
     public function lateCheckoutHoursUnauthorized(): ?float
     {
-        if ($this->late_checkout_type !== 'unauthorized' || !$this->late_checkout_actual_time) {
+        if ($this->late_checkout_type !== 'unauthorized' || ! $this->late_checkout_actual_time) {
             return null;
         }
 
         $instant = $this->effectiveCheckoutInstant();
-        if (!$instant) {
+        if (! $instant) {
             return null;
         }
 
@@ -774,7 +821,7 @@ class Booking extends Model
      */
     public function lateCheckoutCharge(): ?float
     {
-        if (!$this->late_checkout_type || !$this->property) {
+        if (! $this->late_checkout_type || ! $this->property) {
             return null;
         }
 
@@ -889,7 +936,7 @@ class Booking extends Model
             + ($this->late_checkout_deducted_at ? $this->unauthorizedLateCheckoutCharge() : 0.0);
     }
 
-    private function effectiveCheckoutInstant(): ?\Carbon\Carbon
+    private function effectiveCheckoutInstant(): ?Carbon
     {
         if (! $this->check_out_date) {
             return null;
@@ -897,11 +944,11 @@ class Booking extends Model
         $tz = $this->property?->timezone ?? 'America/New_York';
         [$h, $m] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
 
-        return \Carbon\Carbon::parse($this->check_out_date->toDateString(), $tz)->setTime($h, $m);
+        return Carbon::parse($this->check_out_date->toDateString(), $tz)->setTime($h, $m);
     }
 
     /** Late fee is only worked out for a confirmed checkout (guest tap or lock), never the auto-close. */
-    private function applyLateCheckoutFee(string $source, \Carbon\Carbon $at): void
+    private function applyLateCheckoutFee(string $source, Carbon $at): void
     {
         $auto = in_array($source, ['guest_auto_checkout', 'guest_auto_checkout_overdue'], true);
         if (! $auto && ! in_array($source, ['guest_confirmed_checkout', 'guest_lock_checkout'], true)) {
@@ -974,7 +1021,7 @@ class Booking extends Model
 
         $capCents = $this->property->deposit_cap_cents !== null
             ? (int) $this->property->deposit_cap_cents
-            : (int) \App\Models\Setting::getValue('default_deposit_cap_cents', 0);
+            : (int) Setting::getValue('default_deposit_cap_cents', 0);
         if ($capCents <= 0) {
             return false;
         }
@@ -1127,7 +1174,7 @@ class Booking extends Model
      */
     public function earlyCheckinTierForApprovedTime(): ?string
     {
-        $approved = \App\Support\BookingTimes::approved($this->checkin_time_status, $this->checkin_time_preference);
+        $approved = BookingTimes::approved($this->checkin_time_status, $this->checkin_time_preference);
         if ($approved === null) {
             return null;
         }
@@ -1147,7 +1194,7 @@ class Booking extends Model
     /** Hours past the standard checkout implied by the approved checkout time, or null. */
     public function lateCheckoutHoursForApprovedTime(): ?float
     {
-        $approved = \App\Support\BookingTimes::approved($this->checkout_time_status, $this->checkout_time_preference);
+        $approved = BookingTimes::approved($this->checkout_time_status, $this->checkout_time_preference);
         if ($approved === null) {
             return null;
         }
@@ -1208,16 +1255,16 @@ class Booking extends Model
 
         if ($newFee && $this->early_checkin_tier && $this->earlyFeeExceedsCap()) {
             try {
-                \App\Services\ActivityLogService::admin(
+                ActivityLogService::admin(
                     'early_checkin_exceeds_cap',
                     "Early check-in fee for {$this->guest_name} pushes pre-check-in charges past the deposit cap; part of it will not be collected.",
                     'guests',
                     [
                         'subject_type' => self::class,
-                        'subject_id'   => $this->id,
-                        'booking_id'   => $this->id,
-                        'property_id'  => $this->property_id,
-                        'severity'     => 'warning',
+                        'subject_id' => $this->id,
+                        'booking_id' => $this->id,
+                        'property_id' => $this->property_id,
+                        'severity' => 'warning',
                     ]
                 );
             } catch (\Throwable $e) {
@@ -1226,7 +1273,7 @@ class Booking extends Model
         }
 
         if ($notify && $newFee) {
-            \App\Services\GuestAlertService::send('reservation_updated', $this->fresh());
+            GuestAlertService::send('reservation_updated', $this->fresh());
         }
     }
 
@@ -1402,7 +1449,7 @@ class Booking extends Model
             return 'Staying until '.$this->check_out_date->format('M j');
         }
 
-        $days = (int) \Carbon\Carbon::parse($todayDate)->startOfDay()
+        $days = (int) Carbon::parse($todayDate)->startOfDay()
             ->diffInDays($this->check_in_date->startOfDay(), false);
 
         $when = match (true) {
@@ -1612,29 +1659,30 @@ class Booking extends Model
         return $this->safeFormatTime($this->effectiveCheckinTime(), subHour: true);
     }
 
-    private function safeParseTime(string $value): \Carbon\Carbon
+    private function safeParseTime(string $value): Carbon
     {
         try {
-            return \Carbon\Carbon::createFromFormat('H:i', trim($value));
+            return Carbon::createFromFormat('H:i', trim($value));
         } catch (\Exception $e) {
             try {
-                return \Carbon\Carbon::parse(trim($value));
+                return Carbon::parse(trim($value));
             } catch (\Exception $e) {
-                return \Carbon\Carbon::createFromFormat('H:i', '15:00');
+                return Carbon::createFromFormat('H:i', '15:00');
             }
         }
     }
+
     private function safeFormatTime(string $value, bool $subHour = false): string
     {
         $time = null;
 
         try {
-            $time = \Carbon\Carbon::createFromFormat('H:i', trim($value));
+            $time = Carbon::createFromFormat('H:i', trim($value));
         } catch (\Exception $e) {
             try {
-                $time = \Carbon\Carbon::parse(trim($value));
+                $time = Carbon::parse(trim($value));
             } catch (\Exception $e) {
-                $time = \Carbon\Carbon::createFromFormat('H:i', '15:00');
+                $time = Carbon::createFromFormat('H:i', '15:00');
             }
         }
 
@@ -1652,11 +1700,15 @@ class Booking extends Model
 
         $checkinDate = $this->check_in_date->toDateString();
 
-        if ($now->toDateString() < $checkinDate) return false;
-        if ($now->toDateString() > $checkinDate) return true;
+        if ($now->toDateString() < $checkinDate) {
+            return false;
+        }
+        if ($now->toDateString() > $checkinDate) {
+            return true;
+        }
 
         $parsedTime = $this->safeParseTime($this->effectiveCheckinTime());
-        $threshold = \Carbon\Carbon::parse($checkinDate, $timezone)->setTime($parsedTime->hour, $parsedTime->minute)->subHour();
+        $threshold = Carbon::parse($checkinDate, $timezone)->setTime($parsedTime->hour, $parsedTime->minute)->subHour();
 
         return $now->greaterThanOrEqualTo($threshold);
     }
@@ -1701,8 +1753,12 @@ class Booking extends Model
         $timezone = $this->property?->timezone ?? 'America/New_York';
         $now = ($now ?? now())->setTimezone($timezone);
 
-        if ($now->toDateString() < $this->check_out_date->toDateString()) return false;
-        if ($now->toDateString() > $this->check_out_date->toDateString()) return true;
+        if ($now->toDateString() < $this->check_out_date->toDateString()) {
+            return false;
+        }
+        if ($now->toDateString() > $this->check_out_date->toDateString()) {
+            return true;
+        }
 
         [$hour, $minute] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
 
@@ -1746,7 +1802,7 @@ class Booking extends Model
         $timezone = $this->property?->timezone ?? 'America/New_York';
         $now = ($now ?? now())->setTimezone($timezone);
 
-        $opensAt = \Carbon\Carbon::parse($this->check_out_date->toDateString(), $timezone)->subDay()->setTime(13, 0);
+        $opensAt = Carbon::parse($this->check_out_date->toDateString(), $timezone)->subDay()->setTime(13, 0);
 
         return $now->greaterThanOrEqualTo($opensAt);
     }
@@ -1756,8 +1812,12 @@ class Booking extends Model
         $timezone = $this->property?->timezone ?? 'America/New_York';
         $now = ($now ?? now())->setTimezone($timezone);
 
-        if ($now->toDateString() < $this->check_out_date->toDateString()) return false;
-        if ($now->toDateString() > $this->check_out_date->toDateString()) return true;
+        if ($now->toDateString() < $this->check_out_date->toDateString()) {
+            return false;
+        }
+        if ($now->toDateString() > $this->check_out_date->toDateString()) {
+            return true;
+        }
 
         [$hour, $minute] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
         $threshold = $now->copy()->setTime($hour, $minute)->addMinutes($graceMinutes);
@@ -1780,6 +1840,7 @@ class Booking extends Model
                 $count++;
             }
         });
+
         return $count;
     }
 
@@ -1797,20 +1858,20 @@ class Booking extends Model
 
         $at = now();
         $this->update([
-            'status'          => 'checked_out',
-            'checked_out_at'  => $at,
+            'status' => 'checked_out',
+            'checked_out_at' => $at,
             'checkout_source' => $source,
         ]);
         $this->applyLateCheckoutFee($source, $at);
 
-        \App\Services\GuestAlertService::send('checkout_completed', $this);
+        GuestAlertService::send('checkout_completed', $this);
 
-        \App\Services\ActivityLogService::guest($source, "Guest {$this->guest_name} checked out ({$source}).", 'check', [
-            'booking_id'  => $this->id,
+        ActivityLogService::guest($source, "Guest {$this->guest_name} checked out ({$source}).", 'check', [
+            'booking_id' => $this->id,
             'property_id' => $this->property_id,
-            'actor_name'  => $this->guest_name,
+            'actor_name' => $this->guest_name,
             'actor_email' => $this->email,
-            'severity'    => 'success',
+            'severity' => 'success',
         ]);
 
         return true;
@@ -1823,15 +1884,16 @@ class Booking extends Model
             ->where('status', '!=', 'checked_out')
             ->whereDate('check_out_date', '>=', now()->subDays(3)->toDateString())
             ->chunkById(100, function ($bookings) use (&$count, $graceMinutes) {
-            foreach ($bookings as $booking) {
-                if ($booking->isCancelled() || ! $booking->isPastCheckoutGracePeriod($graceMinutes)) {
-                    continue;
+                foreach ($bookings as $booking) {
+                    if ($booking->isCancelled() || ! $booking->isPastCheckoutGracePeriod($graceMinutes)) {
+                        continue;
+                    }
+                    if ($booking->completeCheckout('guest_auto_checkout_overdue')) {
+                        $count++;
+                    }
                 }
-                if ($booking->completeCheckout('guest_auto_checkout_overdue')) {
-                    $count++;
-                }
-            }
-        });
+            });
+
         return $count;
     }
 
@@ -1840,6 +1902,7 @@ class Booking extends Model
         if ($this->reservation_id) {
             return route('checkin.rid', ['RID' => $this->reservation_id]);
         }
+
         return route('guest.show', [$this->booking_id, $this->token]);
     }
 
@@ -1848,6 +1911,7 @@ class Booking extends Model
         if ($this->status === 'guest_approved' && $this->isCheckinDay()) {
             return 'pending_check_in';
         }
+
         return $this->status ?: 'pending';
     }
 
@@ -1902,14 +1966,14 @@ class Booking extends Model
     /** Same definition AvailabilityLedger uses for "this stay holds the nights". */
     public function scopeHoldingNights($query)
     {
-        return $query->where(fn ($w) => $w->whereNull('status')->orWhere('status', '!=', 'cancelled'));
+        return $query->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', self::NON_HOLDING_STATUSES));
     }
 
     /** Stays overlapping [$in, $out). Back-to-back (out == in) is NOT an overlap. */
     public function scopeOverlapping($query, int $propertyId, $in, $out, ?int $ignoreId = null)
     {
-        $in  = \Carbon\Carbon::parse($in)->toDateString();
-        $out = \Carbon\Carbon::parse($out)->toDateString();
+        $in = Carbon::parse($in)->toDateString();
+        $out = Carbon::parse($out)->toDateString();
 
         return $query->where('property_id', $propertyId)
             ->holdingNights()

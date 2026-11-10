@@ -2,22 +2,30 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Services\ActivityLogService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\User;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class Property extends Model
 {
-
     // gh-lockbox-log: record who changes the lockbox code, from any path. The code itself is never logged.
     protected static function booted(): void
     {
+        static::creating(function (self $property): void {
+            if (Schema::hasColumn('properties', 'ical_export_token')) {
+                $property->forceFill(['ical_export_token' => Str::random(64)]);
+            }
+        });
+
         static::updated(function (self $property) {
             if (! $property->wasChanged('lockbox_code')) {
                 return;
@@ -29,10 +37,10 @@ class Property extends Model
                 $user = auth()->user();
                 $who = $user ? $user->name : 'System';
                 $where = request()->routeIs('sessions.lockbox') ? 'during a cleaning' : 'from the property settings';
-                \App\Services\ActivityLogService::admin('lockbox_' . $what, "{$who} {$what} the lockbox code for {$property->name} {$where}.", 'properties', [
+                ActivityLogService::admin('lockbox_'.$what, "{$who} {$what} the lockbox code for {$property->name} {$where}.", 'properties', [
                     'subject_type' => self::class,
-                    'subject_id'   => $property->id,
-                    'severity'     => 'warning',
+                    'subject_id' => $property->id,
+                    'severity' => 'warning',
                 ]);
             } catch (\Throwable $e) {
                 report($e);
@@ -62,7 +70,7 @@ class Property extends Model
             $addr = $m[0];
         }
 
-        return rtrim(trim($addr), ", ");
+        return rtrim(trim($addr), ', ');
     }
 
     use HasFactory;
@@ -85,6 +93,7 @@ class Property extends Model
         'channex_rate_plan_id',
         'rate_source',
         'pricelabs_listing_id', 'pricelabs_pms', 'pricelabs_last_refreshed_at', 'pricelabs_synced_at',
+        'pricing_provider', 'wheelhouse_listing_id', 'wheelhouse_channel', 'wheelhouse_synced_at',
         'airbnb_ical_url',
         'deposit_cap_cents',
         'required_incidentals_hold_amount',
@@ -112,6 +121,7 @@ class Property extends Model
             'deposit_cap_cents' => 'integer',
             'required_incidentals_hold_amount' => 'decimal:2',
             'deactivated_at' => 'datetime',
+            'wheelhouse_synced_at' => 'datetime',
             'notify_cleaning_started' => 'boolean',
             'notify_cleaning_finished' => 'boolean',
             'notify_photo_started' => 'boolean',
@@ -302,9 +312,9 @@ class Property extends Model
      * Get the configured parking rate for a given weekday.
      * Accepts a Carbon-like instance with ->dayOfWeek (0 = Sunday ... 6 = Saturday) or an int.
      */
-    public function parkingRateForDay(\Carbon\Carbon|int $day): ?float
+    public function parkingRateForDay(Carbon|int $day): ?float
     {
-        $dayOfWeek = $day instanceof \Carbon\Carbon ? $day->dayOfWeek : $day;
+        $dayOfWeek = $day instanceof Carbon ? $day->dayOfWeek : $day;
 
         $field = [
             0 => 'parking_rate_sunday',
@@ -316,7 +326,7 @@ class Property extends Model
             6 => 'parking_rate_saturday',
         ][$dayOfWeek] ?? null;
 
-        if (!$field || $this->{$field} === null) {
+        if (! $field || $this->{$field} === null) {
             return null;
         }
 
@@ -350,10 +360,15 @@ class Property extends Model
     // Maps source-property room id => this property's room id (matched by name), null if no match.
     public function guideRoomMap(): array
     {
-        if (! $this->photo_guide_source_id) return [];
+        if (! $this->photo_guide_source_id) {
+            return [];
+        }
         $src = Property::find($this->photo_guide_source_id);
-        if (! $src) return [];
+        if (! $src) {
+            return [];
+        }
         $mine = $this->rooms->mapWithKeys(fn ($r) => [mb_strtolower(trim($r->name)) => $r->id]);
+
         return $src->rooms->mapWithKeys(fn ($r) => [$r->id => $mine[mb_strtolower(trim($r->name))] ?? null])->all();
     }
 
@@ -373,6 +388,7 @@ class Property extends Model
     public function effectivePhotoReferences()
     {
         $ownerId = $this->photo_guide_source_id ?: $this->id;
+
         return PropertyPhotoReference::where('property_id', $ownerId)
             ->orderBy('sort_order')->orderBy('id');
     }

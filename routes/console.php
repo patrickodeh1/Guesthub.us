@@ -40,6 +40,8 @@ Schedule::command('pms:sync')->everyMinute()->when(
 
 Schedule::command('photos:prune-old --days=15')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('training:send-reminders')->hourly();
+Schedule::command('directbookings:release-expired-holds')->everyFiveMinutes()->withoutOverlapping(4);
+Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();
 
 // Daily nudge for guests who haven't finished registration / have something pending.
 Schedule::command('bookings:send-registration-reminders')->dailyAt('10:00')->timezone(config('app.display_timezone'));
@@ -61,6 +63,7 @@ Schedule::command('channex:push-outbox')->everyMinute()->withoutOverlapping(10);
 // Pulls PriceLabs prices; only changed dates reach the Channex outbox.
 // PriceLabs refreshes about daily, so unchanged pulls exit early.
 Schedule::command('pricelabs:sync')->everySixHours()->withoutOverlapping(30);
+Schedule::command('wheelhouse:sync')->everyFourHours()->withoutOverlapping(30);
 
 // Safety net: closes any night covered by a booking that the ledger shows open
 // (bookings written outside the controller/import paths) and queues the push.
@@ -71,4 +74,4 @@ Schedule::command('channex:sync-booking-nights')->everyFifteenMinutes()->without
 Schedule::command('availability:apply-window')->dailyAt('00:30')->timezone(config('app.display_timezone'))->withoutOverlapping(30);
 
 // Read-only nightly check of Channex against the ledger. Sends nothing.
-\Illuminate\Support\Facades\Schedule::command('channex:compare')->dailyAt('03:30')->withoutOverlapping();
+Schedule::command('channex:compare')->dailyAt('03:30')->withoutOverlapping();
