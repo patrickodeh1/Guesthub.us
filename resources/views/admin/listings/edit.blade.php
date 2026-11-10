@@ -3,6 +3,10 @@
         $descriptionValue = old('public_description', $listing->public_description);
         preg_match_all('/[\p{L}\p{N}]+(?:[\'’][\p{L}\p{N}]+)*/u', strip_tags((string) $descriptionValue), $descriptionMatches);
         $descriptionWords = count($descriptionMatches[0]);
+        $sameDayCutoffTime = old('same_day_cutoff_time', $listing->same_day_cutoff_time);
+        if (is_string($sameDayCutoffTime) && preg_match('/\A\d{2}:\d{2}(?::\d{2})?\z/', $sameDayCutoffTime)) {
+            $sameDayCutoffTime = substr($sameDayCutoffTime, 0, 5);
+        }
         $photoCount = $listing->exists ? $listing->photos->count() : 0;
         $methodsValue = old('payment_methods', $paymentMethods->map(fn ($method) => [
             'type' => $method->type,
@@ -74,7 +78,7 @@
 
             <section class="card card-pad">
                 <h2 class="section-title">Photos</h2>
-                <p class="section-copy">Upload clear property photos. Images are resized into WebP versions for listing display.</p>
+                <p class="section-copy">Select multiple property photos at once. Images are resized into WebP versions for listing display.</p>
                 <div class="mt-4">
                     <label class="field-label">Add photos
                         <input type="file" name="photos[]" accept="image/*" multiple class="input">
@@ -132,7 +136,7 @@
                         <input type="number" name="advance_notice_hours" min="0" max="8760" value="{{ old('advance_notice_hours', $listing->advance_notice_hours ?? 24) }}" class="input">
                     </label>
                     <label class="field-label">Same-day booking cutoff
-                        <input type="time" name="same_day_cutoff_time" value="{{ old('same_day_cutoff_time', $listing->same_day_cutoff_time) }}" class="input">
+                        <input type="time" name="same_day_cutoff_time" value="{{ $sameDayCutoffTime }}" class="input">
                     </label>
                     <label class="field-label">Cancellation policy
                         <select name="cancellation_policy" class="input">

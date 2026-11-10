@@ -17,6 +17,7 @@ use App\Services\QuoteService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -173,6 +174,20 @@ class PublicListingTest extends TestCase
         $this->assertSame(32.72, $schema[0]['geo']['latitude']);
         $this->assertSame(-117.16, $schema[0]['geo']['longitude']);
         $this->assertSame('San Diego', $schema[0]['address']['addressLocality']);
+    }
+
+    public function test_public_pages_use_the_configured_site_logo_and_brand_colors(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('branding/site-logo.svg', '<svg></svg>');
+        Setting::set('site_logo', 'branding/site-logo.svg');
+
+        $response = $this->get('/stay/coastal-getaway');
+
+        $response->assertOk()
+            ->assertSee('src="'.url('file/branding/site-logo.svg').'"', false)
+            ->assertSee('--site-brand:#082b49', false)
+            ->assertSee('--site-button:#0b2d4d', false);
     }
 
     public function test_city_host_sitemap_robots_and_llms_endpoints_are_server_rendered(): void

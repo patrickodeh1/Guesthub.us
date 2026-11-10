@@ -19,7 +19,7 @@
             <label for="checkout-website">Leave this field empty</label>
             <input id="checkout-website" type="text" name="website" tabindex="-1" autocomplete="off">
         </div>
-        <div class="search-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="search-grid checkout-grid">
             <div class="field"><label for="guest_name">Full name</label><input id="guest_name" name="guest_name" value="{{ old('guest_name') }}" required maxlength="255" autocomplete="name"></div>
             <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autocomplete="email"></div>
             <div class="field"><label for="phone">Phone (optional)</label><input id="phone" name="phone" type="tel" value="{{ old('phone') }}" maxlength="40" autocomplete="tel"></div>

@@ -57,6 +57,7 @@ class DirectBookingFoundationsTest extends TestCase
             'published' => '1',
             'booking_mode' => 'instant',
             'advance_notice_hours' => '24',
+            'same_day_cutoff_time' => '10:00',
             'min_nights' => '1',
             'cancellation_policy' => 'moderate',
             'max_guests' => '4',
@@ -87,6 +88,12 @@ class DirectBookingFoundationsTest extends TestCase
         $this->assertSame(5, $listing->photos()->count());
         $this->assertStringEndsWith('.webp', $listing->photos()->first()->path);
         $this->assertSame(1, HostPaymentMethod::where('owner_id', $owner->id)->count());
+
+        $this->actingAs($owner)
+            ->get(route('admin.properties.listing.edit', $property))
+            ->assertOk()
+            ->assertSee('name="same_day_cutoff_time" value="10:00"', false)
+            ->assertSee('name="photos[]" accept="image/*" multiple', false);
     }
 
     public function test_incomplete_listing_cannot_be_published_but_can_be_saved_as_draft(): void

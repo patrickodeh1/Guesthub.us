@@ -1,6 +1,6 @@
 @extends('layouts.public')
 
-@section('title', 'Booking status · GuestHub')
+@section('title', 'Booking status')
 @section('meta_description', 'Review your direct booking payment and reservation status.')
 @section('canonical', route('public.checkout.pay', [$booking->booking_id, $booking->token]))
 

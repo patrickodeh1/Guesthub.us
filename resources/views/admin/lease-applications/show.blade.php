@@ -53,7 +53,7 @@
                 @if($application->payment_method === 'manual' && $application->fee_status === 'pending')
                     <form method="post" action="{{ route('admin.lease-applications.fee-received', $application) }}" class="mt-3">
                         @csrf
-                        <button class="rounded bg-slate-900 px-4 py-2 text-white">Mark manual fee received</button>
+                        <button class="rounded bg-[var(--button-primary-color)] px-4 py-2 text-[var(--on-primary)] hover:bg-[var(--button-primary-hover)]">Mark manual fee received</button>
                     </form>
                 @endif
                 @if($application->listing->screening_provider_url)
@@ -83,7 +83,7 @@
                 <textarea id="host_notes" name="host_notes" rows="4" class="mt-1 w-full rounded border p-2">{{ old('host_notes', $application->host_notes) }}</textarea>
                 @error('host_notes')<p class="text-red-700">{{ $message }}</p>@enderror
             </div>
-            <button class="mt-3 rounded bg-slate-900 px-4 py-2 text-white">Save review</button>
+            <button class="mt-3 rounded bg-[var(--button-primary-color)] px-4 py-2 text-[var(--on-primary)] hover:bg-[var(--button-primary-hover)]">Save review</button>
         </form>
     </div>
 </x-admin-layout>
