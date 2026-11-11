@@ -35,9 +35,7 @@ return new class extends Migration
         Schema::table('host_packages', function (Blueprint $table) {
             foreach (['billing_source', 'stripe_customer_id', 'stripe_subscription_id', 'current_period_end', 'cancel_at_period_end', 'past_due_since'] as $c) {
                 if (Schema::hasColumn('host_packages', $c)) {
-                    if (in_array($c, ['stripe_customer_id', 'stripe_subscription_id'], true)) {
-                        $table->dropIndex(['host_packages_'.$c.'_index']);
-                    }
+                    $table->dropColumn($c);
                 }
             }
         });
