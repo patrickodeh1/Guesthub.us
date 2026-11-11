@@ -25,8 +25,15 @@ class FeatureGate
             ->first();
 
         // An explicit grant for this host always wins, on or off.
+        // Add-ons bought through Stripe only count while the plan is granting.
         if ($hostFeature) {
-            return (bool) $hostFeature->enabled;
+            if ($hostFeature->source !== 'stripe_addon') {
+                return (bool) $hostFeature->enabled;
+            }
+            if ($hostFeature->enabled && self::planGranting($owner)) {
+                return true;
+            }
+            // Lapsed add-on: fall through to the free and package rules.
         }
 
         if ($feature->is_free) {
@@ -34,6 +41,13 @@ class FeatureGate
         }
 
         return self::inPackage($owner, $key);
+    }
+
+    private static function planGranting(User $owner): bool
+    {
+        $hostPackage = HostPackage::query()->where('user_id', $owner->getKey())->first();
+
+        return (bool) ($hostPackage && $hostPackage->isGranting());
     }
 
     private static function inPackage(User $owner, string $key): bool
