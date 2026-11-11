@@ -266,6 +266,14 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::get('features', [FeatureController::class, 'index'])->name('features.index');
         Route::put('features/{feature}', [FeatureController::class, 'update'])->name('features.update');
         Route::post('features/direct-booking-settings', [FeatureController::class, 'updateDirectBooking'])->name('features.direct-settings');
+        Route::get('packages', [\App\Http\Controllers\Admin\PackageController::class, 'index'])->name('packages.index');
+        Route::post('packages', [\App\Http\Controllers\Admin\PackageController::class, 'store'])->name('packages.store');
+        Route::put('packages', [\App\Http\Controllers\Admin\PackageController::class, 'updateAll'])->name('packages.update-all');
+        Route::put('packages/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'update'])->name('packages.update');
+        Route::delete('packages/{package}', [\App\Http\Controllers\Admin\PackageController::class, 'destroy'])->name('packages.destroy');
+        Route::get('host-packages', [\App\Http\Controllers\Admin\HostPackageController::class, 'index'])->name('host-packages.index');
+        Route::get('host-packages/{user}', [\App\Http\Controllers\Admin\HostPackageController::class, 'edit'])->name('host-packages.edit');
+        Route::put('host-packages/{user}', [\App\Http\Controllers\Admin\HostPackageController::class, 'update'])->name('host-packages.update');
     });
 
     Route::middleware('role:admin,owner')->prefix('lease-applications')->name('lease-applications.')->group(function () {

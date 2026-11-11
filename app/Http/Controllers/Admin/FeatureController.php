@@ -35,6 +35,7 @@ class FeatureController extends Controller
             'active' => ['required', 'boolean'],
             'price_cents' => ['nullable', 'integer', 'min:0', 'max:100000000'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'billing_unit' => ['nullable', 'in:flat,per_property,per_device'],
         ]);
 
         unset($data['price']);

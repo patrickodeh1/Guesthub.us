@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Feature extends Model
 {
-    protected $fillable = ['key', 'name', 'is_free', 'price_cents', 'active'];
+    protected $fillable = ['key', 'name', 'is_free', 'price_cents', 'active', 'billing_unit'];
 
     protected function casts(): array
     {

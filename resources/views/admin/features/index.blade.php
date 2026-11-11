@@ -2,46 +2,14 @@
     <div class="page-header">
         <div>
             <p class="eyebrow">Direct booking</p>
-            <h1 class="page-title">Feature switches</h1>
-            <p class="page-subtitle">Set which direct-booking features are free, paid, or unavailable. Billing is not enabled here.</p>
+            <h1 class="page-title">Direct booking settings</h1>
+            <p class="page-subtitle">Fees, refunds and cancellation policies. Feature prices and switches are now on the <a href="{{ route('admin.packages.index') }}" class="underline">Packages</a> page.</p>
         </div>
     </div>
 
     @if(session('success'))
         <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>
     @endif
-
-    <div class="grid gap-4">
-        @foreach($features as $feature)
-            <form method="post" action="{{ route('admin.features.update', $feature) }}" class="card card-pad grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-                @csrf
-                @method('put')
-                <div>
-                    <h2 class="text-lg font-semibold text-slate-950">{{ $feature->name }}</h2>
-                    <p class="mt-1 text-sm text-slate-500"><code>{{ $feature->key }}</code></p>
-                </div>
-                <div class="grid gap-4 sm:grid-cols-3 sm:items-end">
-                    <label class="flex items-center gap-2 text-sm font-medium">
-                        <input type="hidden" name="is_free" value="0">
-                        <input type="checkbox" name="is_free" value="1" @checked($feature->is_free)>
-                        Free for all hosts
-                    </label>
-                    <label class="field-label">Price (USD)
-                        <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input type="number" inputmode="decimal" name="price" min="0" step="0.01" placeholder="0.00" value="{{ old('price', $feature->price_cents !== null ? number_format($feature->price_cents / 100, 2, '.', '') : '') }}" class="input"></div>
-                    </label>
-                    <div class="flex items-center gap-4">
-                        <label class="flex items-center gap-2 text-sm font-medium">
-                            <input type="hidden" name="active" value="0">
-                            <input type="checkbox" name="active" value="1" @checked($feature->active)>
-                            Active
-                        </label>
-                        <button class="btn-primary">Save</button>
-                    </div>
-                </div>
-                @error('price_cents')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
-            </form>
-        @endforeach
-    </div>
 
     <form method="post" action="{{ route('admin.features.direct-settings') }}" class="card card-pad mt-8 grid gap-6">
         @csrf

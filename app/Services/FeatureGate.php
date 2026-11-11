@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Feature;
 use App\Models\HostFeature;
+use App\Models\HostPackage;
 use App\Models\User;
 
 class FeatureGate
@@ -23,10 +24,25 @@ class FeatureGate
             ->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $now))
             ->first();
 
-        if ($feature->is_free) {
-            return $hostFeature?->enabled ?? true;
+        // An explicit grant for this host always wins, on or off.
+        if ($hostFeature) {
+            return (bool) $hostFeature->enabled;
         }
 
-        return (bool) $hostFeature?->enabled;
+        if ($feature->is_free) {
+            return true;
+        }
+
+        return self::inPackage($owner, $key);
+    }
+
+    private static function inPackage(User $owner, string $key): bool
+    {
+        $hostPackage = HostPackage::query()->where('user_id', $owner->getKey())->with('package.parent')->first();
+        if (! $hostPackage || ! $hostPackage->isGranting() || ! $hostPackage->package || ! $hostPackage->package->active) {
+            return false;
+        }
+
+        return in_array($key, $hostPackage->package->allFeatureKeys(), true);
     }
 }
