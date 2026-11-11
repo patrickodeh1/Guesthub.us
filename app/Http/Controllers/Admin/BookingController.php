@@ -735,7 +735,7 @@ class BookingController extends Controller
 
         if ($data['status'] === 'cancelled' && $booking->source === 'direct' && ! $booking->isCancelled()) {
             try {
-                $refund = app(\App\Services\DirectBookingService::class)->cancel($booking, false, 'Cancelled by staff.', isset($data['refund_percent']) ? (int) $data['refund_percent'] : null);
+                $refund = app(\App\Services\DirectBookingService::class)->cancel($booking, false, 'Cancelled by staff.');
             } catch (\Stripe\Exception\ApiErrorException $e) {
                 \Illuminate\Support\Facades\Log::warning('Direct booking cancel: Stripe refund failed', ['booking' => $booking->booking_id, 'message' => $e->getMessage()]);
 
@@ -749,9 +749,7 @@ class BookingController extends Controller
                 'severity'     => 'warning',
             ]);
 
-            return back()->with('success', $refund > 0
-                ? 'Direct booking cancelled. Card refund of $'.number_format($refund / 100, 2).' initiated.'
-                : 'Direct booking cancelled. No card refund was issued; arrange any manual-payment refund with the host.');
+            return back()->with('success', 'Direct booking cancelled. Use the Refund panel on this booking to refund the guest.');
         }
 
         $wasCancelled = $booking->isCancelled();

@@ -336,7 +336,7 @@ class PaymentService
     {
         $remaining = $charge->amount_cents - (int) $charge->refunded_cents;
         if (! $charge->stripe_account_id || ! $charge->stripe_payment_intent_id
-            || $charge->status !== Charge::STATUS_SUCCESS || $amountCents < 1 || $amountCents > $remaining) {
+            || ! in_array($charge->status, [Charge::STATUS_SUCCESS, Charge::STATUS_PARTIALLY_CAPTURED], true) || $amountCents < 1 || $amountCents > $remaining) {
             throw new \InvalidArgumentException('This charge cannot be refunded for the requested amount.');
         }
 

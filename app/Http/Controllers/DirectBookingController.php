@@ -82,7 +82,6 @@ class DirectBookingController extends Controller
             'clientSecret' => $clientSecret,
             'publishableKey' => config('services.stripe.key'),
             'stripeAccountId' => $booking->property->owner?->stripe_account_id,
-            'cancelUrl' => route('public.checkout.cancel', [$booking->booking_id, $booking->token]),
         ]);
     }
 
@@ -108,6 +107,8 @@ class DirectBookingController extends Controller
 
     public function cancel(Request $request, string $bookingId, string $token, DirectBookingService $bookings)
     {
+        abort(403, 'Cancellations are handled by the host. Please contact them directly.');
+
         // Guests cancel through guest services; staff cancel from the admin guest list.
         abort(404);
 

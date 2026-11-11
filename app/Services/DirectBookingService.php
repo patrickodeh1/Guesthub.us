@@ -162,6 +162,7 @@ class DirectBookingService
 
         if ($confirmed) {
             $this->sendTemplate($booking->fresh('property'), 'guest_card_paid', 'View your booking');
+            $this->notifyHostPaid($booking->fresh('property'));
 
             return;
         }
@@ -336,7 +337,7 @@ class DirectBookingService
                 ->whereIn('status', [Charge::STATUS_SUCCESS, Charge::STATUS_PARTIALLY_CAPTURED])
                 ->latest()
                 ->first();
-            if ($paidCharge) {
+            if ($paidCharge && $guestCancellation) {
                 $refundCents = $this->cancellationPolicy->refundableCents($locked, $paidCharge, $guestCancellation ? null : ($refundPercent ?? 100));
                 if ($refundCents > 0) {
                     $this->payments->refund($paidCharge, $refundCents);
@@ -352,8 +353,11 @@ class DirectBookingService
                 'cancelled_by_guest' => $guestCancellation,
                 'decline_reason' => $reason,
                 'hold_expires_at' => null,
-                'archived_at' => now(),
+                'archived_at' => $locked->payment_confirmed_at ? null : now(),
             ]);
+            if ($locked->payment_confirmed_at) {
+                $locked->forceFill(['refund_status' => 'awaiting_decision'])->save();
+            }
         });
 
         $booking->refresh()->load('property');
@@ -411,6 +415,27 @@ class DirectBookingService
             $requestBooking ? 'View booking request' : ($booking->payment_method === 'manual' ? 'View payment instructions' : 'Complete payment'),
             route('public.checkout.pay', [$booking->booking_id, $booking->token]),
         );
+    }
+
+    private function notifyHostPaid(Booking $booking): void
+    {
+        try {
+            $booking->loadMissing('property.owner');
+            $email = $booking->property?->owner?->email;
+            if (! $email) {
+                return;
+            }
+            $amount = '$'.number_format(((int) $booking->total_cents) / 100, 2);
+            $dates = $booking->check_in_date->format('M j').' to '.$booking->check_out_date->format('M j, Y');
+            $text = $booking->guest_name.' paid '.$amount.' by card for '.$booking->property->name.' ('.$dates.'). Reference '.$booking->booking_id.'. The booking is confirmed.';
+            $tpl = \App\Services\DirectBookingMessages::render('host_card_paid', $booking, ['{message}' => $text]);
+            if (! $tpl) {
+                return;
+            }
+            EmailNotificationService::sendDirectBooking($booking, $email, $tpl['subject'], $tpl['message'], route('admin.guests.show', $booking), 'View booking');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Host paid notification failed', ['booking' => $booking->booking_id, 'message' => $e->getMessage()]);
+        }
     }
 
     private function manualInstructions(Booking $booking): string

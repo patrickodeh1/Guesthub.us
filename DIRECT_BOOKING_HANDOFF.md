@@ -258,3 +258,16 @@ Files changed, migrations added, commands to run (`php artisan migrate`, schedul
 | Completion gate | Pending | | | Full suite, concurrency, external OTA, Stripe, Vision, SEO/browser, and manual owner checks remain. |
 
 **Next action for whoever picks this up:** perform the outstanding completion-gate checks, especially Phase 2 full-suite attribution/concurrency/Stripe validation, Airbnb/Vrbo refresh, live pricing/OCR/Connect checks, and counsel review of lease-fee wording. Phases 4 and 5 are implemented, but the project is not signed off.
+
+## Deploy checklist
+1. Back up the database, then commit and push everything.
+2. `php artisan migrate --force` (new: photo ID, refund policy, ID review, `refund_status`).
+3. `php artisan route:clear && view:clear && config:clear`.
+4. Make sure `public/js/lease-id-capture.js` is deployed.
+5. Delete `public/robots.txt` on the server. The static file hides the dynamic robots route.
+6. Set `APP_URL` to the real `https://` domain, because the sitemap, canonicals and `llms.txt` use it.
+7. Set live keys: Stripe Connect, Google Vision, and the IndexNow key. Wheelhouse and PriceLabs are optional.
+8. Confirm the scheduler and queue worker are running (hold expiry, iCal and rate syncs, emails).
+9. Submit `sitemap.xml` in Google Search Console and run Rich Results Test on a live listing.
+10. Smoke test: one card booking, one lease application, one refund, and a refund email.
+11. Counsel review of the lease and fee wording.

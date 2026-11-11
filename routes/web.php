@@ -303,6 +303,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('guests/{booking}/direct-approve', [DirectBookingAdminController::class, 'approve'])->name('guests.direct-approve');
     Route::post('guests/{booking}/direct-decline', [DirectBookingAdminController::class, 'decline'])->name('guests.direct-decline');
     Route::post('guests/{booking}/direct-payment-received', [DirectBookingAdminController::class, 'markPaymentReceived'])->name('guests.direct-payment-received');
+    Route::post('guests/{booking}/direct-refund', [DirectBookingAdminController::class, 'refund'])->name('guests.direct-refund');
+    Route::post('guests/{booking}/direct-refund/close', [DirectBookingAdminController::class, 'resolveRefund'])->name('guests.direct-refund-close');
     Route::post('guests/{booking}/direct-cancel', [DirectBookingAdminController::class, 'cancel'])->name('guests.direct-cancel');
     Route::post('guests/{booking}/background-check', [BookingController::class, 'markBackgroundCheckComplete'])->name('guests.background-check');
     Route::post('guests/{booking}/deposit-verified', [BookingController::class, 'markDepositVerified'])->name('guests.deposit-verified');

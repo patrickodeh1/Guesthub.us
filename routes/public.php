@@ -32,9 +32,6 @@ Route::middleware('web')->group(function (): void {
     Route::post('/stay/checkout/{booking_id}/{token}/confirm', [DirectBookingController::class, 'confirm'])
         ->middleware('throttle:20,1')
         ->name('public.checkout.confirm');
-    Route::post('/stay/checkout/{booking_id}/{token}/cancel', [DirectBookingController::class, 'cancel'])
-        ->middleware('throttle:5,1')
-        ->name('public.checkout.cancel');
     Route::get('/stay/{listing_slug}/apply', [LeaseApplicationController::class, 'apply'])
         ->name('public.lease-application.apply');
     Route::post('/stay/{listing_slug}/apply', [LeaseApplicationController::class, 'storeId'])

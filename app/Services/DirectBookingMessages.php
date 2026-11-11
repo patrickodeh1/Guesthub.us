@@ -24,6 +24,7 @@ class DirectBookingMessages
         'host_new_booking' => ['label' => 'Host: new direct booking', 'subject' => 'New direct booking', 'message' => '{guest_name} requested {dates} for {guests} guests at {property}. Reference: {booking_id}.'],
         'host_new_request' => ['label' => 'Host: new booking request', 'subject' => 'New booking request', 'message' => '{guest_name} requested {dates} for {guests} guests at {property}. Reference: {booking_id}. Open the booking to approve or decline.'],
         'host_payment_reminder' => ['label' => 'Host: payment confirmation reminder', 'subject' => 'Payment reminder: booking hold ends soon', 'message' => '{guest_name} booked {property} ({dates}). Check {method} for {amount} with reference {booking_id}, then mark the payment received. The dates are held until {hold_until} and are released if the payment is not confirmed.'],
+        'host_card_paid' => ['label' => 'Host: card payment received', 'subject' => 'Booking paid: {property_name}', 'message' => '{message}'],
         'guest_lease_received' => ['label' => 'Guest: lease application received', 'subject' => 'Lease application received', 'message' => 'Hi {applicant_name}, your application for {property} has been received. The host will review it and contact you with any updates.'],
         'host_lease_new' => ['label' => 'Host: new lease application', 'subject' => 'New lease application', 'message' => '{applicant_name} submitted a lease application for {property}. Open it to review the details.'],
         'guest_lease_status' => ['label' => 'Guest: lease application status updated', 'subject' => 'Lease application status updated', 'message' => 'Hi {applicant_name}, the host updated your lease application for {property}. New status: {status}.'],
@@ -35,6 +36,7 @@ class DirectBookingMessages
         'staff_contact_sms' => ['label' => 'Staff: contact form text message', 'subject' => 'SMS (no subject)', 'message' => "GuestHub contact: {sender_name} ({sender_email})\nSubject: {sender_subject}\nMessage: {contact_message}"],
         'staff_session_started' => ['label' => 'Staff: cleaning session started', 'subject' => 'Cleaning Started – {property_name}', 'message' => 'A cleaning session has begun at {property_name}.'],
         'staff_session_completed' => ['label' => 'Staff: cleaning session completed', 'subject' => 'Cleaning Completed – {property_name}', 'message' => 'A cleaning session has been completed at {property_name}. Status: {status_text}.'],
+        'guest_refund_issued' => ['label' => 'Guest: refund issued', 'subject' => 'Your refund for {property_name}', 'message' => 'Hi {guest_name}, a refund of {refund_amount} for your booking at {property_name} ({booking_ref}) has been issued. It usually appears within 5 to 10 business days, depending on your bank or payment method.'],
     ];
 
     public static function config(): array

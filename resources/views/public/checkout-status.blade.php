@@ -120,6 +120,9 @@
                     <p class="bk-copy">This booking is waiting on the host. Check back shortly.</p>
                 @endif
             </div>
+            @unless($isClosed)
+                <p class="bk-copy bk-center" style="margin-top:16px">To change or cancel this booking, please <a href="{{ route('contact') }}" style="text-decoration:underline">contact us</a>.</p>
+            @endunless
         </div>
 
         <aside class="bk-side" aria-label="Booking summary">

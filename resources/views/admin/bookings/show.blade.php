@@ -198,6 +198,7 @@
             </section>
 
             <section class="card card-pad">
+                @include('admin.bookings.partials.direct-refund')
                 <h2 class="section-title">Ledger<x-help text="Charges are auto-calculated from approved times. Tap the pencil to edit an amount." /></h2>
                 <dl class="mt-4 text-sm">
                     @php
