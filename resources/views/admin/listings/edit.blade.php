@@ -29,6 +29,15 @@
         <a href="{{ route('admin.properties.index') }}" class="btn-secondary">Back to properties</a>
     </div>
 
+    @if($errors->any())
+        <div class="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+            <strong>The listing could not be saved:</strong>
+            <ul class="mt-2 list-disc pl-5">
+                @foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach
+            </ul>
+        </div>
+    @endif
+
     @if(session('success'))
         <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>
     @endif
@@ -41,7 +50,7 @@
         </div>
     @endif
 
-    <form method="post" enctype="multipart/form-data" action="{{ route('admin.properties.listing.save', $property) }}" class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <form id="listing-form" method="post" enctype="multipart/form-data" action="{{ route('admin.properties.listing.save', $property) }}" class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         @csrf
         @method('put')
         <div class="grid gap-6">
@@ -138,12 +147,16 @@
                     <label class="field-label">Same-day booking cutoff
                         <input type="time" name="same_day_cutoff_time" value="{{ $sameDayCutoffTime }}" class="input">
                     </label>
-                    <label class="field-label">Cancellation policy
+                    <label class="field-label">Refund rule
                         <select name="cancellation_policy" class="input">
                             @foreach(['flexible' => 'Flexible', 'moderate' => 'Moderate', 'strict' => 'Strict'] as $value => $label)
                                 <option value="{{ $value }}" @selected(old('cancellation_policy', $listing->cancellation_policy ?? 'moderate') === $value)>{{ $label }}</option>
                             @endforeach
                         </select>
+                    </label>
+                    <label class="field-label">Cancellation policy text shown to guests
+                        <textarea name="cancellation_policy_text" class="input" rows="4" maxlength="2000" placeholder="Leave blank to use the standard wording for the refund rule above.">{{ old('cancellation_policy_text', $listing->cancellation_policy_text) }}</textarea>
+                        <span class="text-xs text-gray-500">Refunds are still calculated from the refund rule. This text is what guests read.</span>
                     </label>
                 </div>
             </section>
@@ -152,15 +165,9 @@
                 <h2 class="section-title">Manual payment methods</h2>
                 <p class="section-copy">Payment methods belong to the property owner and are shared across that owner's listings.</p>
                 @if(auth()->user()->hasRole('owner') && (int) $property->owner_id === (int) auth()->id())
-                    <form method="post" action="{{ route('admin.connect.onboard') }}" class="mt-3">
-                        @csrf
-                        <button class="btn-secondary" type="submit">
+                    <button form="connect-form" class="btn-secondary" type="submit">
                             {{ auth()->user()->stripe_account_id ? 'Continue Stripe setup' : 'Connect Stripe for card payments' }}
                         </button>
-                        @if(auth()->user()->stripe_charges_enabled)
-                            <span class="ml-2 text-sm text-emerald-700">Card payments enabled</span>
-                        @endif
-                    </form>
                 @endif
                 @if(! $property->owner_id)
                     <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Assign an owner to this property before adding host payment methods.</p>
@@ -266,6 +273,7 @@
             </div>
         </aside>
     </form>
+    <form id="connect-form" method="post" action="{{ route('admin.connect.onboard') }}">@csrf</form>
 
     <script>
         (() => {

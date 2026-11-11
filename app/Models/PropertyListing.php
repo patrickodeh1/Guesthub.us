@@ -23,6 +23,7 @@ class PropertyListing extends Model
         'same_day_cutoff_time',
         'min_nights',
         'cancellation_policy',
+        'cancellation_policy_text',
         'house_rules',
         'lease_enabled',
         'lease_application_fee_cents',

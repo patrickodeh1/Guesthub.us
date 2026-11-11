@@ -48,10 +48,16 @@ class StripeConnectController extends Controller
         abort_unless(filled(config('services.stripe.client_id')), 503, 'Stripe Connect is not configured.');
         $data = $request->validate(['code' => ['required', 'string', 'max:2048']]);
         $stripe = new StripeClient(config('services.stripe.secret'));
-        $token = $stripe->oauth->token([
-            'grant_type' => 'authorization_code',
-            'code' => $data['code'],
-        ]);
+        try {
+            $token = $stripe->oauth->token([
+                'grant_type' => 'authorization_code',
+                'code' => $data['code'],
+            ]);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            Log::warning('Stripe Connect OAuth exchange failed', ['message' => $e->getMessage()]);
+
+            return redirect()->route('admin.properties.index')->with('status', 'Stripe connection failed: '.$e->getMessage());
+        }
         abort_unless(filled($token->stripe_user_id ?? null), 502, 'Stripe did not return a connected account.');
         $user->forceFill(['stripe_account_id' => $token->stripe_user_id])->save();
         $account = $stripe->accounts->retrieve($user->stripe_account_id, []);

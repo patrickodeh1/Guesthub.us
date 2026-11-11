@@ -246,7 +246,12 @@ class PublicListingController extends Controller
 
         $all = $query->get();
         if ($citySlug) {
-            $all = $all->filter(fn (PropertyListing $listing) => Str::slug((string) $listing->property->city) === $citySlug);
+            $partial = $request->filled('city');
+            $all = $all->filter(function (PropertyListing $listing) use ($citySlug, $partial) {
+                $slug = Str::slug((string) $listing->property->city);
+
+                return $slug === $citySlug || ($partial && str_contains($slug, $citySlug));
+            });
             abort_if($all->isEmpty(), 404);
         }
         if (isset($filters['price_min'])) {
@@ -294,11 +299,29 @@ class PublicListingController extends Controller
             ? 'Explore '.count($cards).' published stays in '.$cityName.' with approximate locations and nightly pricing.'
             : 'Browse published GuestHub stays with current availability and clear nightly pricing.';
 
+        $listingsPage = $this->paginate($cards, $request);
+        if (! $citySlug) {
+            $maxCities = 8;
+            $perCity = 10;
+            $limited = $cards->groupBy('city')
+                ->sortByDesc(fn ($group) => $group->count())
+                ->take($maxCities)
+                ->flatMap(fn ($group) => $group->take($perCity))
+                ->values();
+            $listingsPage = new \Illuminate\Pagination\LengthAwarePaginator(
+                $limited,
+                $cards->count(),
+                max(1, $limited->count()),
+                1,
+                ['path' => $request->url()]
+            );
+        }
+
         return view('public.browse', [
             'title' => $title,
             'intro' => $intro,
             'metaDescription' => $metaDescription,
-            'listings' => $this->paginate($cards, $request),
+            'listings' => $listingsPage,
             'filters' => $filters + ['city' => $cityName],
             'canonical' => $canonical,
             'noindex' => $request->query() !== [],
@@ -390,8 +413,8 @@ class PublicListingController extends Controller
         $property = $listing->property;
         $owner = $property->owner;
         $photos = $listing->photos->map(fn ($photo) => [
-            'url' => Storage::disk('public')->url($photo->path),
-            'thumbnail_url' => Storage::disk('public')->url($photo->thumbnail_path),
+            'url' => request()->getSchemeAndHttpHost().'/img/'.$photo->path,
+            'thumbnail_url' => request()->getSchemeAndHttpHost().'/img/'.$photo->thumbnail_path,
             'alt' => $photo->alt ?: $listing->public_title,
             'width' => $photo->width ?: 1200,
             'height' => $photo->height ?: 800,
@@ -404,7 +427,7 @@ class PublicListingController extends Controller
             'description' => $listing->public_description,
             'base_rate_cents' => $listing->base_rate_cents,
             'max_guests' => $listing->max_guests,
-            'cancellation_policy' => match ($listing->cancellation_policy) {
+            'cancellation_policy' => filled($listing->cancellation_policy_text) ? $listing->cancellation_policy_text : match ($listing->cancellation_policy) {
                 'flexible' => 'Cancel for a full refund up to 24 hours before arrival.',
                 'strict' => 'Cancel up to 7 days before arrival for a 50% refund.',
                 default => 'Cancel for a full refund up to 5 days before arrival.',

@@ -7,6 +7,26 @@
 @push('head')
     <meta property="og:image" content="{{ $public['photos'][0]['url'] ?? '' }}">
     <meta name="twitter:card" content="summary_large_image">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        .stay-heading{margin-bottom:16px}
+        .stay-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:650}
+        .stay-meta{gap:6px 16px}
+        .stay-gallery{border-radius:16px;overflow:hidden}
+        .stay-section{padding:32px 0;border-bottom:1px solid #e1e7e2}
+        .stay-section h2{font-size:1.35rem;margin:0 0 16px}
+        .stay-highlights{list-style:none;margin:0;padding:24px 0;border-bottom:1px solid #e1e7e2;display:grid;gap:20px}
+        .stay-highlights li{display:flex;gap:16px;align-items:flex-start}
+        .stay-highlights svg{flex:none;width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+        .stay-highlights strong{display:block;font-weight:650}
+        .stay-highlights span{color:#66746d;font-size:.9rem}
+        .booking-card{border:1px solid #dfe6e1;border-radius:16px;box-shadow:0 6px 24px #17221e1f;padding:24px}
+        .booking-price h2{font-size:1.6rem;margin:0 0 16px}
+        .booking-price h2 span{font-size:1rem;font-weight:400;color:#66746d}
+        .location-map{height:380px;border-radius:16px;overflow:hidden;background:#e7ece8;z-index:0}
+        .mobile-booking-bar{display:none!important}
+        .stay-page{padding-bottom:0}
+    </style>
     <script type="application/ld+json">@json($structuredData)</script>
 @endpush
 
@@ -17,26 +37,6 @@
         $amenities = array_values($public['amenities'] ?? []);
         $amenityCount = count($amenities);
         $today = \Carbon\Carbon::now($public['timezone'])->startOfDay();
-        $calendarMonths = [];
-        for ($monthOffset = 0; $monthOffset < 2; $monthOffset++) {
-            $month = $today->copy()->startOfMonth()->addMonthsNoOverflow($monthOffset);
-            $cells = array_fill(0, $month->dayOfWeek, null);
-            for ($day = 1; $day <= $month->daysInMonth; $day++) {
-                $date = $month->copy()->day($day)->toDateString();
-                $availability = $calendar[$date] ?? [];
-                $cells[] = [
-                    'date' => $date,
-                    'day' => $day,
-                    'available' => (bool) ($availability['available'] ?? false),
-                    'night_available' => (bool) ($availability['night_available'] ?? $availability['available'] ?? false),
-                    'arrival_allowed' => (bool) ($availability['arrival_allowed'] ?? $availability['available'] ?? false),
-                    'departure_allowed' => (bool) ($availability['departure_allowed'] ?? false),
-                    'minimum_nights' => (int) ($availability['minimum_nights'] ?? $listing->min_nights),
-                    'maximum_nights' => $availability['maximum_nights'] ?? null,
-                ];
-            }
-            $calendarMonths[] = ['label' => $month->format('F Y'), 'cells' => $cells];
-        }
         $descriptionIsLong = strlen(strip_tags((string) $listing->public_description)) > 560;
     @endphp
 
@@ -52,12 +52,6 @@
                     <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 19V8m18 11V8M3 14h18M6 14V9a3 3 0 0 1 6 0v5m0-3h6a3 3 0 0 1 3 3"/></svg>
                     <span>{{ $public['bedrooms'] }} bedrooms</span>
                 </li>
-                @if($public['baths'] !== null)
-                    <li>
-                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3a3 3 0 0 0-3 3v6m0 0h17v2a5 5 0 0 1-5 5h-7a5 5 0 0 1-5-5v-2Zm3 8v.01M14 13v.01M9 19v2m8-2v2"/></svg>
-                        <span>{{ $public['baths'] }} baths</span>
-                    </li>
-                @endif
                 <li>
                     <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1Zm14-9a3 3 0 1 0-1-5.8M18 14a5 5 0 0 1 3 4.6V20h-3"/></svg>
                     <span>Up to {{ $listing->max_guests }} guests</span>
@@ -67,7 +61,6 @@
                     <span>Minimum {{ $listing->min_nights }} {{ Str::plural('night', $listing->min_nights) }}</span>
                 </li>
             </ul>
-            <p class="stay-host-line">Hosted by <a href="{{ $public['host_url'] }}">{{ $public['host_name'] }}</a></p>
         </header>
 
         @if($photoCount)
@@ -130,12 +123,25 @@
                 <a href="#amenities" data-section-link="amenities">Amenities</a>
             @endif
             <a href="#location" data-section-link="location">Location</a>
-            <a href="#availability" data-section-link="availability">Availability</a>
             <a href="#policies" data-section-link="policies">Policies</a>
         </nav>
 
         <div class="stay-layout">
             <article class="stay-content">
+                <ul class="stay-highlights" aria-label="Highlights">
+                    <li>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+                        <div><strong>{{ $listing->booking_mode === 'request' ? 'Request to book' : 'Book directly' }}</strong><span>{{ $listing->booking_mode === 'request' ? 'The host reviews and approves each request.' : 'Check availability and book with no middleman.' }}</span></div>
+                    </li>
+                    <li>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <div><strong>Minimum {{ $listing->min_nights }} {{ Str::plural('night', $listing->min_nights) }}</strong><span>Up to {{ $listing->max_guests }} guests</span></div>
+                    </li>
+                    <li>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                        <div><strong>Cancellation policy</strong><span>{{ $public['cancellation_policy'] }}</span></div>
+                    </li>
+                </ul>
                 <section id="overview" class="stay-section">
                     <h2>About this stay</h2>
                     <div class="stay-description {{ $descriptionIsLong ? 'description-long' : '' }}" data-description>
@@ -202,66 +208,9 @@
                 @endif
 
                 <section id="location" class="stay-section">
-                    <h2>Location</h2>
-                    <p class="section-copy">The exact address is shared with confirmed guests. This map shows an approximate location in {{ $public['city'] }}.</p>
-                    <iframe
-                        class="location-map"
-                        title="Approximate map location in {{ $public['city'] }}"
-                        width="100%"
-                        height="320"
-                        loading="lazy"
-                        referrerpolicy="no-referrer-when-downgrade"
-                        src="https://www.openstreetmap.org/export/embed.html?bbox={{ $public['longitude'] - 0.02 }}%2C{{ $public['latitude'] - 0.015 }}%2C{{ $public['longitude'] + 0.02 }}%2C{{ $public['latitude'] + 0.015 }}&layer=mapnik&marker={{ $public['latitude'] }}%2C{{ $public['longitude'] }}"
-                    ></iframe>
-                </section>
-
-                <section id="availability" class="stay-section">
-                    <h2>Availability</h2>
-                    <p class="section-copy">Choose your dates here or enter them in the booking card. Minimum-stay rules apply.</p>
-                    <p class="calendar-months-hint">Swipe horizontally to see the next month.</p>
-                    <div class="calendar-months" role="group" aria-label="Two-month availability calendar">
-                        @foreach($calendarMonths as $month)
-                            <section class="calendar-month" aria-label="{{ $month['label'] }}">
-                                <h3>{{ $month['label'] }}</h3>
-                                <div class="calendar-weekdays" aria-hidden="true">
-                                    @foreach(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $weekday)
-                                        <span>{{ $weekday }}</span>
-                                    @endforeach
-                                </div>
-                                <div class="calendar-days">
-                                    @foreach($month['cells'] as $cell)
-                                        @if($cell === null)
-                                            <span class="calendar-blank" aria-hidden="true"></span>
-                                        @else
-                                            @php
-                                                $calendarLabel = \Carbon\Carbon::parse($cell['date'])->format('F j');
-                                                $isPast = $cell['date'] < $today->toDateString();
-                                                $cannotUse = $isPast || (! $cell['night_available'] && ! $cell['departure_allowed']) || (! $cell['arrival_allowed'] && ! $cell['departure_allowed']);
-                                                $dayDescription = $cell['available']
-                                                    ? 'available, minimum '.$cell['minimum_nights'].' nights'
-                                                    : ($cell['departure_allowed'] && ! $cell['arrival_allowed'] ? 'unavailable for check-in, checkout allowed' : 'unavailable');
-                                            @endphp
-                                            <button
-                                                type="button"
-                                                class="calendar-day {{ $cell['available'] ? '' : 'is-unavailable' }} {{ $cell['date'] === $today->toDateString() ? 'is-today' : '' }}"
-                                                data-calendar-date="{{ $cell['date'] }}"
-                                                data-calendar-night="{{ $cell['night_available'] ? '1' : '0' }}"
-                                                data-calendar-arrival="{{ $cell['arrival_allowed'] ? '1' : '0' }}"
-                                                data-calendar-departure="{{ $cell['departure_allowed'] ? '1' : '0' }}"
-                                                data-calendar-minimum="{{ $cell['minimum_nights'] }}"
-                                                data-calendar-maximum="{{ $cell['maximum_nights'] }}"
-                                                aria-label="{{ $calendarLabel }}, {{ $dayDescription }}"
-                                                aria-pressed="false"
-                                                @disabled($cannotUse)
-                                            >{{ $cell['day'] }}</button>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            </section>
-                        @endforeach
-                    </div>
-                    <p class="calendar-hint" data-calendar-hint aria-live="polite">Select a check-in and check-out date to check availability.</p>
-                    <noscript><p class="section-copy">Use the date fields in the booking card if calendar selection is unavailable.</p></noscript>
+                    <h2>Explore {{ $public['city'] }}</h2>
+                    <p class="section-copy">The shaded area is approximate. The exact address is shared after booking.</p>
+                    <div id="location-map" class="location-map" role="img" aria-label="Approximate map of {{ $public['city'] }}" data-lat="{{ $public['latitude'] }}" data-lng="{{ $public['longitude'] }}"></div>
                 </section>
 
                 <section id="policies" class="stay-section">
@@ -275,17 +224,6 @@
                     <div class="policy-block">
                         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                         <div><h3>Cancellation policy</h3><p>{{ $public['cancellation_policy'] }}</p></div>
-                    </div>
-                </section>
-
-                <section class="host-card" aria-labelledby="host-card-title">
-                    <div class="host-card-mark" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-                    </div>
-                    <div>
-                        <h2 id="host-card-title">Hosted by {{ $public['host_name'] }}</h2>
-                        <a href="{{ $public['host_url'] }}">View host profile</a>
-                        <a href="{{ $public['host_url'] }}">View all stays by this host</a>
                     </div>
                 </section>
 
@@ -343,14 +281,10 @@
             </aside>
         </div>
     </div>
-
-    <div class="mobile-booking-bar">
-        <div><strong>${{ number_format($listing->base_rate_cents / 100, 2) }}</strong><span> / night</span></div>
-        <button type="button" class="primary-button" data-scroll-booking>Check availability</button>
-    </div>
 @endsection
 
 @push('scripts')
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         (() => {
             const page = document.querySelector('.stay-page');
@@ -480,77 +414,22 @@
 
             const checkIn = document.getElementById('quote-check-in');
             const checkOut = document.getElementById('quote-check-out');
-            const calendarHint = page.querySelector('[data-calendar-hint]');
-            const calendarButtons = [...page.querySelectorAll('[data-calendar-date]')];
-            const calendarDays = new Map(calendarButtons.map((button) => [button.dataset.calendarDate, {
-                night: button.dataset.calendarNight === '1',
-                arrival: button.dataset.calendarArrival === '1',
-                departure: button.dataset.calendarDeparture === '1',
-                minimum: Number(button.dataset.calendarMinimum) || 1,
-                maximum: Number(button.dataset.calendarMaximum) || null
-            }]));
-            const updateCalendarRange = (start, end) => {
-                calendarButtons.forEach((button) => {
-                    const date = button.dataset.calendarDate;
-                    const isStart = date === start;
-                    const isEnd = Boolean(end) && date === end;
-                    const inRange = Boolean(start && end && date > start && date < end);
-                    button.classList.toggle('is-start', isStart);
-                    button.classList.toggle('is-end', isEnd);
-                    button.classList.toggle('in-range', inRange);
-                    button.setAttribute('aria-pressed', String(isStart || isEnd));
+            const mapEl = document.getElementById('location-map');
+            if (mapEl) {
+                window.addEventListener('load', () => {
+                    if (!window.L) { mapEl.textContent = 'Map unavailable right now.'; return; }
+                    const lat = Number(mapEl.dataset.lat), lng = Number(mapEl.dataset.lng);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                    const map = L.map(mapEl, {scrollWheelZoom: false}).setView([lat, lng], 13);
+                    const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom: 19, attribution: 'Tiles &copy; Esri'});
+                    const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'});
+                    let fellBack = false;
+                    esri.on('tileerror', () => { if (fellBack) return; fellBack = true; map.removeLayer(esri); osm.addTo(map); });
+                    esri.addTo(map);
+                    L.circle([lat, lng], {radius: 900, color: '#1f6f54', fillColor: '#1f6f54', fillOpacity: 0.18, weight: 2}).addTo(map);
+                    setTimeout(() => map.invalidateSize(), 200);
                 });
-            };
-            const syncCalendarFromInputs = () => updateCalendarRange(checkIn?.value || '', checkOut?.value || '');
-            const rangeAvailability = (start, end) => {
-                const startData = calendarDays.get(start);
-                const endData = calendarDays.get(end);
-                if (!startData?.night || !startData.arrival || !endData?.departure) return {ok: false, message: 'One or more selected dates are unavailable.'};
-                const startDate = new Date(`${start}T00:00:00Z`);
-                const endDate = new Date(`${end}T00:00:00Z`);
-                const nights = Math.round((endDate - startDate) / 86400000);
-                if (nights <= 0) return {ok: false, message: 'Choose a check-out date after check-in.'};
-                if (nights < startData.minimum) return {ok: false, message: `This stay requires at least ${startData.minimum} nights.`};
-                if (startData.maximum && nights > startData.maximum) return {ok: false, message: `This stay allows up to ${startData.maximum} nights.`};
-                for (let cursor = new Date(startDate); cursor < endDate; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
-                    const date = cursor.toISOString().slice(0, 10);
-                    if (!calendarDays.get(date)?.night) return {ok: false, message: 'One or more nights in this range are unavailable.'};
-                }
-                return {ok: true, message: `${nights} nights selected.`};
-            };
-            calendarButtons.forEach((button) => button.addEventListener('click', () => {
-                const date = button.dataset.calendarDate;
-                const data = calendarDays.get(date);
-                if (!checkIn || !checkOut || !data) return;
-                if (!checkIn.value || (checkOut.value && date <= checkIn.value) || date <= checkIn.value) {
-                    if (!data.night || !data.arrival) {
-                        calendarHint.textContent = 'This date is not available for check-in.';
-                        return;
-                    }
-                    checkIn.value = date;
-                    checkOut.value = '';
-                    checkOut.min = date;
-                    calendarHint.textContent = `Choose a check-out date. Minimum stay: ${data.minimum} nights.`;
-                    updateCalendarRange(date, '');
-                    return;
-                }
-                const validation = rangeAvailability(checkIn.value, date);
-                if (!validation.ok) {
-                    calendarHint.textContent = validation.message;
-                    return;
-                }
-                checkOut.value = date;
-                calendarHint.textContent = validation.message;
-                updateCalendarRange(checkIn.value, date);
-            }));
-            checkIn?.addEventListener('change', () => {
-                if (checkOut && checkIn.value) {
-                    checkOut.min = checkIn.value;
-                    if (checkOut.value && checkOut.value <= checkIn.value) checkOut.value = '';
-                }
-                syncCalendarFromInputs();
-            });
-            checkOut?.addEventListener('change', syncCalendarFromInputs);
+            }
 
             page.querySelector('[data-scroll-booking]')?.addEventListener('click', () => {
                 const bookingCard = document.getElementById('booking-card');

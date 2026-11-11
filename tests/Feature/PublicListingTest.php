@@ -161,6 +161,8 @@ class PublicListingTest extends TestCase
             ->assertSee('Coastal Getaway')
             ->assertSee('San Diego')
             ->assertSee('Approximate map location')
+        ->assertSee('data-location-map-src="https://www.openstreetmap.org/export/embed.html?', false)
+        ->assertDontSee(' src="https://www.openstreetmap.org/export/embed.html', false)
             ->assertSee('noindex,follow')
             ->assertDontSee('987 Hidden Address Lane')
             ->assertDontSee('PRIVATE-LOCK-CODE')
