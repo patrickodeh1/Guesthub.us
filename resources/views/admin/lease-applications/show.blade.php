@@ -20,12 +20,31 @@
                     <div><dt class="font-medium">ID number</dt><dd>{{ $application->id_number_last4 ? '•••• '.$application->id_number_last4 : 'Not read' }}</dd></div>
                     <div><dt class="font-medium">Current address</dt><dd>{{ $application->current_address }}</dd></div>
                 </dl>
-                @if($application->id_scan_path)
-                    <a class="mt-4 inline-block underline" href="{{ route('admin.lease-applications.id', $application) }}">View ID front</a>
-                    @if($application->id_back_scan_path)
-                        <a class="mt-4 ml-4 inline-block underline" href="{{ route('admin.lease-applications.id', $application) }}?side=back">View ID back</a>
-                    @endif
-                @endif
+                @php($idSides = array_filter(['front' => $application->id_scan_path, 'back' => $application->id_back_scan_path]))
+                @foreach($idSides as $side => $path)
+                    @php($approvedAt = $application->{'id_'.$side.'_approved_at'})
+                    @php($declined = $application->{'id_'.$side.'_declined_reason'})
+                    <div class="mt-5 border-t pt-4">
+                        <p class="font-medium">{{ ucfirst($side) }} of ID @if($application->id_type === 'passport' && $side === 'front')<span class="text-sm text-slate-500">(passport)</span>@endif</p>
+                        <a href="{{ route('admin.lease-applications.id', $application) }}{{ $side === 'back' ? '?side=back' : '' }}" target="_blank">
+                            <img src="{{ route('admin.lease-applications.id', $application) }}{{ $side === 'back' ? '?side=back' : '' }}" alt="{{ ucfirst($side) }} of ID" class="mt-2 max-h-72 w-full rounded border object-contain">
+                        </a>
+                        @if($approvedAt)
+                            <p class="mt-2 rounded bg-emerald-50 p-2 text-sm font-semibold text-emerald-800">{{ ucfirst($side) }} approved {{ \Illuminate\Support\Carbon::parse($approvedAt)->format('M j, Y g:i A') }}</p>
+                        @else
+                            @if($declined)<p class="mt-2 rounded bg-amber-50 p-2 text-sm text-amber-800"><strong>Declined:</strong> {{ $declined }}</p>@endif
+                            <div class="mt-2 flex gap-2">
+                                <form method="post" action="{{ route('admin.lease-applications.id.approve', [$application, $side]) }}" class="flex-1">@csrf<button class="w-full rounded bg-[var(--button-primary-color)] px-3 py-2 text-[var(--on-primary)]">Approve {{ $side }}</button></form>
+                                <button type="button" class="flex-1 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-700" onclick="document.getElementById('decline-{{ $side }}').classList.toggle('hidden')">Decline</button>
+                            </div>
+                            <form id="decline-{{ $side }}" method="post" action="{{ route('admin.lease-applications.id.decline', [$application, $side]) }}" class="mt-2 hidden">
+                                @csrf
+                                <textarea name="decline_reason" rows="3" class="w-full rounded border p-2" placeholder="Reason for declining the {{ $side }}" required></textarea>
+                                <button class="mt-2 w-full rounded border px-3 py-2">Submit decline</button>
+                            </form>
+                        @endif
+                    </div>
+                @endforeach
             </section>
             <section class="rounded-lg bg-white p-5 shadow">
                 <h2 class="text-lg font-semibold">Move-in and household</h2>

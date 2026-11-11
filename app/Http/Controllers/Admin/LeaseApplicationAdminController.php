@@ -39,6 +39,13 @@ class LeaseApplicationAdminController extends Controller
             'status' => ['required', 'in:in_review,approved,declined'],
             'host_notes' => ['nullable', 'string', 'max:10000'],
         ]);
+        if ($data['status'] === 'approved') {
+            $needsFront = ! $application->id_front_approved_at;
+            $needsBack = $application->id_back_scan_path && ! $application->id_back_approved_at;
+            if ($application->id_scan_path && ($needsFront || $needsBack)) {
+                return back()->withErrors(['status' => 'Approve the applicant\'s ID before approving the application.']);
+            }
+        }
         $previousStatus = $application->status;
         $application->update([
             'status' => $data['status'],
@@ -87,6 +94,31 @@ class LeaseApplicationAdminController extends Controller
         $notifications->screeningRequested($application->fresh(['listing']));
 
         return back()->with('success', 'Screening instructions sent to the applicant.');
+    }
+
+    public function approveIdSide(Request $request, LeaseApplication $application, string $side)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        $application->forceFill([
+            "id_{$side}_approved_at" => now(),
+            "id_{$side}_declined_reason" => null,
+        ])->save();
+
+        return back()->with('success', ucfirst($side).' of ID approved.');
+    }
+
+    public function declineIdSide(Request $request, LeaseApplication $application, string $side)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless(in_array($side, ['front', 'back'], true), 404);
+        $data = $request->validate(['decline_reason' => ['required', 'string', 'max:1000']]);
+        $application->forceFill([
+            "id_{$side}_approved_at" => null,
+            "id_{$side}_declined_reason" => $data['decline_reason'],
+        ])->save();
+
+        return back()->with('success', ucfirst($side).' of ID declined.');
     }
 
     public function idDocument(Request $request, LeaseApplication $application)

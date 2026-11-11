@@ -152,6 +152,10 @@ class LeaseApplicationController extends Controller
 
     public function consent(LeaseApplication $application, string $token)
     {
+        $application = $this->assertPublicApplication($application, $token);
+        if ($application->status !== 'draft') {
+            return redirect()->route('public.lease-application.fee', [$application->id, $application->token]);
+        }
         $application = $this->assertDraft($application, $token);
         abort_unless(filled($application->employer), 409);
         $owner = $application->property->owner;

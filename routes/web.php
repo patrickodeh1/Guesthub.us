@@ -269,6 +269,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     });
 
     Route::middleware('role:admin,owner')->prefix('lease-applications')->name('lease-applications.')->group(function () {
+        Route::post('/{application}/id/{side}/approve', [\App\Http\Controllers\Admin\LeaseApplicationAdminController::class, 'approveIdSide'])->name('id.approve');
+        Route::post('/{application}/id/{side}/decline', [\App\Http\Controllers\Admin\LeaseApplicationAdminController::class, 'declineIdSide'])->name('id.decline');
         Route::get('/', [LeaseApplicationAdminController::class, 'index'])->name('index');
         Route::get('/{application}', [LeaseApplicationAdminController::class, 'show'])->name('show');
         Route::put('/{application}', [LeaseApplicationAdminController::class, 'update'])->name('update');

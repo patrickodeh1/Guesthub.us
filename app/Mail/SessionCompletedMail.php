@@ -20,6 +20,8 @@ class SessionCompletedMail extends Mailable
     public string $reportUrl;
     public int $sessionId;
     public string $statusText;
+    public string $intro = '';
+    public string $mailSubject = '';
 
     public function __construct(public CleaningSession $session)
     {
@@ -46,12 +48,20 @@ class SessionCompletedMail extends Mailable
             ->exists();
 
         $this->statusText = $hasUnresolved ? 'Ready with Exceptions' : 'Ready';
+
+        $d = \App\Services\DirectBookingMessages::EVENTS['staff_session_completed'];
+        $tpl = \App\Services\DirectBookingMessages::renderGeneric('staff_session_completed', [
+            'property_name' => $this->propertyName, 'cleaner_name' => $this->cleanerName,
+            'completion_time' => $this->completionTime, 'status_text' => $this->statusText, 'session_id' => $this->sessionId,
+        ]) ?? ['subject' => $d['subject'], 'message' => $d['message']];
+        $this->mailSubject = $tpl['subject'];
+        $this->intro = $tpl['message'];
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Cleaning Completed – {$this->propertyName}",
+            subject: $this->mailSubject,
         );
     }
 

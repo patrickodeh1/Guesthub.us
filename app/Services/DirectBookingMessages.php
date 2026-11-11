@@ -33,6 +33,8 @@ class DirectBookingMessages
         'guest_early_access' => ['label' => 'Guest: early access request received', 'subject' => 'We received your request for early access', 'message' => "Hi {lead_name},\n\nWe've received your request for early access to {site_name}. We'll be in touch soon with next steps.\n\nThanks,\n{site_name}"],
         'staff_early_access' => ['label' => 'Staff: new early access signup', 'subject' => 'New early access signup: {lead_name}', 'message' => "New early access signup\n\nName: {lead_name}\nEmail: {lead_email}\nPhone: {lead_phone}\nRole: {lead_role}\nMessage: {lead_message}"],
         'staff_contact_sms' => ['label' => 'Staff: contact form text message', 'subject' => 'SMS (no subject)', 'message' => "GuestHub contact: {sender_name} ({sender_email})\nSubject: {sender_subject}\nMessage: {contact_message}"],
+        'staff_session_started' => ['label' => 'Staff: cleaning session started', 'subject' => 'Cleaning Started – {property_name}', 'message' => 'A cleaning session has begun at {property_name}.'],
+        'staff_session_completed' => ['label' => 'Staff: cleaning session completed', 'subject' => 'Cleaning Completed – {property_name}', 'message' => 'A cleaning session has been completed at {property_name}. Status: {status_text}.'],
     ];
 
     public static function config(): array

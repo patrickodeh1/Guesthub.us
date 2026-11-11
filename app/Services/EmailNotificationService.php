@@ -85,7 +85,7 @@ class EmailNotificationService
             $admins = self::getAdminRecipients();
 
             foreach ($admins as $admin) {
-                if (self::alreadySent($session, 'email_session_started', $admin)) {
+                if (! \App\Services\DirectBookingMessages::config()['staff_session_started']['enabled'] || self::alreadySent($session, 'email_session_started', $admin)) {
                     continue;
                 }
 
@@ -113,7 +113,7 @@ class EmailNotificationService
             $admins = self::getAdminRecipients();
 
             foreach ($admins as $admin) {
-                if (self::alreadySent($session, 'email_session_completed', $admin)) {
+                if (! \App\Services\DirectBookingMessages::config()['staff_session_completed']['enabled'] || self::alreadySent($session, 'email_session_completed', $admin)) {
                     continue;
                 }
 
