@@ -60,6 +60,11 @@ class SettingsController extends Controller
             'airbnb_payment_instructions' => ['nullable', 'string', 'max:1000'],
             'default_deposit_cap_dollars' => ['nullable', 'numeric', 'min:0', 'max:100000'],
             'processing_fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'refund_processing_fee' => ['nullable', 'in:0,1'],
+            'cancellation' => ['nullable', 'array'],
+            'cancellation.*.full_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'cancellation.*.partial_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'cancellation.*.partial_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
             'lease_application_retention_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
             'site_copyright' => ['nullable', 'string', 'max:255'],
             'legal_effective_date' => ['nullable', 'string', 'max:255'],
@@ -113,6 +118,23 @@ class SettingsController extends Controller
             unset($data['default_deposit_cap_dollars']);
         }
 
+        if (array_key_exists('cancellation', $data)) {
+            foreach (array_keys(\App\Services\CancellationPolicy::DEFAULTS) as $policyName) {
+                $row = $data['cancellation'][$policyName] ?? null;
+                if (is_array($row)) {
+                    Setting::putValue('cancellation_policy_'.$policyName, json_encode([
+                        'full_days' => (int) ($row['full_days'] ?? 0),
+                        'partial_days' => (int) ($row['partial_days'] ?? 0),
+                        'partial_percent' => (int) ($row['partial_percent'] ?? 0),
+                    ]));
+                }
+            }
+            unset($data['cancellation']);
+        }
+        if (array_key_exists('refund_processing_fee', $data)) {
+            Setting::putValue('refund_processing_fee', (string) ($data['refund_processing_fee'] ?? '0'));
+            unset($data['refund_processing_fee']);
+        }
         if (array_key_exists('processing_fee_percent', $data)) {
             Setting::putValue('processing_fee_percent', (string) ($data['processing_fee_percent'] ?? 0));
             unset($data['processing_fee_percent']);
@@ -235,6 +257,7 @@ class SettingsController extends Controller
             'airbnb_payment_instructions' => Setting::getValue('airbnb_payment_instructions', "We'll send you a payment request through [[platform]]. Once it's completed, we'll confirm and send your check-in details."),
             'default_deposit_cap_dollars' => Setting::getValue('default_deposit_cap_cents', 0) / 100,
             'processing_fee_percent' => Setting::getValue('processing_fee_percent', 0),
+            'refund_processing_fee' => Setting::getValue('refund_processing_fee', '0'),
             'lease_application_retention_days' => Setting::getValue('lease_application_retention_days', 90),
             'auto_save_enabled' => Setting::get('auto_save_enabled', true),
             'auto_save_delay' => Setting::get('auto_save_delay', 400),

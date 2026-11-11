@@ -121,7 +121,7 @@ class QuoteService
             ];
         }
 
-        $cleaningFee = (int) ($listing->cleaning_fee_cents ?? 0);
+        $cleaningFee = 0; // cleaning fee removed from direct bookings
         if ($cleaningFee > 0) {
             $items[] = ['label' => 'Cleaning fee', 'amount_cents' => $cleaningFee];
         }

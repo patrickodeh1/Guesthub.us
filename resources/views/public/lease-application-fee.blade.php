@@ -13,8 +13,8 @@
         @if($application->fee_status === 'paid')
             <p class="status-message">Your application fee is received. The host will contact you with any updates.</p>
         @elseif($application->payment_method === 'manual')
-            <h2>Manual payment instructions</h2>
-            <p><strong>{{ $application->hostPaymentMethod?->label ?: 'Manual payment' }}</strong></p>
+            <h2>Payment instructions</h2>
+            <p><strong>{{ $application->hostPaymentMethod?->label ?: 'Payment' }}</strong></p>
             @if($application->hostPaymentMethod?->handle)<p>Account or handle: {{ $application->hostPaymentMethod->handle }}</p>@endif
             @if($application->hostPaymentMethod?->instructions)<p class="detail-copy">{!! nl2br(e($application->hostPaymentMethod->instructions)) !!}</p>@endif
             <p>Use your name and application reference <strong>{{ $application->id }}</strong>. Your application fee will be marked received after the host confirms payment.</p>
@@ -24,7 +24,7 @@
                 <div id="payment-element"></div>
                 <button class="button" id="pay-button" type="submit" style="margin-top:16px">Pay ${{ number_format($application->total_fee_cents / 100, 2) }}</button>
             </form>
-            <p class="muted">This secure card payment is processed through the host’s connected Stripe account. The application fee is non-refundable unless the host states otherwise.</p>
+            <p class="muted">This secure card payment is processed through the host’s connected Stripe account. {{ match($application->listing->lease_fee_refund_policy) { 'non_refundable' => 'The application fee is non-refundable.', 'refundable_if_declined' => 'The application fee is refunded if the host declines your application.', default => 'The host has not stated whether this fee is refundable. Please contact the host.' } }}</p>
         @elseif($application->fee_status === 'failed')
             <p class="status-message">Payment was not completed. Contact the host for assistance.</p>
             @if($application->payment_method === 'card')
@@ -36,9 +36,6 @@
         @endif
         @if(in_array($application->status, ['approved', 'declined'], true))
             <p>The host updated your application to <strong>{{ str_replace('_', ' ', $application->status) }}</strong>.</p>
-        @endif
-        @if($application->screening_requested_at)
-            <p class="muted">The host has requested that you complete screening using their provider.</p>
         @endif
     </section>
 @endsection

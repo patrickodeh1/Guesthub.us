@@ -81,7 +81,7 @@
 
         @if($booking->source === 'direct')
             <section class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <h2 class="text-sm font-bold text-emerald-950">Direct booking payment</h2>
+                <h2 class="flex items-center gap-2 text-sm font-bold text-emerald-950">Direct booking payment <span class="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">Direct booking</span></h2>
                 <p class="mt-2 text-sm text-emerald-900">
                     {{ ucfirst($booking->payment_method ?: 'payment pending') }}
                     · Total ${{ number_format(($booking->total_cents ?? 0) / 100, 2) }}
@@ -103,13 +103,6 @@
                     @elseif($booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && $booking->payment_method === 'manual'
                         && (! $booking->direct_booking_request || $booking->direct_booking_approved_at))
                         <form method="post" action="{{ route('admin.guests.direct-payment-received', $booking) }}" data-confirm="Confirm the host received this manual payment?">@csrf<button class="btn-primary">Mark payment received</button></form>
-                    @endif
-                    @if(! $booking->isCancelled() && !in_array($booking->status, ['declined', 'expired'], true))
-                        <form method="post" action="{{ route('admin.guests.direct-cancel', $booking) }}" data-confirm="Cancel this booking? Any card payment will be refunded in full.">
-                            @csrf
-                            <input type="hidden" name="reason" value="Cancelled by host.">
-                            <button class="btn-secondary">Cancel booking (full refund)</button>
-                        </form>
                     @endif
                 </div>
             </section>

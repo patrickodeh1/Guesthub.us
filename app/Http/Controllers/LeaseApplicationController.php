@@ -87,7 +87,7 @@ class LeaseApplicationController extends Controller
             'pets' => ['nullable', 'string', 'max:1000'],
             'vehicles' => ['nullable', 'string', 'max:1000'],
             'current_address' => ['required', 'string', 'max:1000'],
-            'current_address_months' => ['required', 'integer', 'min:0', 'max:1200'],
+            'current_address_months' => ['nullable', 'integer', 'min:0', 'max:1200'],
         ]);
         $this->rejectHoneypot($request);
 
@@ -197,6 +197,12 @@ class LeaseApplicationController extends Controller
 
         $owner = $application->property->owner;
         $feeCents = (int) ($application->listing->lease_application_fee_cents ?? 0);
+        if ($feeCents > 0) {
+            if (! $request->boolean('fee_policy_ack')) {
+                throw ValidationException::withMessages(['fee_policy_ack' => 'Please confirm that you understand the application fee policy.']);
+            }
+            $application->forceFill(['fee_policy_accepted_at' => now()])->save();
+        }
         $method = $feeCents > 0 ? $data['payment_method'] : 'none';
         $hostPaymentMethod = null;
         $processingCents = 0;
@@ -360,6 +366,115 @@ class LeaseApplicationController extends Controller
         }
 
         return redirect()->route('public.lease-application.about', [$application->id, $application->token]);
+    }
+
+    public function storeIdPhotos(Request $request, string $listingSlug, LeaseApplicationIdScanService $scanner)
+    {
+        return $this->scanPhotos($request, $this->publishedLeaseListing($listingSlug), null, $scanner);
+    }
+
+    public function retryIdPhotos(Request $request, LeaseApplication $application, string $token, LeaseApplicationIdScanService $scanner)
+    {
+        $application = $this->assertDraft($application, $token);
+        abort_unless($application->id_scan_attempts < 2, 409, 'The ID scan retry limit has been reached.');
+
+        return $this->scanPhotos($request, $application->listing, $application, $scanner);
+    }
+
+    private function scanPhotos(Request $request, PropertyListing $listing, ?LeaseApplication $application, LeaseApplicationIdScanService $scanner)
+    {
+        $this->rejectProtectedFields($request);
+        $isPassport = $request->input('id_type') === 'passport' && (bool) $listing->lease_allow_passport;
+        $request->validate([
+            'website' => ['nullable', 'size:0'],
+            'id_type' => ['nullable', 'in:state_id,passport'],
+            'photo_id' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'photo_id_back' => [$isPassport ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'id_barcode_raw' => ['nullable', 'string', 'max:5000'],
+        ]);
+        $this->rejectHoneypot($request);
+
+        $frontPath = $request->file('photo_id')->store('lease-applications', 'local');
+        $backPath = $request->hasFile('photo_id_back') ? $request->file('photo_id_back')->store('lease-applications', 'local') : null;
+        if (! $frontPath || ($request->hasFile('photo_id_back') && ! $backPath)) {
+            throw new \RuntimeException('The uploaded ID images could not be stored privately.');
+        }
+
+        $fields = null;
+        $barcodeRaw = $request->input('id_barcode_raw');
+        if (! $isPassport && $backPath) {
+            $decoded = app(\App\Services\BarcodeDecoder::class)->decodeStored($backPath);
+            if (filled($decoded['text'] ?? null)) {
+                $barcodeRaw = $decoded['text'];
+            }
+            if (filled($barcodeRaw)) {
+                $parsed = \App\Services\AamvaParser::parse((string) $barcodeRaw);
+                if ($parsed && filled($parsed['last_name'] ?? null) && filled($parsed['dob'] ?? null)) {
+                    $fields = $parsed;
+                }
+            }
+        }
+        if (! $fields && $isPassport) {
+            $text = app(\App\Services\IdDocumentExtractor::class)->readRawText($frontPath);
+            $fields = $text ? \App\Services\MrzParser::parseFromText($text) : null;
+        }
+
+        if ($fields) {
+            $name = trim(trim(($fields['first_name'] ?? '').' '.($fields['middle_name'] ?? '')).' '.($fields['last_name'] ?? ''));
+            $number = preg_replace('/[^A-Z0-9]/i', '', (string) ($fields['id_number'] ?? ''));
+            $read = [
+                'name' => $name !== '' ? $name : null,
+                'address' => $fields['address'] ?? null,
+                'number_last4' => strlen($number) >= 4 ? strtoupper(substr($number, -4)) : null,
+            ];
+            $complete = filled($read['name']);
+        } else {
+            $read = $scanner->scan($frontPath);
+            $complete = filled($read['name']) && filled($read['address']) && filled($read['number_last4']);
+        }
+
+        $attempts = ($application?->id_scan_attempts ?? 0) + 1;
+        $status = $complete ? 'scanned' : ($attempts >= 2 ? 'manual_review' : 'retry');
+        $oldPaths = array_filter([$application?->id_scan_path, $application?->id_back_scan_path]);
+
+        if (! $application) {
+            $application = new LeaseApplication([
+                'listing_id' => $listing->id,
+                'property_id' => $listing->property_id,
+                'token' => Str::random(64),
+            ]);
+        }
+        $application->fill([
+            'id_type' => $isPassport ? 'passport' : 'state_id',
+            'id_name' => $read['name'],
+            'id_address' => $read['address'],
+            'id_number_last4' => $read['number_last4'],
+            'id_scan_status' => $status,
+            'id_scan_attempts' => $attempts,
+            'id_scan_path' => $frontPath,
+            'id_back_scan_path' => $backPath,
+        ])->save();
+
+        foreach ($oldPaths as $old) {
+            if (! in_array($old, [$frontPath, $backPath], true) && Storage::disk('local')->exists($old)) {
+                Storage::disk('local')->delete($old);
+            }
+        }
+
+        $next = $status === 'retry'
+            ? route('public.lease-application.id.retry', [$application->id, $application->token])
+            : route('public.lease-application.about', [$application->id, $application->token]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => $status !== 'retry',
+                'status' => $status,
+                'redirect' => $next,
+                'message' => $status === 'retry' ? 'We could not read your ID. Please retake the photos and try once more.' : null,
+            ]);
+        }
+
+        return redirect($next);
     }
 
     private function validateScanRequest(Request $request): void

@@ -33,7 +33,7 @@ class EarlyAccessController extends Controller
 
         $adminEmail = Setting::getValue('contact_email');
         if ($adminEmail) {
-            Mail::to($adminEmail)->send(new EarlyAccessAdminNotificationMail($lead));
+            if (\App\Services\DirectBookingMessages::config()['staff_early_access']['enabled']) { Mail::to($adminEmail)->send(new EarlyAccessAdminNotificationMail($lead)); }
         }
 
         $adminPhone = config('services.telnyx.admin_notify_number');
@@ -48,7 +48,7 @@ class EarlyAccessController extends Controller
             );
         }
 
-        Mail::to($lead->email)->send(new EarlyAccessConfirmationMail($lead));
+        if (\App\Services\DirectBookingMessages::config()['guest_early_access']['enabled']) { Mail::to($lead->email)->send(new EarlyAccessConfirmationMail($lead)); }
 
         return back()->with('success', "Thanks. We've received your info and will be in touch soon.");
     }

@@ -54,9 +54,13 @@ class PurgeLeaseApplications extends Command
                     continue;
                 }
 
-                $path = $application->id_scan_path;
-                if ($path && Storage::disk('local')->exists($path)
-                    && ! Storage::disk('local')->delete($path)) {
+                $failed = false;
+                foreach (array_filter([$application->id_scan_path, $application->id_back_scan_path]) as $path) {
+                    if (Storage::disk('local')->exists($path) && ! Storage::disk('local')->delete($path)) {
+                        $failed = true;
+                    }
+                }
+                if ($failed) {
                     $errors++;
                     $this->error("Could not delete the private ID image for application #{$application->id}.");
                     Log::error('Lease application ID image purge failed.', ['application_id' => $application->id]);

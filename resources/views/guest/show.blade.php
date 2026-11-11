@@ -101,18 +101,6 @@
             <span class="ios-signal">cell wifi battery</span>
         </div>
 
-        @if($booking->source === 'direct' && ! $booking->isCancelled() && ! in_array($booking->status, ['declined', 'expired'], true))
-            <div class="mx-4 mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm">
-                <p class="font-semibold">Direct booking · {{ $booking->booking_id }}</p>
-                <p class="mt-1 text-slate-600">Total ${{ number_format(($booking->total_cents ?? 0) / 100, 2) }}</p>
-                <a class="mt-2 inline-block font-semibold text-emerald-700" href="{{ route('public.checkout.pay', [$booking->booking_id, $booking->token]) }}">View payment or booking status</a>
-                <form method="post" action="{{ route('guest.cancel-direct-booking', [$booking->booking_id, $booking->token]) }}" class="mt-3" onsubmit="return confirm('Cancel this direct booking? Refund eligibility depends on the listing cancellation policy.')">
-                    @csrf
-                    <input type="hidden" name="confirmation" value="1">
-                    <button class="font-semibold text-red-700" type="submit">Cancel this booking</button>
-                </form>
-            </div>
-        @endif
 
         @if($state === 'access_blocked')
             <div class="guest-portal-card">

@@ -21,6 +21,10 @@ class StripeConnectController extends Controller
 
         $state = Str::random(40);
         $request->session()->put('stripe_connect_state', $state);
+        $returnTo = (string) $request->input('return_to', '');
+        if (str_starts_with($returnTo, '/') && ! str_starts_with($returnTo, '//')) {
+            $request->session()->put('stripe_connect_return', $returnTo);
+        }
 
         return redirect()->away('https://connect.stripe.com/oauth/authorize?'.http_build_query([
             'response_type' => 'code',
@@ -41,8 +45,11 @@ class StripeConnectController extends Controller
             is_string($expectedState) && is_string($receivedState) && hash_equals($expectedState, $receivedState),
             403,
         );
+        $back = $request->session()->pull('stripe_connect_return') ?: route('admin.properties.index');
         if ($request->query('error')) {
-            return redirect()->route('admin.properties.index')->with('status', 'Stripe account connection was not completed.');
+            Log::info('Stripe Connect was cancelled or denied', ['error' => $request->query('error'), 'description' => $request->query('error_description')]);
+
+            return redirect($back)->with('stripe_notice', 'Your Stripe connection was not completed. You can try again at any time.');
         }
 
         abort_unless(filled(config('services.stripe.client_id')), 503, 'Stripe Connect is not configured.');
@@ -56,14 +63,20 @@ class StripeConnectController extends Controller
         } catch (\Stripe\Exception\ApiErrorException $e) {
             Log::warning('Stripe Connect OAuth exchange failed', ['message' => $e->getMessage()]);
 
-            return redirect()->route('admin.properties.index')->with('status', 'Stripe connection failed: '.$e->getMessage());
+            return redirect($back)->with('stripe_notice', "We couldn't connect your Stripe account right now. Please try again in a few minutes.");
         }
         abort_unless(filled($token->stripe_user_id ?? null), 502, 'Stripe did not return a connected account.');
         $user->forceFill(['stripe_account_id' => $token->stripe_user_id])->save();
-        $account = $stripe->accounts->retrieve($user->stripe_account_id, []);
-        $this->syncCapabilities($user, $account);
+        try {
+            $account = $stripe->accounts->retrieve($user->stripe_account_id, []);
+            $this->syncCapabilities($user, $account);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            Log::warning('Stripe Connect account sync failed', ['account_id' => $user->stripe_account_id, 'message' => $e->getMessage()]);
 
-        return redirect()->route('admin.properties.index')->with(
+            return redirect($back)->with('stripe_notice', 'Your Stripe account is linked, but we could not confirm its status yet. It will update automatically.');
+        }
+
+        return redirect($back)->with(
             'success',
             $user->stripe_charges_enabled ? 'Stripe card payments are connected.' : 'Stripe onboarding is not complete yet.',
         );

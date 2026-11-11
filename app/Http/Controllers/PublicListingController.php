@@ -131,7 +131,7 @@ class PublicListingController extends Controller
             'payment_method' => ['nullable', 'in:card,manual'],
         ]);
         $listing = $this->findPublicListing($listingSlug);
-        $paymentMethod = $data['payment_method'] ?? 'card';
+        $paymentMethod = $data['payment_method'] ?? ($this->paymentMethodAvailable($listing, 'card') ? 'card' : 'manual');
         if (! $this->paymentMethodAvailable($listing, $paymentMethod)) {
             throw ValidationException::withMessages(['payment_method' => 'This payment option is not currently available.']);
         }
@@ -427,11 +427,7 @@ class PublicListingController extends Controller
             'description' => $listing->public_description,
             'base_rate_cents' => $listing->base_rate_cents,
             'max_guests' => $listing->max_guests,
-            'cancellation_policy' => filled($listing->cancellation_policy_text) ? $listing->cancellation_policy_text : match ($listing->cancellation_policy) {
-                'flexible' => 'Cancel for a full refund up to 24 hours before arrival.',
-                'strict' => 'Cancel up to 7 days before arrival for a 50% refund.',
-                default => 'Cancel for a full refund up to 5 days before arrival.',
-            },
+            'cancellation_policy' => filled($listing->cancellation_policy_text) ? $listing->cancellation_policy_text : \App\Services\CancellationPolicy::summary((string) $listing->cancellation_policy),
             'bedrooms' => $listing->bedrooms ?? $property->beds,
             'baths' => $property->baths,
             'city' => $property->city ?: 'United States',

@@ -45,6 +45,12 @@ Route::middleware('web')->group(function (): void {
     Route::post('/stay/application/{application}/{token}/id', [LeaseApplicationController::class, 'retryId'])
         ->middleware('throttle:10,1')
         ->name('public.lease-application.id.retry.store');
+    Route::post('/stay/{listing_slug}/apply/photos', [LeaseApplicationController::class, 'storeIdPhotos'])
+        ->middleware('throttle:10,1')
+        ->name('public.lease-application.id.photos');
+    Route::post('/stay/application/{application}/{token}/id/photos', [LeaseApplicationController::class, 'retryIdPhotos'])
+        ->middleware('throttle:10,1')
+        ->name('public.lease-application.id.retry.photos');
     Route::get('/stay/application/{application}/{token}/about', [LeaseApplicationController::class, 'about'])
         ->name('public.lease-application.about');
     Route::post('/stay/application/{application}/{token}/about', [LeaseApplicationController::class, 'saveAbout'])

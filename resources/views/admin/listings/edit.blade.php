@@ -38,6 +38,10 @@
         </div>
     @endif
 
+    @if(session('stripe_notice'))
+        <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">{{ session('stripe_notice') }}</div>
+    @endif
+
     @if(session('success'))
         <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>
     @endif
@@ -125,10 +129,6 @@
                         <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input inputmode="decimal" name="base_rate" value="{{ old('base_rate', $listing->base_rate_cents !== null ? number_format($listing->base_rate_cents / 100, 2, '.', '') : '') }}" class="input" placeholder="0.00"></div>
                         @error('base_rate')<span class="field-help text-red-700">{{ $message }}</span>@enderror
                     </label>
-                    <label class="field-label">Cleaning fee (USD)
-                        <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input inputmode="decimal" name="cleaning_fee" value="{{ old('cleaning_fee', $listing->cleaning_fee_cents !== null ? number_format($listing->cleaning_fee_cents / 100, 2, '.', '') : '') }}" class="input" placeholder="0.00"></div>
-                        @error('cleaning_fee')<span class="field-help text-red-700">{{ $message }}</span>@enderror
-                    </label>
                     <label class="field-label">Tax rate (%)
                         <input type="number" name="tax_percent" min="0" max="100" step="0.01" value="{{ old('tax_percent', $listing->tax_percent) }}" class="input">
                     </label>
@@ -150,7 +150,7 @@
                     <label class="field-label">Refund rule
                         <select name="cancellation_policy" class="input">
                             @foreach(['flexible' => 'Flexible', 'moderate' => 'Moderate', 'strict' => 'Strict'] as $value => $label)
-                                <option value="{{ $value }}" @selected(old('cancellation_policy', $listing->cancellation_policy ?? 'moderate') === $value)>{{ $label }}</option>
+                                <option value="{{ $value }}" @selected(old('cancellation_policy', $listing->cancellation_policy ?? 'moderate') === $value)>{{ $label }}: {{ \App\Services\CancellationPolicy::summary($value) }}</option>
                             @endforeach
                         </select>
                     </label>
@@ -164,10 +164,30 @@
             <section class="card card-pad">
                 <h2 class="section-title">Manual payment methods</h2>
                 <p class="section-copy">Payment methods belong to the property owner and are shared across that owner's listings.</p>
-                @if(auth()->user()->hasRole('owner') && (int) $property->owner_id === (int) auth()->id())
-                    <button form="connect-form" class="btn-secondary" type="submit">
-                            {{ auth()->user()->stripe_account_id ? 'Continue Stripe setup' : 'Connect Stripe for card payments' }}
-                        </button>
+                @if($property->owner_id)
+                    @php
+                        $stripeOwner = $listing->property?->owner ?? auth()->user();
+                        $isOwnerView = $stripeOwner->id === auth()->id();
+                    @endphp
+                    @if($stripeOwner->stripe_account_id && $stripeOwner->stripe_charges_enabled)
+                        <p class="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">
+                            <span aria-hidden="true">✓</span>
+                            <span>Stripe connected{{ $isOwnerView ? '' : ' for '.$stripeOwner->name }}. Card payments are enabled (account …{{ substr($stripeOwner->stripe_account_id, -6) }}).</span>
+                        </p>
+                    @elseif($stripeOwner->stripe_account_id)
+                        <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{{ $isOwnerView ? 'Your' : $stripeOwner->name."'s" }} Stripe account is linked, but setup isn't finished yet. Card payments are not available.</p>
+                        @if($isOwnerView)
+                            <button form="connect-form" class="btn-secondary mt-3" type="submit">Finish Stripe setup</button>
+                        @else
+                            <p class="mt-2 text-sm text-slate-500">The owner needs to finish setup from their own login.</p>
+                        @endif
+                    @else
+                        @if($isOwnerView)
+                            <button form="connect-form" class="btn-secondary" type="submit">Connect Stripe for card payments</button>
+                        @else
+                            <p class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-700">Stripe is not connected for {{ $stripeOwner->name }}. Card payments are off until the owner connects from their own login.</p>
+                        @endif
+                    @endif
                 @endif
                 @if(! $property->owner_id)
                     <p class="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Assign an owner to this property before adding host payment methods.</p>
@@ -217,9 +237,23 @@
                     <label class="field-label">Application fee (USD)
                         <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input inputmode="decimal" name="lease_application_fee" value="{{ old('lease_application_fee', $listing->lease_application_fee_cents !== null ? number_format($listing->lease_application_fee_cents / 100, 2, '.', '') : '') }}" class="input" placeholder="0.00"></div>
                         @error('lease_application_fee')<span class="field-help text-red-700">{{ $message }}</span>@enderror
-                    </label>
-                    <label class="field-label">Screening provider URL
-                        <input type="url" name="screening_provider_url" value="{{ old('screening_provider_url', $listing->screening_provider_url) }}" class="input" placeholder="https://">
+                        <div class="mt-3 text-sm"><input type="hidden" name="lease_allow_passport" value="0"><label class="flex items-center gap-2"><input type="checkbox" name="lease_allow_passport" value="1" @checked(old('lease_allow_passport', $listing->lease_allow_passport))> Let applicants use a passport instead of a state ID</label></div>
+                        <label class="field-label mt-3">Application fee refund policy
+                            <select name="lease_fee_refund_policy" class="input">
+                                @foreach(['unset' => 'Not set (applicants are told to ask the host)', 'non_refundable' => 'Non-refundable', 'refundable_if_declined' => 'Refunded if the application is declined'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('lease_fee_refund_policy', $listing->lease_fee_refund_policy ?? 'unset') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-gray-500">Shown to applicants before they pay. Card payments: Stripe usually keeps its own processing fee on a refund. Some states limit application fees, so check local rules.</span>
+                        </label>
+                        <label class="field-label mt-3">Application fee refund policy
+                            <select name="lease_fee_refund_policy" class="input">
+                                @foreach(['unset' => 'Not set (applicants are told to ask the host)', 'non_refundable' => 'Non-refundable', 'refundable_if_declined' => 'Refunded if the application is declined'] as $value => $label)
+                                    <option value="{{ $value }}" @selected(old('lease_fee_refund_policy', $listing->lease_fee_refund_policy ?? 'unset') === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-gray-500">Shown to applicants before they pay. Card payments: Stripe usually keeps its own processing fee on a refund. Some states limit application fees, so check local rules.</span>
+                        </label>
                     </label>
                 </div>
             </section>
@@ -273,7 +307,7 @@
             </div>
         </aside>
     </form>
-    <form id="connect-form" method="post" action="{{ route('admin.connect.onboard') }}">@csrf</form>
+    <form id="connect-form" method="post" action="{{ route('admin.connect.onboard') }}">@csrf<input type="hidden" name="return_to" value="{{ request()->getRequestUri() }}"></form>
 
     <script>
         (() => {

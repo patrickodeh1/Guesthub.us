@@ -43,25 +43,34 @@ class ContactController extends Controller
         $adminEmail = Setting::getValue('contact_email');
         if ($adminEmail) {
             try {
-                Mail::raw($notification, function ($mail) use ($adminEmail, $contactMessage) {
-                    $mail->to($adminEmail)
-                        ->replyTo($contactMessage->email, $contactMessage->name)
-                        ->subject('New contact form submission');
-                });
+                $tpl = \App\Services\DirectBookingMessages::renderGeneric('staff_contact_form', [
+                    'sender_name' => $contactMessage->name,
+                    'sender_email' => $contactMessage->email,
+                    'sender_phone' => $contactMessage->phone ?: 'Not provided',
+                    'sender_subject' => $contactMessage->subject,
+                    'contact_message' => $contactMessage->message,
+                ]);
+                if ($tpl) {
+                    Mail::raw($tpl['message'], function ($mail) use ($adminEmail, $contactMessage, $tpl) {
+                        $mail->to($adminEmail)
+                            ->replyTo($contactMessage->email, $contactMessage->name)
+                            ->subject($tpl['subject']);
+                    });
+                }
             } catch (\Throwable $e) {
                 Log::error('Contact form admin notification email failed: '.$e->getMessage());
             }
         }
 
         $adminPhone = config('services.telnyx.admin_notify_number');
-        if ($adminPhone) {
-            SmsNotificationService::guestAlert(
-                $adminPhone,
-                "GuestHub contact: {$contactMessage->name} ({$contactMessage->email})\n"
-                ."Subject: {$contactMessage->subject}\n"
-                ."Message: {$contactMessage->message}",
-                false
-            );
+        $sms = $adminPhone ? \App\Services\DirectBookingMessages::renderGeneric('staff_contact_sms', [
+            'sender_name' => $contactMessage->name,
+            'sender_email' => $contactMessage->email,
+            'sender_subject' => $contactMessage->subject,
+            'contact_message' => $contactMessage->message,
+        ]) : null;
+        if ($adminPhone && $sms) {
+            SmsNotificationService::guestAlert($adminPhone, $sms['message'], false);
         }
 
         return redirect()->route('contact')->with('success', 'Thanks. Your message has been received and our team will be in touch.');

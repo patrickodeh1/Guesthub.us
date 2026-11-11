@@ -24,35 +24,35 @@
                     <input name="search" value="{{ request('search') }}" type="text" placeholder="Guest name, booking ID…" class="input pl-9">
                 </div>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Type</label>
-                <select name="type" class="input mt-2">
+                <select name="type" class="input mt-2 w-full">
                     <option value="">All types</option>
                     @foreach($types as $value => $label)
                         <option value="{{ $value }}" @selected(request('type') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Status</label>
-                <select name="status" class="input mt-2">
+                <select name="status" class="input mt-2 w-full">
                     <option value="">All statuses</option>
                     @foreach($statuses as $value => $label)
                         <option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Date from</label>
-                <input name="date_from" type="date" value="{{ request('date_from') }}" class="input mt-2">
+                <input name="date_from" type="date" value="{{ request('date_from') }}" class="input mt-2 w-full">
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label class="field-label">Date to</label>
-                <input name="date_to" type="date" value="{{ request('date_to') }}" class="input mt-2">
+                <input name="date_to" type="date" value="{{ request('date_to') }}" class="input mt-2 w-full">
             </div>
-            <button type="submit" class="btn-primary">Filter</button>
+            <button type="submit" class="btn-primary w-full sm:w-auto">Filter</button>
             @if(request()->hasAny(['search', 'type', 'status', 'date_from', 'date_to']))
-                <a href="{{ route('admin.payments.index') }}" class="btn-secondary">Clear</a>
+                <a href="{{ route('admin.payments.index') }}" class="btn-secondary w-full sm:w-auto">Clear</a>
             @endif
         </div>
     </form>
@@ -82,8 +82,69 @@
         </div>
     </div>
 
-    {{-- Charges table --}}
-    <div class="table-wrap">
+    {{-- Payments --}}
+    {{-- Mobile cards --}}
+    <div class="grid gap-3 md:hidden">
+        @forelse($charges as $charge)
+            <div class="card card-pad">
+                <div class="flex flex-col gap-2">
+                    <div>
+                        @if($charge->booking)
+                            <a href="{{ route('admin.guests.show', $charge->booking) }}" class="font-semibold text-slate-950 hover:underline break-words">{{ $charge->booking->guest_name }}</a>
+                            <p class="text-xs text-slate-500 break-words">{{ $charge->booking->booking_id }}</p>
+                        @else
+                            <span class="text-slate-400">Booking deleted</span>
+                        @endif
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <p class="text-xs text-slate-500">Property</p>
+                            <p class="text-sm text-slate-700 break-words">{{ $charge->booking?->property?->name ?? '—' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500">Type</p>
+                            <span class="badge badge-inactive text-xs">{{ $types[$charge->type] ?? $charge->type }}</span>
+                        </div>
+                        @if($charge->description)
+                            <div class="col-span-2">
+                                <p class="text-xs text-slate-500">Description</p>
+                                <p class="text-sm text-slate-700 break-words">{{ $charge->description }}</p>
+                            </div>
+                        @endif
+                        <div>
+                            <p class="text-xs text-slate-500">Amount</p>
+                            <p class="text-sm font-semibold text-slate-950">${{ number_format($charge->amount_cents / 100, 2) }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                        <div class="flex flex-wrap items-center gap-2">
+                            @php
+                                $statusBadge = match($charge->status) {
+                                    'success' => 'badge-active',
+                                    'failed' => 'badge-pending',
+                                    default => 'badge-inactive',
+                                };
+                            @endphp
+                            <span class="badge {{ $statusBadge }}">{{ $statuses[$charge->status] ?? $charge->status }}</span>
+                            @if($charge->billing_moment)
+                                <span class="text-xs text-slate-500">{{ str($charge->billing_moment)->replace('_', ' ')->title() }}</span>
+                            @endif
+                        </div>
+                        <span class="text-xs text-slate-500">{{ $charge->created_at->copy()->setTimezone(config('app.display_timezone'))->format('M j, Y g:ia') }}</span>
+                    </div>
+                </div>
+            </div>
+        @empty
+            <div class="card card-pad text-center text-sm text-slate-500">
+                <span class="icon-chip mx-auto mb-4 h-14 w-14"><x-icon name="check" class="h-7 w-7" /></span>
+                <p class="text-base font-semibold text-slate-950">No payments yet</p>
+                <p class="mt-1 text-sm text-slate-500">Deposit and other guest charges will appear here once collected.</p>
+            </div>
+        @endforelse
+    </div>
+
+    {{-- Desktop table --}}
+    <div class="table-wrap hidden md:block">
         <table class="data-table">
             <thead>
                 <tr>
@@ -114,7 +175,7 @@
                                 <p class="mt-1 text-xs text-slate-500">{{ $charge->description }}</p>
                             @endif
                         </td>
-                        <td class="text-sm font-semibold text-slate-900">${{ number_format($charge->amount_cents / 100, 2) }}</td>
+                        <td class="text-sm font-semibold text-slate-950">${{ number_format($charge->amount_cents / 100, 2) }}</td>
                         <td>
                             @php
                                 $statusBadge = match($charge->status) {

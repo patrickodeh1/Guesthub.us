@@ -108,7 +108,9 @@ class DirectBookingController extends Controller
 
     public function cancel(Request $request, string $bookingId, string $token, DirectBookingService $bookings)
     {
-        $request->validate(['confirmation' => ['accepted']]);
+        // Guests cancel through guest services; staff cancel from the admin guest list.
+        abort(404);
+
         $booking = $this->guestBooking($bookingId, $token);
         $refund = $bookings->cancel($booking, true);
 

@@ -42,6 +42,8 @@ Schedule::command('photos:prune-old --days=15')->dailyAt('02:00')->withoutOverla
 Schedule::command('training:send-reminders')->hourly();
 Schedule::command('directbookings:release-expired-holds')->everyFiveMinutes()->withoutOverlapping(4);
 Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('ids:purge-declined')->dailyAt('02:30')->withoutOverlapping();
+Schedule::command('direct-bookings:remind-hosts')->hourly()->withoutOverlapping();
 
 // Daily nudge for guests who haven't finished registration / have something pending.
 Schedule::command('bookings:send-registration-reminders')->dailyAt('10:00')->timezone(config('app.display_timezone'));

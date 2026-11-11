@@ -92,9 +92,10 @@ class LeaseApplicationAdminController extends Controller
     public function idDocument(Request $request, LeaseApplication $application)
     {
         $this->authorizeApplication($request, $application);
-        abort_unless($application->id_scan_path && Storage::disk('local')->exists($application->id_scan_path), 404);
+        $file = $request->query('side') === 'back' ? $application->id_back_scan_path : $application->id_scan_path;
+        abort_unless($file && Storage::disk('local')->exists($file), 404);
 
-        $response = response()->file(Storage::disk('local')->path($application->id_scan_path));
+        $response = response()->file(Storage::disk('local')->path($file));
         $response->setPrivate();
         $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
         $response->headers->set('X-Content-Type-Options', 'nosniff');

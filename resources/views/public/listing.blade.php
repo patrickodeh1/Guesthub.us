@@ -254,13 +254,6 @@
                             <input required id="quote-guests" name="guests" type="number" min="1" max="{{ $listing->max_guests }}" value="1">
                         </label>
                         @if($public['payment_options']['card'] || $public['payment_options']['manual'])
-                            <label class="booking-field" for="quote-payment-method">
-                                <span>Payment type</span>
-                                <select id="quote-payment-method" name="payment_method">
-                                    @if($public['payment_options']['card'])<option value="card" @selected(!$public['payment_options']['manual'])>Card</option>@endif
-                                    @if($public['payment_options']['manual'])<option value="manual" @selected(!$public['payment_options']['card'])>Manual payment</option>@endif
-                                </select>
-                            </label>
                             <button class="primary-button" id="quote-submit" type="submit">
                                 <span data-submit-label>Check availability</span>
                                 <svg class="button-spinner" data-submit-spinner aria-hidden="true" hidden viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>

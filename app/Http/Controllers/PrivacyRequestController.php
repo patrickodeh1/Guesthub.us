@@ -43,18 +43,18 @@ class PrivacyRequestController extends Controller
             // them submitting a privacy/deletion request -- log and move
             // on, same pattern as GuestAlertService's mail sends.
             try {
-                Mail::raw(
-                    "Privacy request received\n\n".
-                    "Name: {$privacyRequest->name}\n"
-                    ."Email: {$privacyRequest->email}\n"
-                    ."Phone: {$phoneDisplay}\n"
-                    ."Request type: {$privacyRequest->request_type}\n"
-                    ."Details:\n{$privacyRequest->details}\n",
-                    function ($message) use ($adminEmail) {
-                        $message->to($adminEmail)
-                            ->subject('Privacy request received');
-                    }
-                );
+                $tpl = \App\Services\DirectBookingMessages::renderGeneric('staff_privacy_request', [
+                    'sender_name' => $privacyRequest->name,
+                    'sender_email' => $privacyRequest->email,
+                    'sender_phone' => $phoneDisplay,
+                    'request_type' => $privacyRequest->request_type,
+                    'details' => $privacyRequest->details,
+                ]);
+                if ($tpl) {
+                    Mail::raw($tpl['message'], function ($message) use ($adminEmail, $tpl) {
+                        $message->to($adminEmail)->subject($tpl['subject']);
+                    });
+                }
             } catch (\Throwable $e) {
                 Log::error('Privacy request admin notification email failed: '.$e->getMessage());
             }

@@ -6,7 +6,7 @@
             <p class="page-subtitle">Control the default guest brand, GPS verification radius, contact information, and fallback intro text.</p>
         </div>
         @if(auth()->user()->hasRole('admin'))
-            <a href="{{ route('admin.features.index') }}" class="btn-secondary">Direct booking features</a>
+            
         @endif
     </div>
 
@@ -22,7 +22,7 @@
                 <label class="field-label">Contact email<input name="contact_email" value="{{ old('contact_email', $settings['contact_email']) }}" class="input"></label>
                 <label class="field-label">Default incidentals threshold (USD)<input type="number" step="0.01" min="0" name="default_deposit_cap_dollars" value="{{ old('default_deposit_cap_dollars', $settings['default_deposit_cap_dollars']) }}" class="input"><span class="field-help">Used when a property doesn't have its own cap set. Guests are charged parking + incidentals up to this amount.</span></label>
                 <label class="field-label">Processing fee (%)<input type="number" step="0.01" min="0" max="100" name="processing_fee_percent" value="{{ old('processing_fee_percent', $settings['processing_fee_percent']) }}" class="input"><span class="field-help">Added on top of the capped parking + incidentals total.</span></label>
-                <label class="field-label">Declined application retention (days)<input type="number" min="1" max="3650" name="lease_application_retention_days" value="{{ old('lease_application_retention_days', $settings['lease_application_retention_days']) }}" class="input" required><span class="field-help">Lease applications and private ID images are purged this many days after decline. Abandoned drafts are removed after 24 hours.</span></label>
+                <label class="field-label">Declined ID and application retention (days)<input type="number" min="1" max="3650" name="lease_application_retention_days" value="{{ old('lease_application_retention_days', $settings['lease_application_retention_days']) }}" class="input" required><span class="field-help">Declined lease applications, replaced or archived guest ID images, and IDs of cancelled or expired bookings are purged this many days later. Abandoned drafts are removed after 24 hours.</span></label>
                 <div class="md:col-span-2">
                     @php
                         $messageFields = [

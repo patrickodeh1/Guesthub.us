@@ -181,7 +181,6 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::get('/guide/{category:slug}', [GuestController::class, 'category'])->name('category');
     Route::get('/guide/{category:slug}/events', [GuestController::class, 'moreEvents'])->name('category.events');
     Route::post('/pre-arrival-viewed', [GuestController::class, 'preArrivalViewed'])->middleware('throttle:30,1')->name('pre-arrival-viewed');
-    Route::post('/cancel-direct-booking', [DirectBookingController::class, 'cancel'])->middleware('throttle:5,1')->name('cancel-direct-booking');
 });
 
 Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access', 'property.access'])->prefix('admin')->name('admin.')->group(function () {
@@ -266,6 +265,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::middleware('role:admin')->group(function () {
         Route::get('features', [FeatureController::class, 'index'])->name('features.index');
         Route::put('features/{feature}', [FeatureController::class, 'update'])->name('features.update');
+        Route::post('features/direct-booking-settings', [FeatureController::class, 'updateDirectBooking'])->name('features.direct-settings');
     });
 
     Route::middleware('role:admin,owner')->prefix('lease-applications')->name('lease-applications.')->group(function () {

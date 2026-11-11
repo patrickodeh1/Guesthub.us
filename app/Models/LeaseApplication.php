@@ -81,6 +81,10 @@ class LeaseApplication extends Model
         'submitted_at',
         'declined_at',
         'screening_requested_at',
+        'id_type',
+        'id_back_scan_path',
+        'fee_policy_accepted_at',
+        'fee_policy_accepted_at',
     ];
 
     protected function casts(): array

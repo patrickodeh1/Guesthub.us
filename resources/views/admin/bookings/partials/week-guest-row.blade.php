@@ -83,9 +83,9 @@
 
             @unless($booking->isCancelled())
                 <div class="my-1 border-t border-slate-100"></div>
-                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')">
+                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" @if($booking->source === 'direct') @php($suggested = app(\App\Services\DirectBookingCancellationPolicy::class)->suggestedPercent($booking)) onsubmit="var p = prompt('Cancel this direct booking and release the dates.\nCard refund percent (0-100). The listing policy suggests {{ $suggested }}% right now.', '{{ $suggested }}'); if (p === null) return false; this.refund_percent.value = p.trim(); return true;" @else onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')" @endif>
                     @csrf
-                    <input type="hidden" name="status" value="cancelled">
+                    <input type="hidden" name="status" value="cancelled">@if($booking->source === 'direct')<input type="hidden" name="refund_percent" value="">@endif
                     <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"><x-icon name="x" class="h-4 w-4" />Cancel Reservation</button>
                 </form>
             @endunless

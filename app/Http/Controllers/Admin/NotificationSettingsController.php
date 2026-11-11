@@ -23,6 +23,8 @@ class NotificationSettingsController extends Controller
             'staffRoles' => GuestAlertService::STAFF_ROLES,
             'cleaningEvents' => \App\Services\CleaningMessages::EVENTS,
             'cleaningConfig' => \App\Services\CleaningMessages::config(),
+            'directEvents' => \App\Services\DirectBookingMessages::EVENTS,
+            'directConfig' => \App\Services\DirectBookingMessages::config(),
         ]);
     }
 
@@ -37,6 +39,10 @@ class NotificationSettingsController extends Controller
             'cleaning.*.message' => ['nullable', 'string', 'max:1000'],
             'cleaning.*.enabled' => ['nullable', 'boolean'],
             'cleaning.*._complete' => ['nullable', 'boolean'],
+            'direct' => ['nullable', 'array'],
+            'direct.*.enabled' => ['nullable', 'boolean'],
+            'direct.*.subject' => ['nullable', 'string', 'max:200'],
+            'direct.*.message' => ['nullable', 'string', 'max:2000'],
         ];
         foreach ([
             'notify_cleaning_started_global',
@@ -94,11 +100,28 @@ class NotificationSettingsController extends Controller
 
         GuestAlertService::putConfig($config);
         \App\Services\CleaningMessages::put($data['cleaning'] ?? []);
+        if ($request->has('direct')) {
+            \App\Services\DirectBookingMessages::put($data['direct']);
+        }
 
         ActivityLog::record('guest_alerts_updated', 'Guest lifecycle alert messages and send preferences were updated.', 'settings');
 
         return back()->with('success', 'Notification settings saved.'.($skipped
             ? ' WARNING: '.count($skipped).' events were not received and kept their old values ('.implode(', ', $skipped).'). Raise max_input_vars on the server.'
             : ''));
+    }
+
+    public function updateDirect(Request $request)
+    {
+        $data = $request->validate([
+            'direct' => ['nullable', 'array'],
+            'direct.*.enabled' => ['nullable', 'boolean'],
+            'direct.*.subject' => ['nullable', 'string', 'max:200'],
+            'direct.*.message' => ['nullable', 'string', 'max:2000'],
+        ]);
+        \App\Services\DirectBookingMessages::put($data['direct'] ?? []);
+        ActivityLog::record('direct_booking_emails_updated', 'Direct booking email templates were updated.', 'settings');
+
+        return back()->with('success', 'Direct booking emails saved.');
     }
 }

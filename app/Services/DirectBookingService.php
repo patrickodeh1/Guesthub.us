@@ -161,7 +161,7 @@ class DirectBookingService
         });
 
         if ($confirmed) {
-            $this->notifyGuest($booking->fresh('property'), 'Booking confirmed', 'Your card payment was received and your stay is confirmed.', 'Your stay is confirmed.');
+            $this->sendTemplate($booking->fresh('property'), 'guest_card_paid', 'View your booking');
 
             return;
         }
@@ -196,7 +196,7 @@ class DirectBookingService
             ]);
         });
 
-        $this->notifyGuest($booking->fresh('property'), 'Booking confirmed', 'Your host confirmed receipt of your manual payment. Your stay is confirmed.', 'Your stay is confirmed.');
+        $this->sendTemplate($booking->fresh('property'), 'guest_manual_confirmed', 'View your booking');
     }
 
     public function approveRequest(Booking $booking): void
@@ -319,7 +319,7 @@ class DirectBookingService
         return true;
     }
 
-    public function cancel(Booking $booking, bool $guestCancellation, ?string $reason = null): int
+    public function cancel(Booking $booking, bool $guestCancellation, ?string $reason = null, ?int $refundPercent = null): int
     {
         abort_unless($booking->source === 'direct', 404);
         if (in_array($booking->status, ['cancelled', 'canceled', 'declined', 'expired'], true)) {
@@ -327,7 +327,7 @@ class DirectBookingService
         }
 
         $refundCents = 0;
-        BookingConflictService::withPropertyLock((int) $booking->property_id, function () use ($booking, $guestCancellation, $reason, &$refundCents): void {
+        BookingConflictService::withPropertyLock((int) $booking->property_id, function () use ($booking, $guestCancellation, $reason, $refundPercent, &$refundCents): void {
             $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->source === 'direct' && ! in_array($locked->status, ['cancelled', 'canceled', 'declined', 'expired'], true), 409);
 
@@ -337,9 +337,7 @@ class DirectBookingService
                 ->latest()
                 ->first();
             if ($paidCharge) {
-                $refundCents = $guestCancellation
-                    ? $this->cancellationPolicy->refundableCents($locked, $paidCharge)
-                    : $paidCharge->amount_cents - $paidCharge->refunded_cents;
+                $refundCents = $this->cancellationPolicy->refundableCents($locked, $paidCharge, $guestCancellation ? null : ($refundPercent ?? 100));
                 if ($refundCents > 0) {
                     $this->payments->refund($paidCharge, $refundCents);
                 }
@@ -354,6 +352,7 @@ class DirectBookingService
                 'cancelled_by_guest' => $guestCancellation,
                 'decline_reason' => $reason,
                 'hold_expires_at' => null,
+                'archived_at' => now(),
             ]);
         });
 
@@ -364,7 +363,13 @@ class DirectBookingService
             : ($booking->payment_method === 'manual' && $booking->payment_confirmed_at
                 ? 'Your booking was cancelled. Please contact the host to arrange any manual-payment refund.'
                 : 'Your booking was cancelled.');
+        $this->refundText = $refundCents > 0
+            ? 'A refund of $'.number_format($refundCents / 100, 2).' was initiated.'
+            : ($booking->payment_method === 'manual' && $booking->payment_confirmed_at
+                ? 'Please contact the host to arrange any manual-payment refund.'
+                : '');
         $this->notifyGuest($booking, 'Booking cancelled', $message, 'Browse other stays');
+        $this->refundText = '';
 
         return $refundCents;
     }
@@ -383,12 +388,13 @@ class DirectBookingService
     private function notifyStarted(Booking $booking, bool $requestBooking): void
     {
         $owner = $booking->property?->owner;
-        if ($owner?->email) {
+        $hostMsg = \App\Services\DirectBookingMessages::render($requestBooking ? 'host_new_request' : 'host_new_booking', $booking);
+        if ($owner?->email && $hostMsg) {
             EmailNotificationService::sendDirectBooking(
                 $booking,
                 $owner->email,
-                $requestBooking ? 'New booking request' : 'New direct booking',
-                "{$booking->guest_name} requested {$booking->check_in_date->format('M j')}–{$booking->check_out_date->format('M j, Y')} for {$booking->guests_count} guests. Reference: {$booking->booking_id}.",
+                $hostMsg['subject'],
+                $hostMsg['message'],
                 route('admin.guests.show', $booking),
                 $requestBooking ? 'Review request' : 'Review booking',
             );
@@ -417,10 +423,93 @@ class DirectBookingService
             .' Your dates are held for 24 hours; the host must confirm receipt before the booking is final.');
     }
 
-    private function notifyGuest(Booking $booking, string $subject, string $message, string $action, ?string $url = null): void
+    public function notifyHost(Booking $booking, bool $reminder = false): void
+    {
+        try {
+            $booking->loadMissing(['property.owner', 'hostPaymentMethod']);
+            $email = $booking->property?->owner?->email;
+            if (! $email) {
+                return;
+            }
+            $amount = '$'.number_format(((int) $booking->total_cents) / 100, 2);
+            $dates = $booking->check_in_date->format('M j').' to '.$booking->check_out_date->format('M j, Y');
+            $url = url('/admin/guests');
+            foreach (['admin.guests.show', 'admin.bookings.show'] as $name) {
+                if (\Illuminate\Support\Facades\Route::has($name)) {
+                    $url = route($name, $booking);
+                    break;
+                }
+            }
+            if ($booking->direct_booking_request && ! $booking->direct_booking_approved_at) {
+                $subject = 'New booking request to review';
+                $message = "{$booking->guest_name} requested {$booking->property->name} ({$dates}). Open the booking to approve or decline.";
+                $action = 'Review request';
+            } else {
+                $method = $booking->hostPaymentMethod?->label ?: 'your payment method';
+                $subject = $reminder ? 'Payment reminder: booking hold ends soon' : 'New booking waiting for your payment confirmation';
+                $message = "{$booking->guest_name} booked {$booking->property->name} ({$dates}). Check {$method} for {$amount} with reference {$booking->booking_id}, then mark the payment received. "
+                    .'The dates are held until '.($booking->hold_expires_at?->format('M j, g:i A') ?? 'the hold expires').' and are released if the payment is not confirmed.';
+                $action = 'Confirm payment';
+            }
+            if ($reminder) {
+                $tpl = \App\Services\DirectBookingMessages::render('host_payment_reminder', $booking, ['{message}' => $message]);
+                if ($tpl === null) {
+                    return;
+                }
+                $subject = $tpl['subject'];
+                $message = $tpl['message'];
+            }
+            EmailNotificationService::sendDirectBooking($booking, $email, $subject, $message, $url, $action);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Host notification failed', ['booking' => $booking->booking_id, 'message' => $e->getMessage()]);
+        }
+    }
+
+    private function sendTemplate(Booking $booking, string $key, string $action, array $vars = []): void
+    {
+        $m = \App\Services\DirectBookingMessages::render($key, $booking, $vars);
+        if ($m) {
+            $this->notifyGuest($booking, $m['subject'], $m['message'], $action, null, true);
+        }
+    }
+
+    private function helpLine(): string
+    {
+        return ' Need to cancel or change your booking? Open your guest portal and use Call or Contact, and our team will help.';
+    }
+
+    private string $refundText = '';
+
+    private const TEMPLATE_BY_SUBJECT = [
+        'Complete your booking' => 'guest_started_card',
+        'Manual payment instructions' => 'guest_started_manual',
+        'Booking request received' => 'guest_request_received',
+        'Booking request approved' => 'guest_request_approved',
+        'Booking request update' => 'guest_request_declined',
+        'Booking hold reminder' => 'guest_hold_reminder',
+        'Booking hold expired' => 'guest_hold_expired',
+        'Booking cancelled' => 'guest_cancelled',
+    ];
+
+    private function notifyGuest(Booking $booking, string $subject, string $message, string $action, ?string $url = null, bool $raw = false): void
     {
         if (! $booking->email) {
             return;
+        }
+        if (! $raw && isset(self::TEMPLATE_BY_SUBJECT[$subject])) {
+            $booking->loadMissing('hostPaymentMethod');
+            $pm = $booking->hostPaymentMethod;
+            $rendered = \App\Services\DirectBookingMessages::render(self::TEMPLATE_BY_SUBJECT[$subject], $booking, [
+                '{message}' => $message,
+                '{instructions}' => trim(($pm?->handle ? 'Payment reference/account: '.$pm->handle.'. ' : '').($pm?->instructions ?: 'Use booking reference '.$booking->booking_id.'.')),
+                '{reason}' => (string) $booking->decline_reason,
+                '{refund_text}' => $this->refundText,
+            ]);
+            if (! $rendered) {
+                return;
+            }
+            $subject = $rendered['subject'];
+            $message = $rendered['message'];
         }
         EmailNotificationService::sendDirectBooking(
             $booking,

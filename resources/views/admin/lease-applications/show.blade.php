@@ -21,7 +21,10 @@
                     <div><dt class="font-medium">Current address</dt><dd>{{ $application->current_address }}</dd></div>
                 </dl>
                 @if($application->id_scan_path)
-                    <a class="mt-4 inline-block underline" href="{{ route('admin.lease-applications.id', $application) }}">View private ID image</a>
+                    <a class="mt-4 inline-block underline" href="{{ route('admin.lease-applications.id', $application) }}">View ID front</a>
+                    @if($application->id_back_scan_path)
+                        <a class="mt-4 ml-4 inline-block underline" href="{{ route('admin.lease-applications.id', $application) }}?side=back">View ID back</a>
+                    @endif
                 @endif
             </section>
             <section class="rounded-lg bg-white p-5 shadow">
@@ -31,7 +34,6 @@
                     <div><dt class="font-medium">Lease term</dt><dd>{{ $application->lease_term_months }} months</dd></div>
                     <div><dt class="font-medium">Occupants</dt><dd>{{ $application->occupants }}</dd></div>
                     <div><dt class="font-medium">Pets</dt><dd>{{ $application->pets ?: 'None listed' }}</dd></div>
-                    <div><dt class="font-medium">Vehicles</dt><dd>{{ $application->vehicles ?: 'None listed' }}</dd></div>
                     <div><dt class="font-medium">Time at current address</dt><dd>{{ $application->current_address_months }} months</dd></div>
                 </dl>
             </section>
@@ -54,12 +56,6 @@
                     <form method="post" action="{{ route('admin.lease-applications.fee-received', $application) }}" class="mt-3">
                         @csrf
                         <button class="rounded bg-[var(--button-primary-color)] px-4 py-2 text-[var(--on-primary)] hover:bg-[var(--button-primary-hover)]">Mark manual fee received</button>
-                    </form>
-                @endif
-                @if($application->listing->screening_provider_url)
-                    <form method="post" action="{{ route('admin.lease-applications.screening', $application) }}" class="mt-3">
-                        @csrf
-                        <button class="rounded border px-4 py-2">Request screening</button>
                     </form>
                 @endif
             </section>

@@ -59,6 +59,16 @@
                     </div>
                 @endforeach
                 <div class="ns-g">
+                    <div class="ns-gh">Direct booking, lease and system emails</div>
+                    @foreach($directEvents as $dkey => $dmeta)
+                        <div class="ns-row" data-id="d_{{ $dkey }}" data-name="{{ mb_strtolower($dmeta['label']) }}">
+                            <span class="nm">{{ $dmeta['label'] }}<span class="sub"></span></span>
+                            <i class="dot" title="Customized wording" hidden></i>
+                            <button type="button" class="sw" role="switch" aria-checked="false" aria-label="Send {{ $dmeta['label'] }}" data-id="d_{{ $dkey }}"></button>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="ns-g">
                     <div class="ns-gh">Cleaning and staff</div>
                     <div class="ns-row" data-id="g_globals" data-name="global cleaning switches">
                         <span class="nm">Global cleaning switches<span class="sub"></span></span>
@@ -133,6 +143,31 @@
                         @endforeach
                     </div>
                 </section>
+
+                @foreach($directEvents as $dkey => $dmeta)
+                    @php
+                        $drow = $directConfig[$dkey];
+                        $daud = str_starts_with($dkey, 'staff_') ? 'Staff' : (str_starts_with($dkey, 'host_') ? 'Host' : 'Guest');
+                        $dtokens = ['guest_name','booking_id','property','dates','amount','method','hold_until','guests','instructions','reason','refund_text','applicant_name','application_id','fee_amount','status','sender_name','sender_email','sender_phone','sender_subject','contact_message','request_type','details','lead_name','lead_email','lead_phone','lead_role','lead_message','site_name'];
+                    @endphp
+                    <section class="ns-e" data-id="d_{{ $dkey }}" data-kind="direct" data-aud="{{ $daud }}" hidden>
+                        <div class="ns-eh">
+                            <h2>{{ $dmeta['label'] }}</h2><span class="cu" hidden>customized</span>
+                            <button type="button" class="sw" role="switch" aria-checked="false" aria-label="Send {{ $dmeta['label'] }}" data-id="d_{{ $dkey }}"></button>
+                        </div>
+                        <p class="hint">Email to the {{ strtolower($daud) }}. Turn the switch off to stop this email completely.</p>
+                        <input type="checkbox" class="en" name="direct[{{ $dkey }}][enabled]" value="1" {{ old("direct.$dkey.enabled", $drow['enabled']) ? 'checked' : '' }} hidden>
+                        <label class="lb">Subject</label>
+                        <input type="text" class="input" maxlength="200" name="direct[{{ $dkey }}][subject]" value="{{ old("direct.$dkey.subject", $drow['subject']) }}">
+                        <label class="lb">Message</label>
+                        <textarea name="direct[{{ $dkey }}][message]" rows="4" class="input ta" maxlength="2000" data-def="{{ $dmeta['message'] }}">{{ old("direct.$dkey.message", $drow['message']) }}</textarea>
+                        <div class="pv"></div>
+                        <div class="tools">
+                            <select class="tokpick"><option value="">Insert variable…</option>@foreach($dtokens as $t)<option value="{{ '{'.$t.'}' }}">{{ '{'.$t.'}' }}</option>@endforeach</select>
+                            <button type="button" class="lnk" data-reset-direct data-subject="{{ $dmeta['subject'] }}" data-default="{{ $dmeta['message'] }}">Reset wording to default</button>
+                        </div>
+                    </section>
+                @endforeach
 
                 @foreach($cleaningEvents as $ckey => $cmeta)
                     @php
@@ -235,7 +270,7 @@
 <script>
 (function () {
   var f = document.getElementById('ns'); if (!f) return;
-  var S = {guest_name:'Maya Rodriguez',guest_first_name:'Maya',property_name:'Lakeview Cottage',property_guest_name:'Lakeview Cottage',property_internal_name:'Lakeview 2B',check_in_date:'Fri, Oct 24',check_in_time:'4:00 PM',check_out_date:'Mon, Oct 27',check_out_time:'11:00 AM',parking_status:'Approved',step_name:'Background Check',guest_link:'guesthub.us/g/abc123',admin_link:'guesthub.us/admin/b/42',id_side:'front',decline_reason:'photo is blurry',pending_text:'your ID is still needed.',result:'approved',requested_time:'2:00 PM',cleaner:'Ana',when:'Fri, Oct 24 at 10:00 AM',old_when:'Fri, Oct 24 at 9:00 AM',lead:'1 hour',time:'10:00 AM',guest:'Maya Rodriguez',job_id:'1042',assign_link:'guesthub.us/manage/sessions?assign=1042',session_link:'guesthub.us/sessions/1042'};
+  var S = {booking_id:'DB-AB12CD34',property:'Lakeview Cottage',dates:'Oct 24 to Oct 27, 2026',amount:'$482.00',method:'Venmo',hold_until:'Oct 23, 4:00 PM',guests:'2',message:'',applicant_name:'Maya Rodriguez',sender_name:'Alex Carter',lead_name:'Alex Carter',lead_email:'alex@example.com',lead_phone:'555-0100',lead_role:'Host',lead_message:'Interested in early access.',site_name:'GuestHub',sender_email:'alex@example.com',sender_phone:'555-0100',sender_subject:'Question about my stay',contact_message:'Hello, I have a question.',request_type:'Delete my data',details:'Please delete my account.',application_id:'42',fee_amount:'$35.00',status:'approved',instructions:'Send to @lakeview-stays and use the booking reference.',reason:'The dates are no longer available.',refund_text:'A refund of $241.00 was initiated.',guest_name:'Maya Rodriguez',guest_first_name:'Maya',property_name:'Lakeview Cottage',property_guest_name:'Lakeview Cottage',property_internal_name:'Lakeview 2B',check_in_date:'Fri, Oct 24',check_in_time:'4:00 PM',check_out_date:'Mon, Oct 27',check_out_time:'11:00 AM',parking_status:'Approved',step_name:'Background Check',guest_link:'guesthub.us/g/abc123',admin_link:'guesthub.us/admin/b/42',id_side:'front',decline_reason:'photo is blurry',pending_text:'your ID is still needed.',result:'approved',requested_time:'2:00 PM',cleaner:'Ana',when:'Fri, Oct 24 at 10:00 AM',old_when:'Fri, Oct 24 at 9:00 AM',lead:'1 hour',time:'10:00 AM',guest:'Maya Rodriguez',job_id:'1042',assign_link:'guesthub.us/manage/sessions?assign=1042',session_link:'guesthub.us/sessions/1042'};
   var $ = function (s, r) { return (r || f).querySelector(s); };
   var $$ = function (s, r) { return [].slice.call((r || f).querySelectorAll(s)); };
   var eds = {}, rows = {}, snap = {}, base = {}, dirty = {}, state = 'all', q = '';
@@ -247,12 +282,12 @@
   function isOn(e) {
     var k = e.dataset.kind;
     if (k === 'alert') return cb(e).some(function (i) { return i.checked; });
-    if (k === 'clean') return $('.en', e).checked;
+    if (k === 'clean' || k === 'direct') return $('.en', e).checked;
     return true;
   }
   function setOn(e, on) {
     var k = e.dataset.kind, id = e.dataset.id;
-    if (k === 'clean') { $('.en', e).checked = on; return; }
+    if (k === 'clean' || k === 'direct') { $('.en', e).checked = on; return; }
     if (k !== 'alert') return;
     if (!on) {
       snap[id] = cb(e).filter(function (i) { return i.checked; });
@@ -275,7 +310,7 @@
       var t = cb(e).some(function (i) { return i.checked && /_sms\]/.test(i.name); });
       var m = cb(e).some(function (i) { return i.checked && /_email\]/.test(i.name); });
       sub = on ? [t ? 'Text' : '', m ? 'Email' : ''].filter(Boolean).join(', ') : 'Off';
-    } else if (k === 'clean') {
+    } else if (k === 'clean' || k === 'direct') {
       sub = on ? e.dataset.aud : 'Off';
     } else {
       var all = $$('input[type=checkbox]', e);
@@ -440,6 +475,11 @@
       $('textarea[name$="[guest_message]"]', e1).value = b.dataset.guest;
       $('textarea[name$="[staff_message]"]', e1).value = b.dataset.staff;
       sync(e1.dataset.id); return;
+    }
+    if ((b = t.closest('[data-reset-direct]'))) {
+      ev.preventDefault(); var e3 = b.closest('.ns-e');
+      $('input[name$="[subject]"]', e3).value = b.dataset.subject;
+      $('textarea', e3).value = b.dataset.default; sync(e3.dataset.id); return;
     }
     if ((b = t.closest('[data-reset-clean]'))) {
       ev.preventDefault(); var e2 = b.closest('.ns-e');

@@ -96,7 +96,7 @@ class PaymentService
             throw new \InvalidArgumentException('A direct booking payment must be greater than zero.');
         }
 
-        $platformFee = $this->platformFeeCents($amountCents);
+        $platformFee = min($amountCents - 1, $this->platformFeeCents($amountCents) + max(0, (int) $booking->processing_fee_cents));
         $parameters = [
             'amount' => $amountCents,
             'currency' => 'usd',
@@ -340,6 +340,7 @@ class PaymentService
             throw new \InvalidArgumentException('This charge cannot be refunded for the requested amount.');
         }
 
+        \Stripe\Stripe::setMaxNetworkRetries(1);
         $this->client()->refunds->create(
             [
                 'payment_intent' => $charge->stripe_payment_intent_id,
