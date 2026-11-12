@@ -25,7 +25,7 @@ class DirectBookingController extends Controller
             try { $nights = \Carbon\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\Carbon\Carbon::parse($request->query('check_out'))->startOfDay()); }
             catch (\Throwable $e) { $nights = 0; }
             if ($nights >= 29) {
-                return redirect()->route('public.lease-application.apply', $listingSlug, 302)->with('lease_prefill', [
+                return redirect()->route('public.lease-application.apply', $listingSlug)->with('lease_prefill', [
                     'check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1),
                 ]);
             }
@@ -62,6 +62,17 @@ class DirectBookingController extends Controller
         ]);
         if ($request->filled('website')) {
             throw ValidationException::withMessages(['checkout' => 'Unable to process this request.']);
+        }
+        $listing = $this->publishedListing($listingSlug);
+        if (($listing->listing_type ?? 'both') === 'long_term') {
+            abort_unless($listing->lease_enabled, 404);
+            return redirect()->route('public.lease-application.apply', $listingSlug);
+        }
+        $nights = \Carbon\Carbon::parse($data['check_in'])->startOfDay()->diffInDays(\Carbon\Carbon::parse($data['check_out'])->startOfDay());
+        if ($nights >= 29 && $listing->lease_enabled && $listing->lease_auto_route_29_nights) {
+            return redirect()->route('public.lease-application.apply', $listingSlug)->with('lease_prefill', [
+                'check_in' => $data['check_in'], 'check_out' => $data['check_out'], 'guests' => $data['guests'],
+            ]);
         }
         $data['phone'] = \App\Support\PhoneFormatter::normalizeForStorage(
             $data['phone'] ?? null,
