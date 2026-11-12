@@ -16,7 +16,7 @@ class LeaseOfferController extends Controller
         $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod']);
         $clientSecret = null;
         $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
-        if ($offer->status === LeaseOffer::STATUS_SIGNED && $offer->payment_method === 'card' && $nextInstallment) {
+        if (in_array($offer->status, [LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true) && $offer->payment_method === 'card' && $nextInstallment) {
             $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
             $clientSecret = $intent['client_secret'];
         }
@@ -44,7 +44,7 @@ class LeaseOfferController extends Controller
         foreach (Charge::query()->where('lease_offer_id', $offer->id)->where('status', Charge::STATUS_PENDING)->get() as $charge) {
             try { $payments->cancelPendingIntent($charge); $charge->update(['status' => Charge::STATUS_FAILED]); } catch (\Throwable $e) { report($e); }
         }
-        $offer->update(['status' => LeaseOffer::STATUS_DECLINED, 'declined_at' => now(), 'declined_reason' => $request->input('reason')]);
+        $offer->installments()->where('status', 'pending')->update(['status' => 'waived']);\n        $offer->update(['status' => LeaseOffer::STATUS_DECLINED, 'declined_at' => now(), 'declined_reason' => $request->input('reason')]);
         $offer->booking?->update(['status' => 'declined', 'cancelled_at' => now(), 'hold_expires_at' => null]);
         if ($offer->booking) app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($offer->booking->fresh());
         return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])->with('status', 'You declined this rental offer. The dates have been released.');
