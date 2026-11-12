@@ -15,23 +15,23 @@ class LeaseOfferController extends Controller
         $offer = $this->findOffer($application, $applicationToken, $offerToken);
         $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod', 'booking']);
         $clientSecret = null;
-        $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
-        if ((($offer->status === LeaseOffer::STATUS_CONFIRMED) || ($offer->status === LeaseOffer::STATUS_SIGNED && $offer->accept_by?->isFuture())) && $offer->payment_method === 'card') {
-            for ($attempt = 0; $attempt < 3 && $nextInstallment; $attempt++) {
-                $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
-                $nextInstallment->refresh();
-                if ($nextInstallment->status === 'pending') {
-                    $clientSecret = $intent['client_secret'];
-                    break;
-                }
-                $offer->load(['installments']);
-                $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
-            }
+        $initialPaymentPending = $offer->installments->where('required_at_signing', true)->contains(fn ($i) => $i->status === 'pending');
+        $nextInstallment = $offer->status === LeaseOffer::STATUS_CONFIRMED
+            ? $offer->installments->first(fn ($i) => ! $i->required_at_signing && $i->status === 'pending')
+            : null;
+
+        if ($offer->status === LeaseOffer::STATUS_SIGNED && $initialPaymentPending && $offer->accept_by?->isFuture() && $offer->payment_method === 'card') {
+            $intent = $payments->createLeaseOfferInitialPaymentIntent($offer);
+            $clientSecret = $intent['client_secret'];
+        } elseif ($offer->status === LeaseOffer::STATUS_CONFIRMED && $nextInstallment && $offer->payment_method === 'card') {
+            $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
+            $clientSecret = $intent['client_secret'];
         }
         return view('public.lease-offer', [
             'offer' => $offer->fresh(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod', 'booking']),
             'clientSecret' => $clientSecret,
             'nextInstallment' => $nextInstallment,
+            'initialPaymentPending' => $initialPaymentPending,
             'publishableKey' => config('services.stripe.key'),
             'stripeAccountId' => $offer->property->owner?->stripe_account_id,
         ]);
@@ -65,7 +65,7 @@ class LeaseOfferController extends Controller
         $data = $request->validate(['payment_intent_id' => ['required', 'string', 'max:255']]);
         $charge = Charge::query()->where('lease_offer_id', $offer->id)
             ->where('stripe_payment_intent_id', $data['payment_intent_id'])->first();
-        abort_unless($charge && $charge->lease_installment_id, 404);
+        abort_unless($charge && in_array($charge->type, [Charge::TYPE_LEASE_INITIAL_PAYMENT, 'lease_installment'], true), 404);
         $charge = $payments->finalize($data['payment_intent_id']);
         if (! $charge || $charge->status !== Charge::STATUS_SUCCESS) {
             return response()->json(['ok' => false, 'error' => 'Payment could not be confirmed.'], 422);
