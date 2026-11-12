@@ -87,7 +87,7 @@
                     <button class="lease-button">Sign rental agreement</button>
                 </form>
             </section>
-        @elseif($offer->status === 'signed')
+        @elseif(in_array($offer->status, ['signed', 'confirmed'], true))
             <section class="lease-card">
                 <h2 style="font-size:1.15rem;font-weight:750">Initial payment</h2>
                 @if($offer->payment_method === 'manual')
