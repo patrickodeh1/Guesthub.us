@@ -39,7 +39,7 @@ class Charge extends Model
     public const STATUS_REFUNDED = 'refunded';
 
     protected $fillable = [
-        'booking_id', 'lease_application_id', 'type', 'amount_cents', 'status',
+        'booking_id', 'lease_application_id', 'lease_offer_id', 'lease_installment_id', 'type', 'amount_cents', 'status',
         'stripe_payment_intent_id', 'billing_moment',
         'captured_at', 'released_at', 'description', 'stripe_account_id', 'refunded_cents',
     ];
