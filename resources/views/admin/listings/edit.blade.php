@@ -245,6 +245,19 @@
                         <input type="checkbox" name="lease_enabled" value="1" @checked(old('lease_enabled', $listing->lease_enabled))>
                         Accept long-term lease applications
                     </label>
+                    <label class="field-label">Advertised stay type
+                        <select name="listing_type" class="input">
+                            <option value="both" @selected(old('listing_type', $listing->listing_type ?? 'both') === 'both')>Short-term and long-term</option>
+                            <option value="short_term" @selected(old('listing_type', $listing->listing_type ?? 'both') === 'short_term')>Short-term only</option>
+                            <option value="long_term" @selected(old('listing_type', $listing->listing_type ?? 'both') === 'long_term')>Long-term only</option>
+                        </select>
+                        <span class="text-xs text-slate-500">Long-term only hides the nightly booking form and directs guests to apply.</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm font-medium md:col-span-2">
+                        <input type="hidden" name="lease_auto_route_29_nights" value="0">
+                        <input type="checkbox" name="lease_auto_route_29_nights" value="1" @checked(old('lease_auto_route_29_nights', $listing->lease_auto_route_29_nights ?? true))>
+                        Automatically send stays of 29 nights or more to the lease application
+                    </label>
                     <label class="field-label">Application fee (USD)
                         <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input inputmode="decimal" name="lease_application_fee" value="{{ old('lease_application_fee', $listing->lease_application_fee_cents !== null ? number_format($listing->lease_application_fee_cents / 100, 2, '.', '') : '') }}" class="input" placeholder="0.00"></div>
                         @error('lease_application_fee')<span class="field-help text-red-700">{{ $message }}</span>@enderror
