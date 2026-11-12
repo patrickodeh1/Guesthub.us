@@ -21,7 +21,8 @@ class ExpireLeaseOffers extends Command
                     \Illuminate\Support\Facades\DB::transaction(function () use ($offer, &$count) {
                         $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->first();
                         if (! $locked || ! in_array($locked->status, [LeaseOffer::STATUS_SENT, LeaseOffer::STATUS_SIGNED], true) || $locked->accept_by?->isFuture()) return;
-                        $locked->update(['status' => LeaseOffer::STATUS_EXPIRED, 'expired_at' => now()]);\n                        $locked->installments()->where('status', 'pending')->update(['status' => 'waived']);
+                        $locked->update(['status' => LeaseOffer::STATUS_EXPIRED, 'expired_at' => now()]);
+                        $locked->installments()->where('status', 'pending')->update(['status' => 'waived']);
                         if ($locked->booking) $locked->booking->update(['status' => 'expired', 'cancelled_at' => now(), 'hold_expires_at' => null]);
                         $count++;
                     });
