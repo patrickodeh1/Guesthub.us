@@ -15,7 +15,7 @@ class LeaseOfferController extends Controller
         $offer = $this->findOffer($application, $applicationToken, $offerToken);
         $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod']);
         $clientSecret = null;
-        $nextInstallment = $offer->installments->first(fn ($i) => $i->required_at_signing && $i->status === 'pending');
+        $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
         if ($offer->status === LeaseOffer::STATUS_SIGNED && $offer->payment_method === 'card' && $nextInstallment) {
             $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
             $clientSecret = $intent['client_secret'];
