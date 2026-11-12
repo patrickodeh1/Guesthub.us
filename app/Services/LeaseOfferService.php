@@ -142,6 +142,7 @@ class LeaseOfferService
         abort_unless((int)$offer->property->owner_id===$hostId || auth()->user()?->hasRole('admin'),403);
         abort_unless(in_array($offer->status,[LeaseOffer::STATUS_SIGNED,LeaseOffer::STATUS_CONFIRMED],true) && $offer->payment_method==='manual',409);
         if ($offer->status === LeaseOffer::STATUS_SIGNED) abort_unless($offer->accept_by?->isFuture(), 409, 'This offer has expired.');
+        abort_unless(! $installment->required_at_signing, 409, 'The initial rent, deposit and fees must be recorded together.');
         abort_unless($installment->status===LeaseInstallment::STATUS_PENDING,409);
         $installment->update(['status'=>LeaseInstallment::STATUS_PAID,'method'=>'manual','paid_at'=>now(),'received_by'=>$hostId]);
         $this->confirmIfReady($offer);
