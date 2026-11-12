@@ -54,6 +54,16 @@ class Charge extends Model
         ];
     }
 
+    public function leaseOffer(): BelongsTo
+    {
+        return $this->belongsTo(LeaseOffer::class, 'lease_offer_id');
+    }
+
+    public function leaseInstallment(): BelongsTo
+    {
+        return $this->belongsTo(LeaseInstallment::class, 'lease_installment_id');
+    }
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
