@@ -33,6 +33,8 @@ class PaymentReceiptController extends Controller
             ->where('booking_id', $bookingId)
             ->where('token', $token)
             ->where('source', 'direct')
+            ->whereNull('lease_offer_id')
+            ->whereNull('lease_application_id')
             ->firstOrFail();
     }
 }
