@@ -82,12 +82,15 @@ class LeaseOfferService
                     'due_date'=>$start->toDateString(),'amount_cents'=>$amount,'required_at_signing'=>true,'sort_order'=>$sort,
                 ]);
             }
+            $remainingInitialRent = $initialRentCents;
             for ($m=0;$m<$months;$m++) {
                 $due=$start->copy()->addMonthsNoOverflow($m);
+                $requiredNow = $remainingInitialRent >= $rent;
                 $offer->installments()->create([
                     'kind'=>LeaseInstallment::KIND_RENT,'label'=>'Rent · '.$due->format('F Y'),
-                    'due_date'=>$due->toDateString(),'amount_cents'=>$rent,'required_at_signing'=>$m===0,'sort_order'=>10+$m,
+                    'due_date'=>$due->toDateString(),'amount_cents'=>$rent,'required_at_signing'=>$requiredNow,'sort_order'=>10+$m,
                 ]);
+                if ($requiredNow) $remainingInitialRent -= $rent;
             }
             app(AvailabilityLedger::class)->syncBooking($booking);
             return $offer->load(['installments','booking','application']);
