@@ -140,6 +140,14 @@ class LeaseApplicationAdminController extends Controller
         return back()->with('success', 'Rental offer cancelled and its calendar dates released. Paid installments remain in the payment history; review any refund separately.');
     }
 
+    public function markInitialPaymentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id, 404);
+        $service->markInitialPaymentPaid($offer, (int) $request->user()->id);
+        return back()->with('success', 'Combined initial payment recorded: first month rent, security deposit and additional fees.');
+    }
+
     public function markInstallmentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseInstallment $installment, LeaseOfferService $service)
     {
         $this->authorizeApplication($request, $application);
