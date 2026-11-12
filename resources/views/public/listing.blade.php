@@ -266,6 +266,17 @@
                         @endif
                     </form>
                     <p id="quote-error" class="quote-error" role="status" aria-live="polite"></p>
+                    <dialog id="lease-choice-dialog" class="amenities-dialog" aria-labelledby="lease-choice-title">
+                        <div class="dialog-toolbar">
+                            <h2 id="lease-choice-title">Your stay qualifies for a long-term lease</h2>
+                            <button type="button" class="icon-button" data-lease-choice-close aria-label="Close">×</button>
+                        </div>
+                        <p class="section-copy">Your selected dates are 29 nights or longer. You can apply for a long-term lease or continue with a regular booking.</p>
+                        <div class="lease-choice-actions">
+                            <a id="lease-apply-link" class="primary-button" href="{{ route('public.lease-application.apply', $listing->listing_slug) }}">Apply for a long-term lease</a>
+                            <button type="button" id="lease-direct-link" class="secondary-button">Continue with direct booking</button>
+                        </div>
+                    </dialog>
                     <div id="quote-result" class="quote-result" hidden>
                         <div id="quote-lines" class="quote-breakdown"></div>
                         <div class="quote-total"><span>Total</span><strong id="quote-total"></strong></div>
@@ -442,6 +453,15 @@
             const submitLabel = submitButton?.querySelector('[data-submit-label]');
             const submitSpinner = submitButton?.querySelector('[data-submit-spinner]');
             const currency = new Intl.NumberFormat(undefined, {style: 'currency', currency: 'USD'});
+            const leaseChoice = document.getElementById('lease-choice-dialog');
+            const leaseApplyLink = document.getElementById('lease-apply-link');
+            const leaseDirectLink = document.getElementById('lease-direct-link');
+            const leaseEnabled = @json((bool) ($listing->lease_enabled && ($listing->listing_type ?? 'both') !== 'short_term' && \\App\\Services\\FeatureGate::enabled($listing->property->owner, 'lease_applications')));
+            const leaseMandatory = @json((bool) (($listing->listing_type ?? 'both') === 'long_term' || ($listing->lease_enabled && ($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_auto_route_29_nights)));
+            let directCheckoutUrl = '';
+            leaseChoice?.querySelector('[data-lease-choice-close]')?.addEventListener('click', () => leaseChoice.close());
+            leaseDirectLink?.addEventListener('click', () => { leaseChoice.close(); if (directCheckoutUrl) window.location.href = directCheckoutUrl; });
+
             form?.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 if (!submitButton || !checkIn?.value || !checkOut?.value) {
@@ -482,6 +502,23 @@
                         + '&check_out=' + encodeURIComponent(checkOut.value)
                         + '&guests=' + encodeURIComponent(guests);
                     result.hidden = false;
+                    const nights = Math.round((Date.parse(checkOut.value + 'T00:00:00Z') - Date.parse(checkIn.value + 'T00:00:00Z')) / 86400000);
+                    directCheckoutUrl = document.getElementById('checkout-link').href;
+                    if (nights >= 29 && leaseEnabled) {
+                        if (leaseMandatory) {
+                            const leaseUrl = @json(route('public.lease-application.apply', $listing->listing_slug))
+                                + '?check_in=' + encodeURIComponent(checkIn.value)
+                                + '&check_out=' + encodeURIComponent(checkOut.value)
+                                + '&guests=' + encodeURIComponent(guests);
+                            window.location.href = leaseUrl;
+                            return;
+                        }
+                        leaseApplyLink.href = @json(route('public.lease-application.apply', $listing->listing_slug))
+                            + '?check_in=' + encodeURIComponent(checkIn.value)
+                            + '&check_out=' + encodeURIComponent(checkOut.value)
+                            + '&guests=' + encodeURIComponent(guests);
+                        if (leaseChoice?.showModal) leaseChoice.showModal();
+                    }
                 } catch {
                     error.textContent = 'We could not check those dates right now. Check your connection and try again.';
                 } finally {
