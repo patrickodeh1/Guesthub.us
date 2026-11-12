@@ -31,7 +31,7 @@ class LeaseOfferService
         $initial = (int) round((float) $data['initial_due'] * 100);
         $totalRent = $rent * $months;
         $total = $totalRent + $deposit + $fees;
-        if ($rent < 1 || $initial < ($deposit + $fees + $rent) || $initial > $total) {
+        if ($rent < 1 || $initial !== ($deposit + $fees + $rent) || $initial > $total) {
             throw ValidationException::withMessages(['initial_due' => 'The initial amount must cover the security deposit, fees and first month of rent, and cannot exceed the lease total.']);
         }
         if ($end->lte($start) || $start->lt(now()->startOfDay())) {
@@ -155,7 +155,7 @@ class LeaseOfferService
     {
         $offer = $installment->offer()->with('booking')->firstOrFail();
         abort_unless((int) $offer->property->owner_id === $hostId || auth()->user()?->hasRole('admin'), 403);
-        abort_unless($offer->status === LeaseOffer::STATUS_SIGNED && $offer->payment_method === 'manual', 409);
+        abort_unless(in_array($offer->status, [LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true) && $offer->payment_method === 'manual', 409);
         abort_unless($installment->status === LeaseInstallment::STATUS_PENDING, 409);
         $installment->update(['status' => LeaseInstallment::STATUS_PAID, 'method' => 'manual', 'paid_at' => now(), 'received_by' => $hostId]);
         $this->confirmIfReady($offer);
@@ -173,7 +173,12 @@ class LeaseOfferService
             if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
             BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
             $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
-            $booking->update(['status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null]);
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $locked->contract_html, 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
             $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
             return true;
         });
