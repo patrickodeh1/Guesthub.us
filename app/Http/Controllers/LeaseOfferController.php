@@ -13,7 +13,7 @@ class LeaseOfferController extends Controller
     public function show(int $application, string $applicationToken, string $offerToken, PaymentService $payments)
     {
         $offer = $this->findOffer($application, $applicationToken, $offerToken);
-        $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod']);
+        $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod', 'booking']);
         $clientSecret = null;
         $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
         if (in_array($offer->status, [LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true) && $offer->payment_method === 'card' && $nextInstallment) {
@@ -21,7 +21,7 @@ class LeaseOfferController extends Controller
             $clientSecret = $intent['client_secret'];
         }
         return view('public.lease-offer', [
-            'offer' => $offer->fresh(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod']),
+            'offer' => $offer->fresh(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod', 'booking']),
             'clientSecret' => $clientSecret,
             'nextInstallment' => $nextInstallment,
             'publishableKey' => config('services.stripe.key'),
