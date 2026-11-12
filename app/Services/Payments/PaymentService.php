@@ -61,7 +61,7 @@ class PaymentService
      */
     public function createDirectBookingIntent(Booking $booking, string $connectedAccountId): array
     {
-        if ($booking->source !== 'direct' || $booking->status !== Booking::STATUS_PENDING_PAYMENT
+        if (! $booking->isDirectBooking() || $booking->status !== Booking::STATUS_PENDING_PAYMENT
             || ($booking->direct_booking_request && ! $booking->direct_booking_approved_at)
             || ($booking->hold_expires_at && $booking->hold_expires_at->isPast())) {
             throw new \LogicException('The booking is not eligible for card payment.');
