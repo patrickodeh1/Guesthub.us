@@ -6,31 +6,9 @@
 @section('content')
 @php
     $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
-    $contract = (string) $offer->contract_html;
-    $confirmUrl = url('/stay/application/'.rawurlencode((string) $offer->lease_application_id).'/'.rawurlencode($offer->application->token).'/offer/'.rawurlencode($offer->token).'/confirm-payment');
-    $values = [
-        '[[applicant_name]]' => e($offer->application->applicant_name),
-        '[[host_name]]' => e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
-        '[[property_name]]' => e($offer->property->name),
-        '[[property_address]]' => e($offer->property->address ?? ''),
-        '[[start_date]]' => e($offer->start_date->format('M j, Y')),
-        '[[end_date]]' => e($offer->end_date->format('M j, Y')),
-        '[[nights]]' => (string) $offer->nights(),
-        '[[monthly_rent]]' => $money($offer->monthly_rent_cents),
-        '[[deposit]]' => $money($offer->deposit_cents),
-        '[[total]]' => $money($offer->total_cents),
-        '[[initial_due]]' => $money($offer->initial_due_cents),
-        '[[payment_schedule]]' => '',
-        '[[host_signed_name]]' => e($offer->host_signed_name),
-        '[[host_signed_at]]' => e($offer->host_signed_at?->format('M j, Y')),
-        '[[tenant_signed_name]]' => e($offer->guest_signed_name ?: 'Awaiting tenant signature'),
-        '[[tenant_signed_at]]' => e($offer->guest_signed_at?->format('M j, Y') ?: 'Pending'),
-        '[[tenant_signed_ip]]' => e($offer->guest_signed_ip ?: 'Pending'),
-        '[[agreement_version]]' => e($offer->contract_version),
-    ];
-    $contract = strtr($contract, $values);
+    $contract = app(\\App\\Services\\LeaseOfferService::class)->renderContract($offer);
     $initialRequired = $offer->installments->where('required_at_signing', true);
-    $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : ($initialRequired->contains(fn ($item) => $item->status === 'pending'));
+    $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : $initialRequired->contains(fn ($item) => $item->status === 'pending');
     $payAmountCents = $initialPaymentPending ? $offer->initial_due_cents : ($nextInstallment?->amount_cents ?? 0);
     $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || ($offer->status !== 'confirmed' && $offer->accept_by?->isPast());
 @endphp
