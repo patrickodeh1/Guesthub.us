@@ -7,7 +7,7 @@
 @php
     $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
     $contract = (string) $offer->contract_html;
-    $confirmUrl = route('public.lease-offer.confirm', ['application' => $offer->application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]);
+    $confirmUrl = url('/stay/application/'.rawurlencode((string) $offer->application_id).'/'.rawurlencode($offer->application->token).'/offer/'.rawurlencode($offer->token).'/confirm-payment');
     $values = [
         '[[applicant_name]]' => e($offer->application->applicant_name),
         '[[host_name]]' => e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
