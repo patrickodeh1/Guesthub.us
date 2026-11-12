@@ -49,7 +49,7 @@ class LeaseOfferService
         $deadline = Carbon::parse($data['accept_by']);
         abort_if($deadline->lte(now()) || $deadline->gt(now()->addDays(30)), 422, 'The acceptance deadline must be within 30 days.');
 
-        return BookingConflictService::withPropertyLock((int) $application->property_id, function () use ($application,$data,$start,$end,$months,$rent,$deposit,$fees,$initial,$total,$method,$deadline): LeaseOffer {
+        return BookingConflictService::withPropertyLock((int) $application->property_id, function () use ($application,$data,$start,$end,$months,$rent,$deposit,$fees,$initial,$initialRentCents,$total,$method,$deadline): LeaseOffer {
             BookingConflictService::assertFree((int) $application->property_id, $start, $end);
             $application->refresh();
             abort_unless($application->status === 'approved' && $application->fee_status === 'paid', 409);
