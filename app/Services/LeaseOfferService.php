@@ -122,7 +122,6 @@ class LeaseOfferService
                 'due_date' => $start->toDateString(), 'amount_cents' => $fees,
                 'required_at_signing' => $fees > 0, 'sort_order' => 2,
             ]);
-            $firstRent = min($rent, $initial);
             for ($month = 0; $month < $months; $month++) {
                 $due = $start->copy()->addMonthsNoOverflow($month);
                 $offer->installments()->create([
@@ -134,14 +133,7 @@ class LeaseOfferService
                     'sort_order' => 10 + $month,
                 ]);
             }
-            $required = $offer->installments()->whereIn('kind', ['deposit', 'fee'])->sum('amount_cents');
-            $remainingInitial = max(0, $initial - $required);
-            if ($remainingInitial > 0) {
-                $first = $offer->installments()->where('kind', 'rent')->orderBy('sort_order')->first();
-                if ($first) {
-                    $first->update(['required_at_signing' => true]);
-                }
-            }
+            $offer->installments()->where('kind', 'rent')->orderBy('sort_order')->first()?->update(['required_at_signing' => true]);
             app(AvailabilityLedger::class)->syncBooking($booking);
             return $offer->load(['installments', 'booking', 'application']);
         });
