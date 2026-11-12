@@ -258,6 +258,7 @@ return [
                         ['label' => 'Guest Notices', 'routes' => [['name' => 'admin.notices.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.notices.*']],
                         ['label' => 'Cleaning Rooms', 'routes' => [['name' => 'rooms.index', 'roles' => $staff]], 'active' => ['rooms.*']],
                         ['label' => 'Cleaning Tasks', 'routes' => [['name' => 'tasks.index', 'roles' => $staff]], 'active' => ['tasks.*']],
+                        ['label' => 'Plan', 'routes' => [['name' => 'admin.plan.index', 'roles' => ['owner', 'company']]], 'active' => ['admin.plan.*']],
                         ['label' => 'Profile', 'routes' => [['name' => 'admin.security', 'roles' => ['admin', 'owner', 'company']]], 'active' => ['admin.security']],
                     ],
                 ],

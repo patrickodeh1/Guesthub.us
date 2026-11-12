@@ -30,7 +30,6 @@ class PropertyListing extends Model
         'screening_provider_url',
         'lease_allow_passport',
         'lease_fee_refund_policy',
-        'lease_fee_refund_policy',
         'published_at',
         'meta_title',
         'meta_description',

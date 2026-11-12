@@ -56,6 +56,10 @@ class StripeWebhookController extends Controller
             }
         }
 
+        if (in_array($event->type, \App\Services\Billing\SubscriptionSync::EVENTS, true)) {
+            \App\Services\Billing\SubscriptionSync::handle($event->data->object);
+        }
+
         return response()->json(['ok' => true]);
     }
 }

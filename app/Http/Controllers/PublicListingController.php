@@ -225,6 +225,47 @@ class PublicListingController extends Controller
         return response($configured, 200)->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 
+    /** Lowest active rate on an open night in the next 90 days, else the base rate. */
+    public function fromPrice(PropertyListing $listing): array
+    {
+        $base = (int) $listing->base_rate_cents;
+        $fallback = ['cents' => $base, 'varies' => false];
+        try {
+            $property = $listing->property;
+            $tz = $property?->timezone && in_array($property->timezone, timezone_identifiers_list(), true)
+                ? $property->timezone : config('app.timezone');
+            $from = \Carbon\Carbon::now($tz)->startOfDay();
+            $to = $from->copy()->addDays(90);
+            $rows = \App\Models\PropertyAvailability::query()
+                ->where('property_id', $listing->property_id)
+                ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+                ->whereNotNull('rate')
+                ->get(['date', 'rate', 'rates_source']);
+            if ($rows->isEmpty()) {
+                return $fallback;
+            }
+            $calendar = app(\App\Services\AvailabilitySearch::class)->calendar($listing, $from->toDateString(), $to->toDateString());
+            $lowest = null;
+            foreach ($rows as $row) {
+                $src = $row->rates_source;
+                $active = $src === null || $src === 'manual'
+                    || ($property?->pricing_provider && $src === $property->pricing_provider);
+                $key = $row->date->toDateString();
+                if (! $active || ! ($calendar[$key]['night_available'] ?? false)) {
+                    continue;
+                }
+                $cents = \App\Services\AvailabilitySearch::rateToCents($row->rate);
+                if ($cents !== null) {
+                    $lowest = $lowest === null ? $cents : min($lowest, $cents);
+                }
+            }
+
+            return $lowest === null ? $fallback : ['cents' => $lowest, 'varies' => true];
+        } catch (\Throwable) {
+            return $fallback;
+        }
+    }
+
     private function renderBrowse(Request $request, ?string $citySlug = null)
     {
         $filters = $request->validate([
@@ -254,31 +295,40 @@ class PublicListingController extends Controller
             });
             abort_if($all->isEmpty(), 404);
         }
-        if (isset($filters['price_min'])) {
-            $minimum = $this->dollarsToCents((string) $filters['price_min']);
-            $all = $all->filter(fn (PropertyListing $listing) => $listing->base_rate_cents >= $minimum);
-        }
-        if (isset($filters['price_max'])) {
-            $maximum = $this->dollarsToCents((string) $filters['price_max']);
-            $all = $all->filter(fn (PropertyListing $listing) => $listing->base_rate_cents <= $maximum);
-        }
         if (isset($filters['guests'])) {
             $all = $all->filter(fn (PropertyListing $listing) => $listing->max_guests >= (int) $filters['guests']);
         }
+        $prices = [];
         if (isset($filters['check_in'], $filters['check_out'])) {
             $guestCount = (int) ($filters['guests'] ?? 1);
-            $all = $all->filter(function (PropertyListing $listing) use ($filters, $guestCount) {
+            $all = $all->filter(function (PropertyListing $listing) use ($filters, $guestCount, &$prices) {
                 try {
-                    app(QuoteService::class)->quote($listing, $filters['check_in'], $filters['check_out'], $guestCount, 'manual');
+                    $q = app(QuoteService::class)->quote($listing, $filters['check_in'], $filters['check_out'], $guestCount, 'manual');
+                    $prices[$listing->id] = ['cents' => intdiv($q['subtotal_cents'], max(1, $q['nights'])), 'varies' => false];
 
                     return true;
                 } catch (ValidationException) {
                     return false;
                 }
             });
+        } else {
+            foreach ($all as $listing) {
+                $prices[$listing->id] = $this->fromPrice($listing);
+            }
+        }
+        if (isset($filters['price_min'])) {
+            $minimum = $this->dollarsToCents((string) $filters['price_min']);
+            $all = $all->filter(fn (PropertyListing $listing) => $prices[$listing->id]['cents'] >= $minimum);
+        }
+        if (isset($filters['price_max'])) {
+            $maximum = $this->dollarsToCents((string) $filters['price_max']);
+            $all = $all->filter(fn (PropertyListing $listing) => $prices[$listing->id]['cents'] <= $maximum);
         }
 
-        $cards = $all->map(fn (PropertyListing $listing) => $this->present($listing))->values();
+        $cards = $all->map(fn (PropertyListing $listing) => $this->present($listing) + [
+            'display_rate_cents' => $prices[$listing->id]['cents'],
+            'display_varies' => $prices[$listing->id]['varies'],
+        ])->values();
         $cityName = $citySlug
             ? ($all->first()?->property?->city ?: Str::headline(str_replace('-', ' ', $citySlug)))
             : null;
@@ -356,25 +406,16 @@ class PublicListingController extends Controller
             return $query->whereRaw('1 = 0');
         }
 
-        $now = now();
+        // Ask the same gate the rest of the app uses, so a host whose plan includes
+        // the feature is listed whether or not a host_features row exists.
+        $ownerIds = \App\Models\User::query()
+            ->whereIn('id', \App\Models\Property::query()->where('active', true)->whereNotNull('owner_id')->select('owner_id'))
+            ->get()
+            ->filter(fn ($owner) => FeatureGate::enabled($owner, $feature->key))
+            ->pluck('id')
+            ->all();
 
-        return $query->whereHas('property', function ($property) use ($feature, $now) {
-            $property->where('active', true)->whereNotNull('owner_id');
-            $hostFeatureExists = function ($hostFeatureQuery, bool $enabled) use ($feature, $now) {
-                $hostFeatureQuery->selectRaw('1')
-                    ->from('host_features')
-                    ->whereColumn('host_features.user_id', 'properties.owner_id')
-                    ->where('host_features.feature_key', $feature->key)
-                    ->where('host_features.enabled', $enabled)
-                    ->where(fn ($query) => $query->whereNull('host_features.starts_at')->orWhere('host_features.starts_at', '<=', $now))
-                    ->where(fn ($query) => $query->whereNull('host_features.ends_at')->orWhere('host_features.ends_at', '>=', $now));
-            };
-            if ($feature->is_free) {
-                $property->whereNotExists(fn ($hostFeatureQuery) => $hostFeatureExists($hostFeatureQuery, false));
-            } else {
-                $property->whereExists(fn ($hostFeatureQuery) => $hostFeatureExists($hostFeatureQuery, true));
-            }
-        });
+        return $query->whereHas('property', fn ($property) => $property->where('active', true)->whereIn('owner_id', $ownerIds));
     }
 
     private function eligibleListings(bool $withDetails = true): Collection

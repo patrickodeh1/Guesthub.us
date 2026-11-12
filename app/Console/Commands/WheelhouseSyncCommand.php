@@ -21,8 +21,13 @@ class WheelhouseSyncCommand extends Command
             ->get();
 
         foreach ($properties as $property) {
-            $result = $sync->sync($property, (bool) $this->option('force'));
-            $this->line("#{$property->id} {$property->name}: {$result['status']} - {$result['message']}");
+            try {
+                $result = $sync->sync($property, (bool) $this->option('force'));
+                $this->line("#{$property->id} {$property->name}: {$result['status']} - {$result['message']}");
+            } catch (\Throwable $e) {
+                report($e);
+                $this->line("#{$property->id} {$property->name}: failed - {$e->getMessage()}");
+            }
             sleep(1);
         }
 

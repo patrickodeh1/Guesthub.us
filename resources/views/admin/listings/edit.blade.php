@@ -246,14 +246,6 @@
                             </select>
                             <span class="text-xs text-gray-500">Shown to applicants before they pay. Card payments: Stripe usually keeps its own processing fee on a refund. Some states limit application fees, so check local rules.</span>
                         </label>
-                        <label class="field-label mt-3">Application fee refund policy
-                            <select name="lease_fee_refund_policy" class="input">
-                                @foreach(['unset' => 'Not set (applicants are told to ask the host)', 'non_refundable' => 'Non-refundable', 'refundable_if_declined' => 'Refunded if the application is declined'] as $value => $label)
-                                    <option value="{{ $value }}" @selected(old('lease_fee_refund_policy', $listing->lease_fee_refund_policy ?? 'unset') === $value)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <span class="text-xs text-gray-500">Shown to applicants before they pay. Card payments: Stripe usually keeps its own processing fee on a refund. Some states limit application fees, so check local rules.</span>
-                        </label>
                     </label>
                 </div>
             </section>

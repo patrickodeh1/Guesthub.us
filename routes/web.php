@@ -243,6 +243,13 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     // ─── Static pages ────────────────────────────────────────────────────────
     Route::view('guide', 'admin.guide')->name('guide');
     Route::redirect('security', '/profile')->name('security');
+    Route::get('plan', [\App\Http\Controllers\Admin\PlanController::class, 'index'])->middleware('role:admin,owner,company')->name('plan.index');
+    Route::post('plan/checkout', [\App\Http\Controllers\Admin\PlanController::class, 'checkout'])->middleware('role:owner,company')->name('plan.checkout');
+    Route::post('plan/portal', [\App\Http\Controllers\Admin\PlanController::class, 'portal'])->middleware('role:owner,company')->name('plan.portal');
+    Route::post('plan/setup', [\App\Http\Controllers\Admin\PlanController::class, 'setup'])->middleware('role:owner,company')->name('plan.setup');
+    Route::post('plan/subscribe', [\App\Http\Controllers\Admin\PlanController::class, 'subscribe'])->middleware('role:owner,company')->name('plan.subscribe');
+    Route::post('plan/addons', [\App\Http\Controllers\Admin\PlanController::class, 'changeAddons'])->middleware('role:owner,company')->name('plan.addons');
+    Route::post('plan/switch', [\App\Http\Controllers\Admin\PlanController::class, 'switchPlan'])->middleware('role:owner,company')->name('plan.switch');
 
     // ─── Guest Guide (per-property categories) ──────────────────────────────
     Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index')->middleware('role:admin,owner,company,manager');
@@ -379,6 +386,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/save-mapping', [PropertyAvailabilityController::class, 'saveMapping'])->name('properties.availability.save-mapping')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/compare-ical', [PropertyAvailabilityController::class, 'compareIcal'])->name('properties.availability.compare-ical')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/fetch-rate-plans', [PropertyAvailabilityController::class, 'fetchRatePlans'])->name('properties.availability.fetch-rate-plans')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-rate-settings', [PropertyAvailabilityController::class, 'saveRateSettings'])->name('properties.availability.save-rate-settings')->middleware(['role:admin,owner,company', 'property.access']);

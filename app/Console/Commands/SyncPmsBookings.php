@@ -26,28 +26,46 @@ class SyncPmsBookings extends Command
         $sinceDate = $since ? \Carbon\Carbon::parse($since) : null;
 
         $startedAt = now();
-        $bookings = $provider->getBookings($sinceDate);
+        try {
+            $bookings = $provider->getBookings($sinceDate);
+        } catch (\Throwable $e) {
+            // Network blips must not fail the scheduler. Nothing was acknowledged and the
+            // cursor is untouched, so the next poll retries the same window.
+            \Illuminate\Support\Facades\Log::warning('pms:sync could not fetch bookings', ['error' => $e->getMessage()]);
+            $this->warn('PMS sync skipped: provider unreachable.');
+
+            return self::SUCCESS;
+        }
 
         $imported = 0;
         $skipped = 0;
+        $failed = 0;
 
         foreach ($bookings as $pmsBooking) {
-            $result = $importer->import($pmsBooking);
+            try {
+                $result = $importer->import($pmsBooking);
 
-            if ($result) {
-                $imported++;
-                // Channex acknowledges Booking Revisions, not Bookings —
-                // must use revisionId here, not externalBookingId, or the
-                // ack call 404s against the real API.
-                $provider->acknowledgeBooking($pmsBooking->revisionId ?? $pmsBooking->externalBookingId);
-            } else {
-                $skipped++;
+                if ($result) {
+                    $imported++;
+                    // Channex acknowledges Booking Revisions, not Bookings —
+                    // must use revisionId here, not externalBookingId, or the
+                    // ack call 404s against the real API.
+                    $provider->acknowledgeBooking($pmsBooking->revisionId ?? $pmsBooking->externalBookingId);
+                } else {
+                    $skipped++;
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                report($e);
             }
         }
 
-        Setting::putValue(self::LAST_SYNC_KEY, $startedAt->toIso8601String());
+        // Only move the cursor when everything went through, so failed bookings are retried.
+        if ($failed === 0) {
+            Setting::putValue(self::LAST_SYNC_KEY, $startedAt->toIso8601String());
+        }
 
-        $this->info("PMS sync complete: {$imported} imported/updated, {$skipped} skipped (property not mapped).");
+        $this->info("PMS sync complete: {$imported} imported/updated, {$skipped} skipped (property not mapped), {$failed} failed.");
 
         return self::SUCCESS;
     }

@@ -241,7 +241,9 @@
             <aside class="booking-column" aria-label="Book this stay">
                 <section class="booking-card" id="booking-card" aria-labelledby="booking-card-title">
                     <div class="booking-price">
-                        <h2 id="booking-card-title">${{ number_format($listing->base_rate_cents / 100, 2) }} <span>/ night</span></h2>
+                        @php($fromPrice = app(\App\Http\Controllers\PublicListingController::class)->fromPrice($listing))
+                        <h2 id="booking-card-title">{{ $fromPrice['varies'] ? 'From ' : '' }}${{ number_format($fromPrice['cents'] / 100, 2) }} <span>/ night</span></h2>
+                        @if ($fromPrice['varies'])<p class="muted" style="margin:-8px 0 12px;font-size:.85rem">Prices vary by date. Choose your dates for an exact total.</p>@endif
                     </div>
                     <form id="quote-form" class="booking-form">
                         <div class="date-control">

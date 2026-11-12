@@ -154,7 +154,7 @@
                                             <strong>{{ $listing['title'] }}</strong>
                                             <span class="muted">{{ $listing['city'] }}{{ $listing['state'] ? ', '.$listing['state'] : '' }}</span>
                                             <span class="muted">{{ $listing['bedrooms'] }} bedrooms · Up to {{ $listing['max_guests'] }} guests</span>
-                                            <span class="stay-rail-price">${{ number_format($listing['base_rate_cents'] / 100, 2) }} <span>/ night</span></span>
+                                            <span class="stay-rail-price">{{ !empty($listing['display_varies']) ? 'From ' : '' }}${{ number_format(($listing['display_rate_cents'] ?? $listing['base_rate_cents']) / 100, 2) }} <span>/ night</span></span>
                                         </span>
                                     </a>
                                 </article>
@@ -180,7 +180,7 @@
                                         <h2>{{ $listing['title'] }}</h2>
                                         <div class="muted">{{ $listing['city'] }}{{ $listing['state'] ? ', '.$listing['state'] : '' }}</div>
                                         <div class="muted">{{ $listing['bedrooms'] }} bedrooms · Up to {{ $listing['max_guests'] }} guests</div>
-                                        <div class="price">${{ number_format($listing['base_rate_cents'] / 100, 2) }} <span class="muted">/ night</span></div>
+                                        <div class="price">{{ !empty($listing['display_varies']) ? 'From ' : '' }}${{ number_format(($listing['display_rate_cents'] ?? $listing['base_rate_cents']) / 100, 2) }} <span class="muted">/ night</span></div>
                                     </div>
                                 </a>
                             </article>

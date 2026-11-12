@@ -21,8 +21,13 @@ class PriceLabsSyncCommand extends Command
             ->get();
 
         foreach ($props as $p) {
-            $r = $sync->sync($p, (bool) $this->option('force'));
-            $this->line("#{$p->id} {$p->name}: {$r['status']} - {$r['message']}");
+            try {
+                $r = $sync->sync($p, (bool) $this->option('force'));
+                $this->line("#{$p->id} {$p->name}: {$r['status']} - {$r['message']}");
+            } catch (\Throwable $e) {
+                report($e);
+                $this->line("#{$p->id} {$p->name}: failed - {$e->getMessage()}");
+            }
             sleep(1);
         }
 

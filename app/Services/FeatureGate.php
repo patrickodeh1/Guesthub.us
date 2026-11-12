@@ -16,6 +16,11 @@ class FeatureGate
             return false;
         }
 
+        // The platform admin's own properties are never plan-gated.
+        if ($owner->role === 'admin') {
+            return true;
+        }
+
         $now = now();
         $hostFeature = HostFeature::query()
             ->where('user_id', $owner->getKey())

@@ -468,6 +468,102 @@ class PropertyAvailabilityController extends Controller
     }
 
     /**
+     * Compares the property's Airbnb calendar link with Guesthub's own held nights.
+     * Report only, unless "apply" is posted: then dates that Airbnb holds and
+     * Guesthub has open (or no row for) are closed here. Rows Guesthub already
+     * holds are never touched.
+     */
+    public function compareIcal(Request $request, Property $property, AirbnbIcalImporter $importer, AvailabilityLedger $ledger)
+    {
+        if (! $property->airbnb_ical_url) {
+            return back()->with('error', 'Set a calendar link for this property first.');
+        }
+
+        try {
+            $map = $importer->expandToStatusMap($importer->fetchBlockedRanges($property->airbnb_ical_url));
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $from = now()->startOfDay()->format('Y-m-d');
+        $to = now()->startOfDay()->addDays(499)->format('Y-m-d');
+        $map = array_filter($map, fn ($status, $date) => $date >= $from && $date <= $to, ARRAY_FILTER_USE_BOTH);
+
+        $held = [];
+        foreach ($property->availabilities()->whereBetween('date', [$from, $to])->get() as $row) {
+            if (! $row->is_available) {
+                $held[$row->date->format('Y-m-d')] = $row->source;
+            }
+        }
+
+        $match = 0;
+        $airbnbBooked = [];
+        $airbnbBlocked = [];
+        $guesthubOnly = [];
+        foreach ($map as $date => $status) {
+            if (isset($held[$date])) {
+                $match++;
+            } elseif ($status === 'booked') {
+                $airbnbBooked[] = $date;
+            } else {
+                $airbnbBlocked[] = $date;
+            }
+        }
+        foreach ($held as $date => $source) {
+            if (! isset($map[$date])) {
+                $guesthubOnly[] = $date;
+            }
+        }
+        sort($airbnbBooked);
+        sort($airbnbBlocked);
+        sort($guesthubOnly);
+
+        $applied = null;
+        if ($request->boolean('apply')) {
+            if ($property->channex_availability_seeded_at) {
+                return back()->with('error', 'This property is seeded to Channex. Make date changes in Channex.');
+            }
+            if (count($map) / 500 > 0.8 && ! $request->boolean('confirm_high_block')) {
+                return back()->with('error', count($map).' of 500 dates look blocked. Check the feed first.');
+            }
+            $ledger->setDates($property, $airbnbBooked, ['status' => 'booked'], 'ical');
+            $ledger->setDates($property, $airbnbBlocked, ['status' => 'blocked'], 'ical');
+            $applied = count($airbnbBooked) + count($airbnbBlocked);
+            ActivityLog::record('property_ical_gaps_closed', "{$property->name}: closed {$applied} date(s) held on the calendar link but open here.", 'properties', $property);
+        }
+
+        return back()->with('ical_compare', [
+            'match' => $match,
+            'airbnb_only_booked' => $this->dateRanges($airbnbBooked),
+            'airbnb_only_blocked' => $this->dateRanges($airbnbBlocked),
+            'guesthub_only' => $this->dateRanges($guesthubOnly),
+            'applied' => $applied,
+        ]);
+    }
+
+    /** @param array<int,string> $dates sorted Y-m-d @return array<int,string> */
+    private function dateRanges(array $dates): array
+    {
+        $out = [];
+        $start = $prev = null;
+        foreach ($dates as $d) {
+            if ($start !== null && $d === date('Y-m-d', strtotime($prev.' +1 day'))) {
+                $prev = $d;
+                continue;
+            }
+            if ($start !== null) {
+                $out[] = $start === $prev ? $start : "{$start} to {$prev}";
+            }
+            $start = $prev = $d;
+        }
+        if ($start !== null) {
+            $out[] = $start === $prev ? $start : "{$start} to {$prev}";
+        }
+
+        return $out;
+    }
+
+    /**
      * Pushes every currently-imported PropertyAvailability row for this
      * property to Channex, exactly as imported -- no date range selection,
      * no partial push. Requires channex_room_type_id to be mapped first.

@@ -226,6 +226,22 @@
                             <span class="field-help ml-2">Save a link above first.</span>
                         @endunless
                     </form>
+
+                    <form method="post" action="{{ route('admin.properties.availability.compare-ical', $property) }}" class="mt-3 flex flex-wrap items-center gap-3">
+                        @csrf
+                        <button type="submit" class="btn-secondary" @disabled(! $property->airbnb_ical_url)>Compare with calendar link</button>
+                        <button type="submit" name="apply" value="1" class="btn-secondary" @disabled(! $property->airbnb_ical_url || $seeded)>Close Airbnb-only dates here</button>
+                        @if($seeded)<span class="field-help">Compare only: this property is seeded to Channex.</span>@endif
+                    </form>
+
+                    @if($cmp = session('ical_compare'))
+                        <div class="mt-3 rounded-lg border border-slate-200 p-3 text-sm">
+                            <p class="font-semibold text-slate-900">{{ $cmp['match'] }} date(s) match.@if($cmp['applied'] !== null) Closed {{ $cmp['applied'] }} date(s) here.@endif</p>
+                            <p class="mt-2"><span class="font-medium">Airbnb reserved, open here (booking not imported yet?):</span> {{ $cmp['airbnb_only_booked'] ? implode(', ', $cmp['airbnb_only_booked']) : 'none' }}</p>
+                            <p class="mt-1"><span class="font-medium">Airbnb blocked, open here (owner block?):</span> {{ $cmp['airbnb_only_blocked'] ? implode(', ', $cmp['airbnb_only_blocked']) : 'none' }}</p>
+                            <p class="mt-1"><span class="font-medium">Held here, open on Airbnb:</span> {{ $cmp['guesthub_only'] ? implode(', ', $cmp['guesthub_only']) : 'none' }}</p>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Channex room type --}}
