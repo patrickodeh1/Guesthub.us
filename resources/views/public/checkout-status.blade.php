@@ -51,6 +51,20 @@
         .bk-dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
         .bk-dialog-actions button{border:1px solid #cfd8d2;background:#fff;border-radius:12px;padding:11px 18px;font:inherit;font-weight:650;cursor:pointer}
         .bk-dialog-actions .danger{background:#b42318;border-color:#b42318;color:#fff}
+
+        .bk-pay{border:1px solid #dfe6e1;border-radius:16px;padding:18px;background:#fff;margin-top:16px}
+        .bk-pay-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .bk-pay-kicker{font-size:.76rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#66746d;margin:0 0 5px}
+        .bk-pay-amount{font-size:clamp(1.7rem,5vw,2.15rem);font-weight:800;letter-spacing:-.04em;color:#17221e;line-height:1.1;margin:0}
+        .bk-pay-chip{display:inline-flex;border-radius:999px;background:#fff7e6;color:#8a5a0a;font-size:.76rem;font-weight:700;padding:7px 10px;white-space:nowrap}
+        .bk-pay-detail{border-top:1px solid #edf0ee;padding-top:13px;margin-top:15px}
+        .bk-pay-label{font-size:.76rem;color:#66746d;margin:0 0 5px}
+        .bk-pay-value{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.98rem;font-weight:700;color:#17221e;overflow-wrap:anywhere}
+        .bk-copy-btn{flex:0 0 auto;border:1px solid #d7dfda;border-radius:8px;background:#fff;padding:7px 10px;font-size:.78rem;font-weight:700;color:#34443b;cursor:pointer}
+        .bk-pay-instructions{margin-top:14px;padding:12px 14px;border-radius:11px;background:#f6f8f6;color:#46554d;font-size:.88rem;line-height:1.55}
+        .bk-pay-reference{font-size:1.08rem;letter-spacing:.04em}
+        .bk-pay-help{font-size:.82rem;color:#66746d;line-height:1.5;margin:13px 0 0}
+        @media(max-width:520px){.bk-panel{padding:17px}.bk-pay{padding:15px}.bk-pay-head{flex-direction:column;gap:8px}.bk-pay-value{font-size:.92rem}}
     </style>
 
     <div class="bk">
@@ -90,15 +104,15 @@
                         </div>
                         @include('partials.payment-receipts', ['payable' => $booking, 'viewer' => 'guest'])
                     @else
-                        <h2>Pay with {{ $method?->label ?: 'the host\'s payment method' }}</h2>
-                        <p class="bk-copy">Send <strong>{{ $money($booking->total_cents) }}</strong> using the details below. Your dates are held until {{ $holdText }}.</p>
-                        <div class="bk-instr">
-                            @if($method?->handle)<p class="bk-copy" style="margin-top:0">Send to: <strong>{{ $method->handle }}</strong></p>@endif
-                            @if($method?->instructions)<p class="bk-copy">{!! nl2br(e($method->instructions)) !!}</p>@endif
-                            <p class="bk-copy" style="margin-bottom:0">Put this reference in the payment note:</p>
-                            <div class="bk-ref-box">{{ $booking->booking_id }}</div>
+                        <div class="bk-pay">
+                            <div class="bk-pay-head"><div><p class="bk-pay-kicker">Amount to pay</p><p class="bk-pay-amount">{{ $money($booking->total_cents) }}</p></div><span class="bk-pay-chip">Awaiting payment</span></div>
+                            @if($method?->handle)
+                                <div class="bk-pay-detail"><p class="bk-pay-label">Send payment to · {{ $method->label }}</p><div class="bk-pay-value"><span>{{ $method->handle }}</span><button type="button" class="bk-copy-btn" data-copy="{{ $method->handle }}">Copy</button></div></div>
+                            @endif
+                            @if($method?->instructions)<div class="bk-pay-instructions">{!! nl2br(e($method->instructions)) !!}</div>@endif
+                            <div class="bk-pay-detail"><p class="bk-pay-label">Payment reference</p><div class="bk-pay-value"><span class="bk-pay-reference">{{ $booking->booking_id }}</span><button type="button" class="bk-copy-btn" data-copy="{{ $booking->booking_id }}">Copy</button></div></div>
+                            <p class="bk-pay-help">Dates held until {{ $holdText }}. The host confirms your booking after receiving payment.</p>
                         </div>
-                        <p class="bk-copy">Your booking is confirmed once the host marks your payment as received. Keep this page and your payment receipt.</p>
                         @include('partials.guest-payment-report', ['booking' => $booking])
                     @endif
                 @elseif($booking->payment_method === 'card' && $clientSecret)
@@ -150,6 +164,19 @@
         </aside>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('click', async function(event) {
+    const button = event.target.closest('[data-copy]');
+    if (!button) return;
+    try {
+        await navigator.clipboard.writeText(button.getAttribute('data-copy') || '');
+        button.textContent = 'Copied';
+    } catch (error) { button.textContent = 'Copy unavailable'; }
+});
+</script>
+@endpush
 
 @if($clientSecret)
     @push('scripts')
