@@ -28,7 +28,7 @@
         '[[agreement_version]]' => e($offer->contract_version),
     ];
     $contract = strtr($contract, $values);
-    $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || $offer->accept_by?->isPast();
+    $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || ($offer->status !== 'confirmed' && $offer->accept_by?->isPast());
 @endphp
 <style>
 .lease-wrap{max-width:900px;margin:0 auto;padding:30px 16px 60px;color:#17221e}
