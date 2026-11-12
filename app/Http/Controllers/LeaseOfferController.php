@@ -17,7 +17,7 @@ class LeaseOfferController extends Controller
         $clientSecret = null;
         $initialPaymentPending = $offer->installments->where('required_at_signing', true)->contains(fn ($i) => $i->status === 'pending');
         $nextInstallment = $offer->status === LeaseOffer::STATUS_CONFIRMED
-            ? $offer->installments->first(fn ($i) => ! $i->required_at_signing && $i->status === 'pending')
+            ? $offer->installments->first(fn ($i) => ! $i->required_at_signing && $i->status === 'pending' && $i->due_date?->lte(today()))
             : null;
 
         if ($offer->status === LeaseOffer::STATUS_SIGNED && $initialPaymentPending && $offer->accept_by?->isFuture() && $offer->payment_method === 'card') {
