@@ -111,7 +111,7 @@ class LeaseApplicationAdminController extends Controller
             'monthly_rent' => ['required', 'numeric', 'gt:0', 'max:999999'],
             'deposit' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'fees' => ['nullable', 'numeric', 'min:0', 'max:999999'],
-            'initial_due' => ['required', 'numeric', 'gt:0', 'max:999999'],
+            // The initial amount is calculated server-side: first month's rent + deposit + fees.
             'contract_html' => ['required', 'string', 'max:50000'],
             'payment_method' => ['required', 'in:card,manual'],
             'host_payment_method_id' => ['required_if:payment_method,manual', 'nullable', 'integer'],
