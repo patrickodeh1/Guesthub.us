@@ -30,11 +30,11 @@ class LeaseOfferService
         $rent = (int) round((float) $data['monthly_rent'] * 100);
         $deposit = (int) round((float) ($data['deposit'] ?? 0) * 100);
         $fees = (int) round((float) ($data['fees'] ?? 0) * 100);
-        $initial = (int) round((float) $data['initial_due'] * 100);
+        $initialRentCents = $rent;
+        $initial = $rent + $deposit + $fees;
         $total = $rent * $months + $deposit + $fees;
-        $initialRentCents = $initial - $deposit - $fees;
-        if ($rent < 1 || $initialRentCents < $rent || $initial > $total || $initialRentCents % $rent !== 0 || intdiv($initialRentCents, $rent) > $months) {
-            throw ValidationException::withMessages(['initial_due' => 'The initial amount must cover the deposit, fees and at least one full month of rent.']);
+        if ($rent < 1) {
+            throw ValidationException::withMessages(['monthly_rent' => 'Monthly rent must be greater than zero.']);
         }
         if ($end->lte($start) || $start->lt(now()->startOfDay())) throw ValidationException::withMessages(['start_date' => 'Choose a valid future rental period.']);
 
@@ -105,6 +105,34 @@ class LeaseOfferService
             abort_unless(mb_strtolower(trim($name))===mb_strtolower(trim((string)$locked->application->applicant_name)),422,'Enter your full name exactly as it appears on your application.');
             $locked->update(['guest_signed_name'=>trim($name),'guest_signed_at'=>now(),'guest_signed_ip'=>$ip,'guest_signed_user_agent'=>mb_substr($agent,0,1000),'status'=>LeaseOffer::STATUS_SIGNED]);
         });
+        $this->confirmIfReady($offer->fresh());
+    }
+
+    public function markInitialPaymentPaid(LeaseOffer $offer, int $hostId): void
+    {
+        $offer->loadMissing(['property', 'installments', 'booking']);
+        abort_unless((int) $offer->property->owner_id === $hostId || auth()->user()?->hasRole('admin'), 403);
+        abort_unless($offer->payment_method === 'manual', 409, 'This offer uses online card payments.');
+        abort_unless(in_array($offer->status, [LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true), 409);
+        if ($offer->status === LeaseOffer::STATUS_SIGNED) {
+            abort_unless($offer->accept_by?->isFuture(), 409, 'This offer has expired.');
+        }
+
+        DB::transaction(function () use ($offer, $hostId): void {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            $required = $locked->installments()->where('required_at_signing', true)->lockForUpdate()->get();
+            abort_unless($required->isNotEmpty() && $required->every(fn ($item) => $item->status === LeaseInstallment::STATUS_PENDING), 409, 'The initial payment has already been recorded or needs review.');
+            $paidAt = now();
+            foreach ($required as $item) {
+                $item->update([
+                    'status' => LeaseInstallment::STATUS_PAID,
+                    'method' => 'manual',
+                    'paid_at' => $paidAt,
+                    'received_by' => $hostId,
+                ]);
+            }
+        });
+
         $this->confirmIfReady($offer->fresh());
     }
 
