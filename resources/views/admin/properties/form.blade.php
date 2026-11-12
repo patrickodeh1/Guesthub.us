@@ -1,4 +1,13 @@
 <x-admin-layout :title="$property->exists ? 'Edit Property' : 'Add Property'">
+    <style>
+        #property-edit-form{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+        #property-edit-form>div,#property-edit-form section,#property-edit-form label{min-width:0}
+        #property-edit-form .grid{min-width:0}
+        #property-edit-form input:not([type=checkbox]):not([type=radio]),#property-edit-form select,#property-edit-form textarea{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+        #property-edit-form .tox-tinymce{max-width:100%}
+        @media(min-width:1280px){#property-edit-form{grid-template-columns:minmax(0,1fr) 360px}}
+        @media(max-width:767px){#property-edit-form{gap:16px}#property-edit-form .card-pad{padding:16px}#property-edit-form .grid.md\\:grid-cols-2{grid-template-columns:minmax(0,1fr)}#property-edit-form [class*=col-span-]{grid-column:1/-1}#property-edit-form .contract-tab-btn{flex:1 1 auto}#property-edit-form .tox-tinymce{max-width:100%;min-height:360px}}
+    </style>
     <div class="page-header">
         <div>
             <p class="eyebrow">Property setup</p>
@@ -53,7 +62,7 @@
     </script>
     @endif
 
-    <form method="post" enctype="multipart/form-data" action="{{ $property->exists ? route('admin.properties.update', $property) : route('admin.properties.store') }}" class="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <form id="property-edit-form" method="post" enctype="multipart/form-data" action="{{ $property->exists ? route('admin.properties.update', $property) : route('admin.properties.store') }}" class="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         @csrf @if($property->exists) @method('put') @endif
         <input type="hidden" name="return_to" value="{{ $returnTo ?? '' }}">
 
