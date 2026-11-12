@@ -295,7 +295,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::get('/', [LeaseApplicationAdminController::class, 'index'])->name('index');
         Route::get('/{application}', [LeaseApplicationAdminController::class, 'show'])->name('show');
         Route::put('/{application}', [LeaseApplicationAdminController::class, 'update'])->name('update');
-        Route::post('/{application}/fee-received', [LeaseApplicationAdminController::class, 'markFeeReceived'])->name('fee-received');
+        Route::post('/{application}/fee-received', [LeaseApplicationAdminController::class, 'markFeeReceived'])->name('fee-received');\n        Route::post('/{application}/offers', [LeaseApplicationAdminController::class, 'createOffer'])->name('offers.create');\n        Route::post('/{application}/offers/{offer}/installments/{installment}/received', [LeaseApplicationAdminController::class, 'markInstallmentReceived'])->name('offers.installments.received');
         Route::post('/{application}/screening', [LeaseApplicationAdminController::class, 'requestScreening'])->name('screening');
         Route::get('/{application}/id', [LeaseApplicationAdminController::class, 'idDocument'])->name('id');
     });
