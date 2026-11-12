@@ -10,7 +10,7 @@
     $initialRequired = $offer->installments->where('required_at_signing', true);
     $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : $initialRequired->contains(fn ($item) => $item->status === 'pending');
     $payAmountCents = $initialPaymentPending ? $offer->initial_due_cents : ($nextInstallment?->amount_cents ?? 0);
-    $confirmUrl = route('public.lease-offer.confirm', ['application' => $offer->lease_application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]);
+    $confirmUrl = route('public.lease-offer.confirm', ['application' => $offer->application->getKey(), 'token' => $offer->application->token, 'offerToken' => $offer->token]);
     $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || ($offer->status !== 'confirmed' && $offer->accept_by?->isPast());
 @endphp
 <style>
@@ -28,8 +28,9 @@
 .guest-card-label{display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px}
 .guest-card-field{display:flex;align-items:center;min-height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px 12px;position:relative;overflow:visible;transition:border-color .2s ease,box-shadow .2s ease}
 .guest-card-field:focus-within{border-color:#0f172a;box-shadow:0 0 0 3px rgb(15 23 42 / .08)}
-.guest-card-field .StripeElement,.guest-card-field-inner{display:block;width:100%;font-size:15px;line-height:1.3}
-.guest-card-field iframe{display:block!important;width:100%!important;height:32px!important;border:0!important}
+ .guest-card-field .StripeElement,.guest-card-field-inner{display:block;width:100%;font-size:15px;line-height:1.3}
+.guest-card-field .StripeElement{min-height:24px}
+.guest-card-field iframe{display:block!important;width:100%!important;height:24px!important;border:0!important}
 .guest-card-postal{width:100%;min-height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px 12px;color:#0f172a;font:inherit}
 .guest-card-postal:focus{outline:none;border-color:#0f172a;box-shadow:0 0 0 3px rgb(15 23 42 / .08)}
 .guest-card-wizard{position:relative}
@@ -188,11 +189,12 @@
         cardSection.hidden = false;
         if (stripe) return;
         stripe = Stripe(@json($publishableKey), {stripeAccount: @json($stripeAccountId)});
-        const elements = stripe.elements({clientSecret: form.dataset.secret});
+        const elements = stripe.elements();
         const style = {base: {color:'#0f172a',fontSize:'16px',fontFamily:'inherit',lineHeight:'24px','::placeholder':{color:'#94a3b8'}},invalid:{color:'#dc2626'}};
-        number = elements.create('cardNumber', {showIcon:true,placeholder:'1234 5678 9012 3456',style});
-        expiry = elements.create('cardExpiry', {placeholder:'MM / YY',style});
-        cvc = elements.create('cardCvc', {placeholder:'CVC',style});
+        const classes = {classes:{base:'guest-card-field-inner'}};
+        number = elements.create('cardNumber', Object.assign({showIcon:true,placeholder:'1234 5678 9012 3456',style}, classes));
+        expiry = elements.create('cardExpiry', Object.assign({placeholder:'MM / YY',style}, classes));
+        cvc = elements.create('cardCvc', Object.assign({placeholder:'CVC',style}, classes));
         number.mount('#lease-card-number'); expiry.mount('#lease-card-expiry'); cvc.mount('#lease-card-cvc');
         let complete = {number:false,expiry:false,cvc:false};
         const update = () => { button.disabled = !Object.values(complete).every(Boolean) || postal.value.trim().length < 3; };
