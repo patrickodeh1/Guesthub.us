@@ -37,10 +37,13 @@ class LeaseOfferController extends Controller
         return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])->with('status', 'Your signature has been recorded.');
     }
 
-    public function decline(Request $request, int $application, string $applicationToken, string $offerToken)
+    public function decline(Request $request, int $application, string $applicationToken, string $offerToken, PaymentService $payments)
     {
         $offer = $this->findOffer($application, $applicationToken, $offerToken);
         abort_unless(in_array($offer->status, [LeaseOffer::STATUS_SENT, LeaseOffer::STATUS_SIGNED], true), 409);
+        foreach (Charge::query()->where('lease_offer_id', $offer->id)->where('status', Charge::STATUS_PENDING)->get() as $charge) {
+            try { $payments->cancelPendingIntent($charge); $charge->update(['status' => Charge::STATUS_FAILED]); } catch (\Throwable $e) { report($e); }
+        }
         $offer->update(['status' => LeaseOffer::STATUS_DECLINED, 'declined_at' => now(), 'declined_reason' => $request->input('reason')]);
         $offer->booking?->update(['status' => 'declined', 'cancelled_at' => now(), 'hold_expires_at' => null]);
         if ($offer->booking) app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($offer->booking->fresh());
