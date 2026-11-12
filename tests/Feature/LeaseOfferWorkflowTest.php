@@ -111,6 +111,10 @@ class LeaseOfferWorkflowTest extends TestCase
             ->assertSee('Record full initial payment received')
             ->assertSee('$2,050.00');
 
+        $this->actingAs($owner)->post(route('admin.lease-applications.offers.installments.received', [
+            $application, $offer, $offer->installments()->where('required_at_signing', true)->firstOrFail(),
+        ]))->assertStatus(409);
+
         $this->actingAs($owner)->post(route('admin.lease-applications.offers.initial-payment.received', [
             $application, $offer,
         ]))->assertRedirect()->assertSessionHas('success');
