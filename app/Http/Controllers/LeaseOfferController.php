@@ -22,7 +22,9 @@ class LeaseOfferController extends Controller
 
         if ($offer->status === LeaseOffer::STATUS_SIGNED && $initialPaymentPending && $offer->accept_by?->isFuture() && $offer->payment_method === 'card') {
             $intent = $payments->createLeaseOfferInitialPaymentIntent($offer);
-            $clientSecret = $intent['client_secret'];
+            $offer->refresh()->load('installments');
+            $initialPaymentPending = $offer->installments->where('required_at_signing', true)->contains(fn ($i) => $i->status === 'pending');
+            $clientSecret = $initialPaymentPending ? $intent['client_secret'] : null;
         } elseif ($offer->status === LeaseOffer::STATUS_CONFIRMED && $nextInstallment && $offer->payment_method === 'card') {
             $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
             $clientSecret = $intent['client_secret'];
