@@ -179,7 +179,7 @@ class DashboardController extends Controller
                     'checkout_date' => $b->check_out_date,
                     'guest_name'    => $b->guest_name ?: 'Guest',
                     'uid'           => (string) $b->id,
-                    'source'        => $b->booking_platform ?: ($b->source ?: 'Booking'),
+                    'source'        => $b->platformLabel(),
                     'is_new'        => $previousLogin ? $b->created_at > $previousLogin : false,
                 ]);
             }
