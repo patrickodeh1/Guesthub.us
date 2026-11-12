@@ -16,7 +16,7 @@ class LeaseOfferController extends Controller
         $offer->load(['application.listing', 'property.owner', 'installments', 'hostPaymentMethod', 'booking']);
         $clientSecret = null;
         $nextInstallment = $offer->installments->first(fn ($i) => $i->status === 'pending');
-        if (in_array($offer->status, [LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true) && $offer->payment_method === 'card') {
+        if ((($offer->status === LeaseOffer::STATUS_CONFIRMED) || ($offer->status === LeaseOffer::STATUS_SIGNED && $offer->accept_by?->isFuture())) && $offer->payment_method === 'card') {
             for ($attempt = 0; $attempt < 3 && $nextInstallment; $attempt++) {
                 $intent = $payments->createLeaseOfferInstallmentIntent($offer, $nextInstallment);
                 $nextInstallment->refresh();
