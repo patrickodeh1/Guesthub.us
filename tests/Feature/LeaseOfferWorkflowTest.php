@@ -81,6 +81,7 @@ class LeaseOfferWorkflowTest extends TestCase
         $booking = $offer->booking;
         $this->assertSame(LeaseOffer::STATUS_SENT, $offer->status);
         $this->assertSame(Booking::STATUS_PENDING_PAYMENT, $booking->status);
+        $this->assertSame('lease', $booking->source);
         $this->assertSame($application->id, (int) $booking->lease_application_id);
         $this->assertSame($offer->id, (int) $booking->lease_offer_id);
         $this->assertNotNull($booking->hold_expires_at);
