@@ -50,6 +50,14 @@
                 @endforeach
             </table>
             <p class="lease-muted" style="margin-top:12px">Amount required before confirmation: {{ $money($offer->initial_due_cents) }}.</p>
+            @if($initialPaymentCharge)
+                <div class="lease-muted" style="margin-top:10px;padding:10px;border:1px solid #e5e7eb;border-radius:10px">
+                    Initial payment status: <strong>{{ str($initialPaymentCharge->status)->replace('_', ' ')->title() }}</strong>
+                    · {{ $money($initialPaymentCharge->amount_cents) }}
+                    @if($initialPaymentCharge->captured_at) · Paid {{ $initialPaymentCharge->captured_at->format('M j, Y g:i A') }} @endif
+                    @if($initialPaymentCharge->stripe_payment_intent_id)<div style="margin-top:4px;overflow-wrap:anywhere">Payment reference: {{ $initialPaymentCharge->stripe_payment_intent_id }}</div>@endif
+                </div>
+            @endif
         </section>
         <section class="lease-card">
             <h2 style="font-size:1.15rem;font-weight:750;margin-bottom:12px">Rental agreement</h2>
