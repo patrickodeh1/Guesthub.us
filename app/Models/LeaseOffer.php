@@ -124,6 +124,11 @@ class LeaseOffer extends Model
         return $this->hasMany(LeaseInstallment::class)->orderBy('due_date')->orderBy('sort_order')->orderBy('id');
     }
 
+    public function charges(): HasMany
+    {
+        return $this->hasMany(Charge::class, 'lease_offer_id');
+    }
+
     public function isEditable(): bool
     {
         return $this->status === self::STATUS_DRAFT;
