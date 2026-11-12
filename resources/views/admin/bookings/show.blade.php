@@ -79,7 +79,1159 @@
             </div>
         @endif
 
-        @if($booking->source === 'direct')
+        @if($booking->lease_offer_id || $booking->lease_application_id)
+            @php
+                $leaseOffer = $booking->leaseOffer;
+                $leaseApplication = $leaseOffer?->application ?: $booking->leaseApplication;
+                $leaseInstallments = $leaseOffer?->installments ?? collect();
+                $applicationCharges = $leaseApplication?->charges ?? collect();
+                $moneyCents = fn ($cents) => '            <section class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                <h2 class="flex items-center gap-2 text-sm font-bold text-emerald-950">Direct booking payment <span class="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">Direct booking</span></h2>
+                <p class="mt-2 text-sm text-emerald-900">
+                    {{ ucfirst($booking->payment_method ?: 'payment pending') }}
+                    · Total ${{ number_format(($booking->total_cents ?? 0) / 100, 2) }}
+                    @if($booking->hold_expires_at)
+                        · Hold expires {{ $booking->localTimestamp($booking->hold_expires_at)?->format('M j, g:i A') }}
+                    @endif
+                </p>
+                @if($booking->payment_confirmed_at)
+                    <p class="mt-1 text-sm font-semibold text-emerald-800">Payment confirmed {{ $booking->localTimestamp($booking->payment_confirmed_at)?->format('M j, Y g:i A') }}</p>
+                    @include('partials.payment-receipts', ['payable' => $booking])
+                @endif
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @if($booking->direct_booking_request && ! $booking->direct_booking_approved_at && $booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT)
+                        <form method="post" action="{{ route('admin.guests.direct-approve', $booking) }}">@csrf<button class="btn-primary">Approve request & send payment link</button></form>
+                        <form method="post" action="{{ route('admin.guests.direct-decline', $booking) }}" class="flex gap-2">
+                            @csrf
+                            <input name="reason" required maxlength="1000" placeholder="Reason for declining" class="input max-w-xs">
+                            <button class="btn-secondary">Decline</button>
+                        </form>
+                    @elseif($booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && $booking->payment_method === 'manual'
+                        && (! $booking->direct_booking_request || $booking->direct_booking_approved_at))
+                        <div class="space-y-3">
+                            @php
+                                $paymentReceipts = app(\App\Services\PaymentReceiptService::class)->forPayable($booking);
+                            @endphp
+                            @include('partials.payment-receipts', ['payable' => $booking, 'receipts' => $paymentReceipts])
+                            @if($booking->guest_payment_reported_at && $paymentReceipts->contains('role', 'guest'))
+                                <form method="post" enctype="multipart/form-data" action="{{ route('admin.guests.direct-payment-received', $booking) }}" data-confirm="Confirm the host received this manual payment?">@csrf
+                                    <label class="block text-sm font-semibold text-slate-900" for="host-receipt">Your received receipt (screenshot, photo or PDF) <span class="text-red-600">*</span></label>
+                                    <input id="host-receipt" type="file" name="receipt" accept="image/*,application/pdf" required class="mt-1 block w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200">
+                                    @error('receipt')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                    <button class="btn-primary mt-2">Mark payment received</button>
+                                </form>
+                            @else
+                                <p class="text-sm text-slate-600">Waiting for the guest to confirm payment and upload their receipt.</p>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            </section>
+        @endif
+
+        {{-- Expandable edit section: replaces the old separate /edit page for
+             existing bookings. Everything below is hidden by default so the
+             header looks exactly like before until an admin opens it.
+             Deliberately excludes parking charges / early_checkin_tier /
+             late_checkout_type / late_checkout_hours / late_checkout_actual_time
+             -- those are charge-driving fields represented in the Guest
+             Details ledger below. Parking needed itself is editable here. --}}
+        @php
+            $guestDetailsErrorFields = ['reservation_id', 'booking_platform', 'guest_name', 'phone', 'email', 'check_in_date', 'check_out_date', 'property_id', 'id_type', 'checkin_time_preference', 'checkout_time_preference', 'status', 'photo_id_received', 'parking_needed', 'notes'];
+            $hasGuestDetailsErrors = $errors->hasAny($guestDetailsErrorFields);
+        @endphp
+        @unless($booking->isCancelled())
+        <div id="guest-details-edit-panel" class="{{ $hasGuestDetailsErrors ? '' : 'hidden' }} mt-6 border-t border-slate-100 pt-6">
+            <form method="post" action="{{ route('admin.guests.update', $booking) }}">
+                @csrf @method('put')
+                <div class="grid gap-5 md:grid-cols-2">
+                    <label class="field-label">Reservation ID (Airbnb/VRBO) <span class="text-red-600">*</span><input name="reservation_id" value="{{ old('reservation_id', $booking->reservation_id) }}" required class="input">@error('reservation_id')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    @include('admin.bookings._platform-select', ['booking' => $booking])
+                    <label class="field-label">Guest name <span class="text-red-600">*</span><input name="guest_name" value="{{ old('guest_name', $booking->guest_name) }}" required class="input">@error('guest_name')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    <div class="field-label">
+                        <span>Phone</span>
+                        <div class="mt-1 flex gap-2">
+                            <div class="relative w-28 shrink-0">
+                                <button type="button" id="guest-phone-country-button" class="input flex items-center justify-between gap-1.5 px-2.5 text-left">
+                                    <span id="guest-phone-country-label" class="flex items-center gap-1.5 text-sm font-medium"><span id="guest-phone-country-flag">🇺🇸</span><span id="guest-phone-country-dial">+1</span></span>
+                                    <span aria-hidden="true" class="text-xs text-slate-400">▾</span>
+                                </button>
+                                <div id="guest-phone-country-menu" class="absolute left-0 top-full z-20 mt-1 hidden w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                    <div class="border-b border-slate-100 p-2"><input type="text" id="guest-phone-country-search" placeholder="Search country or code" class="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm" autocomplete="off"></div>
+                                    <div id="guest-phone-country-list" class="max-h-56 overflow-y-auto"></div>
+                                </div>
+                            </div>
+                            <input type="hidden" id="guest-phone-country-code" name="phone_country_code" value="+1">
+                            <input id="guest-detail-phone-input" name="phone" value="{{ old('phone', \App\Support\PhoneFormatter::format($booking->phone)) }}" placeholder="(555) 555-0199" maxlength="18" class="input min-w-0 flex-1">
+                        </div>
+                    </div>
+                    <label class="field-label">Email<input name="email" value="{{ old('email', $booking->email) }}" placeholder="guest@example.com" class="input">@error('email')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    <label class="field-label">Check-in <span class="text-red-600">*</span><input type="date" name="check_in_date" value="{{ old('check_in_date', optional($booking->check_in_date)->format('Y-m-d')) }}" required class="input">@error('check_in_date')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    <label class="field-label">Check-out <span class="text-red-600">*</span><input type="date" name="check_out_date" value="{{ old('check_out_date', optional($booking->check_out_date)->format('Y-m-d')) }}" required class="input">@error('check_out_date')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    <label class="field-label">Property <span class="text-red-600">*</span><select name="property_id" required class="input"><option value="" disabled @selected(!old('property_id', $booking->property_id))>Select a property...</option>@foreach($properties as $property)<option value="{{ $property->id }}" @selected(old('property_id', $booking->property_id)==$property->id)>{{ $property->name }}</option>@endforeach</select>@error('property_id')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror</label>
+                    <label class="field-label">ID type <span class="text-red-600">*</span><select name="id_type" required class="input"><option value="state_id" @selected(old('id_type', $booking->id_type ?: 'state_id')==='state_id')>State-issued ID (US guest)</option><option value="passport" @selected(old('id_type', $booking->id_type ?: 'state_id')==='passport')>Passport (international guest)</option></select></label>
+                    <label class="field-label">Requested Check-in Time<input type="time" name="checkin_time_preference" value="{{ old('checkin_time_preference', $booking->checkin_time_preference) }}" class="input"></label>
+                    <label class="field-label">Requested Check-out Time<input type="time" name="checkout_time_preference" value="{{ old('checkout_time_preference', $booking->checkout_time_preference) }}" class="input"></label>
+                    <label class="field-label">Status<select name="status" class="input">@foreach(['pending','pre_checkin_complete','awaiting_deposit','guest_approved','currently_hosting','checked_out'] as $status)<option value="{{ $status }}" @selected(old('status', $booking->status ?: 'pending')===$status)>{{ str($status)->replace('_',' ')->title() }}</option>@endforeach</select></label>
+                    <label class="field-label flex items-center gap-2">
+                        <input type="hidden" name="parking_needed" value="0">
+                        <input type="checkbox" name="parking_needed" value="1" @checked(old('parking_needed', $booking->parking_needed))>
+                        <span>Guest needs parking</span>
+                    </label>
+                    <label class="field-label flex items-center gap-2 md:col-span-2">
+                        <input type="checkbox" name="photo_id_received" value="1" @checked(old('photo_id_received', $booking->photo_id_received))>
+                        <span>Photo ID Already Received</span>
+                    </label>
+                    <label class="field-label md:col-span-2">Notes<textarea name="notes" rows="4" placeholder="Arrival requests, internal reminders, owner notes..." class="textarea">{{ old('notes', $booking->notes) }}</textarea></label>
+                </div>
+                <div class="mt-5 flex gap-3">
+                    <button class="btn-primary">Save changes</button>
+                    <button type="button" onclick="toggleGuestDetailsEdit(document.querySelector('[aria-label=\'Edit Guest Details\']'))" class="btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+        @endunless
+    </section>
+    </div>
+
+        <div class="mt-3 grid content-start gap-3 lg:col-span-3 order-3 lg:order-none">
+            {{-- Guest Details --}}
+            <section class="card card-pad" id="guest-glance">
+                <h2 class="section-title">Guest details</h2>
+                @php
+                    $gdDone = ['approved', 'declined', 'denied', 'rejected'];
+                    $gdShowInReq  = $booking->checkinApprovalPending();
+                    $gdShowOutReq = $booking->checkoutApprovalPending();
+                @endphp
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div class="flex items-center rounded-lg border border-slate-200 p-3">
+                        <p class="flex items-center gap-1.5 text-base font-bold text-slate-900">Parking
+                            @if($booking->parking_needed === true)<x-icon name="check" class="h-5 w-5 text-emerald-600" />@else<x-icon name="x" class="h-5 w-5 text-red-600" />@endif
+                        </p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Check-in time</p>
+                        <p class="mt-1 text-base font-bold text-slate-950">{{ $booking->effectiveCheckinTimeFormatted() }}</p>
+                        @if($gdShowInReq)<p class="text-xs text-slate-500">Requested {{ $booking->checkinTimePreferenceFormatted() }}</p>@endif
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Check-out time</p>
+                        <p class="mt-1 text-base font-bold text-slate-950">{{ $booking->effectiveCheckoutTimeFormatted() }}</p>
+                        @if($gdShowOutReq)<p class="text-xs text-slate-500">Requested {{ $booking->checkoutTimePreferenceFormatted() }}</p>@endif
+                    </div>
+                </div>
+
+                @if(! $booking->property?->skip_rental_agreement)
+                <div class="mt-3 flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental agreement</p>
+                        <p class="mt-1 text-sm font-bold text-slate-950">{{ $booking->contract_accepted_at ? 'Signed '.$booking->localTimestamp($booking->contract_accepted_at) : 'Not signed yet' }}</p>
+                    </div>
+                    <a href="{{ route('admin.guests.rental-agreement', $booking) }}" target="_blank" class="btn-secondary">{{ $booking->contract_accepted_at ? 'View signed agreement' : 'View agreement' }}</a>
+                </div>
+                @endif
+            </section>
+
+            <section class="card card-pad">
+                @include('admin.bookings.partials.direct-refund')
+                <h2 class="section-title">Ledger<x-help text="Charges are auto-calculated from approved times. Tap the pencil to edit an amount." /></h2>
+                <dl class="mt-4 text-sm">
+                    @php
+                        $canEdit = ! $booking->isCancelled();
+                        $holdLocked = filled($booking->deposit_verified_at) || $booking->deposit_payment_status === \App\Models\Charge::STATUS_SUCCESS;
+                        $owed = max(0, $booking->holdDeductions() - ($booking->effectiveIncidentalsCharge() ?? 0));
+                        $parkingOn = $booking->parking_needed === true && ($booking->effectiveParkingCharge() ?? 0) > 0;
+                        $earlyShow = ($booking->effectiveEarlyCheckinCharge() ?? 0) > 0;
+                        $lateShow = ($booking->effectiveLateCheckoutCharge() ?? 0) > 0;
+
+                        $parkingAmt = $parkingOn ? ($booking->effectiveParkingCharge() ?? 0) : 0;
+                        $earlyAmt = $earlyShow ? ($booking->effectiveEarlyCheckinCharge() ?? 0) : 0;
+                        $lateAmt = $lateShow ? ($booking->effectiveLateCheckoutCharge() ?? 0) : 0;
+                        $addAmt = $booking->effectiveIncidentalsCharge() ?? 0;
+                        $holdTotal = $parkingAmt + $earlyAmt + $lateAmt + $addAmt;
+
+                        $lines = [];
+                        if ($parkingOn) {
+                            $lines[] = ['label' => 'Parking', 'icon' => 'car', 'flag' => true, 'field' => 'parking_charge_override', 'auto' => $booking->calculateParkingCharge() ?? 0];
+                        }
+                        if ($earlyShow) {
+                            $lines[] = ['label' => 'Early check-in', 'icon' => 'calendar', 'field' => 'early_checkin_charge_override', 'auto' => $booking->earlyCheckinCharge() ?? 0];
+                        }
+                        if ($lateShow) {
+                        }
+                        $shownFields = array_column($lines, 'field');
+                        $ledgerErrorFields = ['parking_needed', 'parking_charge_override', 'incidentals_charge', 'early_checkin_tier', 'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_type', 'late_checkout_hours', 'late_checkout_actual_time', 'late_checkout_charge_override'];
+                    @endphp
+
+                    <form method="post" action="{{ route('admin.guests.ledger.update', $booking) }}" class="contents">
+                        @csrf @method('put')
+
+                        @if($errors->hasAny($ledgerErrorFields))
+                            <div class="py-3">
+                                <div class="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                                    @foreach($ledgerErrorFields as $lef)
+                                        @error($lef)<p>{{ $message }}</p>@enderror
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Keep values of hidden rows so saving never wipes them --}}
+                        @foreach(['parking_charge_override', 'early_checkin_charge_override', 'late_checkout_charge_override'] as $hf)
+                            @unless(in_array($hf, $shownFields))
+                                <input type="hidden" name="{{ $hf }}" value="{{ old($hf, $booking->$hf) }}">
+                            @endunless
+                        @endforeach
+
+                        
+
+                        @foreach($lines as $ln)
+                            @php
+                                $lnVal = old($ln['field'], $booking->{$ln['field']});
+                                $lnHidden = ((float) $ln['auto'] <= 0) && ($lnVal === null || $lnVal === '');
+                            @endphp
+                            @if($lnHidden)
+                                <input type="hidden" name="{{ $ln['field'] }}" value="{{ $lnVal }}">
+                                @continue
+                            @endif
+                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                                <span class="flex items-center gap-2 text-slate-500">
+                                    <x-icon :name="$ln['icon']" class="h-4 w-4 shrink-0 text-slate-400" />{{ $ln['label'] }}
+                                    @if(! empty($ln['flag']))<x-icon name="check" class="h-4 w-4 text-emerald-600" />@endif
+                                </span>
+                                <span class="flex items-center gap-1 font-semibold text-slate-950">
+                                    $<input type="number" step="0.01" min="0" id="lf-{{ $ln['field'] }}" name="{{ $ln['field'] }}" value="{{ old($ln['field'], $booking->{$ln['field']}) }}" placeholder="{{ number_format($ln['auto'], 2, '.', '') }}" class="ledger-field pointer-events-none w-24 border-none bg-transparent p-0 text-right font-semibold text-slate-950 placeholder:font-semibold placeholder:text-slate-950" tabindex="-1">
+                                    @if($canEdit)
+                                        <button type="button" id="lf-{{ $ln['field'] }}-btn" onclick="unlockLedgerField('lf-{{ $ln['field'] }}')" class="ml-1 text-slate-400 hover:text-slate-700" aria-label="Edit {{ $ln['label'] }}"><span class="lf-pencil"><x-icon name="edit" class="h-3.5 w-3.5" /></span><span class="lf-check hidden"><x-icon name="check" class="h-3.5 w-3.5" /></span></button>
+                                    @endif
+                                </span>
+                            </div>
+                        @endforeach
+
+                        @php
+                            $authAmt = $booking->authorizedLateCheckoutCharge();
+                            $authHrs = $booking->authorizedLateCheckoutHours();
+                            $unAmt = $booking->checked_out_at ? $booking->unauthorizedLateCheckoutCharge() : 0;
+                            $unHrs = (float) ($booking->lateCheckoutHoursUnauthorized() ?? 0);
+                            $hrTxt = fn ($h) => rtrim(rtrim(number_format($h, 2), '0'), '.').' '.($h == 1 ? 'hr' : 'hrs');
+                        @endphp
+                        @if($authHrs > 0)
+                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                                <span class="flex items-center gap-2 text-slate-500"><x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />Late checkout (approved) · {{ $hrTxt($authHrs) }}</span>
+                                <span class="flex items-center gap-1 font-semibold text-slate-950">
+                                    $<input type="number" step="0.01" min="0" id="lf-late_checkout_charge_override" name="late_checkout_charge_override" value="{{ old('late_checkout_charge_override', $booking->late_checkout_charge_override) }}" placeholder="{{ number_format($booking->authorizedLateCheckoutCalculated(), 2, '.', '') }}" class="ledger-field pointer-events-none w-24 border-none bg-transparent p-0 text-right font-semibold text-slate-950 placeholder:font-semibold placeholder:text-slate-950" tabindex="-1">
+                                    @if($canEdit)
+                                        <button type="button" id="lf-late_checkout_charge_override-btn" onclick="unlockLedgerField('lf-late_checkout_charge_override')" class="ml-1 text-slate-400 hover:text-slate-700" aria-label="Edit approved late checkout"><span class="lf-pencil"><x-icon name="edit" class="h-3.5 w-3.5" /></span><span class="lf-check hidden"><x-icon name="check" class="h-3.5 w-3.5" /></span></button>
+                                    @endif
+                                </span>
+                            </div>
+                        @endif
+                        @if($unAmt > 0)
+                            <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                                <span class="flex items-center gap-2 text-slate-500"><x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />Late checkout (unauthorized) · {{ $hrTxt($unHrs) }}</span>
+                                <span class="flex items-center gap-2 font-semibold text-slate-950">${{ number_format($unAmt, 2) }}
+                                    <button type="submit" form="deduct-late-form" class="rounded-full px-3 py-1 text-xs font-bold {{ $booking->late_checkout_deducted_at ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-900 text-white' }}">{{ $booking->late_checkout_deducted_at ? 'Deducted · Undo' : 'Deduct' }}</button>
+                                </span>
+                            </div>
+                        @endif
+
+                        @php
+                            $sgBuffer = $booking->additionalDeposit();
+                            $sgFloor = (float) ($booking->property->required_incidentals_hold_amount ?? 0);
+                            $sgPark = (float) ($booking->effectiveParkingCharge() ?? 0);
+                            $sgEarly = (float) ($booking->effectiveEarlyCheckinCharge() ?? 0);
+                            $sgTotal = $booking->suggestedIncidentalsCharge();
+                            $sgLocal = (float) $booking->localResidentSurcharge();
+                            $sgLate = $booking->lateCheckoutInHold();
+                            $sgHelp = 'Parking $'.number_format($sgPark, 2).' + early check-in $'.number_format($sgEarly, 2).($sgLocal > 0 ? ' + local resident $'.number_format($sgLocal, 2) : '').($sgLate > 0 ? ' + late checkout $'.number_format($sgLate, 2) : '').' + $'.number_format($sgBuffer, 2).($booking->usesAdditionalDeposit() ? ' additional deposit' : ' buffer').' = $'.number_format($sgPark + $sgEarly + $sgLocal + $sgLate + $sgBuffer, 2).'. It is never lower than the property default hold ($'.number_format($sgFloor, 2).'). '.($booking->usesAdditionalDeposit() ? 'Change the Additional deposit to adjust it.' : 'Type your own amount in Incidentals hold to override it.');
+                        @endphp
+                        @if($sgLocal > 0)
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                            <span class="flex items-center gap-2 text-slate-500"><x-icon name="map" class="h-4 w-4 shrink-0 text-slate-400" />Local resident<x-help :text="'ID ZIP is about '.round($booking->idZipDistanceMiles() ?? 0).' miles from the property.'" /></span>
+                            <span class="font-semibold text-slate-950">${{ number_format($sgLocal, 2) }}</span>
+                        </div>
+                        @endif
+                        @if($booking->usesAdditionalDeposit())
+                        <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
+                            <span class="flex items-center gap-2 text-slate-500"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-400" />Additional deposit<x-help text="Make-up amount added on top of parking, early check-in and any local-resident fee. Defaults to the standard buffer; tap the pencil to change it for this booking." /></span>
+                            <span class="flex items-center gap-1 font-semibold text-slate-950">
+                                $<input type="number" step="0.01" min="0" id="lf-additional_deposit" name="additional_deposit" value="{{ old('additional_deposit', $booking->additional_deposit) }}" placeholder="{{ number_format($booking->additionalDeposit(), 2, '.', '') }}" class="ledger-field pointer-events-none w-24 border-none bg-transparent p-0 text-right font-semibold text-slate-950 placeholder:font-semibold placeholder:text-slate-950" tabindex="-1">
+                                @if($canEdit && ! $holdLocked)
+                                    <button type="button" id="lf-additional_deposit-btn" onclick="unlockLedgerField('lf-additional_deposit')" class="ml-1 text-slate-400 hover:text-slate-700" aria-label="Edit additional deposit"><span class="lf-pencil"><x-icon name="edit" class="h-3.5 w-3.5" /></span><span class="lf-check hidden"><x-icon name="check" class="h-3.5 w-3.5" /></span></button>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-3 border-b border-t-2 border-slate-200 border-b-slate-100 py-3">
+                            <span class="flex items-center gap-2 font-bold text-slate-900"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-500" />Incidentals hold<x-help :text="$sgHelp" /></span>
+                            <span class="font-bold text-slate-950">${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}</span>
+                        </div>
+                        @else
+                        <div class="flex items-center justify-between gap-3 border-b border-t-2 border-slate-200 border-b-slate-100 py-3">
+                            <span class="flex items-center gap-2 font-bold text-slate-900"><x-icon name="receipt" class="h-4 w-4 shrink-0 text-slate-500" />Incidentals hold<x-help :text="$sgHelp" /></span>
+                            <span class="flex items-center gap-1 font-bold text-slate-950">
+                                $<input type="number" step="0.01" min="0" id="lf-incidentals_charge" name="incidentals_charge" value="{{ old('incidentals_charge', $booking->incidentals_charge) }}" placeholder="{{ number_format($booking->suggestedIncidentalsCharge(), 2, '.', '') }}" class="ledger-field pointer-events-none w-24 border-none bg-transparent p-0 text-right font-bold text-slate-950 placeholder:font-bold placeholder:text-slate-950" tabindex="-1">
+                                @if($canEdit && ! $holdLocked)
+                                    <button type="button" id="lf-incidentals_charge-btn" onclick="unlockLedgerField('lf-incidentals_charge')" class="ml-1 text-slate-400 hover:text-slate-700" aria-label="Edit incidentals hold"><span class="lf-pencil"><x-icon name="edit" class="h-3.5 w-3.5" /></span><span class="lf-check hidden"><x-icon name="check" class="h-3.5 w-3.5" /></span></button>
+                                @endif
+                            </span>
+                        </div>
+                        @endif
+
+
+                        
+                    </form>
+                    @if($booking->ledgerDeductionsExceedHold() && ! $holdLocked)
+                        <div class="my-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                            <span class="font-semibold">Heads up:</span> deductions (${{ number_format($booking->holdDeductions(), 2) }}) exceed the incidentals hold (${{ number_format($booking->effectiveIncidentalsCharge() ?? 0, 2) }}). {{ $booking->usesAdditionalDeposit() ? 'Consider raising the additional deposit.' : 'Consider raising the hold.' }}
+                        </div>
+                    @endif
+                    
+                </dl>
+                @if($booking->photo_id_front_declined_reason)
+                    <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800"><span class="font-semibold">Front ID decline reason:</span> {{ $booking->photo_id_front_declined_reason }}</div>
+                @endif
+                @if($booking->photo_id_back_declined_reason)
+                    <div class="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800"><span class="font-semibold">Back ID decline reason:</span> {{ $booking->photo_id_back_declined_reason }}</div>
+                @endif
+                @if($booking->notes)
+                    <div class="mt-4 rounded-lg bg-slate-50 border border-slate-200 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Internal notes</p>
+                        <p class="mt-1 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $booking->notes }}</p>
+                    </div>
+                @endif
+            <form id="deduct-late-form" method="post" action="{{ route('admin.guests.late-checkout.deduct', $booking) }}">@csrf</form>
+            </section>
+
+            
+
+            
+
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                {{-- Photo ID --}}
+                <section class="card card-pad {{ $booking->parking_needed ? 'lg:col-span-3' : 'lg:col-span-5' }}">
+                    <div class="flex items-center justify-between">
+                        <h2 class="section-title">Photo ID</h2>
+                        <span class="badge badge-active">{{ $booking->id_type === 'passport' ? 'Passport' : 'State-issued ID' }}</span>
+                    </div>
+                    @if($booking->id_scan_status)
+                        @php
+                            $idwScanBadge = match($booking->id_scan_status) {
+                                'matched' => ['bg-emerald-50 border-emerald-200 text-emerald-800', 'Name matched'],
+                                'expired' => ['bg-red-50 border-red-200 text-red-800', 'ID expired'],
+                                'name_mismatch' => ['bg-red-50 border-red-200 text-red-800', 'Name mismatch'],
+                                'manual_review' => ['bg-amber-50 border-amber-200 text-amber-800', 'Needs manual review'],
+                                default => ['bg-slate-50 border-slate-200 text-slate-600', ucfirst(str_replace('_', ' ', $booking->id_scan_status))],
+                            };
+                        @endphp
+                        <div class="mt-3 rounded-lg border p-3 text-sm {{ $idwScanBadge[0] }}">
+                            @php
+                                $idwGlanceBadge = match($booking->id_name_match) {
+                                    'match' => ['bg-emerald-100 text-emerald-800', 'Name matches'],
+                                    'close' => ['bg-amber-100 text-amber-800', 'Name close, please check'],
+                                    'different' => ['bg-red-100 text-red-800', 'Name differs'],
+                                    default => ['bg-slate-100 text-slate-600', 'Name not verified'],
+                                };
+                                $idwGlanceAge = $booking->id_date_of_birth?->age ?? $booking->id_age;
+                                $idwGlanceExpired = $booking->id_expiry_date?->copy()->endOfDay()->isPast();
+                            @endphp
+                            <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                                <span class="text-base font-extrabold">{{ $booking->id_name ?: $booking->guest_name }}</span>
+                                <span class="font-bold">{{ $idwGlanceAge !== null ? $idwGlanceAge.' yrs' : 'Age not read' }}</span>
+                                <span>DOB {{ $booking->id_date_of_birth?->format('M j, Y') ?? 'not read' }}</span>
+                                <span class="{{ $idwGlanceExpired ? 'font-bold text-red-700' : '' }}">Exp {{ $booking->id_expiry_date?->format('M j, Y') ?? 'not read' }}{{ $idwGlanceExpired ? ' (expired)' : '' }}</span>
+                                <span class="rounded-full px-2 py-0.5 text-xs font-semibold {{ $idwGlanceBadge[0] }}">{{ $idwGlanceBadge[1] }}</span>
+                            </div>
+                            <p class="font-semibold">ID scan: {{ $idwScanBadge[1] }}</p>
+                            <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                <dt class="font-medium opacity-75">Name on ID</dt>
+                                <dd>{{ $booking->id_name ?: '— not read —' }}</dd>
+                                <dt class="font-medium opacity-75">Typed name</dt>
+                                <dd>{{ $booking->guest_name }}</dd>
+                                <dt class="font-medium opacity-75">Date of birth</dt>
+                                <dd>{{ $booking->id_date_of_birth?->format('M j, Y') ?? '— not read —' }}{{ $booking->id_age ? ' ('.$booking->id_age.' yrs)' : '' }}</dd>
+                                <dt class="font-medium opacity-75">Expiry date</dt>
+                                <dd>{{ $booking->id_expiry_date?->format('M j, Y') ?? '— not read —' }}</dd>
+                                <dt class="font-medium opacity-75">Scanned</dt>
+                                <dd>{{ $booking->id_scanned_at ? $booking->localTimestamp($booking->id_scanned_at)->format('M j, Y g:i A') : '—' }}</dd>
+                                <dt class="font-medium opacity-75">Read via</dt>
+                                <dd>{{ match($booking->id_scan_source) { 'barcode' => 'Barcode (back of ID)', 'mrz' => 'Passport MRZ', 'ocr' => 'Photo text (less reliable)', default => '—' } }}</dd>
+                                <dt class="font-medium opacity-75">Scan attempts</dt>
+                                <dd>{{ $booking->id_scan_attempts ?? 0 }}</dd>
+                            </dl>
+                        </div>
+                    @endif
+                    @if($booking->photo_id_path || $booking->photo_id_back_path)
+                        <div class="mt-4">
+                            <div class="flex gap-4 overflow-x-auto border-b border-slate-200 text-sm font-semibold text-slate-500">
+                                @if($booking->photo_id_path)
+                                    <button type="button" id="photo-id-tab-front" onclick="switchPhotoIdTab('front')" class="-mb-px border-b-2 border-teal-700 pb-2 text-teal-800">Front</button>
+                                @endif
+                                @if($booking->photo_id_back_path)
+                                    <button type="button" id="photo-id-tab-back" onclick="switchPhotoIdTab('back')" class="-mb-px pb-2 {{ $booking->photo_id_path ? '' : 'border-b-2 border-teal-700 text-teal-800' }}">Back</button>
+                                @endif
+                            </div>
+                            @if($booking->photo_id_path)
+                                <div id="photo-id-panel-front" class="mt-4">
+                                    <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.photo-id-view', $booking) }}', 'Photo ID front')" class="block w-full text-left">
+                                        <img src="{{ route('admin.guests.photo-id-view', $booking) }}" alt="Photo ID front" class="w-full max-h-64 rounded-lg border border-slate-200 object-contain bg-slate-50">
+                                    </button>
+                                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                                        <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.photo-id-view', $booking) }}', 'Photo ID front')" class="text-sm font-semibold text-teal-800">View full size</button>
+                                        <a class="text-sm font-semibold text-teal-800" href="{{ route('admin.guests.photo-id', $booking) }}">Download original</a>
+                                    </div>
+                                    <div class="mt-4 border-t border-slate-100 pt-4">
+                                        @if($booking->isFrontIdApproved())
+                                            <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Front approved {{ $booking->localTimestamp($booking->photo_id_front_approved_at)->format('M j, Y g:i A') }}</div>
+                                        @elseif($booking->isCancelled())
+                                            <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-500">ID actions are disabled for a cancelled reservation.</div>
+                                        @else
+                                            <div class="flex gap-2">
+                                                <form method="post" action="{{ route('admin.guests.id.approve', [$booking, 'front']) }}" class="flex-1">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check" class="h-4 w-4" />Approve Front</button></form>
+                                                <button type="button" class="btn-danger flex-1 gap-2" onclick="document.getElementById('decline-form-front-{{ $booking->id }}').classList.toggle('hidden')"><x-icon name="x" class="h-4 w-4" />Decline</button>
+                                            </div>
+                                            <form id="decline-form-front-{{ $booking->id }}" method="post" action="{{ route('admin.guests.id.decline', [$booking, 'front']) }}" class="hidden mt-2 grid gap-2">
+                                                @csrf
+                                                <textarea name="decline_reason" class="input" rows="3" placeholder="Reason for declining the front (shown to guest)" required>{{ old('decline_reason') }}</textarea>
+                                                <button class="btn-secondary w-full">Submit Decline</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                            @if($booking->photo_id_back_path)
+                                <div id="photo-id-panel-back" class="mt-4 {{ $booking->photo_id_path ? 'hidden' : '' }}">
+                                    <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.photo-id-back-view', $booking) }}', 'Photo ID back')" class="block w-full text-left">
+                                        <img src="{{ route('admin.guests.photo-id-back-view', $booking) }}" alt="Photo ID back" class="w-full max-h-64 rounded-lg border border-slate-200 object-contain bg-slate-50">
+                                    </button>
+                                    <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                                        <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.photo-id-back-view', $booking) }}', 'Photo ID back')" class="text-sm font-semibold text-teal-800">View full size</button>
+                                        <a class="text-sm font-semibold text-teal-800" href="{{ route('admin.guests.photo-id-back', $booking) }}">Download original</a>
+                                    </div>
+                                    <div class="mt-4 border-t border-slate-100 pt-4">
+                                        @if($booking->isBackIdApproved())
+                                            <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Back approved {{ $booking->localTimestamp($booking->photo_id_back_approved_at)->format('M j, Y g:i A') }}</div>
+                                        @elseif($booking->isCancelled())
+                                            <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-500">ID actions are disabled for a cancelled reservation.</div>
+                                        @else
+                                            <div class="flex gap-2">
+                                                <form method="post" action="{{ route('admin.guests.id.approve', [$booking, 'back']) }}" class="flex-1">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check" class="h-4 w-4" />Approve Back</button></form>
+                                                <button type="button" class="btn-danger flex-1 gap-2" onclick="document.getElementById('decline-form-back-{{ $booking->id }}').classList.toggle('hidden')"><x-icon name="x" class="h-4 w-4" />Decline</button>
+                                            </div>
+                                            <form id="decline-form-back-{{ $booking->id }}" method="post" action="{{ route('admin.guests.id.decline', [$booking, 'back']) }}" class="hidden mt-2 grid gap-2">
+                                                @csrf
+                                                <textarea name="decline_reason" class="input" rows="3" placeholder="Reason for declining the back (shown to guest)" required>{{ old('decline_reason') }}</textarea>
+                                                <button class="btn-secondary w-full">Submit Decline</button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <p class="mt-4 font-semibold text-slate-950">Not uploaded</p>
+                    @endif
+
+                    @if($booking->isIdFullyApproved())
+                        <div class="mt-5 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">All ID photos approved{{ $booking->approved_at ? ' on '.$booking->localTimestamp($booking->approved_at)->format('M j, Y g:i A') : '' }}</div>
+                    @endif
+                </section>
+
+                @if($booking->parking_needed)
+                {{-- Vehicle / license plate photo, task 34 --}}
+                <section class="card card-pad lg:col-span-2">
+                    <h2 class="section-title">Vehicle</h2>
+                    <p class="section-copy">Make/model and license plate photo, collected when the guest opted into parking.</p>
+                    @if($booking->license_plate)
+                        <div id="idwPlateGlance" class="mt-4 flex items-center gap-3">
+                            <span class="rounded-md border-2 border-slate-800 bg-white px-3 py-1 text-lg font-extrabold uppercase tracking-widest">{{ $booking->license_plate }}</span>
+                            <span class="text-sm font-bold">{{ $booking->license_plate_state }}</span>
+                        </div>
+                    @endif
+                    @if($booking->license_plate_photo_path && ! $booking->license_plate)
+                        <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">Plate text could not be read automatically. Please read it from the photo below.</p>
+                    @endif
+                    @if($booking->license_plate_photo_path)
+                        <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.license-plate-view', $booking) }}', 'License plate')" class="mt-4 block w-full text-left">
+                            <img src="{{ route('admin.guests.license-plate-view', $booking) }}" alt="License plate" class="w-full max-h-64 rounded-lg border border-slate-200 object-contain bg-slate-50">
+                        </button>
+                        <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                            <button type="button" onclick="openPhotoIdModal('{{ route('admin.guests.license-plate-view', $booking) }}', 'License plate')" class="text-sm font-semibold text-teal-800">View full size</button>
+                            <a class="text-sm font-semibold text-teal-800" href="{{ route('admin.guests.license-plate', $booking) }}">Download original</a>
+                        </div>
+                    @else
+                        <p class="mt-4 font-semibold text-slate-950">Not uploaded</p>
+                    @endif
+                </section>
+                @endif
+            </div>
+
+            {{-- Open the guest portal as the guest --}}
+            <section class="card card-pad">
+                <h2 class="section-title">Guest portal</h2>
+                <a href="{{ $booking->publicUrl() }}" target="_blank" rel="noopener" class="btn-primary mt-4 w-full justify-center gap-2 sm:w-auto"><x-icon name="external-link" class="h-4 w-4" />Open as guest</a>
+            </section>
+
+    <section class="card card-pad mb-6">
+        <h2 class="section-title">Cleanings</h2>
+        @forelse(($cleanings ?? collect()) as $cleaning)
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 first:mt-2 first:border-t-0 first:pt-0">
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-950">{{ $cleaning->scheduled_date?->format('M j, Y') ?? 'Unscheduled' }}</p>
+                    <p class="text-sm text-slate-500">Cleaner: {{ $cleaning->housekeeper?->name ?? 'Unassigned' }} &middot; {{ ucfirst(str_replace('_', ' ', $cleaning->status)) }}</p>
+                </div>
+                @if($cleaning->report_token && in_array($cleaning->status, ['in_progress', 'completed'], true))
+                    <a href="{{ route('sessions.show', ['session' => $cleaning->id]) }}" class="btn-secondary">Cleaning Report</a>
+                @endif
+            </div>
+        @empty
+            <p class="mt-2 text-sm text-slate-500">No cleaning is linked to this stay yet.</p>
+        @endforelse
+    </section>
+
+        </div>
+
+        {{-- Sidebar --}}
+        <aside class="contents lg:grid lg:content-start lg:gap-3 lg:col-start-4 lg:row-start-1 lg:row-span-3 lg:sticky lg:top-20">
+            <section class="card card-pad order-2 lg:order-none">
+                <h2 class="section-title">Next step</h2>
+
+                @if($booking->isCancelled())
+                    <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">This reservation was cancelled by the guest and is locked. All actions are disabled.</div>
+                @else
+                @php
+                    $nsHasId = filled($booking->photo_id_path) || filled($booking->photo_id_back_path);
+                    $nsOut = filled($booking->checked_out_at);
+                    $nsEarlyOut = $nsOut && $booking->check_out_date
+                        && $booking->localTimestamp($booking->checked_out_at)->toDateString() < $booking->check_out_date->toDateString();
+                    $nsIn = $booking->isCheckedIn() && ! $nsOut;
+                    $nsBgName = \App\Models\Setting::getValue('background_check_step_name', 'Background Check');
+                    $nsGpsOk = $booking->isCheckinApproved() && ! $nsIn && ! $nsOut && ! $booking->gps_verified;
+                    $nsManualIn = $booking->isCheckinApproved() && ! $nsIn && (! $nsOut || $nsEarlyOut);
+                @endphp
+
+                <div class="mt-4 grid gap-2.5">
+                    @if($nsOut)
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. Guest checked out {{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
+                    @elseif($nsIn)
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Currently hosting. Waiting on the guest to check out.</div>
+                    @elseif($booking->isCheckinApproved())
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Unit ready, check-in approved {{ $booking->localTimestamp($booking->checkin_approved_at)->format('M j, Y g:i A') }}. Waiting on the guest to check in.</div>
+                    @elseif($booking->isDepositVerified())
+                        <form method="post" action="{{ route('admin.guests.approve-checkin', $booking) }}" data-confirm-title="Approve check-in?" data-confirm="Confirm the unit is ready and the guest may check in. This is what releases them from the 'unit isn't quite ready yet' screen and reveals their arrival details.">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check-circle" class="h-4 w-4" />Unit Ready: Approve Check-In</button></form>
+                    @elseif($booking->isBackgroundCheckComplete())
+                        <form method="post" action="{{ route('admin.guests.deposit-verified', $booking) }}" data-confirm-title="Mark Deposit Verified?" data-confirm="This will fully approve the guest. Before continuing, verify the guest has actually paid everything owed on / outside the platform: incidentals, parking, and early check-in (if applicable). This action does not check or record any of those payments itself.">@csrf<button class="btn-primary w-full gap-2"><x-icon name="lock" class="h-4 w-4" />Deposit Verified</button></form>
+                    @elseif($booking->isApproved())
+                        <form method="post" action="{{ route('admin.guests.background-check', $booking) }}">@csrf<button class="btn-primary w-full gap-2"><x-icon name="shield-alert" class="h-4 w-4" />{{ $nsBgName }} Passed</button></form>
+                    @elseif($nsHasId)
+                        <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 font-semibold">Photo ID uploaded. Review and approve it below.</div>
+                    @else
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600">Waiting on the guest to upload their Photo ID.</div>
+                    @endif
+
+                    @if($booking->access_blocked_at)
+                        <div class="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-800">
+                            <span class="font-semibold">Access blocked</span> since {{ $booking->localTimestamp($booking->access_blocked_at)->format('M j, Y g:i A') }}
+                            <p class="mt-1">{{ $booking->access_blocked_reason }}</p>
+                        </div>
+                    @endif
+
+                    <div class="relative">
+                        <button type="button" onclick="document.getElementById('booking-more-{{ $booking->id }}').classList.toggle('hidden')" class="btn-secondary w-full gap-2">
+                            <x-icon name="more-vertical" class="h-4 w-4" />More
+                        </button>
+                        <div id="booking-more-{{ $booking->id }}" class="hidden mt-2 grid gap-2.5 rounded-lg border border-slate-200 p-3">
+                            @if($nsGpsOk)
+                                <form method="post" action="{{ route('admin.guests.override-gps', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="map" class="h-4 w-4" />Override GPS</button></form>
+                            @endif
+                            @if($nsManualIn)
+                                <form method="post" action="{{ route('admin.guests.override', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked In</button></form>
+                            @endif
+                            @if($nsIn)
+                                <form method="post" action="{{ route('admin.guests.override-checkout', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="contact-guest-services" class="h-4 w-4" />Manually Mark Checked Out</button></form>
+                            @endif
+                            @if(! $nsHasId)
+                                <form method="post" action="{{ route('admin.guests.mark-id', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="upload" class="h-4 w-4" />Mark Photo ID Received</button></form>
+                            @endif
+                            @if($booking->parking_needed)
+                                <form method="post" action="{{ route('admin.guests.bypass-vehicle-info', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="car" class="h-4 w-4" />Bypass Vehicle Info</button></form>
+                            @endif
+
+                            @if($booking->access_blocked_at)
+                                <form method="post" action="{{ route('admin.guests.unblock-access', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="unlock" class="h-4 w-4" />Restore Access</button></form>
+                            @else
+                                <button type="button" class="btn-danger w-full gap-2" onclick="document.getElementById('block-form-{{ $booking->id }}').classList.toggle('hidden')">
+                                    <x-icon name="alert-triangle" class="h-4 w-4" />Block Access
+                                </button>
+                                <form id="block-form-{{ $booking->id }}" method="post" action="{{ route('admin.guests.block-access', $booking) }}" class="hidden grid gap-2">
+                                    @csrf
+                                    <textarea name="access_blocked_reason" class="input" rows="3" placeholder="Reason (shown to guest)" required>{{ old('access_blocked_reason') }}</textarea>
+                                    <button class="btn-secondary w-full">Submit Block</button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endif
+            </section>
+
+            <section class="card card-pad order-4 lg:order-none">
+                <h2 class="section-title">Status Overview</h2>
+                @php
+                    $steps = [
+                        'Email Received' => filled($booking->email),
+                        'Photo ID Uploaded' => filled($booking->photo_id_path),
+                        'Photo ID Approval' => $booking->isApproved(),
+                        \App\Models\Setting::getValue('background_check_step_name', 'Background Check') => $booking->isBackgroundCheckComplete(),
+                        'Deposit Verified' => $booking->isDepositVerified(),
+                        'Unit Ready / Check-In Approved' => $booking->isCheckinApproved(),
+                        'GPS Verified' => $booking->gps_verified,
+                        'Currently Hosting' => $booking->isCheckedIn(),
+                        'Checked Out' => filled($booking->checked_out_at),
+                    ];
+                    $progress = round((count(array_filter($steps)) / count($steps)) * 100);
+                @endphp
+                <p class="section-copy">Overall progress</p>
+                <div class="mt-2 flex items-center gap-3">
+                    <div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-emerald-500" style="width: {{ $progress }}%"></div></div>
+                    <span class="text-sm font-semibold text-slate-700">{{ $progress }}%</span>
+                </div>
+                <div class="mt-5 grid gap-1 text-sm">
+                    @foreach($steps as $label => $done)
+                        <div class="flex items-center justify-between border-b border-slate-100 py-2.5 last:border-0"><span class="text-slate-700">{{ $label }}</span><span class="badge {{ $done ? 'badge-active' : 'badge-pending' }}">{{ $done ? 'Done' : 'Pending' }}</span></div>
+                    @endforeach
+                </div>
+            </section>
+
+        </aside>
+    </div>
+
+
+    {{-- Media Picker Modal (for editor image insert) --}}
+    <div id="media-picker-modal" class="fixed inset-0 hidden items-center justify-center bg-slate-950/40 p-4" style="z-index:2147483000;">
+        <div class="w-full max-w-2xl rounded-xl bg-white p-5 shadow-xl">
+            <div class="mb-3 flex items-center justify-between gap-3">
+                <p id="media-picker-breadcrumb" class="text-sm font-bold text-slate-700">Library</p>
+                <div class="flex items-center gap-2">
+                    <label class="btn-secondary cursor-pointer text-xs">
+                        Upload
+                        <input type="file" id="media-picker-upload-input" accept="image/*" class="sr-only">
+                    </label>
+                    <button type="button" onclick="closeMediaPickerForEditor()" class="text-slate-400 hover:text-slate-700">
+                        <x-icon name="x" class="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+            <div id="media-picker-body" class="grid max-h-96 grid-cols-3 gap-3 overflow-y-auto sm:grid-cols-4"></div>
+        </div>
+    </div>
+
+    {{-- Photo ID Viewer Modal --}}
+    <div id="photo-id-modal" tabindex="-1" class="fixed inset-0 hidden items-center justify-center bg-slate-950/40 p-4" style="z-index:2147483000;">
+        <div class="w-full max-w-2xl rounded-xl bg-white p-5 shadow-xl">
+            <div class="mb-3 flex items-center justify-between gap-3">
+                <p id="photo-id-modal-title" class="text-sm font-bold text-slate-700">Photo ID</p>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="photoIdZoomOut()" class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">&minus;</button>
+                    <span id="photo-id-modal-zoom-level" class="w-10 text-center text-xs font-semibold text-slate-500">100%</span>
+                    <button type="button" onclick="photoIdZoomIn()" class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">+</button>
+                    <button type="button" onclick="photoIdZoomReset()" class="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">Reset</button>
+                    <button type="button" onclick="closePhotoIdModal()" class="text-slate-400 hover:text-slate-700">
+                        <x-icon name="x" class="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
+            <div id="photo-id-modal-viewport" class="max-h-[75vh] w-full overflow-hidden rounded-lg bg-slate-100" style="cursor: grab;">
+                <img id="photo-id-modal-img" src="" alt="" class="h-full w-full select-none object-contain" style="transform-origin: center center; transition: transform 0.08s ease-out; user-select:none; -webkit-user-drag:none;" draggable="false">
+            </div>
+
+            @if(($booking->photo_id_path || $booking->photo_id_back_path) && !$booking->isApproved() && ! $booking->isCancelled())
+                <div class="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+                    <form method="post" action="{{ route('admin.guests.approve', $booking) }}" class="flex-1">@csrf<button class="btn-primary w-full gap-2"><x-icon name="check" class="h-4 w-4" />Approve</button></form>
+                    <button type="button" class="btn-danger flex-1 gap-2" onclick="document.getElementById('decline-form-{{ $booking->id }}').classList.toggle('hidden'); closePhotoIdModal();"><x-icon name="x" class="h-4 w-4" />Decline</button>
+                </div>
+            @endif
+        </div>
+    </div>
+
+
+{{-- Force TinyMCE's floating menus/dropdowns/overflow drawer below our modal --}}
+    <style>
+    .tox-tinymce-aux,
+    .tox.tox-silver-sink,
+    .tox-dialog-wrap {
+        z-index: 1000 !important;
+    }
+    .tox-menu.tox-collection.tox-collection--list {
+        max-height: 320px !important;
+        overflow-y: auto !important;
+    }
+    .tox.tox-tinymce.tox-fullscreen,
+    body.tox-fullscreen-body .tox.tox-tinymce.tox-fullscreen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 2147483001 !important;
+    }
+    </style>
+
+    {{-- Google Fonts loaded on the PAGE so toolbar dropdown labels render correctly --}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+    let __mediaPickerCurrentFolder = null;
+
+    let __photoIdZoom = 1;
+    let __photoIdPanX = 0;
+    let __photoIdPanY = 0;
+    let __photoIdDragging = false;
+    let __photoIdDragStartX = 0;
+    let __photoIdDragStartY = 0;
+    const PHOTO_ID_ZOOM_MIN = 1;
+    const PHOTO_ID_ZOOM_MAX = 4;
+    const PHOTO_ID_ZOOM_STEP = 0.25;
+
+    function __photoIdApplyTransform() {
+        const img = document.getElementById('photo-id-modal-img');
+        img.style.transform = `translate(${__photoIdPanX}px, ${__photoIdPanY}px) scale(${__photoIdZoom})`;
+        document.getElementById('photo-id-modal-zoom-level').textContent = Math.round(__photoIdZoom * 100) + '%';
+        const viewport = document.getElementById('photo-id-modal-viewport');
+        viewport.style.cursor = __photoIdZoom > 1 ? 'grab' : 'default';
+    }
+
+    function __photoIdClampPan() {
+        if (__photoIdZoom <= 1) {
+            __photoIdPanX = 0;
+            __photoIdPanY = 0;
+            return;
+        }
+        const viewport = document.getElementById('photo-id-modal-viewport');
+        const maxPanX = (viewport.clientWidth * (__photoIdZoom - 1)) / 2;
+        const maxPanY = (viewport.clientHeight * (__photoIdZoom - 1)) / 2;
+        __photoIdPanX = Math.max(-maxPanX, Math.min(maxPanX, __photoIdPanX));
+        __photoIdPanY = Math.max(-maxPanY, Math.min(maxPanY, __photoIdPanY));
+    }
+
+    function photoIdZoomIn() {
+        __photoIdZoom = Math.min(PHOTO_ID_ZOOM_MAX, __photoIdZoom + PHOTO_ID_ZOOM_STEP);
+        __photoIdClampPan();
+        __photoIdApplyTransform();
+    }
+
+    function photoIdZoomOut() {
+        __photoIdZoom = Math.max(PHOTO_ID_ZOOM_MIN, __photoIdZoom - PHOTO_ID_ZOOM_STEP);
+        __photoIdClampPan();
+        __photoIdApplyTransform();
+    }
+
+    function photoIdZoomReset() {
+        __photoIdZoom = 1;
+        __photoIdPanX = 0;
+        __photoIdPanY = 0;
+        __photoIdApplyTransform();
+    }
+
+    function openPhotoIdModal(url, title) {
+        document.getElementById('photo-id-modal-img').src = url;
+        document.getElementById('photo-id-modal-title').textContent = title;
+        const modal = document.getElementById('photo-id-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        modal.focus();
+        modal.scrollIntoView({ behavior: 'instant', block: 'center' });
+        photoIdZoomReset();
+    }
+
+    function closePhotoIdModal() {
+        const modal = document.getElementById('photo-id-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('photo-id-modal-img').src = '';
+        document.body.style.overflow = '';
+        photoIdZoomReset();
+    }
+
+    (function initPhotoIdZoomInteractions() {
+        const viewport = document.getElementById('photo-id-modal-viewport');
+        const img = document.getElementById('photo-id-modal-img');
+
+        viewport.addEventListener('wheel', function (e) {
+            if (document.getElementById('photo-id-modal').classList.contains('hidden')) return;
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                __photoIdZoom = Math.min(PHOTO_ID_ZOOM_MAX, __photoIdZoom + PHOTO_ID_ZOOM_STEP);
+            } else {
+                __photoIdZoom = Math.max(PHOTO_ID_ZOOM_MIN, __photoIdZoom - PHOTO_ID_ZOOM_STEP);
+            }
+            __photoIdClampPan();
+            __photoIdApplyTransform();
+        }, { passive: false });
+
+        viewport.addEventListener('mousedown', function (e) {
+            if (__photoIdZoom <= 1) return;
+            __photoIdDragging = true;
+            __photoIdDragStartX = e.clientX - __photoIdPanX;
+            __photoIdDragStartY = e.clientY - __photoIdPanY;
+            viewport.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', function (e) {
+            if (!__photoIdDragging) return;
+            __photoIdPanX = e.clientX - __photoIdDragStartX;
+            __photoIdPanY = e.clientY - __photoIdDragStartY;
+            __photoIdClampPan();
+            __photoIdApplyTransform();
+        });
+
+        window.addEventListener('mouseup', function () {
+            if (!__photoIdDragging) return;
+            __photoIdDragging = false;
+            viewport.style.cursor = __photoIdZoom > 1 ? 'grab' : 'default';
+        });
+
+        img.addEventListener('dblclick', function () {
+            if (__photoIdZoom > 1) {
+                photoIdZoomReset();
+            } else {
+                __photoIdZoom = 2;
+                __photoIdApplyTransform();
+            }
+        });
+    })();
+
+    
+    function switchPhotoIdTab(side) {
+        const frontPanel = document.getElementById('photo-id-panel-front');
+        const backPanel = document.getElementById('photo-id-panel-back');
+        const frontTab = document.getElementById('photo-id-tab-front');
+        const backTab = document.getElementById('photo-id-tab-back');
+        const activeClasses = ['border-b-2', 'border-teal-700', 'text-teal-800'];
+
+        if (side === 'front') {
+            if (frontPanel) frontPanel.classList.remove('hidden');
+            if (backPanel) backPanel.classList.add('hidden');
+            if (frontTab) frontTab.classList.add(...activeClasses);
+            if (backTab) backTab.classList.remove(...activeClasses);
+        } else {
+            if (backPanel) backPanel.classList.remove('hidden');
+            if (frontPanel) frontPanel.classList.add('hidden');
+            if (backTab) backTab.classList.add(...activeClasses);
+            if (frontTab) frontTab.classList.remove(...activeClasses);
+        }
+    }
+
+    function closeMediaPickerForEditor() {
+        const modal = document.getElementById('media-picker-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function openMediaPickerForEditor() {
+        const modal = document.getElementById('media-picker-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        loadMediaPickerForEditor(null);
+    }
+
+    function loadMediaPickerForEditor(folderId) {
+        __mediaPickerCurrentFolder = folderId;
+        const url = '{{ route("admin.media.picker") }}' + (folderId ? '?folder_id=' + folderId : '');
+        fetch(url).then(r => r.json()).then(data => {
+            const body = document.getElementById('media-picker-body');
+            const crumbText = data.breadcrumb.length ? data.breadcrumb.map(c => c.name).join(' / ') : 'Library';
+            document.getElementById('media-picker-breadcrumb').textContent = crumbText;
+            body.innerHTML = '';
+            if (folderId !== null) {
+                const up = document.createElement('button');
+                up.type = 'button';
+                up.className = 'col-span-full text-left text-xs font-semibold text-blue-600 hover:underline';
+                up.textContent = 'Back';
+                const parentId = data.breadcrumb.length > 1 ? data.breadcrumb[data.breadcrumb.length - 2].id : null;
+                up.onclick = () => loadMediaPickerForEditor(parentId);
+                body.appendChild(up);
+            }
+            data.folders.forEach(folder => {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'flex flex-col items-center gap-1 rounded-lg border border-slate-200 p-3 hover:bg-slate-50';
+                el.innerHTML = '<span class="text-xs font-semibold">' + folder.name + '</span>';
+                el.onclick = () => loadMediaPickerForEditor(folder.id);
+                body.appendChild(el);
+            });
+            data.files.forEach(file => {
+                const el = document.createElement('button');
+                el.type = 'button';
+                el.className = 'overflow-hidden rounded-lg border border-slate-200 bg-slate-50 hover:ring-2 hover:ring-blue-400';
+                el.innerHTML = '<img src="' + file.url + '" class="h-20 w-full object-contain p-1">';
+                el.onclick = () => {
+                    if (window.tinymce && tinymce.activeEditor) {
+                        tinymce.activeEditor.insertContent('<img src="' + file.url + '" alt="' + (file.name || '') + '" style="max-width:100%;">');
+                    }
+                    closeMediaPickerForEditor();
+                };
+                body.appendChild(el);
+            });
+            if (!data.folders.length && !data.files.length) {
+                body.innerHTML += '<p class="col-span-full text-center text-sm text-slate-400">No images in this folder yet.</p>';
+            }
+        });
+    }
+
+    document.getElementById('media-picker-upload-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('image', file);
+        if (__mediaPickerCurrentFolder) formData.append('media_folder_id', __mediaPickerCurrentFolder);
+        fetch('{{ route("admin.media.files.store") }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: formData,
+        }).then(() => {
+            loadMediaPickerForEditor(__mediaPickerCurrentFolder);
+            e.target.value = '';
+        });
+    });
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+    <script>
+    tinymce.init({
+        relative_urls: false,
+        remove_script_host: false,
+        selector: '#welcome-message-editor',
+        plugins: 'lists advlist link code table searchreplace wordcount visualblocks charmap emoticons preview anchor fullscreen nonbreaking',
+        toolbar: 'undo redo | bold italic underline forecolor backcolor | alignleft aligncenter alignright | bullist numlist | customlineheight | link insertimage table anchor charmap emoticons | searchreplace preview fullscreen | removeformat code | fontfamily fontsize',
+        browser_spellcheck: true,
+        contextmenu: false,
+        font_size_formats: '8px 10px 12px 14px 16px 18px 20px 24px 28px 32px 36px 42px 48px 60px 72px',
+        font_family_formats:
+            'Arial=arial,helvetica,sans-serif;' +
+            'Helvetica=helvetica,arial,sans-serif;' +
+            'Times New Roman=times new roman,times,serif;' +
+            'Georgia=georgia,palatino,serif;' +
+            'Garamond=garamond,serif;' +
+            'Verdana=verdana,geneva,sans-serif;' +
+            'Tahoma=tahoma,arial,helvetica,sans-serif;' +
+            'Trebuchet MS=trebuchet ms,geneva,sans-serif;' +
+            'Courier New=courier new,courier,monospace;' +
+            'Comic Sans MS=comic sans ms,sans-serif;' +
+            'Impact=impact,sans-serif;' +
+            'Lucida Sans=lucida sans unicode,lucida grande,sans-serif;' +
+            'Roboto=Roboto,arial,sans-serif;' +
+            'Open Sans=\'Open Sans\',arial,sans-serif;' +
+            'Montserrat=Montserrat,arial,sans-serif;' +
+            'Merriweather=Merriweather,georgia,serif;' +
+            'Playfair Display=\'Playfair Display\',georgia,serif',
+        color_map: [
+            '000000','Black', '424242','Dark Gray', '757575','Gray', 'BDBDBD','Light Gray', 'FFFFFF','White',
+            'B71C1C','Dark Red', 'E53935','Red', 'F44336','Bright Red', 'FF7043','Orange Red', 'FB8C00','Orange',
+            'FDD835','Yellow', 'C0CA33','Olive', '7CB342','Light Green', '43A047','Green', '00897B','Teal',
+            '00ACC1','Cyan', '1E88E5','Blue', '3949AB','Indigo', '5E35B1','Purple', '8E24AA','Magenta', 'D81B60','Pink'
+        ],
+        valid_styles: {
+            '*': 'font-size,font-family,color,background-color,text-align,text-decoration,line-height'
+        },
+        menubar: false,
+        toolbar_mode: 'wrap',
+        height: 320,
+        ui_mode: 'split',
+        promotion: false,
+        branding: false,
+        content_css: false,
+        content_style: `
+            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Open+Sans:wght@400;700&family=Montserrat:wght@400;700&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;700&display=swap');
+            body { font-family: Helvetica, Arial, sans-serif; font-size: 14px; }
+            p { margin: 0; }
+        `,
+        setup: function(editor) {
+            var lineHeightValues = ['0.3', '0.5', '0.7', '0.9', '1', '1.15', '1.3', '1.5', '1.75', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
+            var lastSelectionRange = null;
+            editor.on('NodeChange KeyUp MouseUp', function() {
+                try { lastSelectionRange = editor.selection.getRng().cloneRange(); } catch (e) {}
+            });
+            editor.ui.registry.addMenuButton('customlineheight', {
+                icon: 'line-height',
+                tooltip: 'Line height',
+                fetch: function(callback) {
+                    var currentValue = null;
+                    try {
+                        var node0 = editor.selection.getNode();
+                        var block0 = editor.dom.getParent(node0, editor.dom.isBlock) || node0;
+                        if (block0 && block0.nodeName !== 'BODY') {
+                            currentValue = editor.dom.getStyle(block0, 'line-height') || null;
+                        }
+                    } catch (e) {}
+                    var items = lineHeightValues.map(function(v) {
+                        return {
+                            type: 'togglemenuitem',
+                            text: v,
+                            active: currentValue === v,
+                            onAction: function() {
+                                editor.focus();
+                                if (lastSelectionRange) {
+                                    try { editor.selection.setRng(lastSelectionRange); } catch (e) {}
+                                }
+                                var blocks = editor.selection.getSelectedBlocks();
+                                if (!blocks || !blocks.length) {
+                                    var node = editor.selection.getNode();
+                                    var single = editor.dom.getParent(node, editor.dom.isBlock) || node;
+                                    blocks = [single];
+                                }
+                                var applied = 0;
+                                blocks.forEach(function(block) {
+                                    if (block && block.nodeName !== 'BODY') {
+                                        editor.dom.setStyle(block, 'line-height', v);
+                                        applied++;
+                                    }
+                                });
+                                if (applied > 0) {
+                                    editor.nodeChanged();
+                                }
+                            }
+                        };
+                    });
+                    callback(items);
+                }
+            });
+            editor.ui.registry.addButton('insertimage', {
+                icon: 'image',
+                tooltip: 'Insert image from library',
+                onAction: function() {
+                    openMediaPickerForEditor();
+                }
+            });
+        }
+    });
+    </script>
+
+    <script>
+    function toggleGuestDetailsEdit(btn) {
+        var panel = document.getElementById('guest-details-edit-panel');
+        if (!panel) return;
+        var willShow = panel.classList.contains('hidden');
+        panel.classList.toggle('hidden');
+        if (btn) btn.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+        if (willShow) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Per-field inline editing for the Guest Details billing rows: the
+    // field is always present in the DOM (locked via pointer-events +
+    // tabindex, not the "disabled" attribute, so its current value still
+    // submits along with whichever field you actually edited). Clicking a
+    // field's pencil unlocks just that field and turns the pencil itself
+    // into the save/submit action -- the card never expands or splits.
+    function unlockLedgerField(id) {
+        var el = document.getElementById(id);
+        var btn = document.getElementById(id + '-btn');
+        if (!el || !btn) return;
+        var isLocked = el.classList.contains('pointer-events-none');
+        if (isLocked) {
+            el.classList.remove('pointer-events-none');
+            el.removeAttribute('tabindex');
+            el.classList.add('input');
+            el.classList.remove('border-none', 'bg-transparent', 'p-0', 'appearance-none');
+            el.focus();
+            if (el.select) el.select();
+            var pencil = btn.querySelector('.lf-pencil');
+            var check = btn.querySelector('.lf-check');
+            if (pencil) pencil.classList.add('hidden');
+            if (check) check.classList.remove('hidden');
+        } else {
+            // Field is already unlocked -- this click means "save". Submit
+            // the form explicitly via JS rather than mutating this
+            // button's type to "submit", which (in most browsers) would
+            // trigger a submit on the very same click that set it,
+            // reloading the page before anything could be typed.
+            var form = el.closest('form');
+            if (form) {
+                if (form.requestSubmit) form.requestSubmit();
+                else form.submit();
+            }
+        }
+    }
+
+    (function () {
+        var phoneInput = document.getElementById('guest-detail-phone-input');
+        if (!phoneInput) return;
+        phoneInput.addEventListener('input', function (e) {
+            var digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+            var formatted = digits;
+            if (digits.length > 6) {
+                formatted = '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+            } else if (digits.length > 3) {
+                formatted = '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+            } else if (digits.length > 0) {
+                formatted = '(' + digits;
+            }
+            e.target.value = formatted;
+        });
+    })();
+    </script>
+        <script src="{{ asset('js/guest-phone-country.js') }}"></script>
+</x-admin-layout>
+.number_format(((int) $cents) / 100, 2);
+                $paymentStatusLabel = fn ($status) => match ($status) {
+                    'success', 'paid' => 'Paid', 'pending' => 'Pending', 'failed' => 'Failed',
+                    'refunded' => 'Refunded', 'partially_captured' => 'Partially captured',
+                    'released' => 'Released', 'held' => 'Authorized / held', 'waived' => 'Waived',
+                    default => str($status ?: 'unknown')->replace('_', ' ')->title()->toString(),
+                };
+            @endphp
+            <section class="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="text-sm font-bold text-slate-950">Long-term lease</h2>
+                    <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">Lease reservation</span>
+                </div>
+                <p class="mt-2 text-sm text-slate-600">Application #{{ $leaseApplication?->id ?? '—' }} · Offer {{ $leaseOffer ? '#'.$leaseOffer->id : 'not available' }} @if($leaseOffer) · {{ str($leaseOffer->status)->replace('_', ' ')->title() }} @endif</p>
+                @if($leaseOffer)
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Monthly rent</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->monthly_rent_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Deposit</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->deposit_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Lease total</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->total_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Payment method</p><p class="mt-1 font-semibold">{{ $leaseOffer->payment_method === 'manual' ? ($leaseOffer->hostPaymentMethod?->label ?: 'Manual') : 'Card' }}</p></div>
+                    </div>
+                    <h3 class="mt-4 text-sm font-semibold">Installment payments</h3>
+                    <div class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                        @forelse($leaseInstallments as $installment)
+                            @php
+                                $installmentCharge = $installment->charges->sortByDesc('id')->first();
+                                $recordedStatus = $installmentCharge?->status ?: $installment->status;
+                                $recordedMethod = $installment->method ?: ($installmentCharge ? 'card' : ($leaseOffer->payment_method === 'manual' ? 'manual' : 'card'));
+                                $recordedAt = $installment->paid_at ?: $installmentCharge?->captured_at;
+                            @endphp
+                            <div class="flex flex-wrap items-start justify-between gap-3 p-3">
+                                <div><p class="text-sm font-semibold">{{ $installment->label }}</p><p class="mt-0.5 text-xs text-slate-500">Due {{ $installment->due_date?->format('M j, Y') }} · {{ ucfirst($recordedMethod) }}</p>
+                                    @if($recordedAt)<p class="mt-1 text-xs text-slate-500">Recorded {{ $booking->localTimestamp($recordedAt)?->format('M j, Y g:i A') }}</p>@endif
+                                    @if($installmentCharge?->stripe_payment_intent_id)<p class="mt-1 break-all text-xs text-slate-400">Stripe payment: {{ $installmentCharge->stripe_payment_intent_id }}</p>@endif
+                                    @if($installment->receipt_path)<p class="mt-1 text-xs text-slate-500">Receipt uploaded</p>@endif
+                                </div>
+                                <div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($installment->amount_cents) }}</p><span class="mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ in_array($recordedStatus, ['paid', 'success'], true) ? 'bg-emerald-50 text-emerald-700' : (in_array($recordedStatus, ['failed', 'refunded'], true) ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800') }}">{{ $paymentStatusLabel($recordedStatus) }}</span></div>
+                            </div>
+                        @empty
+                            <p class="p-3 text-sm text-slate-500">No installments found for this offer.</p>
+                        @endforelse
+                    </div>
+                @endif
+                @if($applicationCharges->isNotEmpty())
+                    <h3 class="mt-4 text-sm font-semibold">Application fee payments</h3>
+                    @foreach($applicationCharges as $feeCharge)
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"><div><p class="text-sm font-medium">{{ $feeCharge->description ?: 'Lease application fee' }}</p><p class="text-xs text-slate-500">{{ $feeCharge->billing_moment ?: 'Application' }} @if($feeCharge->captured_at) · {{ $booking->localTimestamp($feeCharge->captured_at)?->format('M j, Y g:i A') }} @endif</p>@if($feeCharge->stripe_payment_intent_id)<p class="break-all text-xs text-slate-400">{{ $feeCharge->stripe_payment_intent_id }}</p>@endif</div><div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($feeCharge->amount_cents) }}</p><span class="text-xs font-semibold">{{ $paymentStatusLabel($feeCharge->status) }}</span></div></div>
+                    @endforeach
+                @elseif($leaseApplication && $leaseApplication->total_fee_cents > 0)
+                    <p class="mt-3 text-sm text-slate-600">Application fee: {{ $moneyCents($leaseApplication->total_fee_cents) }} · {{ ucfirst($leaseApplication->fee_status) }} ({{ ucfirst($leaseApplication->payment_method ?: 'not specified') }})</p>
+                @endif
+                <p class="mt-4 text-sm font-medium text-slate-700">Reservation status: {{ $booking->statusLabel() }} · Lease contract total: {{ $moneyCents($booking->total_cents) }}</p>
+                @if($booking->payment_confirmed_at)<p class="mt-1 text-xs text-slate-500">Initial payment requirements satisfied {{ $booking->localTimestamp($booking->payment_confirmed_at)?->format('M j, Y g:i A') }}</p>@endif
+            </section>
+        @endif
+        @if($booking->source === 'direct' && ! $booking->lease_offer_id && ! $booking->lease_application_id)
             <section class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                 <h2 class="flex items-center gap-2 text-sm font-bold text-emerald-950">Direct booking payment <span class="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">Direct booking</span></h2>
                 <p class="mt-2 text-sm text-emerald-900">
