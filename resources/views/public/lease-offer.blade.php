@@ -7,6 +7,7 @@
 @php
     $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
     $contract = (string) $offer->contract_html;
+    $confirmUrl = route('public.lease-offer.confirm', [$offer->application_id, $offer->application->token, $offer->token]);
     $values = [
         '[[applicant_name]]' => e($offer->application->applicant_name),
         '[[host_name]]' => e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
@@ -141,7 +142,7 @@
         const result = await stripe.confirmCardPayment(@json($clientSecret), {payment_method: {card}});
         if (result.error) { error.textContent = result.error.message || 'Payment failed.'; button.disabled = false; button.textContent = 'Pay {{ $money($nextInstallment->amount_cents) }}'; return; }
         try {
-            const response = await fetch(@json(route('public.lease-offer.confirm', [$offer->application_id, $offer->application->token, $offer->token])), {
+            const response = await fetch(@json($confirmUrl), {
                 method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':@json(csrf_token())},
                 body: JSON.stringify({payment_intent_id: result.paymentIntent.id})
             });
