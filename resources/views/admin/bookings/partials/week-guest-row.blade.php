@@ -12,6 +12,7 @@
             <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ $booking->arrivalCountdownLabel() }}</p>
         @endif
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
+        @if($booking->lease_offer_id || $booking->lease_application_id)<span class="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">Long-term lease</span>@endif
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
         @if($cleanerName)
             <p class="text-sm text-slate-600">Cleaner: {{ $cleanerName }}</p>
