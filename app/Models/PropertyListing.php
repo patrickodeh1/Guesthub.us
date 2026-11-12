@@ -26,6 +26,8 @@ class PropertyListing extends Model
         'cancellation_policy_text',
         'house_rules',
         'lease_enabled',
+        'listing_type',
+        'lease_auto_route_29_nights',
         'lease_application_fee_cents',
         'screening_provider_url',
         'lease_allow_passport',
@@ -46,6 +48,7 @@ class PropertyListing extends Model
             'advance_notice_hours' => 'integer',
             'min_nights' => 'integer',
             'lease_enabled' => 'boolean',
+            'lease_auto_route_29_nights' => 'boolean',
             'lease_application_fee_cents' => 'integer',
             'published_at' => 'datetime',
         ];
