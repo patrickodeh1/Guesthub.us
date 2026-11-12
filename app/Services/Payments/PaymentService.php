@@ -357,6 +357,15 @@ class PaymentService
             }
         }
 
+
+        if ($charge->type === 'lease_installment' && $charge->lease_installment_id && $charge->status === Charge::STATUS_SUCCESS) {
+            $installment = \App\Models\LeaseInstallment::query()->find($charge->lease_installment_id);
+            if ($installment && $installment->status === \App\Models\LeaseInstallment::STATUS_PENDING) {
+                $installment->update(['status' => \App\Models\LeaseInstallment::STATUS_PAID, 'paid_at' => now(), 'method' => 'card']);
+                app(\App\Services\LeaseOfferService::class)->confirmIfReady($installment->offer);
+            }
+        }
+
         return $charge;
     }
 
