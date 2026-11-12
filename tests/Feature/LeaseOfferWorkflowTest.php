@@ -70,7 +70,6 @@ class LeaseOfferWorkflowTest extends TestCase
             'monthly_rent' => '1500.00',
             'deposit' => '500.00',
             'fees' => '50.00',
-            'initial_due' => '2050.00',
             'payment_method' => 'manual',
             'host_payment_method_id' => $method->id,
             'accept_by' => now()->addDays(3)->format('Y-m-d H:i:s'),
@@ -86,7 +85,10 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertSame($offer->id, (int) $booking->lease_offer_id);
         $this->assertNotNull($booking->hold_expires_at);
         $this->get(route('public.lease-offer.show', [$application->id, $application->token, $offer->token]))
-            ->assertOk()->assertSee('Review your rental offer');
+            ->assertOk()
+            ->assertSee('Review your rental offer')
+            ->assertSee('Amount required before confirmation: $2,050.00')
+            ->assertSee('Rent · '.now()->addMonth()->format('F Y'));
 
         $this->post(route('public.lease-offer.sign', [$application->id, $application->token, $offer->token]), [
             'signature' => 'Jordan Applicant',
@@ -99,11 +101,15 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertNotNull($offer->guest_signed_at);
         $this->assertNull($booking->fresh()->payment_confirmed_at);
 
-        foreach ($offer->installments()->where('required_at_signing', true)->get() as $installment) {
-            $this->actingAs($owner)->post(route('admin.lease-applications.offers.installments.received', [
-                $application, $offer, $installment,
-            ]))->assertRedirect()->assertSessionHas('success');
-        }
+        $this->actingAs($owner)->get(route('admin.lease-applications.show', $application))
+            ->assertOk()
+            ->assertSee('Record full initial payment received')
+            ->assertSee('$2,050.00');
+
+        $this->actingAs($owner)->post(route('admin.lease-applications.offers.initial-payment.received', [
+            $application, $offer,
+        ]))->assertRedirect()->assertSessionHas('success');
+
 
         $offer->refresh();
         $booking->refresh();
@@ -112,7 +118,9 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
         $this->assertStringContainsString('Jordan Applicant', $booking->contract_snapshot);
-        $this->assertDatabaseHas('lease_installments', ['lease_offer_id' => $offer->id, 'status' => 'paid']);
+        $this->assertDatabaseHas('lease_installments', ['lease_offer_id' => $offer->id, 'kind' => 'deposit', 'status' => 'paid']);
+        $this->assertSame(205000, (int) $offer->fresh()->initial_due_cents);
+        $this->assertSame(205000, (int) $offer->installments()->where('required_at_signing', true)->sum('amount_cents'));
         $this->actingAs($owner)->get(route('admin.guests.show', $booking))
             ->assertOk()
             ->assertSee('Lease reservation')
