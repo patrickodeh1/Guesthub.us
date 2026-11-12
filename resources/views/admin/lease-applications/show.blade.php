@@ -157,6 +157,51 @@
                         </form>
                     @endif
                 </section>
+
+                @if($application->status === 'approved' && $application->fee_status === 'paid')
+                    <section class="{{ $card }}">
+                        <h2 class="text-lg font-semibold">Rental offer</h2>
+                        @if($application->offers->isNotEmpty())
+                            @foreach($application->offers as $offer)
+                                <div class="mt-3 rounded-lg border border-slate-200 p-3">
+                                    <div class="flex items-center justify-between gap-2"><strong>Offer #{{ $offer->id }}</strong><span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold capitalize">{{ $offer->status }}</span></div>
+                                    <p class="mt-2 text-sm text-slate-600">{{ $offer->start_date?->format('M j, Y') }} – {{ $offer->end_date?->format('M j, Y') }} · {{ $money($offer->monthly_rent_cents) }}/month</p>
+                                    <p class="text-sm text-slate-600">Initial due: {{ $money($offer->initial_due_cents) }} · Deadline: {{ $offer->accept_by?->format('M j, g:i A') }}</p>
+                                    @if($offer->booking)<a class="mt-2 inline-block text-sm font-semibold underline" href="{{ route('admin.guests.show', $offer->booking) }}">Open reservation</a>@endif
+                                    @foreach($offer->installments as $installment)
+                                        <div class="mt-3 border-t border-slate-100 pt-2 text-sm">
+                                            <div class="flex justify-between gap-2"><span>{{ $installment->label }} · {{ $installment->due_date->format('M j, Y') }}</span><strong>{{ $money($installment->amount_cents) }}</strong></div>
+                                            <div class="text-xs text-slate-500">{{ ucfirst($installment->status) }}{{ $installment->required_at_signing ? ' · Required before confirmation' : '' }}</div>
+                                            @if($offer->status === 'signed' && $offer->payment_method === 'manual' && $installment->required_at_signing && $installment->status === 'pending')
+                                                <form method="post" action="{{ route('admin.lease-applications.offers.installments.received', [$application, $offer, $installment]) }}" class="mt-2">@csrf<button class="btn-primary w-full">Record payment received</button></form>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                    @if($offer->token)
+                                        <a class="mt-3 inline-block text-sm underline" href="{{ route('public.lease-offer.show', [$application->id, $application->token, $offer->token]) }}" target="_blank" rel="noopener">Preview guest offer</a>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @endif
+                        @if(!$application->offers->contains(fn($offer) => in_array($offer->status, ['sent', 'signed', 'confirmed'], true)))
+                            <form method="post" action="{{ route('admin.lease-applications.offers.create', $application) }}" class="mt-4 grid gap-3">
+                                @csrf
+                                <label class="block text-sm font-medium">Rental start date<input type="date" name="start_date" required min="{{ now()->toDateString() }}" value="{{ old('start_date', $application->move_in_date?->format('Y-m-d')) }}" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Rental end date<input type="date" name="end_date" required value="{{ old('end_date') }}" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Term (months)<input type="number" name="term_months" min="1" max="600" required value="{{ old('term_months', $application->lease_term_months ?: 12) }}" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Monthly rent (USD)<input type="number" name="monthly_rent" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="1500.00"></label>
+                                <label class="block text-sm font-medium">Security deposit (USD)<input type="number" name="deposit" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Other fees (USD)<input type="number" name="fees" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Amount due before confirmation (USD)<input type="number" name="initial_due" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="3000.00"></label>
+                                <label class="block text-sm font-medium">Payment method<select name="payment_method" class="input mt-1 w-full"><option value="card">Card through GuestHub</option><option value="manual">External / manual payment</option></select></label>
+                                <label class="block text-sm font-medium">Manual payment method<select name="host_payment_method_id" class="input mt-1 w-full"><option value="">Choose a method</option>@foreach($paymentMethods as $method)<option value="{{ $method->id }}">{{ $method->label }}</option>@endforeach</select></label>
+                                <label class="block text-sm font-medium">Offer acceptance deadline<input type="datetime-local" name="accept_by" required min="{{ now()->format('Y-m-d\\TH:i') }}" value="{{ old('accept_by', now()->addDays(3)->format('Y-m-d\\TH:i')) }}" class="input mt-1 w-full"></label>
+                                <p class="text-xs text-slate-500">The host signs when sending. The applicant signs online. Required initial installments must be paid before the reservation is confirmed.</p>
+                                <button class="btn-primary w-full">Create and send rental offer</button>
+                            </form>
+                        @endif
+                    </section>
+                @endif
             </aside>
         </div>
     </div>
