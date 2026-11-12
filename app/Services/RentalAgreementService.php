@@ -26,7 +26,7 @@ class RentalAgreementService
         $idType = $booking->id_type === 'passport' ? 'Passport' : 'State-issued ID';
 
         $template = $this->templateFor($booking, $property);
-        $fullLayout = str_contains($template, '[[signed_name]]');
+        $fullLayout = (bool) $booking->lease_offer_id || str_contains($template, '[[signed_name]]');
         $signedAtObj = $booking->localTimestamp($booking->contract_accepted_at);
         $sigFmt = fn ($v) => e(filled($v) ? $v : '-');
         $idImg = $this->idImageDataUri($booking);
@@ -69,6 +69,7 @@ class RentalAgreementService
             'fullLayout' => $fullLayout,
             'signedAt' => $booking->localTimestamp($booking->contract_accepted_at),
             'agreementVersion' => $booking->contract_version,
+            'isLeaseAgreement' => (bool) $booking->lease_offer_id,
             'idImage' => $this->idImageDataUri($booking),
         ];
     }
