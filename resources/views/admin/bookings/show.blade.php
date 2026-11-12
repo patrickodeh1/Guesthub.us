@@ -22,7 +22,7 @@
                 @if($booking->lease_offer_id || $booking->lease_application_id)
                     <span class="mt-2 inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">Long-term lease</span>
                 @else
-                    <span class="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">Direct booking</span>
+                    <span class="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ $booking->platformLabel() }}</span>
                 @endif
                 @if($showCheckinReq || $showCheckoutReq)
                     <div class="mt-3 flex flex-col gap-2 text-sm">
