@@ -103,6 +103,15 @@
                         <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Lease total</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->total_cents) }}</p></div>
                         <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Payment method</p><p class="mt-1 font-semibold">{{ $leaseOffer->payment_method === 'manual' ? ($leaseOffer->hostPaymentMethod?->label ?: 'Manual') : 'Card' }}</p></div>
                     </div>
+                    @php($initialCharge = $booking->charges->firstWhere('type', \\App\\Models\\Charge::TYPE_LEASE_INITIAL_PAYMENT))
+                    @if($initialCharge)
+                        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div><p class="text-sm font-semibold text-slate-900">Combined initial payment</p><p class="mt-1 text-xs text-slate-500">First rent + security deposit + additional fees · Card</p>@if($initialCharge->captured_at)<p class="mt-1 text-xs text-slate-500">Paid {{ $booking->localTimestamp($initialCharge->captured_at)?->format('M j, Y g:i A') }}</p>@endif @if($initialCharge->stripe_payment_intent_id)<p class="mt-1 break-all text-xs text-slate-400">Stripe: {{ $initialCharge->stripe_payment_intent_id }}</p>@endif</div>
+                                <div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($initialCharge->amount_cents) }}</p><span class="text-xs font-semibold">{{ $paymentStatusLabel($initialCharge->status) }}</span></div>
+                            </div>
+                        </div>
+                    @endif
                     <h3 class="mt-4 text-sm font-semibold">Installment payments</h3>
                     <div class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
                         @forelse($leaseInstallments as $installment)
