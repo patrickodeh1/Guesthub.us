@@ -218,7 +218,7 @@ class PaymentService
     {
         $offer->loadMissing(['property.owner', 'booking']);
         abort_unless(in_array($offer->status, [\App\Models\LeaseOffer::STATUS_SIGNED, \App\Models\LeaseOffer::STATUS_CONFIRMED], true)
-            && ($offer->status === \App\\Models\\LeaseOffer::STATUS_CONFIRMED || $offer->accept_by?->isFuture())
+            && ($offer->status === \App\Models\LeaseOffer::STATUS_CONFIRMED || $offer->accept_by?->isFuture())
             && $offer->payment_method === 'card'
             && $installment->lease_offer_id === $offer->id
             && $installment->status === \App\Models\LeaseInstallment::STATUS_PENDING, 409);
