@@ -190,7 +190,7 @@
                                 </div>
                             @endforeach
                         @endif
-                        @if(!$application->offers->contains(fn($offer) => in_array($offer->status, ['sent', 'signed', 'confirmed'], true)))
+                        @if(!$application->offers->contains(fn($offer) => in_array($offer->status, ['sent', 'signed', 'confirmed'], true)) && ($canCard || $paymentMethods->isNotEmpty()))
                             <form method="post" action="{{ route('admin.lease-applications.offers.create', $application) }}" class="mt-4 grid gap-3">
                                 @csrf
                                 <label class="block text-sm font-medium">Rental start date<input type="date" name="start_date" required min="{{ now()->toDateString() }}" value="{{ old('start_date', $application->move_in_date?->format('Y-m-d')) }}" class="input mt-1 w-full"></label>
@@ -204,7 +204,7 @@
                                     <textarea name="contract_html" rows="10" required class="input mt-1 w-full font-mono text-xs">{{ old('contract_html', $leaseTemplate) }}</textarea>
                                     <span class="mt-1 block text-xs text-slate-500">This copy is saved with the offer and signed by both parties. You can adjust the property template before sending.</span>
                                 </label>
-                                <label class="block text-sm font-medium">Payment method<select name="payment_method" class="input mt-1 w-full"><option value="card">Card through GuestHub</option><option value="manual">External / manual payment</option></select></label>
+                                <label class="block text-sm font-medium">Payment method<select name="payment_method" class="input mt-1 w-full">@if($canCard)<option value="card">Card through GuestHub</option>@endif @if($paymentMethods->isNotEmpty())<option value="manual" @selected(!$canCard)>External / manual payment</option>@endif</select></label>
                                 <label class="block text-sm font-medium">Manual payment method<select name="host_payment_method_id" class="input mt-1 w-full"><option value="">Choose a method</option>@foreach($paymentMethods as $method)<option value="{{ $method->id }}">{{ $method->label }}</option>@endforeach</select></label>
                                 <label class="block text-sm font-medium">Offer acceptance deadline<input type="datetime-local" name="accept_by" required min="{{ now()->format('Y-m-d\\TH:i') }}" value="{{ old('accept_by', now()->addDays(3)->format('Y-m-d\\TH:i')) }}" class="input mt-1 w-full"></label>
                                 <p class="text-xs text-slate-500">The host signs when sending. The applicant signs online. Required initial installments must be paid before the reservation is confirmed.</p>
