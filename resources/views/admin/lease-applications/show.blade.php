@@ -172,11 +172,18 @@
                                         <div class="mt-3 border-t border-slate-100 pt-2 text-sm">
                                             <div class="flex justify-between gap-2"><span>{{ $installment->label }} · {{ $installment->due_date->format('M j, Y') }}</span><strong>{{ $money($installment->amount_cents) }}</strong></div>
                                             <div class="text-xs text-slate-500">{{ ucfirst($installment->status) }}{{ $installment->required_at_signing ? ' · Required before confirmation' : '' }}</div>
-                                            @if(in_array($offer->status, ['signed', 'confirmed'], true) && $offer->payment_method === 'manual' && $installment->required_at_signing && $installment->status === 'pending')
+                                            @if(in_array($offer->status, ['signed', 'confirmed'], true) && $offer->payment_method === 'manual' && $installment->status === 'pending')
                                                 <form method="post" action="{{ route('admin.lease-applications.offers.installments.received', [$application, $offer, $installment]) }}" class="mt-2">@csrf<button class="btn-primary w-full">Record payment received</button></form>
                                             @endif
                                         </div>
                                     @endforeach
+                                    @if(in_array($offer->status, ['sent', 'signed', 'confirmed'], true))
+                                        <form method="post" action="{{ route('admin.lease-applications.offers.cancel', [$application, $offer]) }}" class="mt-3" onsubmit="return confirm('Cancel this rental offer and release its calendar dates? Paid installments will remain in the payment history.');">
+                                            @csrf
+                                            <input type="hidden" name="reason" value="Cancelled by host">
+                                            <button class="w-full rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700">Cancel offer and release dates</button>
+                                        </form>
+                                    @endif
                                     @if($offer->token)
                                         <a class="mt-3 inline-block text-sm underline" href="{{ route('public.lease-offer.show', [$application->id, $application->token, $offer->token]) }}" target="_blank" rel="noopener">Preview guest offer</a>
                                     @endif
