@@ -238,6 +238,7 @@
                 @endif
             </article>
 
+            @if(($listing->listing_type ?? 'both') !== 'long_term')
             <aside class="booking-column" aria-label="Book this stay">
                 <section class="booking-card" id="booking-card" aria-labelledby="booking-card-title">
                     <div class="booking-price">
@@ -274,6 +275,7 @@
                 </section>
                 <p class="booking-reassurance">Your price is calculated from current rates and fees. Dates are not reserved until checkout.</p>
             </aside>
+            @endif
         </div>
     </div>
 @endsection
