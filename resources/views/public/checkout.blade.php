@@ -58,6 +58,7 @@
         .co-error{border:1px solid #f0c4c4;background:#fdf1f1;color:#8a1f1f;border-radius:12px;padding:12px 14px;margin:0 0 20px;font-size:.92rem}
         .co-inline{color:#8a1f1f;font-size:.82rem;min-height:1em}
         .co-hp{position:absolute;left:-10000px}
+        @media(max-width:640px){.co{gap:20px}.co-grid{grid-template-columns:minmax(0,1fr)}.co-grid>*{grid-column:1/-1;min-width:0}.co-main,.co-side,.co-section{min-width:0}.co-card-body{padding:16px}.co-row{align-items:flex-start}.co-row strong{max-width:60%;overflow-wrap:anywhere}}
     </style>
 
     <div class="co">
