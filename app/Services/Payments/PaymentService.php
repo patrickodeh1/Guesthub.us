@@ -214,6 +214,59 @@ class PaymentService
      * success to verify with Stripe and mark it captured.
      */
 
+    public function createLeaseOfferInitialPaymentIntent(\App\Models\LeaseOffer $offer): array
+    {
+        $offer->loadMissing(['property.owner', 'application', 'installments']);
+        abort_unless($offer->payment_method === 'card'
+            && in_array($offer->status, [\App\Models\LeaseOffer::STATUS_SIGNED, \App\Models\LeaseOffer::STATUS_CONFIRMED], true)
+            && ($offer->status === \App\Models\LeaseOffer::STATUS_CONFIRMED || $offer->accept_by?->isFuture()), 409);
+        $required = $offer->installments->where('required_at_signing', true);
+        abort_unless($required->isNotEmpty() && $required->contains(fn ($item) => $item->status === \App\Models\LeaseInstallment::STATUS_PENDING), 409);
+        abort_unless($required->every(fn ($item) => in_array($item->status, [\App\Models\LeaseInstallment::STATUS_PENDING, \App\Models\LeaseInstallment::STATUS_PAID], true)), 409);
+        $owner = $offer->property->owner;
+        abort_unless(filled($owner?->stripe_account_id) && $owner->stripe_charges_enabled && $this->isConfigured(), 422, 'Card payments are not available for this host.');
+
+        $existing = \App\Models\Charge::query()->where('lease_offer_id', $offer->id)
+            ->where('type', \App\Models\Charge::TYPE_LEASE_INITIAL_PAYMENT)
+            ->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
+        if ($existing) {
+            $intent = $this->client()->paymentIntents->retrieve($existing->stripe_payment_intent_id, [], ['stripe_account' => $owner->stripe_account_id]);
+            if ($intent->status === 'succeeded') {
+                $this->finalize($intent->id);
+                return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+            }
+            if ($intent->status !== 'canceled') {
+                return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+            }
+            $existing->update(['status' => \App\Models\Charge::STATUS_FAILED]);
+        }
+
+        $amount = (int) $offer->initial_due_cents;
+        abort_unless($amount > 0, 422, 'The initial lease payment must be greater than zero.');
+        $intent = $this->client()->paymentIntents->create([
+            'amount' => $amount,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+            'description' => 'Lease initial payment '.$offer->id.' (rent, deposit and fees)',
+            'receipt_email' => $offer->application->applicant_email,
+            'metadata' => ['lease_offer_id' => (string) $offer->id, 'type' => 'lease_initial_payment'],
+        ], ['stripe_account' => $owner->stripe_account_id, 'idempotency_key' => 'lease-initial-'.$offer->id.'-attempt-'.$offer->charges()->where('type', \App\Models\Charge::TYPE_LEASE_INITIAL_PAYMENT)->count()]);
+        $charge = \App\Models\Charge::create([
+            'booking_id' => $offer->booking_id,
+            'lease_application_id' => $offer->lease_application_id,
+            'lease_offer_id' => $offer->id,
+            'type' => \App\Models\Charge::TYPE_LEASE_INITIAL_PAYMENT,
+            'amount_cents' => $amount,
+            'status' => \App\Models\Charge::STATUS_PENDING,
+            'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $owner->stripe_account_id,
+            'billing_moment' => 'lease_initial_payment',
+            'description' => 'First month rent, security deposit and additional fees',
+        ]);
+
+        return ['client_secret' => $intent->client_secret, 'charge' => $charge];
+    }
+
     public function createLeaseOfferInstallmentIntent(\App\Models\LeaseOffer $offer, \App\Models\LeaseInstallment $installment): array
     {
         $offer->loadMissing(['property.owner', 'booking']);
@@ -364,6 +417,21 @@ class PaymentService
             }
         }
 
+
+        if ($charge->type === Charge::TYPE_LEASE_INITIAL_PAYMENT && $charge->lease_offer_id && $charge->status === Charge::STATUS_SUCCESS) {
+            $offer = \App\Models\LeaseOffer::query()->with('installments')->find($charge->lease_offer_id);
+            if ($offer) {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($offer): void {
+                    $required = $offer->installments()->where('required_at_signing', true)->lockForUpdate()->get();
+                    foreach ($required as $item) {
+                        if ($item->status === \App\Models\LeaseInstallment::STATUS_PENDING) {
+                            $item->update(['status' => \App\Models\LeaseInstallment::STATUS_PAID, 'paid_at' => now(), 'method' => 'card', 'charge_id' => null]);
+                        }
+                    }
+                });
+                app(\App\Services\LeaseOfferService::class)->confirmIfReady($offer->fresh());
+            }
+        }
 
         if ($charge->type === 'lease_installment' && $charge->lease_installment_id && $charge->status === Charge::STATUS_SUCCESS) {
             $installment = \App\Models\LeaseInstallment::query()->find($charge->lease_installment_id);
