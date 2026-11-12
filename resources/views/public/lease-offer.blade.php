@@ -10,6 +10,7 @@
     $initialRequired = $offer->installments->where('required_at_signing', true);
     $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : $initialRequired->contains(fn ($item) => $item->status === 'pending');
     $payAmountCents = $initialPaymentPending ? $offer->initial_due_cents : ($nextInstallment?->amount_cents ?? 0);
+    $confirmUrl = route('public.lease-offer.confirm', ['application' => $offer->lease_application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]);
     $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || ($offer->status !== 'confirmed' && $offer->accept_by?->isPast());
 @endphp
 <style>
@@ -95,11 +96,22 @@
                             @if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif
                         @endif
                     @else
-                        <form id="lease-payment-form" style="margin-top:14px">
-                            <div id="lease-card" class="lease-input" style="min-height:46px"></div>
-                            <p id="lease-payment-error" class="lease-error" role="alert"></p>
-                            <button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($offer->initial_due_cents) }}</button>
-                        </form>
+                        <div id="lease-payment-choice" style="margin-top:16px">
+                            <button type="button" id="lease-pay-here" class="lease-button">Pay here with card</button>
+                        </div>
+                        <div id="lease-card-section" hidden style="margin-top:16px">
+                            <div id="lease-payment-error" class="lease-error" role="alert" hidden></div>
+                            <form id="lease-payment-form" data-secret="{{ $clientSecret }}">
+                                <div class="guest-card-wizard" style="display:grid;gap:14px">
+                                    <div><label class="guest-card-label" for="lease-card-number">Card number</label><div id="lease-card-number" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-expiry">Expiry date</label><div id="lease-card-expiry" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-cvc">Security code (CVC)</label><div id="lease-card-cvc" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-field"></div>
+                                </div>
+                                <p id="lease-payment-error-inline" class="lease-error" role="alert"></p>
+                                <button id="lease-pay-button" type="submit" class="lease-button" style="margin-top:16px" disabled>Pay {{ $money($offer->initial_due_cents) }}</button>
+                            </form>
+                        </div>
                     @endif
                 @elseif($nextInstallment)
                     <h2 style="font-size:1.15rem;font-weight:750">Next rental payment</h2>
@@ -108,7 +120,19 @@
                         @if($offer->hostPaymentMethod)<p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>@if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif @endif
                     @else
                         <p class="lease-muted">Pay the next rent installment of {{ $money($nextInstallment->amount_cents) }} by card.</p>
-                        <form id="lease-payment-form" style="margin-top:14px"><div id="lease-card" class="lease-input" style="min-height:46px"></div><p id="lease-payment-error" class="lease-error" role="alert"></p><button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($nextInstallment->amount_cents) }}</button></form>
+                        <div id="lease-payment-choice" style="margin-top:16px"><button type="button" id="lease-pay-here" class="lease-button">Pay here with card</button></div>
+                        <div id="lease-card-section" hidden style="margin-top:16px">
+                            <form id="lease-payment-form" data-secret="{{ $clientSecret }}">
+                                <div class="guest-card-wizard" style="display:grid;gap:14px">
+                                    <div><label class="guest-card-label" for="lease-card-number">Card number</label><div id="lease-card-number" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-expiry">Expiry date</label><div id="lease-card-expiry" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-cvc">Security code (CVC)</label><div id="lease-card-cvc" class="guest-card-field"></div></div>
+                                    <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-field"></div>
+                                </div>
+                                <p id="lease-payment-error-inline" class="lease-error" role="alert"></p>
+                                <button id="lease-pay-button" type="submit" class="lease-button" style="margin-top:16px" disabled>Pay {{ $money($nextInstallment->amount_cents) }}</button>
+                            </form>
+                        </div>
                     @endif
                 @elseif($offer->status === 'confirmed')
                     <h2 style="font-size:1.15rem;font-weight:750">Payments up to date</h2>
@@ -137,26 +161,53 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 (() => {
-    const stripe = Stripe(@json($publishableKey), {stripeAccount: @json($stripeAccountId)});
-    const elements = stripe.elements();
-    const card = elements.create('card', {hidePostalCode: true});
-    card.mount('#lease-card');
+    const choice = document.getElementById('lease-payment-choice');
+    const cardSection = document.getElementById('lease-card-section');
+    const startButton = document.getElementById('lease-pay-here');
     const form = document.getElementById('lease-payment-form');
     const button = document.getElementById('lease-pay-button');
-    const error = document.getElementById('lease-payment-error');
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault(); button.disabled = true; button.textContent = 'Processing…'; error.textContent = '';
-        const result = await stripe.confirmCardPayment(@json($clientSecret), {payment_method: {card}});
-        if (result.error) { error.textContent = result.error.message || 'Payment failed.'; button.disabled = false; button.textContent = 'Pay {{ $money($payAmountCents) }}'; return; }
+    const error = document.getElementById('lease-payment-error-inline');
+    const postal = document.getElementById('lease-card-postal');
+    if (!form || !button) return;
+    let stripe, number, expiry, cvc;
+    const showError = message => { error.textContent = message; error.hidden = false; };
+    startButton?.addEventListener('click', () => {
+        choice.hidden = true;
+        cardSection.hidden = false;
+        if (stripe) return;
+        stripe = Stripe(@json($publishableKey), {stripeAccount: @json($stripeAccountId)});
+        const elements = stripe.elements({clientSecret: form.dataset.secret});
+        const style = {base: {color:'#0f172a',fontSize:'16px',fontFamily:'inherit',lineHeight:'24px','::placeholder':{color:'#94a3b8'}},invalid:{color:'#dc2626'}};
+        number = elements.create('cardNumber', {showIcon:true,placeholder:'1234 5678 9012 3456',style});
+        expiry = elements.create('cardExpiry', {placeholder:'MM / YY',style});
+        cvc = elements.create('cardCvc', {placeholder:'CVC',style});
+        number.mount('#lease-card-number'); expiry.mount('#lease-card-expiry'); cvc.mount('#lease-card-cvc');
+        let complete = {number:false,expiry:false,cvc:false};
+        const update = () => { button.disabled = !Object.values(complete).every(Boolean); };
+        number.on('change', e => { complete.number = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
+        expiry.on('change', e => { complete.expiry = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
+        cvc.on('change', e => { complete.cvc = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
+    });
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!stripe || !number || !expiry || !cvc) return;
+        button.disabled = true; button.textContent = 'Processing…'; error.hidden = true;
+        const result = await stripe.confirmCardPayment(form.dataset.secret, {
+            payment_method: {card:number,billing_details:{address:{postal_code:postal.value.trim()}}}
+        });
+        if (result.error) {
+            showError(result.error.message || 'Payment failed. Please try again.');
+            button.disabled = false; button.textContent = 'Pay {{ $money($payAmountCents) }}'; return;
+        }
         try {
             const response = await fetch(@json($confirmUrl), {
-                method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':@json(csrf_token())},
-                body: JSON.stringify({payment_intent_id: result.paymentIntent.id})
+                method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':@json(csrf_token())},
+                body:JSON.stringify({payment_intent_id:result.paymentIntent.id})
             });
             const data = await response.json();
-            if (response.ok && data.redirect) { window.location.assign(data.redirect); return; }
-            error.textContent = data.error || 'Payment received; confirmation is pending. Refresh shortly.';
-        } catch (e) { error.textContent = 'Payment received; confirmation is pending. Refresh shortly.'; }
+            if(response.ok && data.redirect){window.location.assign(data.redirect);return;}
+            showError(data.error || 'Payment received; confirmation is pending. Refresh shortly.');
+        } catch(e) { showError('Payment received; confirmation is pending. Refresh shortly.'); }
         button.disabled = false; button.textContent = 'Pay {{ $money($payAmountCents) }}';
     });
 })();
