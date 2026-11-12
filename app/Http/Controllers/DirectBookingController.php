@@ -21,7 +21,7 @@ class DirectBookingController extends Controller
             abort_unless($listing->lease_enabled, 404);
             return redirect()->route('public.lease-application.apply', $listingSlug);
         }
-        if ($listing->lease_enabled && $listing->lease_auto_route_29_nights && $request->filled('check_in') && $request->filled('check_out')) {
+        if (($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_enabled && $listing->lease_auto_route_29_nights && $request->filled('check_in') && $request->filled('check_out')) {
             try { $nights = \Carbon\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\Carbon\Carbon::parse($request->query('check_out'))->startOfDay()); }
             catch (\Throwable $e) { $nights = 0; }
             if ($nights >= 29) {
@@ -69,7 +69,7 @@ class DirectBookingController extends Controller
             return redirect()->route('public.lease-application.apply', $listingSlug);
         }
         $nights = \Carbon\Carbon::parse($data['check_in'])->startOfDay()->diffInDays(\Carbon\Carbon::parse($data['check_out'])->startOfDay());
-        if ($nights >= 29 && $listing->lease_enabled && $listing->lease_auto_route_29_nights) {
+        if ($nights >= 29 && ($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_enabled && $listing->lease_auto_route_29_nights) {
             return redirect()->route('public.lease-application.apply', $listingSlug)->with('lease_prefill', [
                 'check_in' => $data['check_in'], 'check_out' => $data['check_out'], 'guests' => $data['guests'],
             ]);
