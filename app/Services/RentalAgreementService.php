@@ -118,7 +118,7 @@ HTML;
         if ($booking->lease_offer_id) {
             $booking->loadMissing('leaseOffer.installments', 'leaseOffer.application', 'leaseOffer.property.owner');
             if ($booking->leaseOffer) {
-                return app(\\App\\Services\\LeaseOfferService::class)->renderContract($booking->leaseOffer);
+                return app(\App\Services\LeaseOfferService::class)->renderContract($booking->leaseOffer);
             }
         }
 
