@@ -16,6 +16,7 @@ use App\Services\BookingConflictService;
 use App\Services\DirectBookingCancellationPolicy;
 use App\Services\DirectBookingService;
 use App\Services\QuoteService;
+use App\Services\Payments\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -274,6 +275,41 @@ class DirectBookingCheckoutTest extends TestCase
         Mail::assertSent(DirectBookingMail::class, 3);
     }
 
+    public function test_card_payment_returns_to_success_page_instead_of_opening_guest_portal(): void
+    {
+        $booking = $this->createDirectBooking(
+            now('America/Los_Angeles')->addDays(39)->toDateString(),
+            now('America/Los_Angeles')->addDays(41)->toDateString(),
+        );
+        $booking->update([
+            'payment_method' => 'card',
+            'status' => 'pending',
+            'payment_confirmed_at' => now(),
+            'hold_expires_at' => null,
+        ]);
+        $intentId = 'pi_direct_booking_success';
+        $charge = Charge::create([
+            'booking_id' => $booking->id,
+            'type' => Charge::TYPE_ACCOMMODATION,
+            'amount_cents' => $booking->total_cents,
+            'status' => Charge::STATUS_SUCCESS,
+            'stripe_payment_intent_id' => $intentId,
+        ]);
+        $payments = \Mockery::mock(PaymentService::class);
+        $payments->shouldReceive('finalize')->once()->with($intentId)->andReturn($charge);
+        $this->app->instance(PaymentService::class, $payments);
+
+        $this->postJson(route('public.checkout.confirm', [$booking->booking_id, $booking->token]), [
+            'payment_intent_id' => $intentId,
+        ])->assertOk()
+            ->assertJsonPath('redirect', route('public.checkout.pay', [$booking->booking_id, $booking->token]));
+
+        $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
+            ->assertOk()
+            ->assertSee('Your stay is confirmed')
+            ->assertSee('Open guest portal');
+    }
+
     public function test_manual_payment_confirmation_completes_the_booking(): void
     {
         Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
@@ -291,7 +327,8 @@ class DirectBookingCheckoutTest extends TestCase
 
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
-            ->assertSee("I've sent the payment")
+            ->assertSee('Already sent your payment?')
+            ->assertSee('I sent my payment')
             ->assertSee('name="receipt"', false)
             ->assertDontSee('name="confirmation"', false);
 

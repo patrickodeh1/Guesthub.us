@@ -107,7 +107,10 @@ class DirectBookingController extends Controller
             return response()->json(['ok' => false, 'error' => 'Payment could not be confirmed.'], 422);
         }
 
-        return response()->json(['ok' => true, 'redirect' => route('guest.show', [$booking->booking_id, $booking->token])]);
+        return response()->json([
+            'ok' => true,
+            'redirect' => route('public.checkout.pay', [$booking->booking_id, $booking->token]),
+        ]);
     }
 
     public function cancel(Request $request, string $bookingId, string $token, DirectBookingService $bookings)
