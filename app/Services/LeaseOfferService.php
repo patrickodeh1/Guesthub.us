@@ -188,9 +188,9 @@ class LeaseOfferService
             '[[payment_schedule]]'=>$schedule,
             '[[host_signed_name]]'=>e((string)$offer->host_signed_name),
             '[[host_signed_at]]'=>e($offer->host_signed_at?->format('M j, Y')),
-            '[[tenant_signed_name]]'=>e((string)$offer->guest_signed_name),
-            '[[tenant_signed_at]]'=>e($offer->guest_signed_at?->format('M j, Y')),
-            '[[tenant_signed_ip]]'=>e((string)$offer->guest_signed_ip),
+            '[[tenant_signed_name]]'=>e((string)($offer->guest_signed_name ?: 'Awaiting tenant signature')),
+            '[[tenant_signed_at]]'=>e($offer->guest_signed_at?->format('M j, Y') ?: 'Pending'),
+            '[[tenant_signed_ip]]'=>e((string)($offer->guest_signed_ip ?: 'Pending')),
             '[[agreement_version]]'=>e((string)$offer->contract_version),
         ];
         return strtr((string)$offer->contract_html,$values);
