@@ -85,6 +85,7 @@
                 $leaseApplication = $leaseOffer?->application ?: $booking->leaseApplication;
                 $leaseInstallments = $leaseOffer?->installments ?? collect();
                 $applicationCharges = $leaseApplication?->charges ?? collect();
+                $initialCharge = $leaseOffer?->charges?->firstWhere('type', \\App\\Models\\Charge::TYPE_LEASE_INITIAL_PAYMENT);
                 $moneyCents = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
                 $paymentStatusLabel = fn ($status) => match ($status) {
                     'success', 'paid' => 'Paid', 'pending' => 'Pending', 'failed' => 'Failed',
