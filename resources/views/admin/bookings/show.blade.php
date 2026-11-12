@@ -103,7 +103,7 @@
                         <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Lease total</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->total_cents) }}</p></div>
                         <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Payment method</p><p class="mt-1 font-semibold">{{ $leaseOffer->payment_method === 'manual' ? ($leaseOffer->hostPaymentMethod?->label ?: 'Manual') : 'Card' }}</p></div>
                     </div>
-                    @php($initialCharge = $booking->charges->firstWhere('type', \\App\\Models\\Charge::TYPE_LEASE_INITIAL_PAYMENT))
+                    @php($initialCharge = $booking->charges->firstWhere('type', \App\Models\Charge::TYPE_LEASE_INITIAL_PAYMENT))
                     @if($initialCharge)
                         <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
                             <div class="flex flex-wrap items-start justify-between gap-3">
