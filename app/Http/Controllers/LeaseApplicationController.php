@@ -20,8 +20,15 @@ use Illuminate\Validation\ValidationException;
 
 class LeaseApplicationController extends Controller
 {
-    public function apply(string $listingSlug)
+    public function apply(Request $request, string $listingSlug)
     {
+        $prefill = $request->session()->get('lease_prefill');
+        if ($request->filled('check_in') && $request->filled('check_out')) {
+            $prefill = ['check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1)];
+            $request->session()->put('lease_prefill', $prefill);
+        } elseif (is_array($prefill)) {
+            $request->session()->put('lease_prefill', $prefill);
+        }
         return view('public.lease-application-id', [
             'listing' => $this->publishedLeaseListing($listingSlug),
             'application' => null,
@@ -338,6 +345,28 @@ class LeaseApplicationController extends Controller
         return redirect()->route('public.lease-application.fee', [$application->id, $application->token]);
     }
 
+
+    private function applyLeasePrefill(Request $request, LeaseApplication $application): void
+    {
+        $prefill = $request->session()->get('lease_prefill');
+        if (! is_array($prefill) || empty($prefill['check_in']) || empty($prefill['check_out'])) return;
+        try {
+            $start = \Carbon\Carbon::parse($prefill['check_in'])->startOfDay();
+            $end = \Carbon\Carbon::parse($prefill['check_out'])->startOfDay();
+            $nights = $start->diffInDays($end);
+            if ($nights < 29 || $end->lte($start)) return;
+            $application->update([
+                'move_in_date' => $start->toDateString(),
+                'requested_end_date' => $end->toDateString(),
+                'lease_term_months' => max(1, (int) ceil($nights / 30)),
+                'occupants' => max(1, min(30, (int) ($prefill['guests'] ?? 1))),
+            ]);
+            $request->session()->forget('lease_prefill');
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     private function scanAndContinue(
         Request $request,
         PropertyListing $listing,
@@ -371,6 +400,7 @@ class LeaseApplicationController extends Controller
             'id_scan_attempts' => $attempts,
             'id_scan_path' => $path,
         ])->save();
+        $this->applyLeasePrefill(request(), $application);
 
         if ($oldPath && $oldPath !== $path && Storage::disk('local')->exists($oldPath)
             && ! Storage::disk('local')->delete($oldPath)) {
@@ -471,6 +501,7 @@ class LeaseApplicationController extends Controller
             'id_scan_path' => $frontPath,
             'id_back_scan_path' => $backPath,
         ])->save();
+        $this->applyLeasePrefill($request, $application);
 
         foreach ($oldPaths as $old) {
             if (! in_array($old, [$frontPath, $backPath], true) && Storage::disk('local')->exists($old)) {
