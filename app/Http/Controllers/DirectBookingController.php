@@ -160,7 +160,7 @@ class DirectBookingController extends Controller
             ->whereNotNull('published_at')
             ->with(['property.owner.hostPaymentMethods'])
             ->firstOrFail();
-        abort_unless(($listing->listing_type ?? 'both') !== 'long_term', 404);
+        abort_unless(($listing->listing_type ?? 'both') !== 'long_term' || $listing->lease_enabled, 404);
         abort_unless($listing->property?->active && $listing->property?->owner
             && FeatureGate::enabled($listing->property->owner, 'direct_booking_site'), 404);
         abort_unless(Feature::query()->where('key', 'direct_booking_site')->where('active', true)->exists(), 404);
