@@ -118,6 +118,12 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
         $this->assertStringContainsString('Jordan Applicant', $booking->contract_snapshot);
+        $this->get(route('guest.rental-agreement', [$booking->booking_id, $booking->token]))
+            ->assertOk()
+            ->assertSee('Lease Agreement')
+            ->assertSee('Lease terms')
+            ->assertSee('Tenant: Jordan Applicant')
+            ->assertDontSee('Government ID');
         $this->assertDatabaseHas('lease_installments', ['lease_offer_id' => $offer->id, 'kind' => 'deposit', 'status' => 'paid']);
         $this->assertSame(205000, (int) $offer->fresh()->initial_due_cents);
         $this->assertSame(205000, (int) $offer->installments()->where('required_at_signing', true)->sum('amount_cents'));
