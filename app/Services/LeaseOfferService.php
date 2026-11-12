@@ -177,7 +177,7 @@ class LeaseOfferService
             '[[host_name]]'=>e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
             '[[property_name]]'=>e($offer->property->name),
             '[[property_address]]'=>e((string)($offer->property->address ?? '')),
-            '[[website_name]]'=>e(\\App\\Support\\Branding::siteName()),
+            '[[website_name]]'=>e(\App\Support\Branding::siteName()),
             '[[start_date]]'=>e($offer->start_date->format('M j, Y')),
             '[[end_date]]'=>e($offer->end_date->format('M j, Y')),
             '[[nights]]'=>(string)$offer->nights(),
