@@ -93,6 +93,10 @@ class PropertyListingController extends Controller
             'payment_methods.*.enabled' => ['nullable', 'boolean'],
         ]);
 
+        if (($data['listing_type'] ?? 'both') === 'long_term' && (! ($data['lease_enabled'] ?? false) || ! \App\\Services\\FeatureGate::enabled($property->owner, 'lease_applications'))) {
+            throw ValidationException::withMessages(['listing_type' => 'Long-term-only advertising requires long-term lease applications to be enabled for this account.']);
+        }
+
         $published = (bool) $data['published'];
         $wasPublished = $listing->exists && $listing->published_at !== null;
         $baseRateCents = $this->dollarsToCents($data['base_rate'] ?? null, 'base_rate');
@@ -350,7 +354,9 @@ class PropertyListingController extends Controller
             ? "Amenities selected by the host for this property include: {$amenities}."
             : 'No amenities have been selected for display on this listing.';
 
-        return implode("\n\n", [
+        return implode("
+
+", [
             "{$title} is a {$beds}-bedroom, {$baths}-bathroom property in {$city}. This page presents the information the host has provided so guests can review the home and its booking details before choosing dates. The listing is part of GuestHub's direct booking service, where availability and pricing are shown for the dates selected. The host can update listing details as the property or its arrangements change.",
             $amenityCopy." Please review the amenity list on this page and contact the host if you need to confirm whether a particular item is available during your stay. The amenities displayed here come from the host's selected property details and should not be read as a guarantee beyond those details.",
             'Before submitting a booking, check the guest limit, minimum stay, house rules and cancellation policy shown on this listing. The quote is based on the dates and guest count entered, and the final total is presented before checkout. Availability can change while a reservation is being completed. Arrival instructions and access details are handled after a booking is confirmed; this public listing does not show the exact street address or private entry information.',
