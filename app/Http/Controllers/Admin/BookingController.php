@@ -351,7 +351,7 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $booking->load('property');
+        $booking->load(['property', 'leaseOffer.application.charges', 'leaseOffer.installments.charges', 'charges']);
 
         $guestLogs = \App\Models\ActivityLog::where('booking_id', $booking->id)
             ->orWhere(fn ($q) => $q
