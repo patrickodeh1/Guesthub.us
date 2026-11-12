@@ -29,6 +29,9 @@
         '[[agreement_version]]' => e($offer->contract_version),
     ];
     $contract = strtr($contract, $values);
+    $initialRequired = $offer->installments->where('required_at_signing', true);
+    $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : ($initialRequired->contains(fn ($item) => $item->status === 'pending'));
+    $payAmountCents = $initialPaymentPending ? $offer->initial_due_cents : ($nextInstallment?->amount_cents ?? 0);
     $closed = in_array($offer->status, ['expired', 'declined', 'withdrawn'], true) || ($offer->status !== 'confirmed' && $offer->accept_by?->isPast());
 @endphp
 <style>
@@ -90,25 +93,43 @@
             </section>
         @elseif(in_array($offer->status, ['signed', 'confirmed'], true))
             <section class="lease-card">
-                <h2 style="font-size:1.15rem;font-weight:750">{{ $offer->status === 'confirmed' ? 'Next rental payment' : 'Initial payment' }}</h2>
-                @if($nextInstallment && $offer->payment_method === 'manual')
-                    <p class="lease-muted">Send {{ $nextInstallment ? $money($nextInstallment->amount_cents) : $money($offer->initial_due_cents) }} using the host's payment method. Include your application reference <strong>{{ $offer->lease_application_id }}</strong>. The host records each payment after receiving it.</p>
-                    @if($offer->hostPaymentMethod)
-                        <p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>
-                        @if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif
+                @if($initialPaymentPending)
+                    <h2 style="font-size:1.15rem;font-weight:750">Initial payment · Due now</h2>
+                    <p class="lease-muted">One payment covers the first month of rent, security deposit and additional fees. These are not separate transactions.</p>
+                    <table class="lease-table" style="margin-top:10px">
+                        @foreach($initialRequired as $item)
+                            <tr><td>{{ $item->label }}</td><td>{{ $money($item->amount_cents) }}</td></tr>
+                        @endforeach
+                        <tr><td><strong>Total due now</strong></td><td><strong>{{ $money($offer->initial_due_cents) }}</strong></td></tr>
+                    </table>
+                    @if($offer->payment_method === 'manual')
+                        <p class="lease-muted" style="margin-top:12px">Send the full amount using the host's payment method. Include application reference <strong>{{ $offer->lease_application_id }}</strong>. The host will record the combined payment after receiving it.</p>
+                        @if($offer->hostPaymentMethod)
+                            <p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>
+                            @if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif
+                        @endif
+                    @else
+                        <form id="lease-payment-form" style="margin-top:14px">
+                            <div id="lease-card" class="lease-input" style="min-height:46px"></div>
+                            <p id="lease-payment-error" class="lease-error" role="alert"></p>
+                            <button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($offer->initial_due_cents) }}</button>
+                        </form>
                     @endif
                 @elseif($nextInstallment)
-                    <p class="lease-muted">Pay the next installment of {{ $money($nextInstallment->amount_cents) }} by card.</p>
-                    <form id="lease-payment-form" style="margin-top:14px">
-                        <div id="lease-card" class="lease-input" style="min-height:46px"></div>
-                        <p id="lease-payment-error" class="lease-error" role="alert"></p>
-                        <button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($nextInstallment->amount_cents) }}</button>
-                    </form>
+                    <h2 style="font-size:1.15rem;font-weight:750">Next rental payment</h2>
+                    @if($offer->payment_method === 'manual')
+                        <p class="lease-muted">Send {{ $money($nextInstallment->amount_cents) }} using the host's payment method. Include application reference <strong>{{ $offer->lease_application_id }}</strong>. The host records each payment after receiving it.</p>
+                        @if($offer->hostPaymentMethod)<p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>@if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif @endif
+                    @else
+                        <p class="lease-muted">Pay the next rent installment of {{ $money($nextInstallment->amount_cents) }} by card.</p>
+                        <form id="lease-payment-form" style="margin-top:14px"><div id="lease-card" class="lease-input" style="min-height:46px"></div><p id="lease-payment-error" class="lease-error" role="alert"></p><button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($nextInstallment->amount_cents) }}</button></form>
+                    @endif
+                @elseif($offer->status === 'confirmed')
+                    <h2 style="font-size:1.15rem;font-weight:750">Payments up to date</h2>
+                    <p class="lease-muted">Your rental is confirmed. You can use your guest portal for check-in, parking, documents and stay information.</p>
                 @endif
-                @if($offer->status === 'confirmed' && !$nextInstallment)
-                    <p class="lease-muted">Your rental is confirmed. You can now use your guest portal for check-in, parking, documents and stay information.</p>
-                @elseif($offer->status === 'signed' && $offer->installments->where('required_at_signing', true)->every(fn($i) => $i->isSettled()))
-                    <p class="lease-muted">All required initial payments are recorded. Your reservation confirmation is being finalized.</p>
+                @if($offer->status === 'signed' && !$initialPaymentPending)
+                    <p class="lease-muted">All required initial payment items are recorded. Your reservation confirmation is being finalized.</p>
                 @endif
             </section>
         @endif
@@ -125,7 +146,7 @@
 </div>
 @endsection
 
-@if($clientSecret && $nextInstallment)
+@if($clientSecret && ($initialPaymentPending || $nextInstallment))
 @push('scripts')
 <script src="https://js.stripe.com/v3/"></script>
 <script>
@@ -140,7 +161,7 @@
     form.addEventListener('submit', async (event) => {
         event.preventDefault(); button.disabled = true; button.textContent = 'Processing…'; error.textContent = '';
         const result = await stripe.confirmCardPayment(@json($clientSecret), {payment_method: {card}});
-        if (result.error) { error.textContent = result.error.message || 'Payment failed.'; button.disabled = false; button.textContent = 'Pay {{ $money($nextInstallment->amount_cents) }}'; return; }
+        if (result.error) { error.textContent = result.error.message || 'Payment failed.'; button.disabled = false; button.textContent = 'Pay {{ $money($payAmountCents) }}'; return; }
         try {
             const response = await fetch(@json($confirmUrl), {
                 method: 'POST', headers: {'Content-Type':'application/json','Accept':'application/json','X-CSRF-TOKEN':@json(csrf_token())},
