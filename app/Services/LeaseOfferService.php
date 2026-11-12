@@ -101,7 +101,7 @@ class LeaseOfferService
                 'payment_method' => $method,
                 'host_payment_method_id' => $paymentMethod?->id,
                 'accept_by' => $acceptBy,
-                'contract_html' => app(LeaseAgreementService::class)->templateFor($application->property),
+                'contract_html' => $data['contract_html'],
                 'contract_version' => 'lease-offer-v1',
                 'host_signed_name' => auth()->user()?->name ?: $application->property->owner?->name,
                 'host_signed_at' => now(),
