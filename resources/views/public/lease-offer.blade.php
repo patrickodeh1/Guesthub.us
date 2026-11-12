@@ -106,11 +106,13 @@
                 @endif
                 @if($offer->status === 'confirmed' && !$nextInstallment)
                     <p class="lease-muted">Your rental is confirmed. You can now use your guest portal for check-in, parking, documents and stay information.</p>
-                    @if($offer->booking)<a class="lease-button" style="display:block;text-align:center;text-decoration:none;margin-top:12px" href="{{ route('guest.show', [$offer->booking->booking_id, $offer->booking->token]) }}">Open guest portal</a>@endif
                 @elseif($offer->status === 'signed' && $offer->installments->where('required_at_signing', true)->every(fn($i) => $i->isSettled()))
                     <p class="lease-muted">All required initial payments are recorded. Your reservation confirmation is being finalized.</p>
                 @endif
             </section>
+        @endif
+        @if($offer->status === 'confirmed')
+            <section class="lease-card"><h2 style="font-size:1.15rem;font-weight:750">Your rental is confirmed</h2><p class="lease-muted">Your booking is active. Use the guest portal for check-in, parking, documents and stay services.</p>@if($offer->booking)<a class="lease-button" style="display:block;text-align:center;text-decoration:none;margin-top:12px" href="{{ route('guest.show', [$offer->booking->booking_id, $offer->booking->token]) }}">Open guest portal</a>@endif</section>
         @endif
         @if($offer->status === 'sent')
             <form method="post" action="{{ route('public.lease-offer.decline', [$offer->application_id, $offer->application->token, $offer->token]) }}" class="lease-card">
