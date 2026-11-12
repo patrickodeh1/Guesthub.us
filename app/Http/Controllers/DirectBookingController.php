@@ -14,9 +14,22 @@ use Illuminate\Validation\ValidationException;
 
 class DirectBookingController extends Controller
 {
-    public function checkout(string $listingSlug)
+    public function checkout(Request $request, string $listingSlug)
     {
         $listing = $this->publishedListing($listingSlug);
+        if (($listing->listing_type ?? 'both') === 'long_term') {
+            abort_unless($listing->lease_enabled, 404);
+            return redirect()->route('public.lease-application.apply', $listingSlug);
+        }
+        if ($listing->lease_enabled && $listing->lease_auto_route_29_nights && $request->filled('check_in') && $request->filled('check_out')) {
+            try { $nights = \\Carbon\\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\\Carbon\\Carbon::parse($request->query('check_out'))->startOfDay()); }
+            catch (\\Throwable $e) { $nights = 0; }
+            if ($nights >= 29) {
+                return redirect()->route('public.lease-application.apply', $listingSlug, 302)->with('lease_prefill', [
+                    'check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1),
+                ]);
+            }
+        }
         $owner = $listing->property->owner;
         $canCard = filled($owner?->stripe_account_id) && $owner?->stripe_charges_enabled && app(PaymentService::class)->isConfigured();
         $manualMethods = $owner && FeatureGate::enabled($owner, 'manual_payments')
@@ -55,7 +68,7 @@ class DirectBookingController extends Controller
             $data['phone_country_code'] ?? '+1',
         );
 
-        $booking = $bookings->start($this->publishedListing($listingSlug), $data);
+        $booking = $bookings->start($listing, $data);
 
         return redirect()->route('public.checkout.pay', [$booking->booking_id, $booking->token]);
     }
@@ -136,6 +149,7 @@ class DirectBookingController extends Controller
             ->whereNotNull('published_at')
             ->with(['property.owner.hostPaymentMethods'])
             ->firstOrFail();
+        abort_unless(($listing->listing_type ?? 'both') !== 'long_term', 404);
         abort_unless($listing->property?->active && $listing->property?->owner
             && FeatureGate::enabled($listing->property->owner, 'direct_booking_site'), 404);
         abort_unless(Feature::query()->where('key', 'direct_booking_site')->where('active', true)->exists(), 404);
