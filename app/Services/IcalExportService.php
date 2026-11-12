@@ -128,7 +128,7 @@ class IcalExportService
     private function origin(Booking $booking): string
     {
         $platform = strtolower(trim((string) ($booking->booking_platform ?: $booking->source)));
-        if ($booking->source === 'direct' || str_contains($platform, 'direct') || str_contains($platform, 'guesthub')) {
+        if ($booking->isDirectBooking() || (! $booking->lease_offer_id && ! $booking->lease_application_id && ($booking->source === 'direct' || str_contains($platform, 'direct') || str_contains($platform, 'guesthub')))) {
             return 'direct';
         }
         if (str_contains($platform, 'airbnb')) {
