@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\LeaseApplication;\nuse App\Models\LeaseOffer;\nuse App\Models\LeaseInstallment;\nuse App\Models\HostPaymentMethod;\nuse App\Services\LeaseOfferService;\nuse App\Mail\DirectBookingMail;\nuse Illuminate\Support\Facades\Mail;
+use App\Models\LeaseApplication;
+use App\Models\LeaseOffer;
+use App\Models\LeaseInstallment;
+use App\Models\HostPaymentMethod;
+use App\Services\LeaseOfferService;
+use App\Mail\DirectBookingMail;
+use Illuminate\Support\Facades\Mail;
 use App\Services\LeaseApplicationNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -24,7 +30,8 @@ class LeaseApplicationAdminController extends Controller
     {
         $this->authorizeApplication($request, $application);
         abort_unless($application->status !== 'draft', 404);
-        $application->load(['listing', 'property', 'hostPaymentMethod', 'charges', 'offers.installments', 'offers.booking']);\n        $paymentMethods = HostPaymentMethod::query()->where('owner_id', $application->property->owner_id)->where('enabled', true)->orderBy('id')->get();
+        $application->load(['listing', 'property', 'hostPaymentMethod', 'charges', 'offers.installments', 'offers.booking']);
+        $paymentMethods = HostPaymentMethod::query()->where('owner_id', $application->property->owner_id)->where('enabled', true)->orderBy('id')->get();
 
         return view('admin.lease-applications.show', compact('application', 'paymentMethods'));
     }
