@@ -155,29 +155,51 @@ class LeaseApplicationTest extends TestCase
         $this->assertNotSame('650000', DB::table('lease_applications')->where('id', $application->id)->value('monthly_income_cents'));
         $this->assertFalse(in_array('date_of_birth', Schema::getColumnListing('lease_applications'), true));
         $this->assertFalse(in_array('ssn', Schema::getColumnListing('lease_applications'), true));
+        $this->get(route('public.lease-application.consent', [$application->id, $application->token]))
+            ->assertOk()
+            ->assertSee('Type your name as your signature')
+            ->assertSee('Middle names, accents, punctuation, and suffixes may differ');
 
         $payload = [
             'screening_consent' => '1',
             'signature' => 'Wrong Name',
             'payment_method' => 'manual',
             'host_payment_method_id' => $this->manualMethod->id,
+            'fee_policy_ack' => '1',
         ];
         $this->post(route('public.lease-application.submit', [$application->id, $application->token]), $payload)
             ->assertSessionHasErrors('signature');
         $this->assertSame('draft', $application->fresh()->status);
-        $payload['signature'] = 'Jordan Applicant';
+        $payload['signature'] = 'Jordan Michael Applicant';
         $this->post(route('public.lease-application.submit', [$application->id, $application->token]), $payload)
             ->assertRedirect(route('public.lease-application.fee', [$application->id, $application->token]));
 
         $application->refresh();
         $this->assertSame('submitted', $application->status);
+        $this->assertSame('Jordan Michael Applicant', $application->consent_signature);
         $this->assertSame('pending', $application->fee_status);
         $this->assertSame(5000, $application->total_fee_cents);
         $this->assertSame(0, $application->processing_fee_cents);
         Mail::assertSent(DirectBookingMail::class, 2);
         $this->get(route('public.lease-application.fee', [$application->id, $application->token]))
             ->assertOk()
-            ->assertSee('Use your application reference.');
+            ->assertSee('Use your application reference.')
+            ->assertSee('I sent my payment')
+            ->assertSee('name="receipt"', false);
+
+        $this->post(route('public.lease-application.payment-report', [$application->id, $application->token]), [
+            'receipt' => UploadedFile::fake()->image('payment.png'),
+        ])->assertRedirect(route('public.lease-application.fee', [$application->id, $application->token]))
+            ->assertSessionHas('status');
+        $this->get(route('public.lease-application.fee', [$application->id, $application->token]))
+            ->assertOk()
+            ->assertSee('Payment confirmation in progress.')
+            ->assertSee('Guest payment receipt');
+        $this->actingAs($this->owner)
+            ->get(route('admin.lease-applications.show', $application))
+            ->assertOk()
+            ->assertSee('Guest reported a payment')
+            ->assertSee('Guest payment receipt');
 
         $this->actingAs($this->owner)
             ->post(route('admin.lease-applications.fee-received', $application))
@@ -295,6 +317,26 @@ class LeaseApplicationTest extends TestCase
         $this->post(route('public.lease-application.retry-fee', [$application->id, $application->token]))
             ->assertRedirect(route('public.lease-application.fee', [$application->id, $application->token]));
         $this->assertSame('pending', $application->fresh()->fee_status);
+    }
+
+    public function test_zero_application_fee_shows_received_without_fee_amounts(): void
+    {
+        $this->listing->update(['lease_application_fee_cents' => 0]);
+        $application = $this->readyDraft();
+        $application->update([
+            'status' => 'submitted',
+            'fee_status' => 'paid',
+            'application_fee_cents' => 0,
+            'processing_fee_cents' => 0,
+            'total_fee_cents' => 0,
+        ]);
+
+        $this->get(route('public.lease-application.fee', [$application->id, $application->token]))
+            ->assertOk()
+            ->assertSee('Application received')
+            ->assertDontSee('Application fee received')
+            ->assertDontSee('$0.00')
+            ->assertDontSee('Total (USD)');
     }
 
     public function test_only_listing_owner_and_admin_can_view_applications_and_id_images(): void

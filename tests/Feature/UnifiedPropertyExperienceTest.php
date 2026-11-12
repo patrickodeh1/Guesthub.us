@@ -37,6 +37,20 @@ class UnifiedPropertyExperienceTest extends TestCase
             ->assertSee('switchContractTab');
     }
 
+    public function test_property_manage_menu_links_to_lease_application_reviews(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create(['email_verified_at' => now(), 'must_change_password' => false]);
+        $admin->assignRole('admin');
+        Property::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.properties.index'))
+            ->assertOk()
+            ->assertSee(route('admin.lease-applications.index'), false)
+            ->assertSee('Review lease applications');
+    }
+
     public function test_old_property_pages_redirect_to_the_canonical_admin_pages(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);

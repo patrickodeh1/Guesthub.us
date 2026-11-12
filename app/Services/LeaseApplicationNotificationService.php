@@ -64,6 +64,24 @@ class LeaseApplicationNotificationService
             route('public.lease-application.fee', [$application->id, $application->token]), 'View application', $application);
     }
 
+    public function feePaymentReported(LeaseApplication $application): void
+    {
+        $owner = $application->property?->owner;
+        if (! $owner || blank($owner->email)) {
+            return;
+        }
+
+        $amount = '$'.number_format((int) $application->total_fee_cents / 100, 2);
+        $this->send(
+            $owner->email,
+            'Lease application payment reported',
+            "{$application->applicant_name} reported sending {$amount} for lease application #{$application->id} and uploaded a receipt. Check your account, then review the receipt and confirm the fee.",
+            route('admin.lease-applications.show', $application),
+            'Review payment',
+            $application,
+        );
+    }
+
     /** Unused since the screening URL was removed; kept so the old admin route cannot fatal. */
     public function screeningRequested(LeaseApplication $application): void
     {

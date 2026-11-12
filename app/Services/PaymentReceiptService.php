@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\LeaseApplication;
 use App\Models\PaymentReceipt;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
@@ -78,6 +79,24 @@ class PaymentReceiptService
         Booking::query()->whereKey($booking->id)->update(['guest_payment_reported_at' => now()]);
 
         $this->notifyHost($booking->fresh(['property.owner']));
+    }
+
+    public function guestReportLeaseApplicationFee(
+        LeaseApplication $application,
+        UploadedFile $file,
+        LeaseApplicationNotificationService $notifications,
+    ): void {
+        if (! in_array($application->status, ['submitted', 'in_review'], true)
+            || $application->payment_method !== 'manual'
+            || $application->fee_status !== 'pending') {
+            throw ValidationException::withMessages(['receipt' => 'This application is not waiting for a manual payment.']);
+        }
+        if ($this->forPayable($application)->where('role', 'guest')->count() >= 5) {
+            throw ValidationException::withMessages(['receipt' => 'You have already uploaded the maximum number of receipts.']);
+        }
+
+        $this->store($file, $application, 'guest');
+        $notifications->feePaymentReported($application->fresh(['property.owner', 'listing']));
     }
 
     private function notifyHost(Booking $booking): void

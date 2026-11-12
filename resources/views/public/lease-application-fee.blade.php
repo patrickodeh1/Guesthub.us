@@ -7,6 +7,7 @@
 @section('content')
     @php
         $listing = $application->listing;
+        $noApplicationFee = (int) $application->application_fee_cents === 0;
         $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
         $refundText = match ($listing->lease_fee_refund_policy) {
             'non_refundable' => 'The application fee is non-refundable.',
@@ -63,6 +64,8 @@
         .bk-pay-instructions{margin-top:14px;padding:12px 14px;border-radius:11px;background:#f6f8f6;color:#46554d;font-size:.88rem;line-height:1.55}
         .bk-pay-reference{font-size:1.08rem;letter-spacing:.04em}
         .bk-pay-help{font-size:.82rem;color:#66746d;line-height:1.5;margin:13px 0 0}
+        .bk-upload{border:1px solid #dfe6e1;border-radius:14px;padding:16px;margin-top:16px}
+        .bk-upload input{display:block;width:100%;border:1px solid #cfd8d2;border-radius:10px;background:#fff;padding:10px;box-sizing:border-box}
         @media(max-width:520px){.bk-panel{padding:17px}.bk-pay{padding:15px}.bk-pay-head{flex-direction:column;gap:8px}.bk-pay-value{font-size:.92rem}}
     </style>
 
@@ -71,7 +74,7 @@
             <h1>
                 @if($application->status === 'approved') Application approved
                 @elseif($application->status === 'declined') Application declined
-                @elseif($application->fee_status === 'paid') Application received
+                @elseif($noApplicationFee || $application->fee_status === 'paid') Application received
                 @else Complete your application
                 @endif
             </h1>
@@ -80,7 +83,11 @@
             @if(session('status'))<div class="bk-notice" role="status">{{ session('status') }}</div>@endif
 
             <div class="bk-panel">
-                @if($application->fee_status === 'paid')
+                @if($noApplicationFee)
+                    <div class="bk-center"><div class="bk-big">✓</div></div>
+                    <h2 class="bk-center">Application received</h2>
+                    <p class="bk-copy bk-center">The host will contact you with any updates.</p>
+                @elseif($application->fee_status === 'paid')
                     <div class="bk-center"><div class="bk-big">✓</div></div>
                     <h2 class="bk-center">Application fee received</h2>
                     <p class="bk-copy bk-center">The host will contact you with any updates.</p>
@@ -95,6 +102,21 @@
                         <div class="bk-pay-detail"><p class="bk-pay-label">Payment reference · include your name</p><div class="bk-pay-value"><span class="bk-pay-reference">{{ $application->id }}</span><button type="button" class="bk-copy-btn" data-copy="{{ $application->id }}">Copy</button></div></div>
                         <p class="bk-pay-help">Your fee is marked as paid after the host confirms receipt.</p>
                     </div>
+                    @if($paymentReceipts->contains('role', 'guest'))
+                        <div class="bk-notice" role="status"><strong>Payment confirmation in progress.</strong> Your receipt was sent to the host. We will let you know when the payment is confirmed.</div>
+                        @include('partials.payment-receipts', ['payable' => $application, 'receipts' => $paymentReceipts, 'viewer' => 'guest'])
+                    @else
+                        <div class="bk-upload">
+                            <strong>Already sent your payment?</strong>
+                            <p class="bk-copy">Upload a screenshot, photo, or PDF of your receipt. The host will confirm the fee after checking the payment.</p>
+                            <form method="post" enctype="multipart/form-data" action="{{ route('public.lease-application.payment-report', [$application->id, $application->token]) }}">
+                                @csrf
+                                <input type="file" name="receipt" accept="image/*,application/pdf" required>
+                                @error('receipt')<p class="bk-copy" style="color:#8a1f1f">{{ $message }}</p>@enderror
+                                <button class="bk-btn" type="submit">I sent my payment</button>
+                            </form>
+                        </div>
+                    @endif
                 @elseif($showCard)
                     <h2>Pay securely by card</h2>
                     <form id="payment-form" novalidate>
@@ -138,13 +160,15 @@
                     @if($application->lease_term_months) · {{ $application->lease_term_months }} months @endif
                 </p>
                 <div class="bk-sumrow"><span>Applicant</span><span>{{ $application->applicant_name }}</span></div>
-                <div class="bk-sumrow"><span>Status</span><span><span class="bk-badge {{ $application->fee_status }}">Fee {{ $application->fee_status }}</span></span></div>
-                <div class="bk-sumrow"><span>Application fee</span><span>{{ $money($application->application_fee_cents) }}</span></div>
-                @if((int) $application->processing_fee_cents > 0)
-                    <div class="bk-sumrow"><span>Card processing fee</span><span>{{ $money($application->processing_fee_cents) }}</span></div>
+                <div class="bk-sumrow"><span>Status</span><span><span class="bk-badge {{ $application->fee_status }}">{{ $noApplicationFee ? 'Application received' : 'Fee '.$application->fee_status }}</span></span></div>
+                @unless($noApplicationFee)
+                    <div class="bk-sumrow"><span>Application fee</span><span>{{ $money($application->application_fee_cents) }}</span></div>
+                    @if((int) $application->processing_fee_cents > 0)
+                        <div class="bk-sumrow"><span>Card processing fee</span><span>{{ $money($application->processing_fee_cents) }}</span></div>
+                    @endif
+                    <div class="bk-sumrow bk-total"><span>Total (USD)</span><span>{{ $money($application->total_fee_cents) }}</span></div>
+                    <p class="bk-copy" style="font-size:.82rem">{{ $refundText }}</p>
                 @endif
-                <div class="bk-sumrow bk-total"><span>Total (USD)</span><span>{{ $money($application->total_fee_cents) }}</span></div>
-                <p class="bk-copy" style="font-size:.82rem">{{ $refundText }}</p>
             </div>
         </aside>
     </div>

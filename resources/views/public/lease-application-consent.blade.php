@@ -114,7 +114,8 @@
                         </label>
                     @endif
                     <div class="co-field" style="margin-top:14px">
-                        <label for="signature">Type your full name as your signature</label>
+                        <label for="signature">Type your name as your signature</label>
+                        <p class="co-note" style="margin:0;text-align:left">Middle names, accents, punctuation, and suffixes may differ from your application.</p>
                         <input id="signature" name="signature" value="{{ old('signature') }}" required maxlength="255" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Full legal name">
                     </div>
                     <button class="co-btn" type="submit" id="co-submit">Submit application</button>

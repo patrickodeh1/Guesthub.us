@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Charge;
 use App\Models\Feature;
 use App\Models\LeaseApplication;
+use App\Models\PaymentReceipt;
 use App\Models\PropertyListing;
 use App\Services\FeatureGate;
 use App\Services\LeaseApplicationIdScanService;
 use App\Services\LeaseApplicationNotificationService;
+use App\Services\PaymentReceiptService;
 use App\Services\Payments\PaymentService;
+use App\Services\PersonNameMatcher;
 use App\Services\QuoteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -199,9 +202,10 @@ class LeaseApplicationController extends Controller
         ]);
         $this->rejectHoneypot($request);
 
-        if (mb_strtolower(trim($data['signature'])) !== mb_strtolower(trim((string) $application->applicant_name))) {
+        $referenceName = $application->id_name ?: $application->applicant_name;
+        if (! PersonNameMatcher::matches($referenceName, $data['signature'])) {
             throw ValidationException::withMessages([
-                'signature' => 'Type your full name exactly as entered on the application.',
+                'signature' => 'Type a name that matches your application or ID. Middle names, accents, punctuation, and suffixes may differ.',
             ]);
         }
 
@@ -268,6 +272,7 @@ class LeaseApplicationController extends Controller
         LeaseApplication $application,
         string $token,
         PaymentService $payments,
+        PaymentReceiptService $receipts,
     ) {
         $application = $this->assertPublicApplication($application, $token);
         $application->load(['listing', 'property.owner', 'hostPaymentMethod']);
@@ -289,7 +294,39 @@ class LeaseApplicationController extends Controller
             'clientSecret' => $clientSecret,
             'publishableKey' => config('services.stripe.key'),
             'stripeAccountId' => $application->property->owner?->stripe_account_id,
+            'paymentReceipts' => $receipts->forPayable($application),
         ]);
+    }
+
+    public function reportFeePayment(
+        Request $request,
+        LeaseApplication $application,
+        string $token,
+        PaymentReceiptService $receipts,
+        LeaseApplicationNotificationService $notifications,
+    ) {
+        $application = $this->assertPublicApplication($application, $token);
+        $request->validate(['receipt' => $receipts->rules()]);
+        $receipts->guestReportLeaseApplicationFee($application, $request->file('receipt'), $notifications);
+
+        return redirect()->route('public.lease-application.fee', [$application->id, $application->token])
+            ->with('status', 'Your payment receipt was sent to the host for confirmation.');
+    }
+
+    public function feeReceipt(
+        LeaseApplication $application,
+        string $token,
+        PaymentReceipt $receipt,
+        PaymentReceiptService $receipts,
+    ) {
+        $application = $this->assertPublicApplication($application, $token);
+        abort_unless(
+            $receipt->payable_type === $application->getMorphClass()
+                && (int) $receipt->payable_id === (int) $application->id,
+            404,
+        );
+
+        return $receipts->stream($receipt);
     }
 
     public function confirmFee(

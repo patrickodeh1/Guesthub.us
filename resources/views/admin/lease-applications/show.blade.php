@@ -151,6 +151,7 @@
                     <div class="{{ $row }} font-semibold"><span>Total</span><span>{{ $money($application->total_fee_cents) }}</span></div>
                     <div class="{{ $row }}"><span class="text-slate-500">Method</span><span class="capitalize">{{ $application->payment_method }}</span></div>
                     @if($application->payment_method === 'manual' && $application->fee_status === 'pending')
+                        @include('partials.payment-receipts', ['payable' => $application])
                         <form method="post" action="{{ route('admin.lease-applications.fee-received', $application) }}" class="mt-3">
                             @csrf
                             <button class="btn-primary w-full">Mark manual fee received</button>

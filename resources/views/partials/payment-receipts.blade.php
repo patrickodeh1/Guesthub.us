@@ -1,19 +1,29 @@
 @php
     $viewer = $viewer ?? 'admin';
+    $isLeaseApplication = $payable instanceof \App\Models\LeaseApplication;
     $receiptList = $receipts ?? app(\App\Services\PaymentReceiptService::class)->forPayable($payable);
-    $reportedAt = $payable->guest_payment_reported_at ?? null;
+    $guestReceipt = $receiptList->first(fn ($receipt) => $receipt->role === 'guest');
+    $reportedAt = $isLeaseApplication ? $guestReceipt?->created_at : ($payable->guest_payment_reported_at ?? null);
     $reportedAt = $reportedAt ? \Illuminate\Support\Carbon::parse($reportedAt) : null;
+    $isPaid = $isLeaseApplication ? $payable->fee_status === 'paid' : (bool) $payable->payment_confirmed_at;
 @endphp
 @if($reportedAt || $receiptList->isNotEmpty())
     <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-        @if($reportedAt && $viewer === 'admin' && ! $payable->payment_confirmed_at)
-            <p class="font-semibold text-amber-800">Guest reported a payment {{ $reportedAt->format('M j, g:i A') }}. Check your account, then upload your receipt and confirm.</p>
+        @if($reportedAt && $viewer === 'admin' && ! $isPaid)
+            <p class="font-semibold text-amber-800">
+                Guest reported a payment {{ $reportedAt->format('M j, g:i A') }}.
+                {{ $isLeaseApplication ? 'Check your account, then mark the application fee received.' : 'Check your account, then upload your receipt and confirm.' }}
+            </p>
         @endif
         @foreach($receiptList as $r)
             @php
-                $url = $viewer === 'guest'
-                    ? route('public.checkout.receipt', [$payable->booking_id, $payable->token, $r])
-                    : route('admin.guests.payment-receipt', [$payable, $r]);
+                $url = $isLeaseApplication
+                    ? ($viewer === 'guest'
+                        ? route('public.lease-application.receipt', [$payable->id, $payable->token, $r])
+                        : route('admin.lease-applications.payment-receipts.show', [$payable, $r]))
+                    : ($viewer === 'guest'
+                        ? route('public.checkout.receipt', [$payable->booking_id, $payable->token, $r])
+                        : route('admin.guests.payment-receipt', [$payable, $r]));
                 $isImageReceipt = str_starts_with((string) $r->mime, 'image/');
             @endphp
             <p class="mt-1 text-slate-700">

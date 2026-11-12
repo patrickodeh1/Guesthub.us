@@ -69,6 +69,12 @@ Route::middleware('web')->group(function (): void {
         ->name('public.lease-application.submit');
     Route::get('/stay/application/{application}/{token}/fee', [LeaseApplicationController::class, 'fee'])
         ->name('public.lease-application.fee');
+    Route::post('/stay/application/{application}/{token}/fee/payment-report', [LeaseApplicationController::class, 'reportFeePayment'])
+        ->middleware('throttle:10,1')
+        ->name('public.lease-application.payment-report');
+    Route::get('/stay/application/{application}/{token}/fee/receipts/{receipt}', [LeaseApplicationController::class, 'feeReceipt'])
+        ->middleware('throttle:30,1')
+        ->name('public.lease-application.receipt');
     Route::post('/stay/application/{application}/{token}/confirm', [LeaseApplicationController::class, 'confirmFee'])
         ->middleware('throttle:20,1')
         ->name('public.lease-application.confirm');

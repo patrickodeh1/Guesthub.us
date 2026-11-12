@@ -77,6 +77,9 @@
                     <p class="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Guest</p>
                     <a href="{{ route('admin.guest-guide.show', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Guest guide</a>
                     <a href="{{ route('admin.instructions.show', $property) }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Check-in / check-out details</a>
+                    @if(auth()->user()->hasAnyRole(['admin', 'owner']))
+                        <a href="{{ route('admin.lease-applications.index') }}" class="block rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50">Review lease applications</a>
+                    @endif
 
                     <p class="mt-1 border-t border-slate-100 px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
                     @if(\App\Support\RoleAccess::canManageProperties(auth()->user()) && $property->active)

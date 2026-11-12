@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LeaseApplication;
+use App\Models\PaymentReceipt;
 use App\Services\LeaseApplicationNotificationService;
+use App\Services\PaymentReceiptService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -85,6 +87,22 @@ class LeaseApplicationAdminController extends Controller
         $notifications->feePaid($application->fresh());
 
         return back()->with('success', 'Manual application fee recorded.');
+    }
+
+    public function paymentReceipt(
+        Request $request,
+        LeaseApplication $application,
+        PaymentReceipt $receipt,
+        PaymentReceiptService $receipts,
+    ) {
+        $this->authorizeApplication($request, $application);
+        abort_unless(
+            $receipt->payable_type === $application->getMorphClass()
+                && (int) $receipt->payable_id === (int) $application->id,
+            404,
+        );
+
+        return $receipts->stream($receipt);
     }
 
     public function requestScreening(
