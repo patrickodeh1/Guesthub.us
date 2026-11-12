@@ -1335,20 +1335,45 @@
         renderCountryList('');
     }
 
+    function positionCountryMenu() {
+        if (!guestPhoneCountryButton || !guestPhoneCountryMenu) return;
+        var rect = guestPhoneCountryButton.getBoundingClientRect();
+        var width = Math.min(320, window.innerWidth - 16);
+        var left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+        var estimatedHeight = Math.min(300, window.innerHeight - 16);
+        var top = rect.bottom + 6;
+        if (top + estimatedHeight > window.innerHeight - 8) {
+            top = Math.max(8, rect.top - estimatedHeight - 6);
+        }
+        guestPhoneCountryMenu.style.left = left + 'px';
+        guestPhoneCountryMenu.style.top = top + 'px';
+        guestPhoneCountryMenu.style.width = width + 'px';
+    }
+
     if (guestPhoneCountryButton && guestPhoneCountryMenu) {
         guestPhoneCountryButton.addEventListener('click', function(e) {
             e.stopPropagation();
             guestPhoneCountryMenu.classList.toggle('hidden');
-            if (!guestPhoneCountryMenu.classList.contains('hidden')) {
+            var isOpen = !guestPhoneCountryMenu.classList.contains('hidden');
+            guestPhoneCountryButton.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen) {
                 renderCountryMenu();
+                positionCountryMenu();
                 if (guestPhoneCountrySearch) guestPhoneCountrySearch.focus();
             }
         });
         document.addEventListener('click', function(e) {
             if (!guestPhoneCountryMenu.contains(e.target) && e.target !== guestPhoneCountryButton) {
                 guestPhoneCountryMenu.classList.add('hidden');
+                guestPhoneCountryButton.setAttribute('aria-expanded', 'false');
             }
         });
+        window.addEventListener('resize', function() {
+            if (!guestPhoneCountryMenu.classList.contains('hidden')) positionCountryMenu();
+        });
+        window.addEventListener('scroll', function() {
+            if (!guestPhoneCountryMenu.classList.contains('hidden')) positionCountryMenu();
+        }, true);
     }
 
     if (guestPhoneCountrySearch) {
