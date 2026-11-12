@@ -100,6 +100,11 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertNotNull($offer->host_signed_at);
         $this->assertNotNull($offer->guest_signed_at);
         $this->assertNull($booking->fresh()->payment_confirmed_at);
+        $this->get(route('public.lease-offer.show', [$application->id, $application->token, $offer->token]))
+            ->assertOk()
+            ->assertSee('Tenant: Jordan Applicant')
+            ->assertSee('Initial payment · Due now')
+            ->assertSee('$2,050.00');
 
         $this->actingAs($owner)->get(route('admin.lease-applications.show', $application))
             ->assertOk()
