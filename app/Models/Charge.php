@@ -24,6 +24,8 @@ class Charge extends Model
 
     public const TYPE_APPLICATION_FEE = 'application_fee';
 
+    public const TYPE_LEASE_INITIAL_PAYMENT = 'lease_initial_payment';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_HELD = 'held';
