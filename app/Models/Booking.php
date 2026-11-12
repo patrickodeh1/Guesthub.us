@@ -144,6 +144,16 @@ class Booking extends Model
         });
     }
 
+    public function leaseOffer(): BelongsTo
+    {
+        return $this->belongsTo(LeaseOffer::class, 'lease_offer_id');
+    }
+
+    public function leaseApplication(): BelongsTo
+    {
+        return $this->belongsTo(LeaseApplication::class, 'lease_application_id');
+    }
+
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
