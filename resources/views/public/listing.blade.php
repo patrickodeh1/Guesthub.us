@@ -227,7 +227,7 @@
                     </div>
                 </section>
 
-                @if($listing->lease_enabled && \App\Services\FeatureGate::enabled($listing->property->owner, 'lease_applications'))
+                @if($listing->lease_enabled && ($listing->listing_type ?? 'both') !== 'short_term' && \App\Services\FeatureGate::enabled($listing->property->owner, 'lease_applications'))
                     <section id="lease-application" class="lease-card">
                         <h2>Interested in a longer stay?</h2>
                         @if($listing->screening_provider_url)
