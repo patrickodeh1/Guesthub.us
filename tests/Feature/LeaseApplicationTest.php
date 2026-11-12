@@ -217,6 +217,10 @@ class LeaseApplicationTest extends TestCase
         $this->assertSame(2, $application->fresh()->id_scan_attempts);
         $this->get(route('public.lease-application.id.retry', [$application->id, $application->token]))
             ->assertStatus(409);
+        $this->get(route('public.lease-application.about', [$application->id, $application->token]))
+            ->assertOk()
+            ->assertSee('manual host review')
+            ->assertSee('guest-phone-country-button');
     }
 
     public function test_about_phone_uses_the_selected_country_code(): void
@@ -236,13 +240,10 @@ class LeaseApplicationTest extends TestCase
             'lease_term_months' => 12,
             'occupants' => 2,
             'current_address' => '7 Current Street',
+            'current_address_months' => null,
         ])->assertRedirect(route('public.lease-application.employment', [$application->id, $application->token]));
 
         $this->assertSame('+2348012345678', $application->fresh()->applicant_phone);
-        $this->get(route('public.lease-application.about', [$application->id, $application->token]))
-            ->assertOk()
-            ->assertSee('manual host review')
-            ->assertSee('guest-phone-country-button');
     }
 
     public function test_card_fee_includes_processing_fee_and_creates_connected_account_charge(): void

@@ -84,16 +84,23 @@
                     <a class="bk-btn" href="{{ route('public.stays.index') }}">Browse stays</a>
                 @elseif($booking->payment_method === 'manual')
                     @php($method = $booking->hostPaymentMethod)
-                    <h2>Pay with {{ $method?->label ?: 'the host\'s payment method' }}</h2>
-                    <p class="bk-copy">Send <strong>{{ $money($booking->total_cents) }}</strong> using the details below. Your dates are held until {{ $holdText }}.</p>
-                    <div class="bk-instr">
-                        @if($method?->handle)<p class="bk-copy" style="margin-top:0">Send to: <strong>{{ $method->handle }}</strong></p>@endif
-                        @if($method?->instructions)<p class="bk-copy">{!! nl2br(e($method->instructions)) !!}</p>@endif
-                        <p class="bk-copy" style="margin-bottom:0">Put this reference in the payment note:</p>
-                        <div class="bk-ref-box">{{ $booking->booking_id }}</div>
-                    </div>
-                    <p class="bk-copy">Your booking is confirmed once the host marks your payment as received. Keep this page and your payment receipt.</p>
-                    @include('partials.guest-payment-report', ['booking' => $booking])
+                    @if($booking->guest_payment_reported_at)
+                        <div class="bk-notice" role="status">
+                            <strong>Payment confirmation in progress.</strong> We've received your receipt and sent it to the host. We'll let you know when your payment is confirmed.
+                        </div>
+                        @include('partials.payment-receipts', ['payable' => $booking, 'viewer' => 'guest'])
+                    @else
+                        <h2>Pay with {{ $method?->label ?: 'the host\'s payment method' }}</h2>
+                        <p class="bk-copy">Send <strong>{{ $money($booking->total_cents) }}</strong> using the details below. Your dates are held until {{ $holdText }}.</p>
+                        <div class="bk-instr">
+                            @if($method?->handle)<p class="bk-copy" style="margin-top:0">Send to: <strong>{{ $method->handle }}</strong></p>@endif
+                            @if($method?->instructions)<p class="bk-copy">{!! nl2br(e($method->instructions)) !!}</p>@endif
+                            <p class="bk-copy" style="margin-bottom:0">Put this reference in the payment note:</p>
+                            <div class="bk-ref-box">{{ $booking->booking_id }}</div>
+                        </div>
+                        <p class="bk-copy">Your booking is confirmed once the host marks your payment as received. Keep this page and your payment receipt.</p>
+                        @include('partials.guest-payment-report', ['booking' => $booking])
+                    @endif
                 @elseif($booking->payment_method === 'card' && $clientSecret)
                     <h2>Pay securely by card</h2>
                     <p class="bk-copy">Your dates are held until {{ $holdText }}.</p>

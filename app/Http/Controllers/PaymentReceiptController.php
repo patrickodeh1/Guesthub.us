@@ -12,14 +12,11 @@ class PaymentReceiptController extends Controller
     public function guestReport(Request $request, string $bookingId, string $token, PaymentReceiptService $receipts)
     {
         $booking = $this->guestBooking($bookingId, $token);
-        $request->validate([
-            'confirmation' => ['accepted'],
-            'receipt' => $receipts->rules(),
-        ]);
+        $request->validate(['receipt' => $receipts->rules()]);
         $receipts->guestReport($booking, $request->file('receipt'));
 
         return redirect()->route('public.checkout.pay', [$booking->booking_id, $booking->token])
-            ->with('status', 'Thanks. Your receipt was sent to the host, who will confirm it shortly.');
+            ->with('status', 'Your payment is being confirmed. We will let you know when it is confirmed.');
     }
 
     public function guestShow(string $bookingId, string $token, PaymentReceipt $receipt, PaymentReceiptService $receipts)
