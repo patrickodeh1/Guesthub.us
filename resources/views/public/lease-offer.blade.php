@@ -6,7 +6,7 @@
 @section('content')
 @php
     $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
-    $contract = app(\\App\\Services\\LeaseOfferService::class)->renderContract($offer);
+    $contract = app(\App\Services\LeaseOfferService::class)->renderContract($offer);
     $initialRequired = $offer->installments->where('required_at_signing', true);
     $initialPaymentPending = isset($initialPaymentPending) ? $initialPaymentPending : $initialRequired->contains(fn ($item) => $item->status === 'pending');
     $payAmountCents = $initialPaymentPending ? $offer->initial_due_cents : ($nextInstallment?->amount_cents ?? 0);
