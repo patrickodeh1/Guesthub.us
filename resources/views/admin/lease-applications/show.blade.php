@@ -187,7 +187,7 @@
                             <form method="post" action="{{ route('admin.lease-applications.offers.create', $application) }}" class="mt-4 grid gap-3">
                                 @csrf
                                 <label class="block text-sm font-medium">Rental start date<input type="date" name="start_date" required min="{{ now()->toDateString() }}" value="{{ old('start_date', $application->move_in_date?->format('Y-m-d')) }}" class="input mt-1 w-full"></label>
-                                <label class="block text-sm font-medium">Rental end date<input type="date" name="end_date" required value="{{ old('end_date') }}" class="input mt-1 w-full"></label>
+                                <label class="block text-sm font-medium">Rental end date<input type="date" name="end_date" required value="{{ old('end_date', $application->requested_end_date?->format('Y-m-d') ?: $application->move_in_date?->copy()->addMonthsNoOverflow($application->lease_term_months ?: 12)->format('Y-m-d')) }}" class="input mt-1 w-full"></label>
                                 <label class="block text-sm font-medium">Term (months)<input type="number" name="term_months" min="1" max="600" required value="{{ old('term_months', $application->lease_term_months ?: 12) }}" class="input mt-1 w-full"></label>
                                 <label class="block text-sm font-medium">Monthly rent (USD)<input type="number" name="monthly_rent" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="1500.00"></label>
                                 <label class="block text-sm font-medium">Security deposit (USD)<input type="number" name="deposit" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
