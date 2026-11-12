@@ -84,7 +84,7 @@
 
             @unless($booking->isCancelled())
                 <div class="my-1 border-t border-slate-100"></div>
-                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" @if($booking->source === 'direct') onsubmit="return confirm('Cancel this direct booking and release the dates? Any refund is handled separately afterwards.')" @else onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')" @endif>
+                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" @if($booking->source === 'direct' && ! $booking->lease_offer_id && ! $booking->lease_application_id) onsubmit="return confirm('Cancel this direct booking and release the dates? Any refund is handled separately afterwards.')" @else onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')" @endif>
                     @csrf
                     <input type="hidden" name="status" value="cancelled">
                     <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"><x-icon name="x" class="h-4 w-4" />Cancel Reservation</button>
