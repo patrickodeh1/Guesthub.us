@@ -736,7 +736,7 @@ class BookingController extends Controller
             'refund_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
-        if ($data['status'] === 'cancelled' && $booking->source === 'direct' && ! $booking->isCancelled()) {
+        if ($data['status'] === 'cancelled' && $booking->isDirectBooking() && ! $booking->isCancelled()) {
             try {
                 $refund = app(\App\Services\DirectBookingService::class)->cancel($booking, false, 'Cancelled by staff.');
             } catch (\Stripe\Exception\ApiErrorException $e) {
