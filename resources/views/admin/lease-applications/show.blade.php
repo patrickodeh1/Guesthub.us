@@ -199,7 +199,7 @@
                                 <label class="block text-sm font-medium">Monthly rent (USD)<input type="number" name="monthly_rent" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="1500.00"></label>
                                 <label class="block text-sm font-medium">Security deposit (USD)<input type="number" name="deposit" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
                                 <label class="block text-sm font-medium">Other fees (USD)<input type="number" name="fees" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
-                                <label class="block text-sm font-medium">Amount due before confirmation (USD)<input type="number" name="initial_due" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="3000.00"></label>
+                                <label class="block text-sm font-medium">Amount due before confirmation (USD)<input type="number" name="initial_due" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="3000.00"><span class="mt-1 block text-xs text-slate-500">Enter the deposit + additional fees + first month of rent.</span></label>
                                 <label class="block text-sm font-medium">Rental agreement terms
                                     <textarea name="contract_html" rows="10" required class="input mt-1 w-full font-mono text-xs">{{ old('contract_html', $leaseTemplate) }}</textarea>
                                     <span class="mt-1 block text-xs text-slate-500">This copy is saved with the offer and signed by both parties. You can adjust the property template before sending.</span>
