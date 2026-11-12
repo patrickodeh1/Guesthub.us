@@ -113,6 +113,12 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertNull($booking->hold_expires_at);
         $this->assertStringContainsString('Jordan Applicant', $booking->contract_snapshot);
         $this->assertDatabaseHas('lease_installments', ['lease_offer_id' => $offer->id, 'status' => 'paid']);
+        $this->actingAs($owner)->get(route('admin.guests.show', $booking))
+            ->assertOk()
+            ->assertSee('Lease reservation')
+            ->assertSee('Installment payments')
+            ->assertSee('Paid')
+            ->assertDontSee('Direct booking payment');
     }
 
     public function test_expired_offer_releases_its_pending_reservation(): void
