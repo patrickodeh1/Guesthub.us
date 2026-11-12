@@ -25,6 +25,16 @@
 .lease-input{width:100%;border:1px solid #cfd8d2;border-radius:10px;padding:12px;box-sizing:border-box}
 .lease-error{color:#a52828;font-size:.9rem;margin-top:10px}
 .lease-contract{line-height:1.65;overflow-wrap:anywhere}.lease-contract table{width:100%;border-collapse:collapse}.lease-contract td{padding:7px;border-bottom:1px solid #e5e7eb}
+.guest-card-label{display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px}
+.guest-card-field{display:flex;align-items:center;min-height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px 12px;position:relative;overflow:visible;transition:border-color .2s ease,box-shadow .2s ease}
+.guest-card-field:focus-within{border-color:#0f172a;box-shadow:0 0 0 3px rgb(15 23 42 / .08)}
+.guest-card-field .StripeElement,.guest-card-field-inner{display:block;width:100%;font-size:15px;line-height:1.3}
+.guest-card-field iframe{display:block!important;width:100%!important;height:32px!important;border:0!important}
+.guest-card-wizard{position:relative}
+.lease-card-pay-button{display:inline-flex;min-height:42px;align-items:center;justify-content:center;border-radius:6px;background:var(--site-button);padding:10px 16px;font-size:12px;font-weight:800;color:#fff;border:0;transition:background .18s ease,opacity .18s ease;cursor:pointer;width:100%}
+.lease-card-pay-button:hover{background:var(--site-button-hover)}
+.lease-card-pay-button:disabled{cursor:not-allowed;opacity:.55}
+
 @media(max-width:600px){.lease-wrap{padding:20px 12px 40px}.lease-card{padding:16px}.lease-grid{grid-template-columns:1fr}.lease-table{font-size:.82rem}}
 </style>
 <div class="lease-wrap">
@@ -97,7 +107,7 @@
                         @endif
                     @else
                         <div id="lease-payment-choice" style="margin-top:16px">
-                            <button type="button" id="lease-pay-here" class="lease-button">Pay here with card</button>
+                            <button type="button" id="lease-pay-here" class="lease-card-pay-button">Pay here with card</button>
                         </div>
                         <div id="lease-card-section" hidden style="margin-top:16px">
                             <div id="lease-payment-error" class="lease-error" role="alert" hidden></div>
@@ -109,7 +119,7 @@
                                     <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-field"></div>
                                 </div>
                                 <p id="lease-payment-error-inline" class="lease-error" role="alert"></p>
-                                <button id="lease-pay-button" type="submit" class="lease-button" style="margin-top:16px" disabled>Pay {{ $money($offer->initial_due_cents) }}</button>
+                                <button id="lease-pay-button" type="submit" class="lease-card-pay-button" style="margin-top:16px" disabled>Pay {{ $money($offer->initial_due_cents) }}</button>
                             </form>
                         </div>
                     @endif
@@ -130,7 +140,7 @@
                                     <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-field"></div>
                                 </div>
                                 <p id="lease-payment-error-inline" class="lease-error" role="alert"></p>
-                                <button id="lease-pay-button" type="submit" class="lease-button" style="margin-top:16px" disabled>Pay {{ $money($nextInstallment->amount_cents) }}</button>
+                                <button id="lease-pay-button" type="submit" class="lease-card-pay-button" style="margin-top:16px" disabled>Pay {{ $money($nextInstallment->amount_cents) }}</button>
                             </form>
                         </div>
                     @endif
