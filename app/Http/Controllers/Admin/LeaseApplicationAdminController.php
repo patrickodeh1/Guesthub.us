@@ -39,6 +39,25 @@ class LeaseApplicationAdminController extends Controller
         return view('admin.lease-applications.show', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
     }
 
+    public function contract(Request $request, LeaseApplication $application)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless($application->status === 'approved', 409, 'Approve the application before preparing the rental contract.');
+        $application->load(['listing', 'property', 'offers.installments', 'offers.booking']);
+        $paymentMethods = HostPaymentMethod::query()
+            ->where('owner_id', $application->property->owner_id)
+            ->where('enabled', true)
+            ->orderBy('id')
+            ->get();
+        $leaseTemplate = app(\\App\\Services\\LeaseAgreementService::class)->templateFor($application->property);
+        $owner = $application->property->owner;
+        $canCard = filled($owner?->stripe_account_id)
+            && $owner?->stripe_charges_enabled
+            && app(\\App\\Services\\Payments\\PaymentService::class)->isConfigured();
+
+        return view('admin.lease-applications.contract', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
+    }
+
     public function update(
         Request $request,
         LeaseApplication $application,
@@ -74,7 +93,7 @@ class LeaseApplicationAdminController extends Controller
             $notifications->statusChanged($application->fresh(), $firstApproval);
         }
 
-        return back()->with('success', 'Application updated.');
+        if ($firstApproval) {\n            return redirect()->route('admin.lease-applications.contract', $application);\n        }\n\n        return back()->with('success', 'Application updated.');
     }
 
 
@@ -103,7 +122,7 @@ class LeaseApplicationAdminController extends Controller
                 'Review rental offer',
             ));
         } catch (\Throwable $e) { report($e); }
-        return back()->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
+        return redirect()->route('admin.lease-applications.show', $application)\n            ->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
     }
 
 
