@@ -34,6 +34,7 @@ class LeaseOfferController extends Controller
             'initialPaymentPending' => $initialPaymentPending,
             'publishableKey' => config('services.stripe.key'),
             'stripeAccountId' => $offer->property->owner?->stripe_account_id,
+            'initialPaymentCharge' => Charge::query()->where('lease_offer_id', $offer->id)->where('type', Charge::TYPE_LEASE_INITIAL_PAYMENT)->latest()->first(),
         ]);
     }
 
@@ -57,6 +58,14 @@ class LeaseOfferController extends Controller
         $offer->booking?->update(['status' => 'declined', 'cancelled_at' => now(), 'hold_expires_at' => null]);
         if ($offer->booking) app(\App\Services\Pms\AvailabilityLedger::class)->syncBooking($offer->booking->fresh());
         return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])->with('status', 'You declined this rental offer. The dates have been released.');
+    }
+
+    public function recordManualInitialPayment(Request $request, int $application, string $applicationToken, string $offerToken, LeaseOfferService $service)
+    {
+        $offer = $this->findOffer($application, $applicationToken, $offerToken);
+        $service->markInitialPaymentPaid($offer, (int) ($offer->property->owner_id));
+        return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])
+            ->with('status', 'The combined initial payment has been recorded.');
     }
 
     public function confirmPayment(Request $request, int $application, string $applicationToken, string $offerToken, PaymentService $payments)
