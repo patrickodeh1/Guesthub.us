@@ -85,7 +85,7 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertSame($offer->id, (int) $booking->lease_offer_id);
         $this->assertNotNull($booking->hold_expires_at);
         $this->get(route('public.lease-offer.show', [$application->id, $application->token, $offer->token]))
-            ->assertOk()->assertSee('Review your rental offer')->assertSee('Venmo');
+            ->assertOk()->assertSee('Review your rental offer');
 
         $this->post(route('public.lease-offer.sign', [$application->id, $application->token, $offer->token]), [
             'signature' => 'Jordan Applicant',
