@@ -30,6 +30,8 @@
 .guest-card-field:focus-within{border-color:#0f172a;box-shadow:0 0 0 3px rgb(15 23 42 / .08)}
 .guest-card-field .StripeElement,.guest-card-field-inner{display:block;width:100%;font-size:15px;line-height:1.3}
 .guest-card-field iframe{display:block!important;width:100%!important;height:32px!important;border:0!important}
+.guest-card-postal{width:100%;min-height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;padding:10px 12px;color:#0f172a;font:inherit}
+.guest-card-postal:focus{outline:none;border-color:#0f172a;box-shadow:0 0 0 3px rgb(15 23 42 / .08)}
 .guest-card-wizard{position:relative}
 .lease-card-pay-button{display:inline-flex;min-height:42px;align-items:center;justify-content:center;border-radius:6px;background:var(--site-button);padding:10px 16px;font-size:12px;font-weight:800;color:#fff;border:0;transition:background .18s ease,opacity .18s ease;cursor:pointer;width:100%}
 .lease-card-pay-button:hover{background:var(--site-button-hover)}
@@ -116,7 +118,7 @@
                                     <div><label class="guest-card-label" for="lease-card-number">Card number</label><div id="lease-card-number" class="guest-card-field"></div></div>
                                     <div><label class="guest-card-label" for="lease-card-expiry">Expiry date</label><div id="lease-card-expiry" class="guest-card-field"></div></div>
                                     <div><label class="guest-card-label" for="lease-card-cvc">Security code (CVC)</label><div id="lease-card-cvc" class="guest-card-field"></div></div>
-                                    <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-field"></div>
+                                    <div><label class="guest-card-label" for="lease-card-postal">Billing ZIP / postal code</label><input id="lease-card-postal" name="postal-code" type="text" autocomplete="postal-code" maxlength="12" placeholder="ZIP / Postal code" class="guest-card-postal"></div>
                                 </div>
                                 <p id="lease-payment-error-inline" class="lease-error" role="alert"></p>
                                 <button id="lease-pay-button" type="submit" class="lease-card-pay-button" style="margin-top:16px" disabled>Pay {{ $money($offer->initial_due_cents) }}</button>
@@ -193,7 +195,8 @@
         cvc = elements.create('cardCvc', {placeholder:'CVC',style});
         number.mount('#lease-card-number'); expiry.mount('#lease-card-expiry'); cvc.mount('#lease-card-cvc');
         let complete = {number:false,expiry:false,cvc:false};
-        const update = () => { button.disabled = !Object.values(complete).every(Boolean); };
+        const update = () => { button.disabled = !Object.values(complete).every(Boolean) || postal.value.trim().length < 3; };
+        postal.addEventListener('input', update);
         number.on('change', e => { complete.number = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
         expiry.on('change', e => { complete.expiry = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
         cvc.on('change', e => { complete.cvc = e.complete; if(e.error)showError(e.error.message); else error.hidden=true; update(); });
