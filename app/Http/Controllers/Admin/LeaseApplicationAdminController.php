@@ -93,7 +93,11 @@ class LeaseApplicationAdminController extends Controller
             $notifications->statusChanged($application->fresh(), $firstApproval);
         }
 
-        if ($firstApproval) {\n            return redirect()->route('admin.lease-applications.contract', $application);\n        }\n\n        return back()->with('success', 'Application updated.');
+        if ($firstApproval) {
+            return redirect()->route('admin.lease-applications.contract', $application);
+        }
+
+        return back()->with('success', 'Application updated.');
     }
 
 
@@ -122,7 +126,8 @@ class LeaseApplicationAdminController extends Controller
                 'Review rental offer',
             ));
         } catch (\Throwable $e) { report($e); }
-        return redirect()->route('admin.lease-applications.show', $application)\n            ->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
+        return redirect()->route('admin.lease-applications.show', $application)
+            ->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
     }
 
 
