@@ -1964,6 +1964,10 @@ class Booking extends Model
 
     public function platformLabel(): string
     {
+        if ($this->lease_offer_id || $this->lease_application_id) {
+            return 'Lease';
+        }
+
         $platform = trim((string) ($this->booking_platform ?? ''));
 
         if ($platform === '') {
