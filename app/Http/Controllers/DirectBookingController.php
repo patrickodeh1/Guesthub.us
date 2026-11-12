@@ -21,15 +21,6 @@ class DirectBookingController extends Controller
             abort_unless($listing->lease_enabled && FeatureGate::enabled($listing->property->owner, 'lease_applications'), 404);
             return redirect()->route('public.lease-application.apply', $listingSlug);
         }
-        if (($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_enabled && FeatureGate::enabled($listing->property->owner, 'lease_applications') && $listing->lease_auto_route_29_nights && $request->filled('check_in') && $request->filled('check_out')) {
-            try { $nights = \Carbon\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\Carbon\Carbon::parse($request->query('check_out'))->startOfDay()); }
-            catch (\Throwable $e) { $nights = 0; }
-            if ($nights >= 29) {
-                return redirect()->route('public.lease-application.apply', $listingSlug)->with('lease_prefill', [
-                    'check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1),
-                ]);
-            }
-        }
         $owner = $listing->property->owner;
         $canCard = filled($owner?->stripe_account_id) && $owner?->stripe_charges_enabled && app(PaymentService::class)->isConfigured();
         $manualMethods = $owner && FeatureGate::enabled($owner, 'manual_payments')
@@ -69,11 +60,6 @@ class DirectBookingController extends Controller
             return redirect()->route('public.lease-application.apply', $listingSlug);
         }
         $nights = \Carbon\Carbon::parse($data['check_in'])->startOfDay()->diffInDays(\Carbon\Carbon::parse($data['check_out'])->startOfDay());
-        if ($nights >= 29 && ($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_enabled && FeatureGate::enabled($listing->property->owner, 'lease_applications') && $listing->lease_auto_route_29_nights) {
-            return redirect()->route('public.lease-application.apply', $listingSlug)->with('lease_prefill', [
-                'check_in' => $data['check_in'], 'check_out' => $data['check_out'], 'guests' => $data['guests'],
-            ]);
-        }
         $data['phone'] = \App\Support\PhoneFormatter::normalizeForStorage(
             $data['phone'] ?? null,
             $data['phone_country_code'] ?? '+1',
