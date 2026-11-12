@@ -20,6 +20,17 @@
         }
     @endphp
 
+    <style>
+        #listing-form{grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+        #listing-form>div,#listing-form section,#listing-form label{min-width:0}
+        #listing-form .grid{min-width:0}
+        #listing-form input:not([type=checkbox]):not([type=radio]),#listing-form select,#listing-form textarea{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+        #listing-form .field-label>div.flex{min-width:0}
+        #listing-form .field-label>div.flex input{min-width:0;flex:1 1 auto}
+        @media(min-width:768px){#listing-form .listing-responsive-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(min-width:1280px){#listing-form{grid-template-columns:minmax(0,1fr) 340px}}
+        @media(max-width:640px){#listing-form{gap:16px}#listing-form .card-pad{padding:16px}#listing-form .listing-responsive-grid{grid-template-columns:minmax(0,1fr)}#listing-form .listing-responsive-grid>*{grid-column:1/-1}#listing-form .listing-photo-card{min-width:0}}
+    </style>
     <div class="page-header">
         <div>
             <p class="eyebrow">Direct booking</p>
@@ -61,7 +72,7 @@
             <section class="card card-pad">
                 <h2 class="section-title">Public details</h2>
                 <p class="section-copy">Use accurate, guest-facing information. The street address and private access details are not part of this listing.</p>
-                <div class="mt-5 grid gap-5 md:grid-cols-2">
+                <div class="mt-5 listing-responsive-grid grid gap-5 md:grid-cols-2">
                     <label class="field-label md:col-span-2">Listing title
                         <input name="public_title" value="{{ old('public_title', $listing->public_title) }}" maxlength="255" class="input" placeholder="A clear, descriptive title">
                         @error('public_title')<span class="field-help text-red-700">{{ $message }}</span>@enderror
@@ -124,7 +135,7 @@
 
             <section class="card card-pad">
                 <h2 class="section-title">Pricing and booking rules</h2>
-                <div class="mt-5 grid gap-5 md:grid-cols-2">
+                <div class="mt-5 listing-responsive-grid grid gap-5 md:grid-cols-2">
                     <label class="field-label">Base nightly rate (USD)
                         <div class="flex items-center gap-2"><span class="text-slate-500">$</span><input inputmode="decimal" name="base_rate" value="{{ old('base_rate', $listing->base_rate_cents !== null ? number_format($listing->base_rate_cents / 100, 2, '.', '') : '') }}" class="input" placeholder="0.00"></div>
                         @error('base_rate')<span class="field-help text-red-700">{{ $message }}</span>@enderror
@@ -228,7 +239,7 @@
                 @if($listing->exists && $listing->lease_enabled)
                     <a href="{{ route('admin.lease-applications.index') }}" class="mt-2 inline-flex text-sm font-semibold text-slate-700 underline">Review submitted applications</a>
                 @endif
-                <div class="mt-4 grid gap-5 md:grid-cols-2">
+                <div class="mt-4 listing-responsive-grid grid gap-5 md:grid-cols-2">
                     <label class="flex items-center gap-2 text-sm font-medium md:col-span-2">
                         <input type="hidden" name="lease_enabled" value="0">
                         <input type="checkbox" name="lease_enabled" value="1" @checked(old('lease_enabled', $listing->lease_enabled))>
@@ -252,7 +263,7 @@
 
             <section class="card card-pad">
                 <h2 class="section-title">Search preview</h2>
-                <div class="mt-4 grid gap-5 md:grid-cols-2">
+                <div class="mt-4 listing-responsive-grid grid gap-5 md:grid-cols-2">
                     <label class="field-label">SEO title
                         <input name="meta_title" value="{{ old('meta_title', $listing->meta_title) }}" maxlength="255" class="input">
                     </label>
