@@ -32,7 +32,7 @@ class LeaseApplicationController extends Controller
             $prefill = ['check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1)];
             $request->session()->put($sessionKey, $prefill);
         } elseif (is_array($prefill)) {
-            $request->session()->put('lease_prefill', $prefill);
+            $request->session()->put($sessionKey, $prefill);
         }
         return view('public.lease-application-id', [
             'listing' => $this->publishedLeaseListing($listingSlug),
