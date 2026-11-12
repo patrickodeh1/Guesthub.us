@@ -6,7 +6,7 @@
 .guest-phone-country-label{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:14px;font-weight:600}
 .guest-phone-country-flag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:16px;flex:0 0 22px}
 .guest-phone-country-flag img{display:block;width:22px;height:16px;max-width:none;object-fit:cover}
-.guest-phone-country-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:10000;width:min(320px,calc(100vw - 40px));overflow:hidden;border:1px solid #d9e1dc;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,35,28,.16)}
+.guest-phone-country-menu{position:fixed;top:0;left:0;z-index:10000;width:min(320px,calc(100vw - 16px));overflow:hidden;border:1px solid #d9e1dc;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(20,35,28,.16)}
 .guest-phone-country-menu.hidden{display:none!important}
 .guest-phone-country-search-wrap{padding:9px;border-bottom:1px solid #edf0ee;background:#fff}
 .guest-phone-country-search{display:block;width:100%;min-height:42px;box-sizing:border-box;padding:9px 11px;border:1px solid #cfd8d2;border-radius:8px;background:#fff;color:#17221e;font:inherit;font-size:14px}
