@@ -237,7 +237,7 @@ class PaymentService
             'description' => 'Lease installment '.$installment->label,
             'receipt_email' => $offer->application->applicant_email,
             'metadata' => ['lease_offer_id' => (string) $offer->id, 'lease_installment_id' => (string) $installment->id, 'type' => 'lease_installment'],
-        ], ['stripe_account' => $owner->stripe_account_id, 'idempotency_key' => 'lease-installment-'.$installment->id.'-attempt-'.$installment->charges_count]);
+        ], ['stripe_account' => $owner->stripe_account_id, 'idempotency_key' => 'lease-installment-'.$installment->id.'-attempt-'.$installment->charges()->count()]);
         $charge = \\App\\Models\\Charge::create([
             'booking_id' => $offer->booking_id,
             'lease_application_id' => $offer->lease_application_id,
