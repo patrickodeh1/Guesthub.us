@@ -1979,6 +1979,7 @@ class Booking extends Model
             'vrbo', 'homeaway' => 'Vrbo',
             'booking.com', 'booking' => 'Booking.com',
             'expedia' => 'Expedia',
+            'direct', 'direct booking' => 'Direct booking',
             default => $platform,
         };
     }
