@@ -102,6 +102,16 @@ class LeaseApplicationAdminController extends Controller
         return back()->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
     }
 
+
+    public function cancelOffer(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id, 404);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
+        $service->cancel($offer, (int) $request->user()->id, (string) ($data['reason'] ?? ''));
+        return back()->with('success', 'Rental offer cancelled and its calendar dates released. Paid installments remain in the payment history; review any refund separately.');
+    }
+
     public function markInstallmentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseInstallment $installment, LeaseOfferService $service)
     {
         $this->authorizeApplication($request, $application);
