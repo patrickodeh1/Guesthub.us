@@ -38,6 +38,7 @@ class LeaseApplicationAdminController extends Controller
         $data = $request->validate([
             'status' => ['required', 'in:in_review,approved,declined'],
             'host_notes' => ['nullable', 'string', 'max:10000'],
+            'decline_reason' => ['nullable', 'string', 'max:1000'],
         ]);
         if ($data['status'] === 'approved') {
             $needsFront = ! $application->id_front_approved_at;
@@ -47,15 +48,20 @@ class LeaseApplicationAdminController extends Controller
             }
         }
         $previousStatus = $application->status;
+        $firstApproval = $data['status'] === 'approved' && ! $application->approved_at;
         $application->update([
             'status' => $data['status'],
             'host_notes' => $data['host_notes'] ?? null,
             'declined_at' => $data['status'] === 'declined'
                 ? ($previousStatus === 'declined' ? $application->declined_at : now())
                 : null,
+            'decline_reason' => $data['status'] === 'declined'
+                ? (trim((string) ($data['decline_reason'] ?? '')) ?: null)
+                : null,
+            'approved_at' => $firstApproval ? now() : $application->approved_at,
         ]);
         if ($previousStatus !== $application->status) {
-            $notifications->statusChanged($application->fresh());
+            $notifications->statusChanged($application->fresh(), $firstApproval);
         }
 
         return back()->with('success', 'Application updated.');

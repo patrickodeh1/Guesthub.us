@@ -49,6 +49,7 @@
         <h1>Rental Agreement</h1>
         <p class="muted">Agreement version {{ $agreementVersion ?: '1' }}{{ $signedAt ? ' · Accepted '.$signedAt->format('M j, Y g:i A T') : '' }}</p>
 
+        @unless(! empty($fullLayout))
         <h2>Reservation details</h2>
         <table class="meta">
             <tr><td class="k">Guest</td><td>{{ $booking->guest_name }}</td></tr>
@@ -59,16 +60,18 @@
             <tr><td class="k">Check-out</td><td>{{ $booking->check_out_date?->format('M d, Y') }} at {{ $booking->effectiveCheckoutTimeFormatted() }}</td></tr>
             <tr><td class="k">Government ID</td><td>{{ $idType }}</td></tr>
         </table>
+        @endunless
 
         <div class="body">
             {!! $contractHtml !!}
         </div>
 
-        @if($idImage)
+        @if($idImage && empty($fullLayout))
         <h2>Government-issued ID on file</h2>
         <img src="{{ $idImage }}" alt="Government-issued ID" class="idphoto">
         @endif
 
+        @unless(! empty($fullLayout))
         <h2>Digital signature</h2>
         <div class="sig">
             <div class="muted">Signed by</div>
@@ -81,6 +84,8 @@
                 <tr><td class="k">Agreement version</td><td>{{ $agreementVersion ?: '1' }}</td></tr>
             </table>
         </div>
+
+        @endunless
 
         <p class="muted" style="margin-top:18px;">This electronically signed agreement was accepted by the guest and is retained with the signature evidence above.</p>
     </div>

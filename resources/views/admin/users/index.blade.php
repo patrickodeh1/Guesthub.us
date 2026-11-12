@@ -68,6 +68,12 @@
                 <div class="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                     <a href="{{ route('admin.users.show', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">View</a>
                     <a href="{{ route('admin.users.edit', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">Edit</a>
+@if(auth()->user()->hasRole('admin') && $user->isActive() && $user->approval_status === 'approved')
+<form method="post" action="{{ route('admin.users.resend-setup', $user) }}" onsubmit="return confirm('Email {{ $user->email }} a new password link (valid 24 hours)?')">
+    @csrf
+    <button class="btn-secondary px-3 py-1.5 text-xs" type="submit">Send password link</button>
+</form>
+@endif
                     @if($user->id !== auth()->id())
                         <form method="post" action="{{ route('admin.users.toggle-status', $user) }}" @if($user->isActive()) onsubmit="var r = prompt('Reason for deactivating this account (optional):'); if (r === null) { return false; } this.querySelector('[name=reason]').value = r;" @endif>
                             @csrf
@@ -138,6 +144,12 @@
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('admin.users.show', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">View</a>
                                 <a href="{{ route('admin.users.edit', $user) }}" class="btn-secondary px-3 py-1.5 text-xs">Edit</a>
+@if(auth()->user()->hasRole('admin') && $user->isActive() && $user->approval_status === 'approved')
+<form method="post" action="{{ route('admin.users.resend-setup', $user) }}" onsubmit="return confirm('Email {{ $user->email }} a new password link (valid 24 hours)?')">
+    @csrf
+    <button class="btn-secondary px-3 py-1.5 text-xs" type="submit">Send password link</button>
+</form>
+@endif
                                 @if($user->id !== auth()->id())
                                     <form method="post" action="{{ route('admin.users.toggle-status', $user) }}" @if($user->isActive()) onsubmit="var r = prompt('Reason for deactivating this account (optional):'); if (r === null) { return false; } this.querySelector('[name=reason]').value = r;" @endif>
                                         @csrf

@@ -91,6 +91,7 @@
                         <h2 class="mb-2 text-lg font-semibold">Contact</h2>
                         <div class="{{ $row }}"><span class="text-slate-500">Email</span><span class="text-right">{{ $application->applicant_email }}</span></div>
                         <div class="{{ $row }}"><span class="text-slate-500">Phone</span><span class="text-right">{{ $application->applicant_phone }}</span></div>
+                        <div class="{{ $row }}"><span class="text-slate-500">Text updates</span><span class="text-right">{{ $application->sms_consent_at ? 'Opted in '.$application->sms_consent_at->format('M j, Y') : 'Not opted in (email only)' }}</span></div>
                         <div class="{{ $row }}"><span class="text-slate-500">Current address</span><span class="text-right">{{ $application->current_address }}</span></div>
                         <div class="{{ $row }}"><span class="text-slate-500">Time there</span><span class="text-right">{{ $application->current_address_months !== null ? $application->current_address_months.' months' : '—' }}</span></div>
                     </section>
@@ -126,11 +127,16 @@
                         <p class="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-800">Approve the ID before approving this application.</p>
                     @endif
                     <label for="status" class="mt-3 block text-sm font-medium">Status</label>
-                    <select id="status" name="status" class="input mt-1 w-full">
+                    <select id="status" name="status" class="input mt-1 w-full" onchange="document.getElementById('decline-reason-wrap').classList.toggle('hidden', this.value !== 'declined')">
                         @foreach(['in_review' => 'In review', 'approved' => 'Approved', 'declined' => 'Declined'] as $value => $label)
                             <option value="{{ $value }}" @selected(old('status', $application->status === 'submitted' ? 'in_review' : $application->status) === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
+                    <p class="mt-1 text-xs text-slate-500">Approving or declining emails and texts the applicant.</p>
+                    <div id="decline-reason-wrap" class="mt-3 {{ old('status', $application->status) === 'declined' ? '' : 'hidden' }}">
+                        <label for="decline_reason" class="block text-sm font-medium">Reason sent to applicant (optional)</label>
+                        <textarea id="decline_reason" name="decline_reason" rows="3" maxlength="1000" class="input mt-1 w-full" placeholder="Included in the decline email and text">{{ old('decline_reason', $application->decline_reason) }}</textarea>
+                    </div>
                     <label for="host_notes" class="mt-3 block text-sm font-medium">Private notes</label>
                     <textarea id="host_notes" name="host_notes" rows="5" class="input mt-1 w-full">{{ old('host_notes', $application->host_notes) }}</textarea>
                     <button class="btn-primary mt-4 w-full">Save review</button>

@@ -39,7 +39,7 @@ class Booking extends Model
         'property_id', 'id_type', 'token', 'photo_id_path', 'photo_id_back_path', 'photo_id_received', 'parking_needed', 'early_checkin_tier', 'checkin_time_preference', 'checkout_time_preference', 'checkin_time_status', 'checkout_time_status', 'gps_verified', 'guest_authenticated_at', 'checkin_disclaimer_agreed_at',
         'manually_checked_in', 'checked_in_at', 'checked_out_at', 'late_checkout_type', 'late_checkout_hours', 'late_checkout_actual_time', 'gps_overridden', 'status', 'cancelled_at', 'cancelled_by_guest', 'cancellation_fee_applies', 'notes', 'welcome_message', 'identity_confirmed_at', 'registration_notified_at',
         'approved_at', 'decline_reason', 'archived_at', 'background_check_completed_at', 'deposit_verified_at', 'platform_payment_selected_at', 'checkin_approved_at',
-        'contract_version', 'contract_accepted_at', 'contract_signed_name', 'contract_signed_ip', 'contract_signed_user_agent', 'contract_signed_device_id',
+        'contract_snapshot', 'contract_version', 'contract_accepted_at', 'contract_signed_name', 'contract_signed_ip', 'contract_signed_user_agent', 'contract_signed_device_id',
         'sms_consent_at', 'sms_consent_version', 'sms_consent_opted_in',
         'terms_accepted_at', 'terms_accepted_version',
         'deposit_payment_status', 'deposit_stripe_payment_intent_id', 'deposit_amount_cents',
@@ -55,6 +55,7 @@ class Booking extends Model
         'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'processing_fee_cents', 'total_cents',
         'payment_method', 'host_payment_method_id', 'hold_expires_at', 'payment_confirmed_at', 'guests_count', 'direct_booking_reminded_at',
         'direct_booking_request', 'direct_booking_approved_at',
+        'lease_application_id', 'lease_offer_id',
     ];
 
     protected function casts(): array
@@ -1746,6 +1747,15 @@ class Booking extends Model
     public function effectiveCheckoutTimeFormatted(): string
     {
         return $this->safeFormatTime($this->effectiveCheckoutTime());
+    }
+
+    public function checkoutNoticeTimeFormatted(): string
+    {
+        if ($this->checkout_time_status === 'approved' && $this->checkoutNeedsApproval()) {
+            return $this->effectiveCheckoutTimeFormatted();
+        }
+
+        return $this->standardCheckoutTimeFormatted();
     }
 
     public function isPastCheckoutTime(?CarbonInterface $now = null): bool

@@ -10,7 +10,7 @@
 
     @if($property->exists)
     <section class="card card-pad mb-6" id="lockbox-quick">
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="section-title">Lockbox code</h2>
             <span id="lockbox-quick-msg" class="text-sm"></span>
         </div>
@@ -53,11 +53,11 @@
     </script>
     @endif
 
-    <form method="post" enctype="multipart/form-data" action="{{ $property->exists ? route('admin.properties.update', $property) : route('admin.properties.store') }}" class="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
+    <form method="post" enctype="multipart/form-data" action="{{ $property->exists ? route('admin.properties.update', $property) : route('admin.properties.store') }}" class="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         @csrf @if($property->exists) @method('put') @endif
         <input type="hidden" name="return_to" value="{{ $returnTo ?? '' }}">
 
-        <div class="grid content-start gap-6">
+        <div class="grid min-w-0 content-start gap-6">
 
         <section id="general" class="card card-pad">
             <h2 class="section-title">Property details</h2>
@@ -81,6 +81,182 @@
                 </label>
             </div>
         </section>
+
+        @php
+            $activeContractTab = $errors->has('lease_agreement') ? 'lease' : 'rental';
+        @endphp
+        <div class="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Property contract editors">
+            <button type="button" id="rental-contract-tab" data-contract-tab="rental" role="tab" aria-controls="rental-contract-panel" aria-selected="{{ $activeContractTab === 'rental' ? 'true' : 'false' }}" onclick="switchContractTab('rental')" class="contract-tab-btn btn-secondary {{ $activeContractTab === 'rental' ? 'bg-slate-900 text-white' : '' }}">Rental agreement</button>
+            <button type="button" id="lease-contract-tab" data-contract-tab="lease" role="tab" aria-controls="lease-contract-panel" aria-selected="{{ $activeContractTab === 'lease' ? 'true' : 'false' }}" onclick="switchContractTab('lease')" class="contract-tab-btn btn-secondary {{ $activeContractTab === 'lease' ? 'bg-slate-900 text-white' : '' }}">Long-term lease</button>
+        </div>
+        <div id="rental-contract-panel" class="contract-panel min-w-0 w-full" role="tabpanel" aria-labelledby="rental-contract-tab" style="{{ $activeContractTab !== 'rental' ? 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;' : 'position:relative;' }}">
+        <style>
+        #rental-agreement .tox-tinymce { border: 1px solid #cbd5e1 !important; border-radius: 0.5rem !important; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.05); }
+        #rental-agreement .tox-tinymce:focus-within { border-color: #64748b !important; }
+        #rental-agreement .tox .tox-editor-header { border-bottom: 1px solid #e2e8f0 !important; box-shadow: none !important; }
+        #rental-agreement .tox .tox-statusbar { border-top: 1px solid #e2e8f0 !important; }
+        </style>
+        <section id="rental-agreement" class="card card-pad">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 class="section-title">Rental agreement</h2>
+                    <p class="mt-1 text-sm text-slate-500">This starts as your default agreement. Edit it to customize it for this property. Clear it completely to keep using the default.</p>
+                </div>
+                <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800">
+                    <input type="checkbox" id="skip_rental_agreement_box" name="skip_rental_agreement" value="1" @checked(old('skip_rental_agreement', $property->skip_rental_agreement ?? false)) class="rounded border-slate-300 shrink-0">
+                    No agreement for this property
+                </label>
+            </div>
+
+            <div id="rental-agreement-body" class="mt-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Click to insert a placeholder</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach(['guest_name','guest_first_name','property_name','property_address','check_in_date','check_out_date','check_in_time','check_out_time','host_name','website_name','reservation_id','booking_id','guest_id_type','id_photo','signed_name','signed_at','signed_ip','signed_device_id','signed_browser','agreement_version'] as $ph)
+                        <button type="button" data-ph="[[{{ $ph }}]]" class="ra-chip rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100">[[{{ $ph }}]]</button>
+                    @endforeach
+                </div>
+                @php
+                    $raDefault = '';
+                    foreach (['legal_rental_contract_content', 'rental_contract_content', 'legal_rental_agreement_content'] as $raKey) {
+                        $raVal = \App\Models\Setting::getValue($raKey, '');
+                        if (filled($raVal)) { $raDefault = $raVal; break; }
+                    }
+                    $raText = filled($property->rental_agreement) ? $property->rental_agreement : app(\App\Services\RentalAgreementService::class)->defaultTemplate($raDefault);
+                @endphp
+                <textarea id="rental_agreement_editor" name="rental_agreement" rows="16" class="input mt-3 w-full">{{ old('rental_agreement', $raText) }}</textarea>
+                @error('rental_agreement')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+        </section>
+        </div>
+        <div id="lease-contract-panel" class="contract-panel min-w-0 w-full" role="tabpanel" aria-labelledby="lease-contract-tab" style="{{ $activeContractTab !== 'lease' ? 'position:absolute;left:-9999px;top:-9999px;visibility:hidden;' : 'position:relative;' }}">
+        @php
+            $leaseSvc = app(\App\Services\LeaseAgreementService::class);
+            $leaseSeed = $leaseSvc->seedFor($property);
+            $leaseText = filled($property->lease_agreement) ? $property->lease_agreement : $leaseSeed;
+        @endphp
+        <style>
+        #lease-agreement .tox-tinymce { border: 1px solid #cbd5e1 !important; border-radius: 0.5rem !important; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.05); }
+        #lease-agreement .tox-tinymce:focus-within { border-color: #64748b !important; }
+        #lease-agreement .tox .tox-editor-header { border-bottom: 1px solid #e2e8f0 !important; box-shadow: none !important; }
+        #lease-agreement .tox .tox-statusbar { border-top: 1px solid #e2e8f0 !important; }
+        </style>
+        <section id="lease-agreement" class="card card-pad">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 class="section-title">Long-term lease contract</h2>
+                    <p class="mt-1 text-sm text-slate-500">Used for lease applications (stays of 29 nights or longer). It starts from this property's rental agreement terms. When you approve an application you redraft it for that tenant, review it and sign before it is sent.</p>
+                </div>
+                <button type="button" id="lease-reset-btn" data-seed="{{ $leaseSeed }}" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">Reset from rental agreement</button>
+            </div>
+            <div class="mt-4">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Click to insert a placeholder</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @foreach($leaseSvc->placeholders() as $ph)
+                        <button type="button" data-ph="[[{{ $ph }}]]" class="lease-chip rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100">[[{{ $ph }}]]</button>
+                    @endforeach
+                </div>
+                <textarea id="lease_agreement_editor" name="lease_agreement" rows="16" class="input mt-3 w-full">{{ old('lease_agreement', $leaseText) }}</textarea>
+                @error('lease_agreement')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+            </div>
+        </section>
+        <script>
+        (function () {
+            var tries = 0;
+            function leaseEditor() { return window.tinymce ? tinymce.get('lease_agreement_editor') : null; }
+            function boot() {
+                if (!window.tinymce) {
+                    if (tries++ < 100) { setTimeout(boot, 200); }
+                    return;
+                }
+                tinymce.init({
+                    selector: '#lease_agreement_editor',
+                    height: 460,
+                    menubar: false,
+                    branding: false,
+                    promotion: false,
+                    plugins: 'lists link table code',
+                    content_style: 'body { font-family: system-ui, sans-serif; font-size: 14px; padding: 12px; }',
+                    toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link table | removeformat code'
+                });
+            }
+            boot();
+            document.querySelectorAll('.lease-chip').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var ed = leaseEditor();
+                    if (ed) { ed.focus(); ed.insertContent(b.dataset.ph); }
+                });
+            });
+            var reset = document.getElementById('lease-reset-btn');
+            if (reset) {
+                reset.addEventListener('click', function () {
+                    var ed = leaseEditor();
+                    if (ed && confirm('Replace the lease contract with a fresh copy built from the rental agreement terms?')) {
+                        ed.setContent(reset.dataset.seed);
+                    }
+                });
+            }
+        })();
+        </script>
+        <script>
+        (function () {
+            var box = document.getElementById('skip_rental_agreement_box');
+            var body = document.getElementById('rental-agreement-body');
+            function editor() { return window.tinymce ? tinymce.get('rental_agreement_editor') : null; }
+            function applySkip() {
+                var off = box.checked;
+                body.style.opacity = off ? '0.45' : '1';
+                body.style.pointerEvents = off ? 'none' : 'auto';
+                var ed = editor();
+                if (ed) ed.mode.set(off ? 'readonly' : 'design');
+            }
+            function init() {
+                tinymce.init({
+                    selector: '#rental_agreement_editor',
+                    height: 460,
+                    menubar: false,
+                    branding: false,
+                    promotion: false,
+                    plugins: 'lists link table code',
+                    content_style: 'body { font-family: system-ui, sans-serif; font-size: 14px; padding: 12px; }',
+                    toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link table | removeformat code',
+                    setup: function (ed) { ed.on('init', applySkip); }
+                });
+            }
+            if (window.tinymce) { init(); }
+            else {
+                var s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js';
+                s.onload = init;
+                document.head.appendChild(s);
+            }
+            box.addEventListener('change', applySkip);
+            document.querySelectorAll('.ra-chip').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var ed = editor();
+                    if (ed) { ed.focus(); ed.insertContent(b.dataset.ph); }
+                });
+            });
+        })();
+        </script>
+        </div>
+        <script>
+        function switchContractTab(key) {
+            document.querySelectorAll('.contract-panel').forEach(function (panel) {
+                var isTarget = panel.id === key + '-contract-panel';
+                panel.style.position = isTarget ? 'relative' : 'absolute';
+                panel.style.left = isTarget ? '' : '-9999px';
+                panel.style.top = isTarget ? '' : '-9999px';
+                panel.style.visibility = isTarget ? 'visible' : 'hidden';
+            });
+            document.querySelectorAll('.contract-tab-btn').forEach(function (button) {
+                var isTarget = button.dataset.contractTab === key;
+                button.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+                button.classList.toggle('bg-slate-900', isTarget);
+                button.classList.toggle('text-white', isTarget);
+            });
+            window.dispatchEvent(new Event('resize'));
+        }
+        </script>
 
         @if($property->exists)
         <section class="card card-pad">
@@ -147,7 +323,7 @@
         @endif
         </div>
 
-        <aside class="card card-pad self-start xl:sticky xl:top-6">
+        <aside class="card card-pad min-w-0 self-start xl:sticky xl:top-6">
             <h2 class="section-title">Property settings</h2>
 
             <label class="mt-5 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold"><span>Active property<x-help-tip text="Inactive properties are hidden from lists and scheduling but keep all their data." /></span><input type="checkbox" name="active" value="1" @checked(old('active', $property->active ?? true)) class="rounded border-slate-300"></label>
@@ -202,7 +378,7 @@
                     <x-help-tip text="This property's ID in Channex, your booking channel manager. Bookings will not import until it is set." /><input name="channex_property_id" value="{{ old('channex_property_id', $property->channex_property_id) }}" placeholder="e.g. 3f9a2b10-..." class="input">
                     
                 </label>
-                <div class="mt-4 grid grid-cols-2 gap-4">
+                <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <label class="field-label">Check-in time
                         <x-help-tip text="The standard check-in time shown to guests." /><input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ?? '16:00') }}" class="input">
                     </label>
@@ -240,19 +416,19 @@
                 <div class="mb-5 mt-4 grid gap-3">
                     @foreach($property->locks as $lock)
                         <div class="rounded-xl border border-slate-200 p-4" id="lock-row-{{ $lock->id }}">
-                            <div class="flex items-center justify-between gap-3" id="lock-view-{{ $lock->id }}">
-                                <div>
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" id="lock-view-{{ $lock->id }}">
+                                <div class="min-w-0">
                                     <p class="font-bold text-slate-950">{{ $lock->label }}</p>
-                                    <p class="text-sm text-slate-500">
+                                    <p class="break-all text-sm text-slate-500">
                                         Device ID: {{ $lock->seam_device_id }}
                                         @if($lock->manufacturer) &middot; {{ ucfirst($lock->manufacturer) }} @endif
                                     </p>
                                 </div>
-                                <div class="flex items-center gap-2">
-                                    <button type="button" class="btn-secondary" onclick="toggleLockEdit({{ $lock->id }})">Edit</button>
-                                    <form method="post" action="{{ route('admin.properties.locks.destroy', [$property, $lock]) }}" onsubmit="return confirm('Remove this lock?');">
+                                <div class="flex gap-2 sm:shrink-0">
+                                    <button type="button" class="btn-secondary flex-1 sm:flex-none" onclick="toggleLockEdit({{ $lock->id }})">Edit</button>
+                                    <form method="post" action="{{ route('admin.properties.locks.destroy', [$property, $lock]) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Remove this lock?');">
                                         @csrf @method('delete')
-                                        <button class="btn-secondary text-red-600">Remove</button>
+                                        <button class="btn-secondary w-full text-red-600 sm:w-auto">Remove</button>
                                     </form>
                                 </div>
                             </div>

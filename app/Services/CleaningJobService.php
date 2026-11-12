@@ -18,20 +18,26 @@ class CleaningJobService
         $property = $this->property($actor, (int) $data['property_id']);
         $this->assertBookingCanBeCleaned($property->id, $data);
         $this->assertPropertyHasTasks($property);
-        $this->assertAssignee($property, (int) $data['housekeeper_id']);
+        $housekeeperId = (int) $data['housekeeper_id'];
+        $this->assertAssignee($property, $housekeeperId, $actor);
         $this->assertUniqueAssignment($data);
 
-        return CleaningSession::create([
+        $sessionData = [
             'property_id' => $property->id,
             'owner_id' => $property->owner_id,
-            'housekeeper_id' => $data['housekeeper_id'],
+            'housekeeper_id' => $housekeeperId,
             'scheduled_date' => $data['scheduled_date'],
             'scheduled_time' => $data['scheduled_time'] ?? null,
             'status' => $data['status'] ?? 'pending',
             'checkout_id' => $data['checkout_id'] ?? null,
             'booking_id' => $data['booking_id'] ?? null,
             'sporadic_tasks' => array_values(array_unique($data['sporadic_tasks'] ?? [])),
-        ]);
+        ];
+        if ($this->isSelfAssignment($actor, $housekeeperId)) {
+            $sessionData['assignment_status'] = 'confirmed';
+        }
+
+        return CleaningSession::create($sessionData);
     }
 
     public function update(User $actor, CleaningSession $session, array $data): CleaningSession
@@ -44,11 +50,17 @@ class CleaningJobService
         $property = $this->property($actor, (int) $data['property_id']);
         $this->assertBookingCanBeCleaned($property->id, $data, $session->booking_id);
         $this->assertPropertyHasTasks($property);
-        $this->assertAssignee($property, (int) $data['housekeeper_id']);
+        $housekeeperId = (int) $data['housekeeper_id'];
+        $this->assertAssignee($property, $housekeeperId, $actor);
         $this->assertUniqueAssignment($data, $session);
 
         $data['owner_id'] = $property->owner_id;
         $data['sporadic_tasks'] = array_values(array_unique($data['sporadic_tasks'] ?? []));
+        if ($this->isSelfAssignment($actor, $housekeeperId)) {
+            $data['assignment_status'] = 'confirmed';
+        } elseif ((int) $session->housekeeper_id !== $housekeeperId && $session->assignment_status === 'confirmed') {
+            $data['assignment_status'] = 'unassigned';
+        }
 
         $data = $this->reopenRules($data, $session);
 
@@ -77,9 +89,11 @@ class CleaningJobService
         bool $confirmConflicts = false
     ): CleaningSession {
         // Only look up people assigned to this property, so an arbitrary user id cannot be probed.
-        $cleaner = User::query()
+        $housekeeperId = (int) ($data['housekeeper_id'] ?? 0);
+        $selfAssignment = $this->isSelfAssignment($actor, $housekeeperId);
+        $cleaner = $selfAssignment ? null : User::query()
             ->whereIn('id', DB::table('property_user')->where('property_id', $data['property_id'] ?? 0)->select('user_id'))
-            ->find($data['housekeeper_id'] ?? null);
+            ->find($housekeeperId);
         if ($cleaner && ! ($cleaner->phone_number ?: $cleaner->phone)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'housekeeper_id' => "{$cleaner->name} has no phone number on file, so they can't be texted this assignment. Add a phone number to their profile first.",
@@ -145,7 +159,7 @@ class CleaningJobService
         if ($before && $before['hk'] === (int) $result->housekeeper_id && $before['hk'] > 0) {
             $changed = $before['date'] !== $result->scheduled_date?->toDateString()
                 || $before['time'] !== $result->scheduled_time?->format('H:i');
-            if ($changed) {
+            if ($changed && ! $selfAssignment) {
                 \App\Services\CleaningFlowService::notifyAssigned($result->fresh(), true);
             }
         }
@@ -346,8 +360,12 @@ class CleaningJobService
         }
     }
 
-    private function assertAssignee(Property $property, int $userId): void
+    private function assertAssignee(Property $property, int $userId, User $actor): void
     {
+        if ($this->isSelfAssignment($actor, $userId)) {
+            return;
+        }
+
         if (! DB::table('property_user')
             ->where('property_id', $property->id)
             ->where('user_id', $userId)
@@ -356,6 +374,16 @@ class CleaningJobService
                 'housekeeper_id' => 'Assignee must be explicitly assigned to this property.',
             ]);
         }
+    }
+
+    public static function canSelfAssign(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'owner', 'manager']);
+    }
+
+    private function isSelfAssignment(User $actor, int $assigneeId): bool
+    {
+        return $assigneeId === (int) $actor->id && self::canSelfAssign($actor);
     }
 
     private function assertUniqueAssignment(array $data, ?CleaningSession $session = null): void

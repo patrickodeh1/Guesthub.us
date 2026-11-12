@@ -8,7 +8,8 @@
     $siteLogo = \App\Models\Setting::getValue('site_logo');
     $categoryColor = ['#eef2ff', '#3b65ce'];
     $guideCats = $categories;
-    $idwNeedsContractSignature = filled(\App\Models\Setting::getValue('legal_rental_contract_content', ''))
+    $idwNeedsContractSignature = (filled(\App\Models\Setting::getValue('legal_rental_contract_content', '')) || filled($booking->property?->rental_agreement))
+        && ! $booking->property?->skip_rental_agreement
         && ! $booking->contract_accepted_at;
     $idwDetailsComplete = filled($booking->email)
         && filled($booking->phone)
@@ -1794,11 +1795,26 @@
                         return;
                     }
 
-                    var contractNameInput = document.getElementById("contract-signed-name");
+                    var namesLooselyMatch = function (a, b) {
+                    var t = function (n) {
+                        return String(n || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            .replace(/['\u2019.`]/g, "").replace(/[^a-z0-9]+/g, " ").trim().split(" ")
+                            .filter(function (w) { return w && ["jr", "sr", "ii", "iii", "iv"].indexOf(w) === -1; });
+                    };
+                    var x = t(a), y = t(b);
+                    if (!x.length || !y.length) return false;
+                    if (x.slice().sort().join(" ") === y.slice().sort().join(" ")) return true;
+                    if (x.length < 2 || y.length < 2) return false;
+                    if (x[0] === y[0] && x[x.length - 1] === y[y.length - 1]) return true;
+                    var xInY = x.every(function (w) { return y.indexOf(w) !== -1; });
+                    var yInX = y.every(function (w) { return x.indexOf(w) !== -1; });
+                    return xInY || yInX;
+                };
+                var contractNameInput = document.getElementById("contract-signed-name");
                     if (contractNameInput && step1TermsCheckbox && step1TermsCheckbox.checked) {
                         var contractNameError = document.getElementById("contract-name-error");
                         var normalizeName = function (v) { return (v || "").replace(/\s+/g, " ").trim().toLowerCase(); };
-                        if (normalizeName(contractNameInput.value) !== normalizeName(contractNameInput.dataset.legalName)) {
+                        if (!namesLooselyMatch(contractNameInput.value, contractNameInput.dataset.legalName)) {
                             if (contractNameError) contractNameError.style.display = "block";
                             contractNameInput.classList.add("border-red-400");
                             contractNameInput.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2008,6 +2024,21 @@
                 });
 
                 // ── Rental agreement signature (Step 2, after ID scan passes) ──
+                window.ghNamesLooselyMatch = function (a, b) {
+                    var t = function (n) {
+                        return String(n || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                            .replace(/['\u2019.`]/g, "").replace(/[^a-z0-9]+/g, " ").trim().split(" ")
+                            .filter(function (w) { return w && ["jr", "sr", "ii", "iii", "iv"].indexOf(w) === -1; });
+                    };
+                    var x = t(a), y = t(b);
+                    if (!x.length || !y.length) return false;
+                    if (x.slice().sort().join(" ") === y.slice().sort().join(" ")) return true;
+                    if (x.length < 2 || y.length < 2) return false;
+                    if (x[0] === y[0] && x[x.length - 1] === y[y.length - 1]) return true;
+                    var xInY = x.every(function (w) { return y.indexOf(w) !== -1; });
+                    var yInX = y.every(function (w) { return x.indexOf(w) !== -1; });
+                    return xInY || yInX;
+                };
                 var agreementSignBtn = document.getElementById("agreement-sign-btn");
                 if (agreementSignBtn) {
                     agreementSignBtn.addEventListener("click", function() {
@@ -2019,7 +2050,7 @@
                         if (errorEl) errorEl.style.display = "none";
                         if (nameInput) nameInput.classList.remove("border-red-400");
 
-                        if (!nameInput || normalizeName(nameInput.value) !== normalizeName(nameInput.dataset.legalName)) {
+                        if (!nameInput || !window.ghNamesLooselyMatch(nameInput.value, nameInput.dataset.legalName)) {
                             if (errorEl) errorEl.style.display = "block";
                             if (nameInput) { nameInput.classList.add("border-red-400"); nameInput.focus(); }
                             return;

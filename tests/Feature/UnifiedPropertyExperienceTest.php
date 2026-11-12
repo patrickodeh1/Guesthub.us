@@ -22,6 +22,21 @@ class UnifiedPropertyExperienceTest extends TestCase
         $this->assertContains('checkin_instructions', $fillable);
     }
 
+    public function test_admin_property_edit_page_renders_contract_tabs(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create(['email_verified_at' => now(), 'must_change_password' => false]);
+        $admin->assignRole('admin');
+        $property = Property::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.properties.edit', $property))
+            ->assertOk()
+            ->assertSee('Rental agreement')
+            ->assertSee('Long-term lease')
+            ->assertSee('switchContractTab');
+    }
+
     public function test_old_property_pages_redirect_to_the_canonical_admin_pages(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);

@@ -22,10 +22,40 @@ class LeaseApplicationNotificationService
         }
     }
 
-    public function statusChanged(LeaseApplication $application): void
+    public function statusChanged(LeaseApplication $application, bool $firstApproval = true): void
     {
+        if ($application->status === 'approved') {
+            if ($firstApproval) {
+                $this->approved($application);
+            }
+
+            return;
+        }
+
+        if ($application->status === 'declined') {
+            $this->declined($application);
+
+            return;
+        }
+
         $this->sendTemplate('guest_lease_status', (string) $application->applicant_email,
             route('public.lease-application.fee', [$application->id, $application->token]), 'View application', $application);
+    }
+
+    /** Short heads-up only. The offer itself is sent later, once the host marks it ready. */
+    public function approved(LeaseApplication $application): void
+    {
+        $url = route('public.lease-application.fee', [$application->id, $application->token]);
+        $this->sendTemplate('guest_lease_approved', (string) $application->applicant_email, $url, 'View application', $application);
+        $this->sendSms('guest_lease_approved_sms', $application);
+    }
+
+    public function declined(LeaseApplication $application): void
+    {
+        $extra = ['{reason}' => filled($application->decline_reason) ? 'Reason: '.trim((string) $application->decline_reason) : ''];
+        $url = route('public.lease-application.fee', [$application->id, $application->token]);
+        $this->sendTemplate('guest_lease_declined', (string) $application->applicant_email, $url, 'View application', $application, $extra);
+        $this->sendSms('guest_lease_declined_sms', $application, $extra);
     }
 
     public function feePaid(LeaseApplication $application): void
@@ -39,13 +69,39 @@ class LeaseApplicationNotificationService
     {
     }
 
-    private function sendTemplate(string $key, string $recipient, string $url, string $action, LeaseApplication $application): void
+    private function sendTemplate(string $key, string $recipient, string $url, string $action, LeaseApplication $application, array $extra = []): void
     {
-        $m = DirectBookingMessages::renderLease($key, $application);
+        $m = DirectBookingMessages::renderLease($key, $application, $extra);
         if (! $m) {
             return;
         }
-        $this->send($recipient, $m['subject'], $m['message'], $url, $action, $application);
+        $this->send($recipient, $this->tidy($m['subject']), $this->tidy($m['message']), $url, $action, $application);
+    }
+
+    /** Text the applicant. SmsNotificationService skips it unless they opted in. */
+    private function sendSms(string $key, LeaseApplication $application, array $extra = []): void
+    {
+        try {
+            $phone = trim((string) $application->applicant_phone);
+            if ($phone === '') {
+                return;
+            }
+            $m = DirectBookingMessages::renderLease($key, $application, $extra);
+            if (! $m) {
+                return;
+            }
+            SmsNotificationService::guestAlert($phone, $this->tidy($m['message']));
+        } catch (Throwable $exception) {
+            Log::warning('Lease application SMS failed.', [
+                'application_id' => $application->id,
+                'exception' => $exception::class,
+            ]);
+        }
+    }
+
+    private function tidy(string $text): string
+    {
+        return trim((string) preg_replace('/[ \t]{2,}/', ' ', $text));
     }
 
     private function send(string $recipient, string $subject, string $message, string $url, string $action, LeaseApplication $application): void

@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         });
         \App\Models\CleaningSession::created(function (\App\Models\CleaningSession $s) {
             \App\Services\CleaningFlowService::autoTag($s);
-            if ($s->housekeeper_id) {
+            if ($s->housekeeper_id && $s->assignment_status !== 'confirmed') {
                 \App\Services\CleaningFlowService::notifyAssigned($s);
             }
         });
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
             if ($s->wasChanged('scheduled_date') && ! $s->booking_id && ! $s->no_guest) {
                 \App\Services\CleaningFlowService::autoTag($s);
             }
-            if ($s->wasChanged('housekeeper_id') && $s->housekeeper_id) {
+            if ($s->wasChanged('housekeeper_id') && $s->housekeeper_id && $s->assignment_status !== 'confirmed') {
                 \App\Services\CleaningFlowService::notifyAssigned($s);
             }
             if ($s->wasChanged('stage') && $s->stage === 'photos') {

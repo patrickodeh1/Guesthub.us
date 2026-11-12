@@ -50,6 +50,8 @@ class User extends Authenticatable
         'preferences',
         'must_change_password',
         'is_active',
+        'approval_status',
+        'requested_role',
         'terminated_at',
         'terminated_by',
         'termination_reason',
@@ -87,6 +89,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_change_password' => 'boolean',
             'is_active' => 'boolean',
+            'approval_status' => 'string',
             'terminated_at' => 'datetime',
             'dismissed_notification_ids' => 'array',
             'preferences' => 'array',
@@ -258,6 +261,11 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'terminated_by');
     }
+
+
+    public function scopePending($query) { return $query->where('approval_status', 'pending'); }
+    public function scopeApproved($query) { return $query->where('approval_status', 'approved'); }
+    public function isPending(): bool { return $this->approval_status === 'pending'; }
 
     public function scopeActive(Builder $query): void
     {

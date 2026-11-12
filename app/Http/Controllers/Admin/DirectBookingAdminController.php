@@ -6,11 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Services\DirectBookingService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class DirectBookingAdminController extends Controller
 {
-    public function markPaymentReceived(Booking $booking, DirectBookingService $bookings)
+    public function markPaymentReceived(Request $request, Booking $booking, DirectBookingService $bookings, \App\Services\PaymentReceiptService $receipts)
     {
+        abort_unless($request->user()->hasRole('admin') || (int) $booking->property()->value('owner_id') === (int) $request->user()->id, 403);
+        $request->validate(['receipt' => $receipts->rules()]);
+        if (! $booking->guest_payment_reported_at
+            || ! $receipts->forPayable($booking)->contains('role', 'guest')) {
+            throw ValidationException::withMessages([
+                'receipt' => 'Wait until the guest reports payment and uploads their receipt before confirming.',
+            ]);
+        }
+        $receipts->store($request->file('receipt'), $booking, 'host', $request->user()->id);
         $bookings->markManualPaymentReceived($booking);
 
         return back()->with('success', 'Manual payment recorded; the stay is confirmed.');

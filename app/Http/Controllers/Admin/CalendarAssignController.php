@@ -194,7 +194,12 @@ class CalendarAssignController extends Controller
                 ->whereIn('id', \Illuminate\Support\Facades\DB::table('property_user')->where('property_id', $propertyId)->pluck('user_id'))
                 ->orderBy('name')->get()
                 ->filter(fn ($u) => $u->hasAnyRole(['housekeeper']))
-                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'has_phone' => (bool) ($u->phone_number ?: $u->phone)])->values();
+                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'has_phone' => (bool) ($u->phone_number ?: $u->phone), 'is_self' => false])->values();
+            if (CleaningJobService::canSelfAssign($user)) {
+                $cleaners = $cleaners->reject(fn ($cleaner) => (int) $cleaner['id'] === (int) $user->id)
+                    ->push(['id' => $user->id, 'name' => $user->name, 'has_phone' => true, 'is_self' => true])
+                    ->values();
+            }
         }
 
         return response()->json([

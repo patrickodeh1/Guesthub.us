@@ -434,6 +434,9 @@ class PropertyController extends Controller
             'existing_header_image' => ['nullable', 'string'],
             'active' => ['nullable', 'boolean'],
             'requires_vehicle_photo' => ['nullable', 'boolean'],
+            'rental_agreement' => ['nullable', 'string', 'max:100000'],
+            'lease_agreement' => ['nullable', 'string', 'max:100000'],
+            'skip_rental_agreement' => ['nullable', 'boolean'],
             'timezone' => ['nullable', 'string', 'max:100'],
             'checkout_time' => ['nullable', 'date_format:H:i'],
             'checkin_time' => ['nullable', 'date_format:H:i'],
@@ -482,6 +485,9 @@ class PropertyController extends Controller
         $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['name']);
         $data['active'] = $request->boolean('active');
         $data['requires_vehicle_photo'] = $request->boolean('requires_vehicle_photo');
+        $data['skip_rental_agreement'] = $request->boolean('skip_rental_agreement');
+        $data['rental_agreement'] = filled($data['rental_agreement'] ?? null) ? $data['rental_agreement'] : null;
+        $data['lease_agreement'] = filled($data['lease_agreement'] ?? null) ? $data['lease_agreement'] : null;
 
         if ($request->hasFile('header_image')) {
             $data['header_image'] = $request->file('header_image')->store('properties', 'public');

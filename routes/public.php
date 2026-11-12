@@ -27,6 +27,10 @@ Route::middleware('web')->group(function (): void {
     Route::post('/stay/{listing_slug}/checkout', [DirectBookingController::class, 'start'])
         ->middleware('throttle:10,1')
         ->name('public.checkout.start');
+    Route::post('/stay/checkout/{booking_id}/{token}/payment-report', [\App\Http\Controllers\PaymentReceiptController::class, 'guestReport'])
+        ->middleware('throttle:10,1')->name('public.checkout.payment-report');
+    Route::get('/stay/checkout/{booking_id}/{token}/receipts/{receipt}', [\App\Http\Controllers\PaymentReceiptController::class, 'guestShow'])
+        ->middleware('throttle:30,1')->name('public.checkout.receipt');
     Route::get('/stay/checkout/{booking_id}/{token}', [DirectBookingController::class, 'pay'])
         ->name('public.checkout.pay');
     Route::post('/stay/checkout/{booking_id}/{token}/confirm', [DirectBookingController::class, 'confirm'])

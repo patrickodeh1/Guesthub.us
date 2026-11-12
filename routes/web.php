@@ -7,7 +7,6 @@ use App\Http\Controllers\Admin\CalendarStatusController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ContentController;
 use App\Http\Controllers\Admin\DirectBookingAdminController;
-use App\Http\Controllers\Admin\EarlyAccessLeadController;
 use App\Http\Controllers\Admin\FeatureController;
 use App\Http\Controllers\Admin\GuestNoticeController;
 use App\Http\Controllers\Admin\InstructionStepController;
@@ -44,7 +43,10 @@ use App\Http\Controllers\CleaningSessionGuestController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DashboardController as CleaningDashboardController;
 use App\Http\Controllers\DirectBookingController;
-use App\Http\Controllers\EarlyAccessController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\PasswordSetupController;
+use App\Http\Controllers\SignupController;
+use App\Http\Controllers\Admin\SignupRequestController;
 use App\Http\Controllers\FamiliarityReportController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ImageController;
@@ -97,7 +99,12 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
-Route::get('/', [EarlyAccessController::class, 'show'])->name('early-access');
+Route::get('/', [LandingController::class, 'show'])->name('landing');
+Route::get('/signup', [SignupController::class, 'show'])->name('signup');
+Route::post('/signup', [SignupController::class, 'store'])->name('signup.store');
+Route::get('/signup/pending', [SignupController::class, 'pending'])->name('signup.pending');
+Route::get('/account/password/{user}', [PasswordSetupController::class, 'show'])->name('account.password-setup');
+Route::post('/account/password/{user}', [PasswordSetupController::class, 'store'])->name('account.password-setup.store')->middleware('throttle:10,1');
 Route::get('/terms', [LegalPageController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy-policy', [LegalPageController::class, 'privacyPolicy'])->name('legal.privacy');
 Route::get('/rental-contract', [LegalPageController::class, 'rentalContract'])->name('legal.rental-contract');
@@ -105,7 +112,6 @@ Route::get('/privacy-request', [PrivacyRequestController::class, 'index'])->name
 Route::post('/privacy-request', [PrivacyRequestController::class, 'store'])->name('privacy-request.store');
 Route::get('/contact', [ContactController::class, 'index'])->name('contact');
 Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
-Route::post('/early-access', [EarlyAccessController::class, 'store'])->name('early-access.store');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.store');
@@ -318,6 +324,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('guests/{booking}/direct-approve', [DirectBookingAdminController::class, 'approve'])->name('guests.direct-approve');
     Route::post('guests/{booking}/direct-decline', [DirectBookingAdminController::class, 'decline'])->name('guests.direct-decline');
     Route::post('guests/{booking}/direct-payment-received', [DirectBookingAdminController::class, 'markPaymentReceived'])->name('guests.direct-payment-received');
+    Route::get('guests/{booking}/payment-receipts/{receipt}', [\App\Http\Controllers\Admin\PaymentReceiptAdminController::class, 'show'])->name('guests.payment-receipt');
     Route::post('guests/{booking}/direct-refund', [DirectBookingAdminController::class, 'refund'])->name('guests.direct-refund');
     Route::post('guests/{booking}/direct-refund/close', [DirectBookingAdminController::class, 'resolveRefund'])->name('guests.direct-refund-close');
     Route::post('guests/{booking}/direct-cancel', [DirectBookingAdminController::class, 'cancel'])->name('guests.direct-cancel');
@@ -335,6 +342,11 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::get('guests/{booking}/photo-id-back', [BookingController::class, 'photoIdBack'])->name('guests.photo-id-back');
     Route::get('guests/{booking}/photo-id/view', [BookingController::class, 'photoIdView'])->name('guests.photo-id-view');
     Route::get('guests/{booking}/photo-id-back/view', [BookingController::class, 'photoIdBackView'])->name('guests.photo-id-back-view');
+    Route::get('guests/{booking}/rental-agreement', [BookingController::class, 'rentalAgreement'])->name('guests.rental-agreement');
+    Route::get('signup-requests', [SignupRequestController::class, 'index'])->name('signup-requests.index');
+    Route::post('signup-requests/{user}/approve', [SignupRequestController::class, 'approve'])->name('signup-requests.approve');
+    Route::post('signup-requests/{user}/reject', [SignupRequestController::class, 'reject'])->name('signup-requests.reject');
+    Route::post('users/{user}/resend-setup', [SignupRequestController::class, 'resendSetup'])->name('users.resend-setup');
     Route::get('guests/{booking}/license-plate', [BookingController::class, 'licensePlate'])->name('guests.license-plate');
     Route::get('guests/{booking}/license-plate/view', [BookingController::class, 'licensePlateView'])->name('guests.license-plate-view');
 
@@ -428,8 +440,6 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
     Route::middleware('role:admin')->group(function () {
-        Route::get('early-access-leads', [EarlyAccessLeadController::class, 'index'])->name('early-access-leads.index');
-        Route::post('early-access-leads/{lead}/mark-contacted', [EarlyAccessLeadController::class, 'markContacted'])->name('early-access-leads.mark-contacted');
     });
 
     // ─── Activity Logs ────────────────────────────────────────────────────────

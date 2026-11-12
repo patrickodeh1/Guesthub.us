@@ -91,6 +91,7 @@
                 </p>
                 @if($booking->payment_confirmed_at)
                     <p class="mt-1 text-sm font-semibold text-emerald-800">Payment confirmed {{ $booking->localTimestamp($booking->payment_confirmed_at)?->format('M j, Y g:i A') }}</p>
+                    @include('partials.payment-receipts', ['payable' => $booking])
                 @endif
                 <div class="mt-3 flex flex-wrap gap-2">
                     @if($booking->direct_booking_request && ! $booking->direct_booking_approved_at && $booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT)
@@ -102,7 +103,22 @@
                         </form>
                     @elseif($booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && $booking->payment_method === 'manual'
                         && (! $booking->direct_booking_request || $booking->direct_booking_approved_at))
-                        <form method="post" action="{{ route('admin.guests.direct-payment-received', $booking) }}" data-confirm="Confirm the host received this manual payment?">@csrf<button class="btn-primary">Mark payment received</button></form>
+                        <div class="space-y-3">
+                            @php
+                                $paymentReceipts = app(\App\Services\PaymentReceiptService::class)->forPayable($booking);
+                            @endphp
+                            @include('partials.payment-receipts', ['payable' => $booking, 'receipts' => $paymentReceipts])
+                            @if($booking->guest_payment_reported_at && $paymentReceipts->contains('role', 'guest'))
+                                <form method="post" enctype="multipart/form-data" action="{{ route('admin.guests.direct-payment-received', $booking) }}" data-confirm="Confirm the host received this manual payment?">@csrf
+                                    <label class="block text-sm font-semibold text-slate-900" for="host-receipt">Your received receipt (screenshot, photo or PDF) <span class="text-red-600">*</span></label>
+                                    <input id="host-receipt" type="file" name="receipt" accept="image/*,application/pdf" required class="mt-1 block w-full cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200">
+                                    @error('receipt')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                    <button class="btn-primary mt-2">Mark payment received</button>
+                                </form>
+                            @else
+                                <p class="text-sm text-slate-600">Waiting for the guest to confirm payment and upload their receipt.</p>
+                            @endif
+                        </div>
                     @endif
                 </div>
             </section>
@@ -111,13 +127,12 @@
         {{-- Expandable edit section: replaces the old separate /edit page for
              existing bookings. Everything below is hidden by default so the
              header looks exactly like before until an admin opens it.
-             Deliberately excludes parking_needed / early_checkin_tier /
+             Deliberately excludes parking charges / early_checkin_tier /
              late_checkout_type / late_checkout_hours / late_checkout_actual_time
-             -- those are charge-driving fields already represented in the
-             Guest Details card below and get their own editor with the
-             ledger work, not here. --}}
+             -- those are charge-driving fields represented in the Guest
+             Details ledger below. Parking needed itself is editable here. --}}
         @php
-            $guestDetailsErrorFields = ['reservation_id', 'booking_platform', 'guest_name', 'phone', 'email', 'check_in_date', 'check_out_date', 'property_id', 'id_type', 'checkin_time_preference', 'checkout_time_preference', 'status', 'photo_id_received', 'notes'];
+            $guestDetailsErrorFields = ['reservation_id', 'booking_platform', 'guest_name', 'phone', 'email', 'check_in_date', 'check_out_date', 'property_id', 'id_type', 'checkin_time_preference', 'checkout_time_preference', 'status', 'photo_id_received', 'parking_needed', 'notes'];
             $hasGuestDetailsErrors = $errors->hasAny($guestDetailsErrorFields);
         @endphp
         @unless($booking->isCancelled())
@@ -153,6 +168,11 @@
                     <label class="field-label">Requested Check-in Time<input type="time" name="checkin_time_preference" value="{{ old('checkin_time_preference', $booking->checkin_time_preference) }}" class="input"></label>
                     <label class="field-label">Requested Check-out Time<input type="time" name="checkout_time_preference" value="{{ old('checkout_time_preference', $booking->checkout_time_preference) }}" class="input"></label>
                     <label class="field-label">Status<select name="status" class="input">@foreach(['pending','pre_checkin_complete','awaiting_deposit','guest_approved','currently_hosting','checked_out'] as $status)<option value="{{ $status }}" @selected(old('status', $booking->status ?: 'pending')===$status)>{{ str($status)->replace('_',' ')->title() }}</option>@endforeach</select></label>
+                    <label class="field-label flex items-center gap-2">
+                        <input type="hidden" name="parking_needed" value="0">
+                        <input type="checkbox" name="parking_needed" value="1" @checked(old('parking_needed', $booking->parking_needed))>
+                        <span>Guest needs parking</span>
+                    </label>
                     <label class="field-label flex items-center gap-2 md:col-span-2">
                         <input type="checkbox" name="photo_id_received" value="1" @checked(old('photo_id_received', $booking->photo_id_received))>
                         <span>Photo ID Already Received</span>
@@ -195,6 +215,16 @@
                         @if($gdShowOutReq)<p class="text-xs text-slate-500">Requested {{ $booking->checkoutTimePreferenceFormatted() }}</p>@endif
                     </div>
                 </div>
+
+                @if(! $booking->property?->skip_rental_agreement)
+                <div class="mt-3 flex items-center justify-between rounded-lg border border-slate-200 p-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rental agreement</p>
+                        <p class="mt-1 text-sm font-bold text-slate-950">{{ $booking->contract_accepted_at ? 'Signed '.$booking->localTimestamp($booking->contract_accepted_at) : 'Not signed yet' }}</p>
+                    </div>
+                    <a href="{{ route('admin.guests.rental-agreement', $booking) }}" target="_blank" class="btn-secondary">{{ $booking->contract_accepted_at ? 'View signed agreement' : 'View agreement' }}</a>
+                </div>
+                @endif
             </section>
 
             <section class="card card-pad">
@@ -566,10 +596,12 @@
                 @php
                     $nsHasId = filled($booking->photo_id_path) || filled($booking->photo_id_back_path);
                     $nsOut = filled($booking->checked_out_at);
+                    $nsEarlyOut = $nsOut && $booking->check_out_date
+                        && $booking->localTimestamp($booking->checked_out_at)->toDateString() < $booking->check_out_date->toDateString();
                     $nsIn = $booking->isCheckedIn() && ! $nsOut;
                     $nsBgName = \App\Models\Setting::getValue('background_check_step_name', 'Background Check');
                     $nsGpsOk = $booking->isCheckinApproved() && ! $nsIn && ! $nsOut && ! $booking->gps_verified;
-                    $nsManualIn = $booking->isCheckinApproved() && ! $nsIn && ! $nsOut;
+                    $nsManualIn = $booking->isCheckinApproved() && ! $nsIn && (! $nsOut || $nsEarlyOut);
                 @endphp
 
                 <div class="mt-4 grid gap-2.5">

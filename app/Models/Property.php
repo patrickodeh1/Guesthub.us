@@ -80,6 +80,7 @@ class Property extends Model
         'map_embed_url', 'map_directions_url', 'contact_phone', 'contact_email',
         'welcome_intro', 'checkin_instructions', 'lockbox_code', 'parking_instructions',
         'requires_vehicle_photo',
+        'rental_agreement', 'skip_rental_agreement', 'lease_agreement',
         'checkout_instructions', 'header_image', 'active',
         'parking_rate_sunday', 'parking_rate_monday', 'parking_rate_tuesday',
         'parking_rate_wednesday', 'parking_rate_thursday', 'parking_rate_friday',

@@ -23,7 +23,7 @@
                     <a href="{{ route('legal.terms') }}" class="hover:text-slate-900 underline">Terms</a>
                     <a href="{{ route('legal.privacy') }}" class="hover:text-slate-900 underline">Privacy Policy</a>
                     <a href="{{ route('legal.rental-contract') }}" class="hover:text-slate-900 underline">Rental Contract</a>
-                    <a href="{{ route('early-access') }}" class="hover:text-slate-900 underline">Home</a>
+                    <a href="{{ route('landing') }}" class="hover:text-slate-900 underline">Home</a>
                 </nav>
             </div>
         </header>

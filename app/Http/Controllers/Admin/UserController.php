@@ -23,6 +23,7 @@ class UserController extends Controller
             ))
             ->when($request->role, fn ($q, $r) => $q->role($r))
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
+            ->where('approval_status', 'approved')
             ->when($status !== 'all', function ($q) use ($status) {
                 $q->where('is_active', $status !== 'inactive');
             })

@@ -198,6 +198,10 @@ class CleaningFlowService
             if (! $user) {
                 return;
             }
+            if ($session->assignment_status === 'confirmed'
+                && \App\Services\CleaningJobService::canSelfAssign($user)) {
+                return;
+            }
             if (! Setting::get('notify_assignments', true)
                 || ! CleaningMessages::enabled($changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'))) {
                 return;

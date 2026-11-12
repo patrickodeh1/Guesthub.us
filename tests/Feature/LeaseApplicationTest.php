@@ -114,7 +114,8 @@ class LeaseApplicationTest extends TestCase
         $about = [
             'applicant_name' => 'Jordan Applicant',
             'applicant_email' => 'jordan@example.test',
-            'applicant_phone' => '5551234567',
+            'applicant_phone' => '8012345678',
+            'phone_country_code' => '+234',
             'move_in_date' => now()->addMonth()->toDateString(),
             'lease_term_months' => 12,
             'occupants' => 2,
@@ -134,6 +135,7 @@ class LeaseApplicationTest extends TestCase
         $this->post(route('public.lease-application.about.store', [$application->id, $application->token]), $about)
             ->assertRedirect(route('public.lease-application.employment', [$application->id, $application->token]));
         $this->assertSame('7 Current Street', $application->fresh()->current_address);
+        $this->assertSame('+2348012345678', $application->fresh()->applicant_phone);
 
         $this->post(route('public.lease-application.employment.store', [$application->id, $application->token]), [
             'employer' => 'Example Works',
@@ -215,9 +217,32 @@ class LeaseApplicationTest extends TestCase
         $this->assertSame(2, $application->fresh()->id_scan_attempts);
         $this->get(route('public.lease-application.id.retry', [$application->id, $application->token]))
             ->assertStatus(409);
+    }
+
+    public function test_about_phone_uses_the_selected_country_code(): void
+    {
+        $application = $this->readyDraft();
+
         $this->get(route('public.lease-application.about', [$application->id, $application->token]))
             ->assertOk()
-            ->assertSee('manual host review');
+            ->assertSee('guest-phone-country-button');
+
+        $this->post(route('public.lease-application.about.store', [$application->id, $application->token]), [
+            'applicant_name' => 'Jordan Applicant',
+            'applicant_email' => 'jordan@example.test',
+            'applicant_phone' => '8012345678',
+            'phone_country_code' => '+234',
+            'move_in_date' => now()->addMonth()->toDateString(),
+            'lease_term_months' => 12,
+            'occupants' => 2,
+            'current_address' => '7 Current Street',
+        ])->assertRedirect(route('public.lease-application.employment', [$application->id, $application->token]));
+
+        $this->assertSame('+2348012345678', $application->fresh()->applicant_phone);
+        $this->get(route('public.lease-application.about', [$application->id, $application->token]))
+            ->assertOk()
+            ->assertSee('manual host review')
+            ->assertSee('guest-phone-country-button');
     }
 
     public function test_card_fee_includes_processing_fee_and_creates_connected_account_charge(): void

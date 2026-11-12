@@ -93,6 +93,7 @@
                         <div class="bk-ref-box">{{ $booking->booking_id }}</div>
                     </div>
                     <p class="bk-copy">Your booking is confirmed once the host marks your payment as received. Keep this page and your payment receipt.</p>
+                    @include('partials.guest-payment-report', ['booking' => $booking])
                 @elseif($booking->payment_method === 'card' && $clientSecret)
                     <h2>Pay securely by card</h2>
                     <p class="bk-copy">Your dates are held until {{ $holdText }}.</p>

@@ -81,6 +81,7 @@ class LeaseApplicationController extends Controller
             'applicant_name' => ['required', 'string', 'max:255'],
             'applicant_email' => ['required', 'email:rfc', 'max:255'],
             'applicant_phone' => ['required', 'string', 'max:40'],
+            'phone_country_code' => ['nullable', 'string', 'max:10'],
             'move_in_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'lease_term_months' => ['required', 'integer', 'min:1', 'max:600'],
             'occupants' => ['required', 'integer', 'min:1', 'max:30'],
@@ -90,6 +91,10 @@ class LeaseApplicationController extends Controller
             'current_address_months' => ['nullable', 'integer', 'min:0', 'max:1200'],
         ]);
         $this->rejectHoneypot($request);
+        $data['applicant_phone'] = \App\Support\PhoneFormatter::normalizeForStorage(
+            $data['applicant_phone'],
+            $data['phone_country_code'] ?? '+1',
+        );
 
         $application->update([
             'applicant_name' => $data['applicant_name'],
@@ -187,6 +192,7 @@ class LeaseApplicationController extends Controller
         $data = $request->validate([
             'website' => ['nullable', 'size:0'],
             'screening_consent' => ['accepted'],
+            'sms_consent' => ['nullable', 'boolean'],
             'signature' => ['required', 'string', 'max:255'],
             'payment_method' => ['required', Rule::in(['card', 'manual'])],
             'host_payment_method_id' => ['required_if:payment_method,manual', 'nullable', 'integer'],
@@ -243,6 +249,13 @@ class LeaseApplicationController extends Controller
         });
 
         $application->refresh();
+        if ($request->boolean('sms_consent')) {
+            \App\Services\SmsConsentService::recordLeaseOptIn($application, [
+                'disclosure_text' => 'Text me updates about this application and my lease. Msg and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help.',
+                'opt_in_method' => 'lease_application',
+                'page_url' => route('public.lease-application.apply', $application->listing->listing_slug),
+            ]);
+        }
         $notifications->submitted($application);
         if ($method === 'card' && $application->total_fee_cents > 0) {
             $payments->createLeaseApplicationIntent($application, $owner->stripe_account_id);
@@ -529,7 +542,7 @@ class LeaseApplicationController extends Controller
     private function assertDraft(LeaseApplication $application, string $token): LeaseApplication
     {
         $application = $this->assertPublicApplication($application, $token);
-        abort_unless($application->status === 'draft' && $application->created_at?->gt(now()->subDay()), 410);
+        abort_unless(in_array($application->status, ['draft', 'submitted'], true) && $application->created_at?->gt(now()->subDay()), 410);
 
         return $application;
     }

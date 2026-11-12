@@ -3,10 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ \App\Support\Branding::siteName() }} — Everything behind a great stay</title>
+    <title>{{ \App\Support\Branding::siteName() }}: Everything behind a great stay</title>
     <meta name="description" content="Manage short-term rentals, bookings, guest journeys and property operations from one connected platform.">
     @include('layouts.partials.brand-vars')
     @php($siteLogo = \App\Support\Branding::logoUrl())
+    @php($siteFavicon = \App\Support\Branding::faviconUrl())
+    @if($siteFavicon)<link rel="icon" href="{{ $siteFavicon }}">@endif
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://images.unsplash.com">
@@ -37,6 +39,7 @@
         .photo-card{position:relative;border-radius:18px;overflow:hidden;min-height:330px;background:#edf5f8}.photo-card img{width:100%;height:350px;object-fit:cover;display:block}.photo-note{position:absolute;right:18px;top:18px;background:#fff;border:1px solid #e5edf3;border-radius:12px;padding:15px 17px;box-shadow:0 10px 25px #0b35551a;font-size:12px}.photo-note b{display:block;margin-bottom:5px}
         .journey{background:#f5fbfd}.journey-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:35px}.journey-card{background:#fff;border:1px solid #e1edf3;border-radius:14px;padding:22px}.journey-card .num{font-size:11px;color:var(--blue);font-weight:800}.journey-card h3{font-size:14px;margin:12px 0 7px}.journey-card p{font-size:11px;margin:0;line-height:1.6}
         .integrations{text-align:center;background:#f8fbfd}.integrations h2{font-size:34px;letter-spacing:-1.3px;margin:16px 0 8px}.logos{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:32px}.logo-tile{height:72px;border:1px solid #e0eaf1;border-radius:13px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#173a5c}
+        .logo-group-title{margin:34px 0 0;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#64788c}.logos{justify-content:center}.logo-tile img{max-height:34px;max-width:78%;object-fit:contain;transition:.2s}.logo-tile:hover img{transform:scale(1.04)}.logo-more{font-size:12px;margin:20px auto 0;color:#53677b}
         .teams{display:grid;grid-template-columns:.8fr 1.6fr;gap:44px;align-items:center}.team-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.team-card{border:1px solid #e3edf4;border-radius:14px;padding:24px 12px;text-align:center;min-height:140px}.team-card .ico{font-size:25px;color:var(--blue)}.team-card b{display:block;font-size:12px;margin:12px 0 6px}.team-card small{font-size:10px;color:#63788b;line-height:1.5}
         .cta{margin:20px auto 70px;border-radius:22px;overflow:hidden;background:#eaf7fb;display:grid;grid-template-columns:1fr 1fr;min-height:270px}.cta-copy{padding:42px 46px}.cta h2{font-size:32px;line-height:1.16;letter-spacing:-1.2px;margin:15px 0 10px}.cta p{font-size:13px;color:#53677b;line-height:1.7}.cta img{width:100%;height:100%;min-height:270px;object-fit:cover}
         footer{border-top:1px solid #e8eef3;padding:26px 0;color:#65788a;font-size:11px}.footer-row{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
@@ -55,7 +58,7 @@
         </nav>
         <div class="navright">
             <a href="{{ route('login') }}">Log in</a>
-            <a class="btn btn-primary" href="{{ route('login') }}">Get started <span>→</span></a>
+            <a class="btn btn-primary" href="{{ route('signup') }}">Get started <span>→</span></a>
         </div>
     </div>
 </header>
@@ -67,8 +70,8 @@
             <div>
                 <span class="eyebrow">The all-in-one rental platform</span>
                 <h1>Everything behind a great stay, managed in <span>one place.</span></h1>
-                <p class="lead">From discovering and booking properties to guest check-in, smart access, housekeeping and checkout — GuestHub connects the entire rental operation.</p>
-                <div class="hero-actions"><a class="btn btn-primary" href="{{ route('login') }}">Get started <span>→</span></a><a class="btn btn-outline" href="#features">▷ &nbsp;Explore GuestHub</a></div>
+                <p class="lead">From discovering and booking properties to guest check-in, smart access, housekeeping and checkout, and GuestHub connects the entire rental operation.</p>
+                <div class="hero-actions"><a class="btn btn-primary" href="{{ route('signup') }}">Get started <span>→</span></a><a class="btn btn-outline" href="#features">▷ &nbsp;Explore GuestHub</a></div>
                 <div class="trust"><span style="color:#079dcc;font-size:17px">◆</span> Secure. Reliable. Built for short-term rentals.</div>
             </div>
             <div class="dashboard" aria-label="GuestHub dashboard preview">
@@ -76,7 +79,7 @@
                     <div class="windowbar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
                     <div class="dash-body">
                         <aside class="dash-side"><div class="dash-logo">◈ GuestHub</div><div class="dash-menu active">▦ &nbsp;Dashboard</div><div class="dash-menu">▤ &nbsp;Bookings</div><div class="dash-menu">⌂ &nbsp;Properties</div><div class="dash-menu">♙ &nbsp;Guests</div><div class="dash-menu">♧ &nbsp;Housekeeping</div><div class="dash-menu">▢ &nbsp;Messages</div><div class="dash-menu">⚙ &nbsp;Settings</div></aside>
-                        <div class="dash-main"><div class="dash-title">Dashboard</div><div class="stats"><div class="stat"><small>▣ &nbsp;Bookings</small><strong>124</strong><em>↑ 12%</em></div><div class="stat"><small>$ &nbsp;Revenue</small><strong>$24,560</strong><em>↑ 18%</em></div><div class="stat"><small>▥ &nbsp;Occupancy</small><strong>92%</strong><em>↑ 5%</em></div></div><div class="booking-list"><div class="booking-head">Upcoming bookings</div><div class="booking"><span><b>Ocean View Apartment</b><small>Apr 24 – Apr 27 · 2 guests</small></span><span class="pill">Confirmed</span></div><div class="booking"><span><b>City Loft Studio</b><small>Apr 24 – Apr 30 · 1 guest</small></span><span class="pill">Confirmed</span></div></div></div>
+                        <div class="dash-main"><div class="dash-title">Dashboard</div><div class="stats"><div class="stat"><small>▣ &nbsp;Bookings</small><strong>124</strong><em>↑ 12%</em></div><div class="stat"><small>$ &nbsp;Revenue</small><strong>$24,560</strong><em>↑ 18%</em></div><div class="stat"><small>▥ &nbsp;Occupancy</small><strong>92%</strong><em>↑ 5%</em></div></div><div class="booking-list"><div class="booking-head">Upcoming bookings</div><div class="booking"><span><b>Ocean View Apartment</b><small>Apr 24 to Apr 27 · 2 guests</small></span><span class="pill">Confirmed</span></div><div class="booking"><span><b>City Loft Studio</b><small>Apr 24 to Apr 30 · 1 guest</small></span><span class="pill">Confirmed</span></div></div></div>
                     </div>
                 </div>
             </div>
@@ -133,7 +136,30 @@
 
 <section class="section integrations" id="integrations">
     <div class="wrap"><span class="eyebrow">Connected tools</span><h2>Works with the tools you already use.</h2><p style="margin:0 auto">Connect supported services and build a more connected rental workflow.</p>
-        <div class="logos"><div class="logo-tile">◉ Channex</div><div class="logo-tile">◉ SEAM</div><div class="logo-tile">August</div><div class="logo-tile">PriceLabs</div><div class="logo-tile">WHEELHOUSE</div><div class="logo-tile">stripe</div></div>
+        <?php
+            $integrationGroups = [
+                'Channel manager, payments and pricing' => [
+                    ['Channex', 'channex'], ['Stripe', 'stripe'], ['PriceLabs', 'pricelabs'], ['Wheelhouse', 'wheelhouse'],
+                ],
+                'Smart locks' => [
+                    ['Seam', 'seam'], ['August', 'august'], ['Yale', 'yale'],
+                ],
+            ];
+        ?>
+        @foreach($integrationGroups as $groupTitle => $items)
+            <div class="logo-group-title">{{ $groupTitle }}</div>
+            <div class="logos">
+                @foreach($items as [$itemName, $slug])
+                    <?php
+                        $ext = collect(['svg', 'png', 'webp'])->first(fn ($e) => file_exists(public_path("images/integrations/{$slug}.{$e}")));
+                    ?>
+                    <div class="logo-tile">
+                        @if($ext)<img src="{{ asset("images/integrations/{$slug}.{$ext}") }}" alt="{{ $itemName }}" loading="lazy">@else{{ $itemName }}@endif
+                    </div>
+                @endforeach
+            </div>
+        @endforeach
+        <p class="logo-more">And more smart locks and devices through the Seam network.</p>
         <p style="font-size:10px;margin:16px auto 0">Integration availability and capabilities depend on your account configuration and provider support.</p>
     </div>
 </section>
@@ -146,7 +172,7 @@
 </section>
 
 <section class="wrap cta">
-    <div class="cta-copy"><span class="eyebrow">Ready to get started?</span><h2>Take control of your rental business.</h2><p>Bring bookings, guest experience and property operations into one connected workspace.</p><a class="btn btn-primary" href="{{ route('login') }}">Get started →</a></div>
+    <div class="cta-copy"><span class="eyebrow">Ready to get started?</span><h2>Take control of your rental business.</h2><p>Bring bookings, guest experience and property operations into one connected workspace.</p><a class="btn btn-primary" href="{{ route('signup') }}">Get started →</a></div>
     <img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85" alt="Modern vacation rental home exterior" loading="lazy">
 </section>
 </main>

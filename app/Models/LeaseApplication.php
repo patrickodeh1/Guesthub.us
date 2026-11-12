@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LeaseApplication extends Model
 {
@@ -34,6 +35,7 @@ class LeaseApplication extends Model
         'consent_ip',
         'consent_user_agent',
         'host_notes',
+        'decline_reason',
     ];
 
     protected $fillable = [
@@ -84,7 +86,9 @@ class LeaseApplication extends Model
         'id_type',
         'id_back_scan_path',
         'fee_policy_accepted_at',
-        'fee_policy_accepted_at',
+        'approved_at',
+        'decline_reason',
+        'sms_consent_at',
     ];
 
     protected function casts(): array
@@ -114,6 +118,7 @@ class LeaseApplication extends Model
             'consent_ip' => 'encrypted',
             'consent_user_agent' => 'encrypted',
             'host_notes' => 'encrypted',
+            'decline_reason' => 'encrypted',
             'application_fee_cents' => 'integer',
             'processing_fee_cents' => 'integer',
             'total_fee_cents' => 'integer',
@@ -126,6 +131,8 @@ class LeaseApplication extends Model
             'submitted_at' => 'datetime',
             'declined_at' => 'datetime',
             'screening_requested_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'sms_consent_at' => 'datetime',
         ];
     }
 
@@ -147,5 +154,16 @@ class LeaseApplication extends Model
     public function charges(): HasMany
     {
         return $this->hasMany(Charge::class);
+    }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(LeaseOffer::class)->latest('id');
+    }
+
+    /** The offer currently in play, or the most recent one. */
+    public function offer(): HasOne
+    {
+        return $this->hasOne(LeaseOffer::class)->latestOfMany();
     }
 }

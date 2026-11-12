@@ -9,6 +9,7 @@ class SmsConsentEvent extends Model
 {
     protected $fillable = [
         'booking_id',
+        'lease_application_id',
         'phone',
         'event_type',
         'checkbox_status',

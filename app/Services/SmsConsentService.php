@@ -69,6 +69,47 @@ class SmsConsentService
         );
     }
 
+    /** Opt-in captured on the lease application form, before any booking exists. */
+    public static function recordLeaseOptIn(\App\Models\LeaseApplication $application, array $context = []): void
+    {
+        $phone = self::normalizePhone($context['phone'] ?? $application->applicant_phone);
+
+        if (! $phone) {
+            return;
+        }
+
+        $application->loadMissing('property');
+        $now = now();
+        $version = (string) ($context['disclosure_version'] ?? Setting::getValue('sms_consent_version', '1'));
+
+        SmsConsentEvent::create([
+            'booking_id' => null,
+            'lease_application_id' => $application->id,
+            'phone' => $phone,
+            'event_type' => 'opt_in',
+            'checkbox_status' => true,
+            'disclosure_text' => trim((string) ($context['disclosure_text'] ?? '')) ?: null,
+            'disclosure_version' => $version ?: null,
+            'terms_version' => (string) Setting::getValue('rental_contract_version', '1') ?: null,
+            'privacy_version' => (string) Setting::getValue('privacy_policy_version', '1') ?: null,
+            'page_url' => $context['page_url'] ?? null,
+            'guest_name' => $application->applicant_name,
+            'property_id' => $application->property_id,
+            'host_name' => $application->property?->host_name ?? null,
+            'ip_address' => $context['ip_address'] ?? request()->ip(),
+            'opt_in_method' => $context['opt_in_method'] ?? 'lease_application',
+            'occurred_at' => $now,
+        ]);
+
+        $application->forceFill(['sms_consent_at' => $now])->save();
+
+        SmsNotificationService::guestAlert(
+            $phone,
+            'Guest Hub Guest Alerts: You are now opted in to receive reservation and access-related text updates from Guest Hub. Msg & data rates may apply. Reply STOP to cancel, HELP for help.',
+            false
+        );
+    }
+
     public static function recordOptOut(Booking $booking, ?string $phone = null): void
     {
         $phone = self::normalizePhone($phone ?? $booking->phone);
@@ -100,6 +141,32 @@ class SmsConsentService
         ])->save();
     }
 
+    /** STOP from a number with no booking (a lease applicant): copy their latest consent row as an opt-out. */
+    public static function recordPhoneOptOut(string $phone): void
+    {
+        $last = SmsConsentEvent::where('phone', $phone)->latest('occurred_at')->first();
+
+        if (! $last || $last->event_type === 'opt_out') {
+            return;
+        }
+
+        SmsConsentEvent::create([
+            'booking_id' => $last->booking_id,
+            'lease_application_id' => $last->lease_application_id,
+            'phone' => $phone,
+            'event_type' => 'opt_out',
+            'checkbox_status' => false,
+            'disclosure_text' => null,
+            'page_url' => null,
+            'guest_name' => $last->guest_name,
+            'property_id' => $last->property_id,
+            'host_name' => $last->host_name,
+            'ip_address' => request()->ip(),
+            'opt_in_method' => 'telnyx_stop',
+            'occurred_at' => now(),
+        ]);
+    }
+
     public static function handleInboundKeyword(?string $phone, string $body): void
     {
         $phone = self::normalizePhone($phone);
@@ -113,6 +180,8 @@ class SmsConsentService
         if ($normalized === 'STOP' || $normalized === 'STOPALL' || $normalized === 'UNSUBSCRIBE') {
             if ($booking) {
                 self::recordOptOut($booking, $phone);
+            } else {
+                self::recordPhoneOptOut($phone);
             }
             SmsNotificationService::guestAlert($phone, 'Guest Hub Guest Alerts: You have opted out and will receive no further Guest Hub Guest Alerts. For help, email needhelp@guesthub.us.', false);
             return;

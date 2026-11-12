@@ -10,7 +10,7 @@
             <div id="guest-phone-country-list" class="max-h-56 overflow-y-auto text-slate-900"></div>
         </div>
     </div>
-    <input type="hidden" id="guest-phone-country-code" name="phone_country_code" value="+1">
+    <input type="hidden" id="guest-phone-country-code" name="phone_country_code" value="{{ old('phone_country_code', '+1') }}">
     <input id="{{ $id ?? 'phone' }}" name="{{ $name ?? 'phone_number' }}" type="tel" value="{{ $value ?? '' }}" data-full-number="{{ $value ?? '' }}" placeholder="{{ $placeholder ?? '801 234 5678' }}" class="{{ $pcInput }} min-w-0 flex-1" autocomplete="tel-national">
 </div>
 <script src="{{ asset('js/guest-phone-country.js') }}"></script>

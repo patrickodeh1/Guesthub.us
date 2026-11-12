@@ -25,8 +25,14 @@ class RentalAgreementService
         $websiteName = \App\Support\Branding::siteName();
         $idType = $booking->id_type === 'passport' ? 'Passport' : 'State-issued ID';
 
+        $template = $this->templateFor($booking, $property);
+        $fullLayout = str_contains($template, '[[signed_name]]');
+        $signedAtObj = $booking->localTimestamp($booking->contract_accepted_at);
+        $sigFmt = fn ($v) => e(filled($v) ? $v : '-');
+        $idImg = $this->idImageDataUri($booking);
+
         $contractHtml = strtr(
-            Setting::getValue('legal_rental_contract_content', '<p>Rental contract content has not been configured yet.</p>'),
+            $template,
             [
                 '[[host_name]]' => $hostName,
                 '[[website_name]]' => $websiteName,
@@ -41,6 +47,15 @@ class RentalAgreementService
                 '[[check_in_time]]' => $booking->effectiveCheckinTimeFormatted(),
                 '[[check_out_time]]' => $booking->effectiveCheckoutTimeFormatted(),
                 '[[guest_id_type]]' => $idType,
+                '[[signed_name]]' => e($booking->contract_signed_name ?: $booking->guest_name),
+                '[[signed_at]]' => e($signedAtObj?->format('M j, Y g:i A T') ?? '-'),
+                '[[signed_ip]]' => $sigFmt($booking->contract_signed_ip),
+                '[[signed_device_id]]' => $sigFmt($booking->contract_signed_device_id),
+                '[[signed_browser]]' => $sigFmt($booking->contract_signed_user_agent),
+                '[[agreement_version]]' => e($booking->contract_version ?: '1'),
+                '[[id_photo]]' => $idImg
+                    ? '<img src="'.$idImg.'" alt="Government-issued ID" class="idphoto">'
+                    : '<span class="muted">Not yet provided</span>',
             ]
         );
 
@@ -51,10 +66,67 @@ class RentalAgreementService
             'websiteName' => $websiteName,
             'contractHtml' => $contractHtml,
             'idType' => $idType,
+            'fullLayout' => $fullLayout,
             'signedAt' => $booking->localTimestamp($booking->contract_accepted_at),
             'agreementVersion' => $booking->contract_version,
             'idImage' => $this->idImageDataUri($booking),
         ];
+    }
+
+    /** Starter agreement in the same layout as the signed agreement. Hosts edit this per property. */
+    public function defaultTemplate(?string $terms = null): string
+    {
+        $terms = filled($terms) ? $terms : '<p>Enter the rental terms for this property here.</p>';
+
+        $html = <<<'HTML'
+<h2>Reservation details</h2>
+<table class="meta">
+<tr><td class="k">Guest</td><td>[[guest_name]]</td></tr>
+<tr><td class="k">Reservation ID</td><td>[[reservation_id]]</td></tr>
+<tr><td class="k">Booking ID</td><td>[[booking_id]]</td></tr>
+<tr><td class="k">Property</td><td>[[property_name]] - [[property_address]]</td></tr>
+<tr><td class="k">Check-in</td><td>[[check_in_date]] at [[check_in_time]]</td></tr>
+<tr><td class="k">Check-out</td><td>[[check_out_date]] at [[check_out_time]]</td></tr>
+<tr><td class="k">Government ID</td><td>[[guest_id_type]]</td></tr>
+</table>
+<h2>Terms and conditions</h2>
+@@TERMS@@
+<h2>Government-issued ID on file</h2>
+<p>[[id_photo]]</p>
+<h2>Digital signature</h2>
+<div class="sig">
+<div class="muted">Signed by</div>
+<div class="name">[[signed_name]]</div>
+<table class="meta">
+<tr><td class="k">Signed at</td><td>[[signed_at]]</td></tr>
+<tr><td class="k">IP address</td><td>[[signed_ip]]</td></tr>
+<tr><td class="k">Device ID</td><td>[[signed_device_id]]</td></tr>
+<tr><td class="k">Browser</td><td>[[signed_browser]]</td></tr>
+<tr><td class="k">Agreement version</td><td>[[agreement_version]]</td></tr>
+</table>
+</div>
+HTML;
+
+        return str_replace('@@TERMS@@', $terms, $html);
+    }
+
+    /** Signed text wins, then the property's own agreement, then the global one. */
+    public function templateFor(Booking $booking, $property = null): string
+    {
+        if (filled($booking->contract_snapshot)) {
+            return $booking->contract_snapshot;
+        }
+        if ($property && filled($property->rental_agreement)) {
+            return $property->rental_agreement;
+        }
+        $global = (string) Setting::getValue('legal_rental_contract_content', '');
+        return filled($global) ? $global : $this->defaultTemplate();
+    }
+
+    public function isRequired(Booking $booking): bool
+    {
+        $booking->loadMissing('property');
+        return ! ($booking->property?->skip_rental_agreement);
     }
 
     public function renderHtml(Booking $booking, bool $pdfMode = false): string

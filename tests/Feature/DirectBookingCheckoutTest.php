@@ -7,14 +7,19 @@ use App\Models\Booking;
 use App\Models\Charge;
 use App\Models\Feature;
 use App\Models\HostPaymentMethod;
+use App\Models\PaymentReceipt;
 use App\Models\Property;
 use App\Models\PropertyListing;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\BookingConflictService;
 use App\Services\DirectBookingCancellationPolicy;
 use App\Services\DirectBookingService;
+use App\Services\QuoteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -34,6 +39,7 @@ class DirectBookingCheckoutTest extends TestCase
     {
         parent::setUp();
         Mail::fake();
+        Storage::fake('local');
         Feature::updateOrCreate(
             ['key' => 'direct_booking_site'],
             ['name' => 'Direct booking site', 'is_free' => true, 'active' => true],
@@ -84,7 +90,8 @@ class DirectBookingCheckoutTest extends TestCase
         $response = $this->post(route('public.checkout.start', $this->listing->listing_slug), [
             'guest_name' => 'Taylor Guest',
             'email' => 'taylor@example.test',
-            'phone' => '5551234567',
+            'phone' => '8012345678',
+            'phone_country_code' => '+234',
             'check_in' => $arrival,
             'check_out' => $departure,
             'guests' => 2,
@@ -101,6 +108,7 @@ class DirectBookingCheckoutTest extends TestCase
         $this->assertSame(2650, $booking->tax_cents);
         $this->assertSame(0, $booking->processing_fee_cents);
         $this->assertSame(29150, $booking->total_cents);
+        $this->assertSame('+2348012345678', $booking->phone);
         $this->assertSame(Booking::STATUS_PENDING_PAYMENT, $booking->status);
         $this->assertSame('manual', $booking->payment_method);
         $this->assertFalse($this->property->availabilities()->whereDate('date', $arrival)->firstOrFail()->is_available);
@@ -116,8 +124,39 @@ class DirectBookingCheckoutTest extends TestCase
         $status->assertOk()
             ->assertSee('@coastal-host')
             ->assertSee('Send payment and use your booking reference.')
-            ->assertSee($booking->booking_id);
+            ->assertSee($booking->booking_id)
+            ->assertSee('Confirm payment sent')
+            ->assertSee('name="confirmation"', false);
         Mail::assertSent(DirectBookingMail::class, 2);
+    }
+
+    public function test_checkout_phone_uses_the_selected_country_code(): void
+    {
+        $this->get(route('public.checkout.show', $this->listing->listing_slug))
+            ->assertOk()
+            ->assertSee('guest-phone-country-button');
+
+        $booking = $this->createDirectBooking(
+            now('America/Los_Angeles')->addDays(9)->toDateString(),
+            now('America/Los_Angeles')->addDays(11)->toDateString(),
+        );
+        $booking->update(['phone' => \App\Support\PhoneFormatter::normalizeForStorage('8012345678', '+234')]);
+
+        $this->assertSame('+2348012345678', $booking->fresh()->phone);
+    }
+
+    public function test_card_processing_fee_is_not_applied_to_manual_payment_quotes(): void
+    {
+        Setting::putValue('processing_fee_percent', '5');
+        $arrival = now('America/Los_Angeles')->addDays(13)->toDateString();
+        $departure = now('America/Los_Angeles')->addDays(15)->toDateString();
+        $quotes = app(QuoteService::class);
+        $card = $quotes->quote($this->listing->fresh('property'), $arrival, $departure, 2, 'card');
+        $manual = $quotes->quote($this->listing->fresh('property'), $arrival, $departure, 2, 'manual');
+
+        $this->assertContains('Card processing fee', array_column($card['line_items'], 'label'));
+        $this->assertNotContains('Card processing fee', array_column($manual['line_items'], 'label'));
+        $this->assertGreaterThan($manual['total_cents'], $card['total_cents']);
     }
 
     public function test_consecutive_checkout_requests_for_same_dates_only_create_one_hold(): void
@@ -243,14 +282,55 @@ class DirectBookingCheckoutTest extends TestCase
         );
 
         $this->actingAs($this->owner)
-            ->post(route('admin.guests.direct-payment-received', $booking))
+            ->get(route('admin.guests.show', $booking))
+            ->assertOk()
+            ->assertSee('Waiting for the guest to confirm payment and upload their receipt.')
+            ->assertDontSee('Mark payment received');
+
+        $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
+            ->assertOk()
+            ->assertSee('Confirm payment sent')
+            ->assertSee('I confirm that I have sent the payment and uploaded proof of payment.');
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.guests.direct-payment-received', $booking), [
+                'receipt' => UploadedFile::fake()->image('host-receipt.png'),
+            ])
+            ->assertSessionHasErrors('receipt');
+        $this->assertNull($booking->fresh()->payment_confirmed_at);
+
+        $this->post(route('public.checkout.payment-report', [$booking->booking_id, $booking->token]), [
+            'receipt' => UploadedFile::fake()->image('guest-receipt.png'),
+        ])->assertSessionHasErrors('confirmation');
+        $this->assertDatabaseCount('payment_receipts', 0);
+
+        $this->post(route('public.checkout.payment-report', [$booking->booking_id, $booking->token]), [
+            'receipt' => UploadedFile::fake()->image('guest-receipt.png'),
+            'confirmation' => '1',
+        ])->assertRedirect(route('public.checkout.pay', [$booking->booking_id, $booking->token]));
+        $this->assertDatabaseHas('payment_receipts', ['payable_id' => $booking->id, 'role' => 'guest']);
+
+        $this->actingAs($this->owner)
+            ->get(route('admin.guests.show', $booking))
+            ->assertOk()
+            ->assertSee('Your received receipt')
+            ->assertSee('Mark payment received')
+            ->assertSee('border-slate-300');
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.guests.direct-payment-received', $booking), [
+                'receipt' => UploadedFile::fake()->image('host-receipt.png'),
+            ])
             ->assertRedirect();
 
         $booking->refresh();
         $this->assertSame('pending', $booking->status);
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
+        $this->assertDatabaseHas('payment_receipts', ['payable_id' => $booking->id, 'role' => 'host']);
         $this->assertDatabaseCount('cleaning_sessions', 1);
+        $hostReceipt = PaymentReceipt::query()->where('payable_id', $booking->id)->where('role', 'host')->firstOrFail();
+        $this->get(route('admin.guests.payment-receipt', [$booking, $hostReceipt]))->assertOk();
     }
 
     public function test_stripe_onboarding_starts_standard_account_oauth_with_session_state(): void

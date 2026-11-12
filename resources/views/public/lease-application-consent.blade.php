@@ -103,6 +103,10 @@
                         <input type="checkbox" name="screening_consent" value="1" required @checked(old('screening_consent'))>
                         <span>I authorize the host to review my application, verify my identity and run tenant screening, and I agree to the application terms.</span>
                     </label>
+                    <label class="co-terms">
+                        <input type="checkbox" name="sms_consent" value="1" @checked(old('sms_consent'))>
+                        <span>Text me updates about this application and my lease. Msg and data rates may apply. Message frequency varies. Reply STOP to cancel, HELP for help.</span>
+                    </label>
                     @if($fee > 0)
                         <label class="co-terms">
                             <input type="checkbox" name="fee_policy_ack" value="1" required @checked(old('fee_policy_ack'))>

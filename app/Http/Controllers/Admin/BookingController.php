@@ -379,6 +379,9 @@ class BookingController extends Controller
         $oldStatus = $booking->status;
         $data = $this->validated($request, $booking);
         $data['phone'] = PhoneFormatter::normalizeForStorage($data['phone'] ?? null, $request->input('phone_country_code', '+1'));
+        if ($request->has('parking_needed')) {
+            $data['parking_needed'] = $request->boolean('parking_needed');
+        }
         $this->enforcePreCheckinCap(array_merge($booking->only(['incidentals_charge', 'parking_needed', 'early_checkin_tier', 'early_checkin_charge_override', 'early_checkin_billing_mode']), $data));
         $data['photo_id_received'] = $request->boolean('photo_id_received');
         if (($data['status'] ?? null) === 'pre_checkin_complete') {
@@ -1158,6 +1161,11 @@ class BookingController extends Controller
         return response()->file(\Storage::path($booking->license_plate_photo_path));
     }
 
+    public function rentalAgreement(\App\Models\Booking $booking)
+    {
+        return response(app(\App\Services\RentalAgreementService::class)->renderHtml($booking));
+    }
+
     /** Bookings the signed-in user may see (admin: all; others: only on properties visible to them). */
     private function visible(): \Illuminate\Database\Eloquent\Builder
     {
@@ -1280,18 +1288,10 @@ class BookingController extends Controller
                 }
             }],
             'id_type'        => ['required', 'in:state_id,passport'],
-            // parking_needed / parking_charge_override / incidentals_charge /
-            // early_checkin_tier / late_checkout_type / late_checkout_hours /
-            // late_checkout_actual_time intentionally removed: none of these
-            // are submitted by the merged guest details editor on the show
-            // page (task: "merge edit and view page into one clean UI" --
-            // these charge-driving fields are excluded there since they're
-            // already represented in the Guest Details card and get their
-            // own editor with the ledger work). Leaving these keys out of
-            // validated() entirely means store()/update() never include them
-            // in $data, so existing values are left untouched rather than
-            // nulled out when the form that used to submit them no longer
-            // does.
+            // Parking charges, incidentals_charge, early_checkin_tier, and
+            // late-checkout billing fields are managed in the Guest Details
+            // ledger editor. parking_needed itself is editable here.
+            'parking_needed' => ['nullable', 'boolean'],
             'photo_id_received' => ['nullable', 'boolean'],
             'checkin_time_preference'  => ['nullable', 'date_format:H:i'],
             'checkout_time_preference' => ['nullable', 'date_format:H:i'],

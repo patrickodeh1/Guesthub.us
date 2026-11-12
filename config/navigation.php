@@ -121,7 +121,7 @@ return [
                     'active' => [
                         'admin.users.*',
                         'users.*',
-                        'admin.early-access-leads.*',
+                        'admin.signup-requests.*',
                         'admin.logs.*',
                         'activity.*',
                         'admin.guide',
@@ -137,11 +137,11 @@ return [
                             'active' => ['admin.users.*', 'users.*'],
                         ],
                         [
-                            'label' => 'Early Access Signups',
+                            'label' => 'Signup Requests',
                             'routes' => [
-                                ['name' => 'admin.early-access-leads.index', 'roles' => ['admin']],
+                                ['name' => 'admin.signup-requests.index', 'roles' => ['admin']],
                             ],
-                            'active' => ['admin.early-access-leads.*'],
+                            'active' => ['admin.signup-requests.*'],
                         ],
                         [
                             'label' => 'Activity Logs',

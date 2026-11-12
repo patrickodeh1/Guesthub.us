@@ -30,11 +30,12 @@
                 <p x-show="!info.guest && form.property_id && !loading" class="text-slate-600">No guest linked to this cleaning.</p>
             </div>
             <div>
-                <label class="field-label">Cleaner</label>
+                <label class="field-label">Cleaner or yourself</label>
                 <select class="input mt-1 w-full" x-model.number="form.housekeeper_id" required>
                     <option value="">Select a cleaner</option>
-                    <template x-for="c in info.cleaners" :key="c.id"><option :value="c.id" :disabled="!c.has_phone" x-text="c.name + (c.has_phone ? '' : ' (no phone number)')"></option></template>
+                    <template x-for="c in info.cleaners" :key="c.id"><option :value="c.id" :disabled="!c.has_phone && !c.is_self" x-text="c.name + (c.is_self ? ' (you - auto-confirmed)' : (c.has_phone ? '' : ' (no phone number)'))"></option></template>
                 </select>
+                <p x-show="info.cleaners.some(c => c.is_self)" class="mt-2 text-xs text-slate-500">Self-assigned jobs are confirmed automatically; no text reply is needed.</p>
                 <p x-show="form.property_id && !loading && info.cleaners.length === 0" class="mt-2 text-sm text-amber-700">No active cleaners are assigned to this property.</p>
                 <p x-show="isEdit && info.assignment_status" x-cloak class="mt-2 text-sm">
                     <span class="font-semibold">Status: </span>

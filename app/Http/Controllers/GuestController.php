@@ -960,6 +960,10 @@ class GuestController extends Controller
             return $request->expectsJson() ? response()->json(['ok' => true]) : back();
         }
 
+        if (! app(\App\Services\RentalAgreementService::class)->isRequired($booking)) {
+            return $request->expectsJson() ? response()->json(['ok' => true]) : back();
+        }
+
         if (! $booking->photo_id_received || blank($booking->id_scan_status)) {
             throw ValidationException::withMessages([
                 'contract_signed_name' => 'Please upload your government ID before signing the rental agreement.',
@@ -982,7 +986,7 @@ class GuestController extends Controller
         // extracted name, so fall back to the typed guest_name then).
         $referenceName = $booking->id_name ?: $booking->guest_name;
 
-        if ($this->normalizePersonName($data['contract_signed_name']) !== $this->normalizePersonName($referenceName)) {
+        if (! PersonNameMatcher::matches($data['contract_signed_name'], $referenceName)) {
             throw ValidationException::withMessages([
                 'contract_signed_name' => 'This must match your name exactly as it appears on your government ID.',
             ]);
@@ -991,6 +995,7 @@ class GuestController extends Controller
         $booking->update([
             'contract_accepted_at' => now(),
             'contract_version' => Setting::getValue('legal_rental_contract_version', '1'),
+            'contract_snapshot' => app(\App\Services\RentalAgreementService::class)->templateFor($booking, $booking->property),
             'contract_signed_name' => $data['contract_signed_name'],
             'contract_signed_ip' => $request->ip(),
             'contract_signed_user_agent' => mb_substr((string) $request->userAgent(), 0, 1000),

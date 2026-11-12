@@ -34,6 +34,34 @@ class EarlyCheckinLateCheckoutChargeTest extends TestCase
         $this->assertFalse($booking->requiresCheckoutTimeApproval('10:00'));
     }
 
+    public function test_checkout_notice_uses_property_time_for_earlier_request(): void
+    {
+        $property = Property::factory()->create(['checkout_time' => '14:00']);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'checkout_time_preference' => '13:00',
+            'checkout_time_status' => 'approved',
+        ]);
+
+        $this->assertSame('2:00 PM', $booking->checkoutNoticeTimeFormatted());
+    }
+
+    public function test_checkout_notice_uses_later_time_only_when_approved(): void
+    {
+        $property = Property::factory()->create(['checkout_time' => '14:00']);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'checkout_time_preference' => '15:00',
+            'checkout_time_status' => 'pending',
+        ]);
+
+        $this->assertSame('2:00 PM', $booking->checkoutNoticeTimeFormatted());
+
+        $booking->checkout_time_status = 'approved';
+
+        $this->assertSame('3:00 PM', $booking->checkoutNoticeTimeFormatted());
+    }
+
     // ─── Early check-in billing ─────────────────────────────────────────────
 
     public function test_early_checkin_charge_is_null_when_no_tier_granted(): void

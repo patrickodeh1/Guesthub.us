@@ -31,6 +31,8 @@
         .co-field label{font-size:.8rem;font-weight:700}
         .co-field input{border:1px solid #cfd8d2;border-radius:12px;padding:13px 14px;font:inherit;min-height:48px;width:100%;box-sizing:border-box;background:#fff}
         .co-field input:focus{outline:2px solid #1f6f54;outline-offset:1px;border-color:#1f6f54}
+        .co-phone-input{border:1px solid #cfd8d2;border-radius:12px;padding:13px 14px;font:inherit;min-height:48px;box-sizing:border-box;background:#fff}
+        .co-phone-input:focus{outline:2px solid #1f6f54;outline-offset:1px;border-color:#1f6f54}
         .co-pay{display:flex;gap:12px;align-items:flex-start;border:1px solid #cfd8d2;border-radius:14px;padding:14px 16px;margin:0 0 10px;cursor:pointer}
         .co-pay:has(input:checked){border-color:#1f6f54;box-shadow:0 0 0 1px #1f6f54;background:#f4faf7}
         .co-pay input{margin-top:4px;width:auto;min-height:0}
@@ -95,7 +97,7 @@
                     <div class="co-grid">
                         <div class="co-field full"><label for="guest_name">Full name</label><input id="guest_name" name="guest_name" value="{{ old('guest_name') }}" required maxlength="255" autocomplete="name"></div>
                         <div class="co-field"><label for="email">Email</label><input id="email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autocomplete="email"></div>
-                        <div class="co-field"><label for="phone">Phone (optional)</label><input id="phone" name="phone" type="tel" value="{{ old('phone') }}" maxlength="40" autocomplete="tel"></div>
+                        <div class="co-field"><label for="phone">Phone (optional)</label>@include('partials.phone-country-picker', ['id' => 'phone', 'name' => 'phone', 'value' => old('phone'), 'inputClass' => 'co-phone-input'])</div>
                     </div>
                 </section>
 
