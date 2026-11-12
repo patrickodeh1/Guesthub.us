@@ -7,7 +7,7 @@
 @php
     $money = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
     $contract = (string) $offer->contract_html;
-    $confirmUrl = url('/stay/application/'.rawurlencode((string) $offer->application_id).'/'.rawurlencode($offer->application->token).'/offer/'.rawurlencode($offer->token).'/confirm-payment');
+    $confirmUrl = url('/stay/application/'.rawurlencode((string) $offer->lease_application_id).'/'.rawurlencode($offer->application->token).'/offer/'.rawurlencode($offer->token).'/confirm-payment');
     $values = [
         '[[applicant_name]]' => e($offer->application->applicant_name),
         '[[host_name]]' => e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
@@ -79,7 +79,7 @@
             <section class="lease-card">
                 <h2 style="font-size:1.15rem;font-weight:750">Sign the agreement</h2>
                 <p class="lease-muted">Type your full name as it appears on your application to sign electronically.</p>
-                <form method="post" action="{{ route('public.lease-offer.sign', ['application' => $offer->application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]) }}" style="display:grid;gap:12px;margin-top:14px">
+                <form method="post" action="{{ route('public.lease-offer.sign', ['application' => $offer->lease_application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]) }}" style="display:grid;gap:12px;margin-top:14px">
                     @csrf
                     <label>Full legal name<input class="lease-input" name="signature" value="{{ old('signature', $offer->application->applicant_name) }}" required maxlength="255"></label>
                     <label style="display:flex;gap:9px;align-items:flex-start;font-size:.9rem"><input type="checkbox" name="accept_terms" value="1" required style="margin-top:4px"> I have reviewed and agree to the rental agreement and payment schedule.</label>
@@ -92,7 +92,7 @@
             <section class="lease-card">
                 <h2 style="font-size:1.15rem;font-weight:750">{{ $offer->status === 'confirmed' ? 'Next rental payment' : 'Initial payment' }}</h2>
                 @if($nextInstallment && $offer->payment_method === 'manual')
-                    <p class="lease-muted">Send {{ $nextInstallment ? $money($nextInstallment->amount_cents) : $money($offer->initial_due_cents) }} using the host's payment method. Include your application reference <strong>{{ $offer->application_id }}</strong>. The host records each payment after receiving it.</p>
+                    <p class="lease-muted">Send {{ $nextInstallment ? $money($nextInstallment->amount_cents) : $money($offer->initial_due_cents) }} using the host's payment method. Include your application reference <strong>{{ $offer->lease_application_id }}</strong>. The host records each payment after receiving it.</p>
                     @if($offer->hostPaymentMethod)
                         <p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>
                         @if($offer->hostPaymentMethod->instructions)<p class="lease-muted">{{ $offer->hostPaymentMethod->instructions }}</p>@endif
@@ -116,7 +116,7 @@
             <section class="lease-card"><h2 style="font-size:1.15rem;font-weight:750">Your rental is confirmed</h2><p class="lease-muted">Your booking is active. Use the guest portal for check-in, parking, documents and stay services.</p>@if($offer->booking)<a class="lease-button" style="display:block;text-align:center;text-decoration:none;margin-top:12px" href="{{ route('guest.show', [$offer->booking->booking_id, $offer->booking->token]) }}">Open guest portal</a>@endif</section>
         @endif
         @if($offer->status === 'sent')
-            <form method="post" action="{{ route('public.lease-offer.decline', ['application' => $offer->application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]) }}" class="lease-card">
+            <form method="post" action="{{ route('public.lease-offer.decline', ['application' => $offer->lease_application_id, 'token' => $offer->application->token, 'offerToken' => $offer->token]) }}" class="lease-card">
                 @csrf
                 <button type="submit" style="background:none;border:0;color:#9b3434;text-decoration:underline;cursor:pointer">Decline this offer</button>
             </form>
