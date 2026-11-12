@@ -157,7 +157,7 @@
             if (response.ok && data.redirect) { window.location.assign(data.redirect); return; }
             error.textContent = data.error || 'Payment received; confirmation is pending. Refresh shortly.';
         } catch (e) { error.textContent = 'Payment received; confirmation is pending. Refresh shortly.'; }
-        button.disabled = false; button.textContent = 'Pay {{ $money($nextInstallment->amount_cents) }}';
+        button.disabled = false; button.textContent = 'Pay {{ $money($payAmountCents) }}';
     });
 })();
 </script>
