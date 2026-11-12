@@ -1953,7 +1953,8 @@ class Booking extends Model
     /** Direct bookings pay by card on our site only; no off-platform option. */
     public function isDirectBooking(): bool
     {
-        return in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
+        return ! $this->lease_offer_id && ! $this->lease_application_id
+            && in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
     }
 
     public function isPendingPayment(): bool
