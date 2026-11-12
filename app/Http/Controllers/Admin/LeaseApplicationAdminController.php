@@ -49,11 +49,11 @@ class LeaseApplicationAdminController extends Controller
             ->where('enabled', true)
             ->orderBy('id')
             ->get();
-        $leaseTemplate = app(\\App\\Services\\LeaseAgreementService::class)->templateFor($application->property);
+        $leaseTemplate = app(\App\Services\LeaseAgreementService::class)->templateFor($application->property);
         $owner = $application->property->owner;
         $canCard = filled($owner?->stripe_account_id)
             && $owner?->stripe_charges_enabled
-            && app(\\App\\Services\\Payments\\PaymentService::class)->isConfigured();
+            && app(\App\Services\Payments\PaymentService::class)->isConfigured();
 
         return view('admin.lease-applications.contract', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
     }
