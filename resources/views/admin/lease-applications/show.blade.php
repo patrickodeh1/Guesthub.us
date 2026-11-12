@@ -159,6 +159,28 @@
                 </section>
 
                 @if($application->status === 'approved')
+                    @php($activeOffer = $application->offers->first(fn ($offer) => in_array($offer->status, ['sent', 'signed', 'confirmed'], true)))
+                    @if($activeOffer)
+                        <section class="{{ $card }}">
+                            <h2 class="text-lg font-semibold">Lease offer #{{ $activeOffer->id }}</h2>
+                            <p class="mt-2 text-sm text-slate-600">Status: <strong class="capitalize">{{ $activeOffer->status }}</strong> · {{ $activeOffer->payment_method === 'manual' ? 'Manual payment' : 'Card payment' }}</p>
+                            <p class="mt-1 text-sm text-slate-600">Initial payment due: <strong>{{ $money($activeOffer->initial_due_cents) }}</strong> (first rent + deposit + additional fees)</p>
+                            <div class="mt-3 space-y-2">
+                                @foreach($activeOffer->installments->where('required_at_signing', true) as $installment)
+                                    <div class="flex justify-between gap-3 text-sm"><span>{{ $installment->label }}</span><span class="font-semibold">{{ $money($installment->amount_cents) }} · {{ ucfirst($installment->status) }}</span></div>
+                                @endforeach
+                            </div>
+                            @if($activeOffer->status === 'signed' && $activeOffer->payment_method === 'manual' && $activeOffer->installments->where('required_at_signing', true)->every(fn ($item) => $item->status === 'pending'))
+                                <form method="post" action="{{ route('admin.lease-applications.offers.initial-payment.received', [$application, $activeOffer]) }}" class="mt-4">
+                                    @csrf
+                                    <button class="btn-primary w-full">Record full initial payment received</button>
+                                </form>
+                            @elseif($activeOffer->status === 'signed' && $activeOffer->payment_method === 'card')
+                                <p class="mt-3 text-xs text-slate-500">The guest pays the combined initial amount securely on the offer page. The payment status updates automatically.</p>
+                            @endif
+                            <p class="mt-3 text-xs text-slate-500">The tenant sees the same agreement stored on this offer. Later monthly rent installments remain separate.</p>
+                        </section>
+                    @endif
                     <section class="{{ $card }}">
                         <h2 class="text-lg font-semibold">Rental contract</h2>
                         @if($application->offers->contains(fn($offer) => in_array($offer->status, ['sent', 'signed', 'confirmed'], true)))
