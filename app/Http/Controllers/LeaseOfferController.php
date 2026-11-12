@@ -60,14 +60,6 @@ class LeaseOfferController extends Controller
         return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])->with('status', 'You declined this rental offer. The dates have been released.');
     }
 
-    public function recordManualInitialPayment(Request $request, int $application, string $applicationToken, string $offerToken, LeaseOfferService $service)
-    {
-        $offer = $this->findOffer($application, $applicationToken, $offerToken);
-        $service->markInitialPaymentPaid($offer, (int) ($offer->property->owner_id));
-        return redirect()->route('public.lease-offer.show', [$application, $applicationToken, $offerToken])
-            ->with('status', 'The combined initial payment has been recorded.');
-    }
-
     public function confirmPayment(Request $request, int $application, string $applicationToken, string $offerToken, PaymentService $payments)
     {
         $offer = $this->findOffer($application, $applicationToken, $offerToken);
