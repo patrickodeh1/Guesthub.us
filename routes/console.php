@@ -41,7 +41,7 @@ Schedule::command('pms:sync')->everyMinute()->when(
 Schedule::command('photos:prune-old --days=15')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('training:send-reminders')->hourly();
 Schedule::command('directbookings:release-expired-holds')->everyFiveMinutes()->withoutOverlapping(4);
-Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();\nSchedule::command('lease-offers:expire')->everyFiveMinutes()->withoutOverlapping(4);\nSchedule::command('lease-installments:remind')->dailyAt('09:00')->withoutOverlapping();
 Schedule::command('ids:purge-declined')->dailyAt('02:30')->withoutOverlapping();
 Schedule::command('direct-bookings:remind-hosts')->hourly()->withoutOverlapping();
 
