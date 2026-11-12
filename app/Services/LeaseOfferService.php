@@ -32,7 +32,7 @@ class LeaseOfferService
         $totalRent = $rent * $months;
         $total = $totalRent + $deposit + $fees;
         if ($rent < 1 || $initial !== ($deposit + $fees + $rent) || $initial > $total) {
-            throw ValidationException::withMessages(['initial_due' => 'The initial amount must cover the security deposit, fees and first month of rent, and cannot exceed the lease total.']);
+            throw ValidationException::withMessages(['initial_due' => 'The initial amount must equal the security deposit, fees and first month of rent.']);
         }
         if ($end->lte($start) || $start->lt(now()->startOfDay())) {
             throw ValidationException::withMessages(['start_date' => 'Choose a valid future rental period.']);
