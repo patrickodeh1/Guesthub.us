@@ -222,7 +222,7 @@ class PaymentService
             && ($offer->status === \App\Models\LeaseOffer::STATUS_CONFIRMED || $offer->accept_by?->isFuture()), 409);
         $required = $offer->installments->where('required_at_signing', true);
         abort_unless($required->isNotEmpty() && $required->contains(fn ($item) => $item->status === \App\Models\LeaseInstallment::STATUS_PENDING), 409);
-        abort_unless($required->every(fn ($item) => in_array($item->status, [\App\Models\LeaseInstallment::STATUS_PENDING, \App\Models\LeaseInstallment::STATUS_PAID], true)), 409);
+        abort_unless($required->every(fn ($item) => $item->status === \\App\\Models\\LeaseInstallment::STATUS_PENDING), 409);
         $owner = $offer->property->owner;
         abort_unless(filled($owner?->stripe_account_id) && $owner->stripe_charges_enabled && $this->isConfigured(), 422, 'Card payments are not available for this host.');
 
