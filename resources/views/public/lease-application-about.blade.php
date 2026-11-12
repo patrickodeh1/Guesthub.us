@@ -17,7 +17,7 @@
         @else
             <p class="status-message">We could not read your ID automatically. Please enter your details below. The host will verify them against your ID.</p>
         @endif
-        <form method="post" action="{{ route('public.lease-application.about.store', [$application->id, $application->token]) }}">
+        <form class="lease-about-form" method="post" action="{{ route('public.lease-application.about.store', [$application->id, $application->token]) }}">
             @csrf
             <input type="text" name="website" value="" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-10000px">
             <div class="field"><label for="applicant_name">Full name</label><input id="applicant_name" name="applicant_name" value="{{ old('applicant_name', $application->applicant_name ?: $application->id_name) }}" required maxlength="255" @if($application->id_name) readonly style="background:#f1f5f9" @endif>@error('applicant_name')<span class="field-help text-red-700">{{ $message }}</span>@enderror</div>
