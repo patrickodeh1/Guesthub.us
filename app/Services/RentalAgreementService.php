@@ -113,6 +113,15 @@ HTML;
     /** Signed text wins, then the property's own agreement, then the global one. */
     public function templateFor(Booking $booking, $property = null): string
     {
+        // Lease bookings must always use the exact contract stored on the offer
+        // that was emailed and signed, never the property's short-stay template.
+        if ($booking->lease_offer_id) {
+            $booking->loadMissing('leaseOffer.installments', 'leaseOffer.application', 'leaseOffer.property.owner');
+            if ($booking->leaseOffer) {
+                return app(\\App\\Services\\LeaseOfferService::class)->renderContract($booking->leaseOffer);
+            }
+        }
+
         if (filled($booking->contract_snapshot)) {
             return $booking->contract_snapshot;
         }
