@@ -93,7 +93,7 @@ class PropertyListingController extends Controller
             'payment_methods.*.enabled' => ['nullable', 'boolean'],
         ]);
 
-        if (($data['listing_type'] ?? 'both') === 'long_term' && (! ($data['lease_enabled'] ?? false) || ! \App\\Services\\FeatureGate::enabled($property->owner, 'lease_applications'))) {
+        if (($data['listing_type'] ?? 'both') === 'long_term' && (! ($data['lease_enabled'] ?? false) || ! \App\Services\FeatureGate::enabled($property->owner, 'lease_applications'))) {
             throw ValidationException::withMessages(['listing_type' => 'Long-term-only advertising requires long-term lease applications to be enabled for this account.']);
         }
 
