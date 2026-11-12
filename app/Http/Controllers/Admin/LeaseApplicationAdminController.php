@@ -32,8 +32,9 @@ class LeaseApplicationAdminController extends Controller
         abort_unless($application->status !== 'draft', 404);
         $application->load(['listing', 'property', 'hostPaymentMethod', 'charges', 'offers.installments', 'offers.booking']);
         $paymentMethods = HostPaymentMethod::query()->where('owner_id', $application->property->owner_id)->where('enabled', true)->orderBy('id')->get();
+        $leaseTemplate = app(\App\\Services\\LeaseAgreementService::class)->templateFor($application->property);
 
-        return view('admin.lease-applications.show', compact('application', 'paymentMethods'));
+        return view('admin.lease-applications.show', compact('application', 'paymentMethods', 'leaseTemplate'));
     }
 
     public function update(
@@ -86,6 +87,7 @@ class LeaseApplicationAdminController extends Controller
             'deposit' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'fees' => ['nullable', 'numeric', 'min:0', 'max:999999'],
             'initial_due' => ['required', 'numeric', 'gt:0', 'max:999999'],
+            'contract_html' => ['required', 'string', 'max:50000'],
             'payment_method' => ['required', 'in:card,manual'],
             'host_payment_method_id' => ['required_if:payment_method,manual', 'nullable', 'integer'],
             'accept_by' => ['required', 'date', 'after:now', 'before_or_equal:'.now()->addDays(30)->toDateTimeString()],
