@@ -26,7 +26,7 @@ class LeaseApplicationAdminController extends Controller
         abort_unless($application->status !== 'draft', 404);
         $application->load(['listing', 'property', 'hostPaymentMethod', 'charges']);
 
-        return view('admin.lease-applications.show', compact('application'));
+        return view('admin.lease-applications.show', compact('application', 'paymentMethods'));
     }
 
     public function update(
@@ -65,6 +65,42 @@ class LeaseApplicationAdminController extends Controller
         }
 
         return back()->with('success', 'Application updated.');
+    }
+
+
+    public function createOffer(Request $request, LeaseApplication $application, LeaseOfferService $offers)
+    {
+        $this->authorizeApplication($request, $application);
+        $data = $request->validate([
+            'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
+            'term_months' => ['required', 'integer', 'min:1', 'max:600'],
+            'monthly_rent' => ['required', 'numeric', 'gt:0', 'max:999999'],
+            'deposit' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            'fees' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            'initial_due' => ['required', 'numeric', 'gt:0', 'max:999999'],
+            'payment_method' => ['required', 'in:card,manual'],
+            'host_payment_method_id' => ['required_if:payment_method,manual', 'nullable', 'integer'],
+            'accept_by' => ['required', 'date', 'after:now', 'before_or_equal:'.now()->addDays(30)->toDateTimeString()],
+        ]);
+        $offer = $offers->create($application, $data, (int) $request->user()->id);
+        try {
+            Mail::to($application->applicant_email)->send(new DirectBookingMail(
+                'Your rental offer is ready',
+                'The host has prepared a rental offer for '.$application->listing->public_title.'. Review the dates, payment schedule and agreement, then sign before the acceptance deadline.',
+                route('public.lease-offer.show', [$application->id, $offer->token]),
+                'Review rental offer',
+            ));
+        } catch (\\Throwable $e) { report($e); }
+        return back()->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
+    }
+
+    public function markInstallmentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseInstallment $installment, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id && (int) $installment->lease_offer_id === (int) $offer->id, 404);
+        $service->markInstallmentPaid($installment, (int) $request->user()->id);
+        return back()->with('success', 'Installment payment recorded.');
     }
 
     public function markFeeReceived(
