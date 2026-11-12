@@ -69,7 +69,17 @@
         var tries = 0;
         function editor() { return window.tinymce ? tinymce.get('contract_html') : null; }
         function boot() {
-            if (!window.tinymce) { if (tries++ < 100) setTimeout(boot, 200); return; }
+            if (!window.tinymce) {
+                if (tries++ === 0) {
+                    var script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js';
+                    script.onload = boot;
+                    document.head.appendChild(script);
+                    return;
+                }
+                if (tries < 100) { setTimeout(boot, 200); }
+                return;
+            }
             if (editor()) return;
             tinymce.init({ selector: '#contract_html', height: 460, menubar: false, branding: false, promotion: false, plugins: 'lists link table code', content_style: 'body { font-family: system-ui, sans-serif; font-size: 14px; padding: 12px; }', toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | link table | removeformat code' });
         }
