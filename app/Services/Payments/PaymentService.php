@@ -213,6 +213,48 @@ class PaymentService
      * row in 'pending' status; call finalize() after the client reports
      * success to verify with Stripe and mark it captured.
      */
+
+    public function createLeaseOfferInstallmentIntent(\\App\\Models\\LeaseOffer $offer, \\App\\Models\\LeaseInstallment $installment): array
+    {
+        $offer->loadMissing(['property.owner', 'booking']);
+        abort_unless($offer->status === \\App\\Models\\LeaseOffer::STATUS_SIGNED
+            && $offer->payment_method === 'card'
+            && $installment->lease_offer_id === $offer->id
+            && $installment->required_at_signing
+            && $installment->status === \\App\\Models\\LeaseInstallment::STATUS_PENDING, 409);
+        $owner = $offer->property->owner;
+        abort_unless(filled($owner?->stripe_account_id) && $owner->stripe_charges_enabled && $this->isConfigured(), 422, 'Card payments are not available for this host.');
+        $existing = \\App\\Models\\Charge::query()->where('lease_installment_id', $installment->id)->where('status', \\App\\Models\\Charge::STATUS_PENDING)->latest()->first();
+        if ($existing) {
+            $intent = $this->client()->paymentIntents->retrieve($existing->stripe_payment_intent_id, [], ['stripe_account' => $owner->stripe_account_id]);
+            if ($intent->status === 'succeeded') $this->finalize($intent->id);
+            return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+        }
+        $intent = $this->client()->paymentIntents->create([
+            'amount' => (int) $installment->amount_cents,
+            'currency' => 'usd',
+            'payment_method_types' => ['card'],
+            'description' => 'Lease installment '.$installment->label,
+            'receipt_email' => $offer->application->applicant_email,
+            'metadata' => ['lease_offer_id' => (string) $offer->id, 'lease_installment_id' => (string) $installment->id, 'type' => 'lease_installment'],
+        ], ['stripe_account' => $owner->stripe_account_id, 'idempotency_key' => 'lease-installment-'.$installment->id.'-attempt-'.$installment->charges_count]);
+        $charge = \\App\\Models\\Charge::create([
+            'booking_id' => $offer->booking_id,
+            'lease_application_id' => $offer->lease_application_id,
+            'lease_offer_id' => $offer->id,
+            'lease_installment_id' => $installment->id,
+            'type' => 'lease_installment',
+            'amount_cents' => (int) $installment->amount_cents,
+            'status' => \\App\\Models\\Charge::STATUS_PENDING,
+            'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $owner->stripe_account_id,
+            'billing_moment' => 'lease_installment',
+            'description' => $installment->label,
+        ]);
+        $installment->update(['charge_id' => $charge->id, 'method' => 'card']);
+        return ['client_secret' => $intent->client_secret, 'charge' => $charge];
+    }
+
     public function createPendingIntent(Booking $booking, string $type, int $amountCents, string $billingMoment, ?string $description = null): array
     {
         $intent = $this->client()->paymentIntents->create([
