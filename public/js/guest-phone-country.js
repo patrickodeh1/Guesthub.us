@@ -5,7 +5,7 @@
     var guestPhoneCountryMenu = document.getElementById("guest-phone-country-menu");
     var guestPhoneCountryList = document.getElementById("guest-phone-country-list");
     var guestPhoneCountrySearch = document.getElementById("guest-phone-country-search");
-    var guestPhoneInputs = document.querySelectorAll('input[name="phone"], input[name="phone_number"]');
+    var guestPhoneInputs = document.querySelectorAll('input[type="tel"]');
 
     var flagUrl = function(iso2) {
         if (!iso2) return '';
@@ -1279,8 +1279,8 @@
             var img = document.createElement('img');
             img.src = flagUrl(country.iso2);
             img.alt = country.iso2;
-            img.style.width = '20px';
-            img.style.height = '14px';
+            img.style.width = '22px';
+            img.style.height = '16px';
             img.style.objectFit = 'cover';
             img.style.display = 'inline-block';
             flagSpan.appendChild(img);
@@ -1306,7 +1306,7 @@
         });
         list.forEach(function(country) {
             var item = document.createElement('div');
-            item.className = 'flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-gray-100';
+            item.className = 'guest-phone-country-option';
             item.setAttribute('data-country-code', country.iso2);
 
             var img = document.createElement('img');
