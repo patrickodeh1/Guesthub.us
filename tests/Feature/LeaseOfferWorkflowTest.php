@@ -126,6 +126,8 @@ class LeaseOfferWorkflowTest extends TestCase
         $this->assertSame('pending', $booking->status);
         $this->assertSame('lease', $booking->source);
         $this->assertSame('Lease', $booking->booking_platform);
+        $this->assertSame('Lease', $booking->platformLabel());
+        $this->assertFalse($booking->isDirectBooking());
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
         $this->assertStringContainsString('Jordan Applicant', $booking->contract_snapshot);
