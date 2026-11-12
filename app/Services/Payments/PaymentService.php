@@ -226,8 +226,14 @@ class PaymentService
         $existing = \App\Models\Charge::query()->where('lease_installment_id', $installment->id)->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
         if ($existing) {
             $intent = $this->client()->paymentIntents->retrieve($existing->stripe_payment_intent_id, [], ['stripe_account' => $owner->stripe_account_id]);
-            if ($intent->status === 'succeeded') $this->finalize($intent->id);
-            return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+            if ($intent->status === 'succeeded') {
+                $this->finalize($intent->id);
+                return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+            }
+            if ($intent->status !== 'canceled') {
+                return ['client_secret' => $intent->client_secret, 'charge' => $existing];
+            }
+            $existing->update(['status' => Charge::STATUS_FAILED]);
         }
         $intent = $this->client()->paymentIntents->create([
             'amount' => (int) $installment->amount_cents,
