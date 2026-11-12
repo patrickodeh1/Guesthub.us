@@ -22,10 +22,15 @@ class LeaseApplicationController extends Controller
 {
     public function apply(Request $request, string $listingSlug)
     {
-        $prefill = $request->session()->get('lease_prefill');
+        $sessionKey = 'lease_prefill_'.$listingSlug;
+        $prefill = $request->session()->get($sessionKey);
+        if (! is_array($prefill) && is_array($request->session()->get('lease_prefill'))) {
+            $prefill = $request->session()->pull('lease_prefill');
+            $request->session()->put($sessionKey, $prefill);
+        }
         if ($request->filled('check_in') && $request->filled('check_out')) {
             $prefill = ['check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1)];
-            $request->session()->put('lease_prefill', $prefill);
+            $request->session()->put($sessionKey, $prefill);
         } elseif (is_array($prefill)) {
             $request->session()->put('lease_prefill', $prefill);
         }
@@ -350,7 +355,9 @@ class LeaseApplicationController extends Controller
 
     private function applyLeasePrefill(Request $request, LeaseApplication $application): void
     {
-        $prefill = $request->session()->get('lease_prefill');
+        $application->loadMissing('listing');
+        $sessionKey = 'lease_prefill_'.($application->listing?->listing_slug ?? '');
+        $prefill = $request->session()->get($sessionKey);
         if (! is_array($prefill) || empty($prefill['check_in']) || empty($prefill['check_out'])) return;
         try {
             $start = \Carbon\Carbon::parse($prefill['check_in'])->startOfDay();
@@ -363,7 +370,7 @@ class LeaseApplicationController extends Controller
                 'lease_term_months' => max(1, (int) ceil($nights / 30)),
                 'occupants' => max(1, min(30, (int) ($prefill['guests'] ?? 1))),
             ]);
-            $request->session()->forget('lease_prefill');
+            $request->session()->forget($sessionKey);
         } catch (\Throwable $e) {
             report($e);
         }
