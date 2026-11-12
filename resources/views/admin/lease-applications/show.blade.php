@@ -172,7 +172,7 @@
                                         <div class="mt-3 border-t border-slate-100 pt-2 text-sm">
                                             <div class="flex justify-between gap-2"><span>{{ $installment->label }} · {{ $installment->due_date->format('M j, Y') }}</span><strong>{{ $money($installment->amount_cents) }}</strong></div>
                                             <div class="text-xs text-slate-500">{{ ucfirst($installment->status) }}{{ $installment->required_at_signing ? ' · Required before confirmation' : '' }}</div>
-                                            @if($offer->status === 'signed' && $offer->payment_method === 'manual' && $installment->required_at_signing && $installment->status === 'pending')
+                                            @if(in_array($offer->status, ['signed', 'confirmed'], true) && $offer->payment_method === 'manual' && $installment->required_at_signing && $installment->status === 'pending')
                                                 <form method="post" action="{{ route('admin.lease-applications.offers.installments.received', [$application, $offer, $installment]) }}" class="mt-2">@csrf<button class="btn-primary w-full">Record payment received</button></form>
                                             @endif
                                         </div>
