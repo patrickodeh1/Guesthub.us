@@ -53,7 +53,7 @@ class LeaseInstallment extends Model
         return $this->belongsTo(LeaseOffer::class, 'lease_offer_id');
     }
 
-    public function charge(): BelongsTo
+    public function charges()\n    {\n        return $this->hasMany(Charge::class, 'lease_installment_id');\n    }\n\n    public function charge(): BelongsTo
     {
         return $this->belongsTo(Charge::class);
     }
