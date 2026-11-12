@@ -200,6 +200,10 @@
                                 <label class="block text-sm font-medium">Security deposit (USD)<input type="number" name="deposit" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
                                 <label class="block text-sm font-medium">Other fees (USD)<input type="number" name="fees" min="0" step="0.01" value="0.00" class="input mt-1 w-full"></label>
                                 <label class="block text-sm font-medium">Amount due before confirmation (USD)<input type="number" name="initial_due" min="0.01" step="0.01" required class="input mt-1 w-full" placeholder="3000.00"></label>
+                                <label class="block text-sm font-medium">Rental agreement terms
+                                    <textarea name="contract_html" rows="10" required class="input mt-1 w-full font-mono text-xs">{{ old('contract_html', $leaseTemplate) }}</textarea>
+                                    <span class="mt-1 block text-xs text-slate-500">This copy is saved with the offer and signed by both parties. You can adjust the property template before sending.</span>
+                                </label>
                                 <label class="block text-sm font-medium">Payment method<select name="payment_method" class="input mt-1 w-full"><option value="card">Card through GuestHub</option><option value="manual">External / manual payment</option></select></label>
                                 <label class="block text-sm font-medium">Manual payment method<select name="host_payment_method_id" class="input mt-1 w-full"><option value="">Choose a method</option>@foreach($paymentMethods as $method)<option value="{{ $method->id }}">{{ $method->label }}</option>@endforeach</select></label>
                                 <label class="block text-sm font-medium">Offer acceptance deadline<input type="datetime-local" name="accept_by" required min="{{ now()->format('Y-m-d\\TH:i') }}" value="{{ old('accept_by', now()->addDays(3)->format('Y-m-d\\TH:i')) }}" class="input mt-1 w-full"></label>
