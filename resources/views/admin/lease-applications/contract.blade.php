@@ -27,7 +27,7 @@
                         <label class="block text-sm font-medium">Monthly rent (USD)<input type="number" name="monthly_rent" min="0.01" step="0.01" required value="{{ old('monthly_rent') }}" class="input mt-1 w-full" placeholder="1500.00"></label>
                         <label class="block text-sm font-medium">Security deposit (USD)<input type="number" name="deposit" min="0" step="0.01" value="{{ old('deposit', '0.00') }}" class="input mt-1 w-full"></label>
                         <label class="block text-sm font-medium">Other fees (USD)<input type="number" name="fees" min="0" step="0.01" value="{{ old('fees', '0.00') }}" class="input mt-1 w-full"></label>
-                        <label class="block text-sm font-medium sm:col-span-2">Amount due before confirmation (USD)<input type="number" name="initial_due" min="0.01" step="0.01" required value="{{ old('initial_due') }}" class="input mt-1 w-full" placeholder="3000.00"><span class="mt-1 block text-xs text-slate-500">Must cover the deposit, additional fees and at least one full month of rent.</span></label>
+                        <div class="rounded-lg bg-slate-50 p-3 text-sm text-slate-600 sm:col-span-2"><strong class="text-slate-900">Initial payment is calculated automatically.</strong> The tenant pays the first month’s rent, security deposit and additional fees together in one payment. Remaining rent is scheduled monthly.</div>
                         <label class="block text-sm font-medium sm:col-span-2">Offer acceptance deadline<input type="datetime-local" name="accept_by" required min="{{ now()->format('Y-m-d\TH:i') }}" value="{{ old('accept_by', now()->addDays(3)->format('Y-m-d\TH:i')) }}" class="input mt-1 w-full"></label>
                     </div>
                 </section>
