@@ -457,7 +457,6 @@
             const leaseApplyLink = document.getElementById('lease-apply-link');
             const leaseDirectLink = document.getElementById('lease-direct-link');
             const leaseEnabled = @json((bool) ($listing->lease_enabled && ($listing->listing_type ?? 'both') !== 'short_term' && \App\Services\FeatureGate::enabled($listing->property->owner, 'lease_applications')));
-            const leaseMandatory = @json((bool) (($listing->listing_type ?? 'both') === 'long_term' || ($listing->lease_enabled && ($listing->listing_type ?? 'both') !== 'short_term' && $listing->lease_auto_route_29_nights)));
             let directCheckoutUrl = '';
             leaseChoice?.querySelector('[data-lease-choice-close]')?.addEventListener('click', () => leaseChoice.close());
             leaseDirectLink?.addEventListener('click', () => { leaseChoice.close(); if (directCheckoutUrl) window.location.href = directCheckoutUrl; });
@@ -505,14 +504,6 @@
                     const nights = Math.round((Date.parse(checkOut.value + 'T00:00:00Z') - Date.parse(checkIn.value + 'T00:00:00Z')) / 86400000);
                     directCheckoutUrl = document.getElementById('checkout-link').href;
                     if (nights >= 29 && leaseEnabled) {
-                        if (leaseMandatory) {
-                            const leaseUrl = @json(route('public.lease-application.apply', $listing->listing_slug))
-                                + '?check_in=' + encodeURIComponent(checkIn.value)
-                                + '&check_out=' + encodeURIComponent(checkOut.value)
-                                + '&guests=' + encodeURIComponent(guests);
-                            window.location.href = leaseUrl;
-                            return;
-                        }
                         leaseApplyLink.href = @json(route('public.lease-application.apply', $listing->listing_slug))
                             + '?check_in=' + encodeURIComponent(checkIn.value)
                             + '&check_out=' + encodeURIComponent(checkOut.value)
