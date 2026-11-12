@@ -95,7 +95,7 @@ class LeaseApplicationAdminController extends Controller
             Mail::to($application->applicant_email)->send(new DirectBookingMail(
                 'Your rental offer is ready',
                 'The host has prepared a rental offer for '.$application->listing->public_title.'. Review the dates, payment schedule and agreement, then sign before the acceptance deadline.',
-                route('public.lease-offer.show', [$application->id, $offer->token]),
+                route('public.lease-offer.show', [$application->id, $application->token, $offer->token]),
                 'Review rental offer',
             ));
         } catch (\\Throwable $e) { report($e); }
