@@ -90,7 +90,7 @@
         @elseif(in_array($offer->status, ['signed', 'confirmed'], true))
             <section class="lease-card">
                 <h2 style="font-size:1.15rem;font-weight:750">{{ $offer->status === 'confirmed' ? 'Next rental payment' : 'Initial payment' }}</h2>
-                @if($offer->payment_method === 'manual')
+                @if($nextInstallment && $offer->payment_method === 'manual')
                     <p class="lease-muted">Send {{ $nextInstallment ? $money($nextInstallment->amount_cents) : $money($offer->initial_due_cents) }} using the host's payment method. Include your application reference <strong>{{ $offer->application_id }}</strong>. The host records each payment after receiving it.</p>
                     @if($offer->hostPaymentMethod)
                         <p style="margin-top:12px"><strong>{{ $offer->hostPaymentMethod->label }}</strong><br>{{ $offer->hostPaymentMethod->handle }}</p>
@@ -104,7 +104,10 @@
                         <button id="lease-pay-button" class="lease-button" style="margin-top:12px">Pay {{ $money($nextInstallment->amount_cents) }}</button>
                     </form>
                 @endif
-                @if($offer->installments->where('required_at_signing', true)->every(fn($i) => $i->isSettled()))
+                @if($offer->status === 'confirmed' && !$nextInstallment)
+                    <p class="lease-muted">Your rental is confirmed. You can now use your guest portal for check-in, parking, documents and stay information.</p>
+                    @if($offer->booking)<a class="lease-button" style="display:block;text-align:center;text-decoration:none;margin-top:12px" href="{{ route('guest.show', [$offer->booking->booking_id, $offer->booking->token]) }}">Open guest portal</a>@endif
+                @elseif($offer->status === 'signed' && $offer->installments->where('required_at_signing', true)->every(fn($i) => $i->isSettled()))
                     <p class="lease-muted">All required initial payments are recorded. Your reservation confirmation is being finalized.</p>
                 @endif
             </section>
