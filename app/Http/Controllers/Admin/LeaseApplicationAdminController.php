@@ -34,7 +34,7 @@ class LeaseApplicationAdminController extends Controller
         $paymentMethods = HostPaymentMethod::query()->where('owner_id', $application->property->owner_id)->where('enabled', true)->orderBy('id')->get();
         $leaseTemplate = app(\App\\Services\\LeaseAgreementService::class)->templateFor($application->property);
 
-        return view('admin.lease-applications.show', compact('application', 'paymentMethods', 'leaseTemplate'));
+        return view('admin.lease-applications.show', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
     }
 
     public function update(
