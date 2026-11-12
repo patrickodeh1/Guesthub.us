@@ -22,8 +22,8 @@ class DirectBookingController extends Controller
             return redirect()->route('public.lease-application.apply', $listingSlug);
         }
         if ($listing->lease_enabled && $listing->lease_auto_route_29_nights && $request->filled('check_in') && $request->filled('check_out')) {
-            try { $nights = \\Carbon\\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\\Carbon\\Carbon::parse($request->query('check_out'))->startOfDay()); }
-            catch (\\Throwable $e) { $nights = 0; }
+            try { $nights = \Carbon\Carbon::parse($request->query('check_in'))->startOfDay()->diffInDays(\Carbon\Carbon::parse($request->query('check_out'))->startOfDay()); }
+            catch (\Throwable $e) { $nights = 0; }
             if ($nights >= 29) {
                 return redirect()->route('public.lease-application.apply', $listingSlug, 302)->with('lease_prefill', [
                     'check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1),
