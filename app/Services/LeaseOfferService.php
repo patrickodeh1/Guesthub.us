@@ -161,6 +161,232 @@ class LeaseOfferService
         $this->confirmIfReady($offer);
     }
 
+
+    public function cancel(LeaseOffer $offer, int $hostId, string $reason = ''): void
+    {
+        abort_unless((int) $offer->property->owner_id === $hostId || auth()->user()?->hasRole('admin'), 403);
+        abort_unless(in_array($offer->status, [LeaseOffer::STATUS_SENT, LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true), 409);
+        DB::transaction(function () use ($offer, $reason): void {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($locked->status, [LeaseOffer::STATUS_SENT, LeaseOffer::STATUS_SIGNED, LeaseOffer::STATUS_CONFIRMED], true), 409);
+            $locked->update(['status' => LeaseOffer::STATUS_WITHDRAWN, 'withdrawn_at' => now(), 'declined_reason' => trim($reason) ?: 'Withdrawn by host']);
+            $locked->installments()->where('status', LeaseInstallment::STATUS_PENDING)->update(['status' => LeaseInstallment::STATUS_WAIVED]);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->first();
+            if ($booking) $booking->update(['status' => 'cancelled', 'cancelled_at' => now(), 'hold_expires_at' => null]);
+        });
+        if ($offer->booking) app(AvailabilityLedger::class)->syncBooking($offer->booking->fresh());
+    }
+
+    public function renderContract(LeaseOffer $offer): string
+    {
+        $schedule = '<table><tbody>';
+        foreach ($offer->installments as $item) {
+            $schedule .= '<tr><td>'.e($item->label).' · '.e($item->due_date->format('M j, Y')).'</td><td>LeaseOffer $offer): bool
+    {
+        $offer->loadMissing(['installments', 'booking']);
+        if (! $offer->isFullySigned() || $offer->status === LeaseOffer::STATUS_CONFIRMED) return false;
+        $required = $offer->installments->where('required_at_signing', true);
+        if ($required->isEmpty() || $required->contains(fn ($i) => ! $i->isSettled())) return false;
+
+        $confirmed = BookingConflictService::withPropertyLock((int) $offer->property_id, function () use ($offer): bool {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
+            BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
+            $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
+            return true;
+        });
+        if ($confirmed) {
+            $booking = $offer->booking->fresh(['property']);
+            app(AvailabilityLedger::class)->syncBooking($booking);
+            try {
+                \Illuminate\Support\Facades\Mail::to($booking->email)->send(new \App\Mail\DirectBookingMail(
+                    'Your rental is confirmed',
+                    'Your lease agreement has been signed and the required initial payment has been received. Your guest portal is ready.',
+                    route('guest.show', [$booking->booking_id, $booking->token]),
+                    'Open guest portal',
+                ));
+            } catch (\Throwable $e) { report($e); }
+        }
+        return $confirmed;
+    }
+}
+.number_format($item->amount_cents / 100, 2).'</td></tr>';
+        }
+        $schedule .= '</tbody></table>';
+        $values = [
+            '[[applicant_name]]' => e($offer->application->applicant_name),
+            '[[host_name]]' => e($offer->property->owner?->host_name ?: $offer->property->owner?->name),
+            '[[property_name]]' => e($offer->property->name),
+            '[[property_address]]' => e((string) ($offer->property->address ?? '')),
+            '[[start_date]]' => e($offer->start_date->format('M j, Y')),
+            '[[end_date]]' => e($offer->end_date->format('M j, Y')),
+            '[[nights]]' => (string) $offer->nights(),
+            '[[monthly_rent]]' => 'LeaseOffer $offer): bool
+    {
+        $offer->loadMissing(['installments', 'booking']);
+        if (! $offer->isFullySigned() || $offer->status === LeaseOffer::STATUS_CONFIRMED) return false;
+        $required = $offer->installments->where('required_at_signing', true);
+        if ($required->isEmpty() || $required->contains(fn ($i) => ! $i->isSettled())) return false;
+
+        $confirmed = BookingConflictService::withPropertyLock((int) $offer->property_id, function () use ($offer): bool {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
+            BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
+            $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
+            return true;
+        });
+        if ($confirmed) {
+            $booking = $offer->booking->fresh(['property']);
+            app(AvailabilityLedger::class)->syncBooking($booking);
+            try {
+                \Illuminate\Support\Facades\Mail::to($booking->email)->send(new \App\Mail\DirectBookingMail(
+                    'Your rental is confirmed',
+                    'Your lease agreement has been signed and the required initial payment has been received. Your guest portal is ready.',
+                    route('guest.show', [$booking->booking_id, $booking->token]),
+                    'Open guest portal',
+                ));
+            } catch (\Throwable $e) { report($e); }
+        }
+        return $confirmed;
+    }
+}
+.number_format($offer->monthly_rent_cents / 100, 2),
+            '[[deposit]]' => 'LeaseOffer $offer): bool
+    {
+        $offer->loadMissing(['installments', 'booking']);
+        if (! $offer->isFullySigned() || $offer->status === LeaseOffer::STATUS_CONFIRMED) return false;
+        $required = $offer->installments->where('required_at_signing', true);
+        if ($required->isEmpty() || $required->contains(fn ($i) => ! $i->isSettled())) return false;
+
+        $confirmed = BookingConflictService::withPropertyLock((int) $offer->property_id, function () use ($offer): bool {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
+            BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
+            $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
+            return true;
+        });
+        if ($confirmed) {
+            $booking = $offer->booking->fresh(['property']);
+            app(AvailabilityLedger::class)->syncBooking($booking);
+            try {
+                \Illuminate\Support\Facades\Mail::to($booking->email)->send(new \App\Mail\DirectBookingMail(
+                    'Your rental is confirmed',
+                    'Your lease agreement has been signed and the required initial payment has been received. Your guest portal is ready.',
+                    route('guest.show', [$booking->booking_id, $booking->token]),
+                    'Open guest portal',
+                ));
+            } catch (\Throwable $e) { report($e); }
+        }
+        return $confirmed;
+    }
+}
+.number_format($offer->deposit_cents / 100, 2),
+            '[[total]]' => 'LeaseOffer $offer): bool
+    {
+        $offer->loadMissing(['installments', 'booking']);
+        if (! $offer->isFullySigned() || $offer->status === LeaseOffer::STATUS_CONFIRMED) return false;
+        $required = $offer->installments->where('required_at_signing', true);
+        if ($required->isEmpty() || $required->contains(fn ($i) => ! $i->isSettled())) return false;
+
+        $confirmed = BookingConflictService::withPropertyLock((int) $offer->property_id, function () use ($offer): bool {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
+            BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
+            $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
+            return true;
+        });
+        if ($confirmed) {
+            $booking = $offer->booking->fresh(['property']);
+            app(AvailabilityLedger::class)->syncBooking($booking);
+            try {
+                \Illuminate\Support\Facades\Mail::to($booking->email)->send(new \App\Mail\DirectBookingMail(
+                    'Your rental is confirmed',
+                    'Your lease agreement has been signed and the required initial payment has been received. Your guest portal is ready.',
+                    route('guest.show', [$booking->booking_id, $booking->token]),
+                    'Open guest portal',
+                ));
+            } catch (\Throwable $e) { report($e); }
+        }
+        return $confirmed;
+    }
+}
+.number_format($offer->total_cents / 100, 2),
+            '[[initial_due]]' => 'LeaseOffer $offer): bool
+    {
+        $offer->loadMissing(['installments', 'booking']);
+        if (! $offer->isFullySigned() || $offer->status === LeaseOffer::STATUS_CONFIRMED) return false;
+        $required = $offer->installments->where('required_at_signing', true);
+        if ($required->isEmpty() || $required->contains(fn ($i) => ! $i->isSettled())) return false;
+
+        $confirmed = BookingConflictService::withPropertyLock((int) $offer->property_id, function () use ($offer): bool {
+            $locked = LeaseOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== LeaseOffer::STATUS_SIGNED || ! $locked->isFullySigned() || $locked->accept_by?->isPast()) return false;
+            BookingConflictService::assertFree((int) $locked->property_id, $locked->start_date, $locked->end_date, (int) $locked->booking_id);
+            $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
+            $booking->update([
+                'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
+                'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
+                'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
+            ]);
+            $locked->update(['status' => LeaseOffer::STATUS_CONFIRMED, 'confirmed_at' => now()]);
+            return true;
+        });
+        if ($confirmed) {
+            $booking = $offer->booking->fresh(['property']);
+            app(AvailabilityLedger::class)->syncBooking($booking);
+            try {
+                \Illuminate\Support\Facades\Mail::to($booking->email)->send(new \App\Mail\DirectBookingMail(
+                    'Your rental is confirmed',
+                    'Your lease agreement has been signed and the required initial payment has been received. Your guest portal is ready.',
+                    route('guest.show', [$booking->booking_id, $booking->token]),
+                    'Open guest portal',
+                ));
+            } catch (\Throwable $e) { report($e); }
+        }
+        return $confirmed;
+    }
+}
+.number_format($offer->initial_due_cents / 100, 2),
+            '[[payment_schedule]]' => $schedule,
+            '[[host_signed_name]]' => e((string) $offer->host_signed_name),
+            '[[host_signed_at]]' => e($offer->host_signed_at?->format('M j, Y')),
+            '[[tenant_signed_name]]' => e((string) $offer->guest_signed_name),
+            '[[tenant_signed_at]]' => e($offer->guest_signed_at?->format('M j, Y')),
+            '[[tenant_signed_ip]]' => e((string) $offer->guest_signed_ip),
+            '[[agreement_version]]' => e((string) $offer->contract_version),
+        ];
+        return strtr((string) $offer->contract_html, $values);
+    }
+
     public function confirmIfReady(LeaseOffer $offer): bool
     {
         $offer->loadMissing(['installments', 'booking']);
@@ -175,7 +401,7 @@ class LeaseOfferService
             $booking = Booking::query()->whereKey($locked->booking_id)->lockForUpdate()->firstOrFail();
             $booking->update([
                 'status' => 'pending', 'payment_confirmed_at' => now(), 'hold_expires_at' => null,
-                'contract_snapshot' => $locked->contract_html, 'contract_version' => $locked->contract_version,
+                'contract_snapshot' => $this->renderContract($locked), 'contract_version' => $locked->contract_version,
                 'contract_accepted_at' => $locked->guest_signed_at, 'contract_signed_name' => $locked->guest_signed_name,
                 'contract_signed_ip' => $locked->guest_signed_ip, 'contract_signed_user_agent' => $locked->guest_signed_user_agent,
             ]);
