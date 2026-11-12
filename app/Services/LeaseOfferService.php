@@ -55,7 +55,7 @@ class LeaseOfferService
             abort_unless($application->status === 'approved' && $application->fee_status === 'paid', 409);
             $ref = 'LS-'.strtoupper(Str::random(8));
             $booking = Booking::create([
-                'booking_id'=>$ref,'reservation_id'=>$ref,'source'=>'direct','booking_platform'=>'Direct',
+                'booking_id'=>$ref,'reservation_id'=>$ref,'source'=>'lease','booking_platform'=>'Lease',
                 'guest_name'=>$application->applicant_name,'phone'=>$application->applicant_phone,'email'=>$application->applicant_email,
                 'property_id'=>$application->property_id,'token'=>Str::random(48),'check_in_date'=>$start->toDateString(),
                 'check_out_date'=>$end->toDateString(),'status'=>Booking::STATUS_PENDING_PAYMENT,
