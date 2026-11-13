@@ -30,6 +30,7 @@ class DirectBookingController extends Controller
 
         return view('public.checkout', [
             'listing' => $listing,
+            'quoteUrl' => route('public.listing.quote', $listing->listing_slug),
             'canCard' => $canCard,
             'manualMethods' => $manualMethods,
             'minimumDate' => now($this->timezone($listing->property->timezone))->toDateString(),
