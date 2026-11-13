@@ -10,7 +10,7 @@
         <div>
             <p class="eyebrow">Direct booking</p>
             <h1 class="page-title">Packages</h1>
-            <p class="page-subtitle">Each package adds features on top of the one it builds on. Billing is not connected yet, so nothing is charged.</p>
+            <p class="page-subtitle">Each package adds features on top of the one it builds on. Hosts can subscribe from Settings → Plan; feature prices also support à la carte add-ons.</p>
         </div>
     </div>
 
