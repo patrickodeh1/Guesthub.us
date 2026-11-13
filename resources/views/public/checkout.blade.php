@@ -180,8 +180,10 @@
             const quoteLines = document.getElementById('quote-lines');
             const quoteTotal = document.getElementById('sum-total');
             const quoteStatus = document.getElementById('quote-status');
+            const submitButton = document.getElementById('co-submit');
             let quoteController = null;
             let quoteSequence = 0;
+            let quoteValid = false;
             const fmt = (v) => v ? new Date(v + 'T00:00:00').toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : null;
             const money = new Intl.NumberFormat(undefined, {style: 'currency', currency: 'USD'});
 
@@ -211,6 +213,8 @@
             }
             async function updateQuote() {
                 const sequence = ++quoteSequence;
+                quoteValid = false;
+                submitButton.disabled = true;
                 if (quoteController) quoteController.abort();
                 quoteController = null;
                 quoteLines.replaceChildren();
@@ -253,6 +257,8 @@
                     });
                     quoteTotal.textContent = money.format(data.total_cents / 100);
                     quoteStatus.textContent = data.nights + (data.nights === 1 ? ' night' : ' nights') + ' · Final availability is checked again when you submit.';
+                    quoteValid = true;
+                    submitButton.disabled = false;
                 } catch (error) {
                     if (error.name !== 'AbortError' && sequence === quoteSequence) {
                         quoteTotal.textContent = 'Unable to calculate';
@@ -265,6 +271,11 @@
             refresh();
 
             form.addEventListener('submit', (e) => {
+                if (!quoteValid) {
+                    e.preventDefault();
+                    err.textContent = 'Wait for the stay total to finish calculating before continuing.';
+                    return;
+                }
                 if (ci.value && co.value && co.value <= ci.value) {
                     e.preventDefault();
                     err.textContent = 'Check-out must be after check-in.';
