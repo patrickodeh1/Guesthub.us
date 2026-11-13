@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('cleaning_session_id')->constrained('cleaning_sessions')->cascadeOnDelete();
             $table->foreignId('inventory_item_id')->constrained('inventory_items')->cascadeOnDelete();
             $table->foreignId('from_location_id')->nullable()->constrained('inventory_locations')->nullOnDelete();
-            $table->foreignId('guest_location_id')->constrained('inventory_locations')->cascadeOnDelete();
+            $table->foreignId('guest_location_id')->nullable()->constrained('inventory_locations')->nullOnDelete();
             $table->foreignId('recorded_by')->nullable()->constrained('users')->nullOnDelete();
             $table->decimal('quantity_available', 12, 3);
             $table->decimal('quantity_taken', 12, 3)->default(0);
