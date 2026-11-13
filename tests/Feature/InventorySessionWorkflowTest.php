@@ -109,4 +109,39 @@ class InventorySessionWorkflowTest extends TestCase
 
         $this->actingAs($cleaner)->get(route('sessions.inventory', $session))->assertForbidden();
     }
+
+    public function test_cleaner_inventory_screen_explains_the_restock_steps_and_uses_mobile_item_cards(): void
+    {
+        Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
+        $owner = User::factory()->create();
+        $cleaner = User::factory()->create();
+        $cleaner->assignRole('housekeeper');
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $closet = InventoryLocation::create(['property_id' => $property->id, 'name' => 'Supply closet']);
+        InventoryLocation::create(['property_id' => $property->id, 'name' => 'Guest bathroom']);
+        InventoryItem::create([
+            'property_id' => $property->id,
+            'name' => 'Bath towels',
+            'category' => 'guest_supply',
+            'unit_of_measure' => 'each',
+            'default_location_id' => $closet->id,
+        ]);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => $owner->id,
+            'housekeeper_id' => $cleaner->id,
+            'status' => 'in_progress',
+            'scheduled_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($cleaner)
+            ->get(route('sessions.inventory', $session))
+            ->assertOk()
+            ->assertSee('How this works')
+            ->assertSee('How much is currently in the guest area?')
+            ->assertSee('How much are you taking to refill it?')
+            ->assertSee('Supply closet')
+            ->assertSee('0.5 = half a bottle or roll');
+    }
+
 }
