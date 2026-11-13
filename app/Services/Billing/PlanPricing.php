@@ -12,7 +12,7 @@ class PlanPricing
      * A feature's own price is only charged when the package does not include it.
      * Free and inactive features, and features priced at 0, are never charged.
      *
-     * @param array<string,int> $addons feature key => quantity (selected ones only)
+     * @param array<string,int> $addons feature key => billable quantity; 0 preserves a selection without a paid line
      * @return array{lines: array<int,array{type:string,key:?string,name:string,unit_cents:int,quantity:int}>, total_cents:int}
      */
     public static function quote(?Package $package, array $addons = []): array
