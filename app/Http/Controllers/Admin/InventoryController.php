@@ -362,7 +362,11 @@ class InventoryController extends Controller
                 throw ValidationException::withMessages(['from_location_id' => 'Choose the stock location to take items from.']);
             }
             $fromLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['from_location_id']);
-            abort_unless(! $fromLocation->is($guestLocation), 422, 'Choose a different stock closet and guest location.');
+            if ($fromLocation->is($guestLocation)) {
+                throw ValidationException::withMessages([
+                    'from_location_id' => 'Choose two different locations: take stock from the supply closet and add it to the guest area.',
+                ]);
+            }
         }
 
         DB::transaction(function () use ($request, $session, $item, $guestLocation, $fromLocation, $data, $stock) {
