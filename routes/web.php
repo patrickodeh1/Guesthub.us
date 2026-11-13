@@ -259,15 +259,15 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
 
     // ─── Property inventory ──────────────────────────────────────────────────
     Route::middleware('role:admin,owner,company,manager')->prefix('inventory')->name('inventory.')->group(function () {
-        Route::get('/', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'index'])->name('index');
-        Route::post('items', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'storeItem'])->name('items.store');
-        Route::put('items/{item}', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'updateItem'])->name('items.update');
-        Route::post('locations', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'storeLocation'])->name('locations.store');
-        Route::post('receive', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'receive'])->name('receive');
-        Route::post('transfer', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'transfer'])->name('transfer');
-        Route::post('consume', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'consume'])->name('consume');
-        Route::post('loss', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'loss'])->name('loss');
-        Route::post('adjust', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'adjust'])->middleware('role:admin,owner,company')->name('adjust');
+        Route::get('/', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('index');
+        Route::post('items', [\App\Http\Controllers\Admin\InventoryController::class, 'storeItem'])->name('items.store');
+        Route::put('items/{item}', [\App\Http\Controllers\Admin\InventoryController::class, 'updateItem'])->name('items.update');
+        Route::post('locations', [\App\Http\Controllers\Admin\InventoryController::class, 'storeLocation'])->name('locations.store');
+        Route::post('receive', [\App\Http\Controllers\Admin\InventoryController::class, 'receive'])->name('receive');
+        Route::post('transfer', [\App\Http\Controllers\Admin\InventoryController::class, 'transfer'])->name('transfer');
+        Route::post('consume', [\App\Http\Controllers\Admin\InventoryController::class, 'consume'])->name('consume');
+        Route::post('loss', [\App\Http\Controllers\Admin\InventoryController::class, 'loss'])->name('loss');
+        Route::post('adjust', [\App\Http\Controllers\Admin\InventoryController::class, 'adjust'])->middleware('role:admin,owner,company')->name('adjust');
     });
 
     // ─── Guest Guide (per-property categories) ──────────────────────────────
@@ -748,8 +748,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::get('/sessions', [CleaningSessionController::class, 'index'])->name('sessions.index');
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
-    Route::get('/sessions/{session}/inventory', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'sessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory');
-    Route::post('/sessions/{session}/inventory', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'recordSessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory.record');
+    Route::get('/sessions/{session}/inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'sessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory');
+    Route::post('/sessions/{session}/inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'recordSessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory.record');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
     Route::post('/sessions/{session}/cancel-assignment', [SessionController::class, 'cancelAssignment'])->name('sessions.cancel-assignment');
