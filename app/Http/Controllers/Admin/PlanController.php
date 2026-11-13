@@ -22,6 +22,21 @@ class PlanController extends Controller
      * @param array<int,string> $excluded
      * @return array<string,int>
      */
+    private function ensureRecurringLine(Package $package, array $quote): array
+    {
+        if ($quote['lines'] === [] && (int) $package->price_cents <= 0) {
+            $quote['lines'][] = [
+                'type' => 'package',
+                'key' => $package->key,
+                'name' => $package->name,
+                'unit_cents' => 0,
+                'quantity' => 1,
+            ];
+        }
+
+        return $quote;
+    }
+
     private function selectedAddons(Request $request, User $user, array $excluded = []): array
     {
         $request->validate([
@@ -153,8 +168,8 @@ class PlanController extends Controller
         }
 
         $addons = $this->selectedAddons($request, $request->user(), $hp->package->allFeatureKeys());
-        $quote = PlanPricing::quote($hp->package, $addons);
-        if ($quote['total_cents'] <= 0) {
+        $quote = $this->ensureRecurringLine($hp->package, PlanPricing::quote($hp->package, $addons));
+        if ($quote['lines'] === []) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
         }
 
@@ -190,8 +205,8 @@ class PlanController extends Controller
 
         $included = $package->allFeatureKeys();
         $addons = $this->selectedAddons($request, $request->user(), $included);
-        $quote = PlanPricing::quote($package, $addons);
-        if ($quote['total_cents'] <= 0) {
+        $quote = $this->ensureRecurringLine($package, PlanPricing::quote($package, $addons));
+        if ($quote['lines'] === []) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
         }
 
