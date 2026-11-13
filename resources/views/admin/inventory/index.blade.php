@@ -104,7 +104,31 @@
                         <tbody class="divide-y">
                             @forelse($items as $item)
                                 <tr>
-                                    <td class="py-3 pr-4"><div class="flex items-center gap-3">@if($item->photo_path)<img src="{{ asset('storage/'.$item->photo_path) }}" alt="" class="h-10 w-10 rounded-lg object-cover">@endif<div><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div></div></div></td>
+                                    <td class="py-3 pr-4">
+                                        <div class="flex items-center gap-3">@if($item->photo_path)<img src="{{ asset('storage/'.$item->photo_path) }}" alt="" class="h-10 w-10 rounded-lg object-cover">@endif<div><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div></div></div>
+                                        <details class="mt-2">
+                                            <summary class="cursor-pointer text-xs font-medium text-slate-600">Edit item details</summary>
+                                            <form method="post" enctype="multipart/form-data" action="{{ route('admin.inventory.items.update', $item) }}" class="mt-3 grid min-w-[280px] gap-2 sm:grid-cols-2">
+                                                @csrf @method('put')
+                                                <label class="field-label">Name<input class="input" name="name" value="{{ $item->name }}" required></label>
+                                                <label class="field-label">Category<select class="input" name="category">@foreach(['guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'asset' => 'Fixed asset', 'other' => 'Other'] as $key => $label)<option value="{{ $key }}" @selected($item->category === $key)>{{ $label }}</option>@endforeach</select></label>
+                                                <label class="field-label">Unit<input class="input" name="unit_of_measure" value="{{ $item->unit_of_measure }}"></label>
+                                                <label class="field-label">SKU<input class="input" name="sku" value="{{ $item->sku }}"></label>
+                                                <label class="field-label">Barcode<input class="input" name="barcode" value="{{ $item->barcode }}"></label>
+                                                <label class="field-label">Supplier<input class="input" name="supplier" value="{{ $item->supplier }}"></label>
+                                                <label class="field-label">Manufacturer<input class="input" name="manufacturer" value="{{ $item->manufacturer }}"></label>
+                                                <label class="field-label">Model<input class="input" name="model" value="{{ $item->model }}"></label>
+                                                <label class="field-label">Model number<input class="input" name="model_number" value="{{ $item->model_number }}"></label>
+                                                <label class="field-label">Serial number<input class="input" name="serial_number" value="{{ $item->serial_number }}"></label>
+                                                <label class="field-label">Unit cost<input class="input" type="number" min="0" step="0.01" name="unit_cost" value="{{ $item->unit_cost }}"></label>
+                                                <label class="field-label">Reorder level<input class="input" type="number" min="0" step="0.001" name="reorder_level" value="{{ $item->reorder_level }}"></label>
+                                                <label class="field-label sm:col-span-2">Default location<select class="input" name="default_location_id"><option value="">Not set</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected($item->default_location_id === $location->id)>{{ $location->name }}</option>@endforeach</select></label>
+                                                <label class="field-label sm:col-span-2">Replace photo<input class="input" type="file" name="photo" accept="image/*"></label>
+                                                <label class="field-label sm:col-span-2">Notes<textarea class="input" name="notes" rows="2">{{ $item->notes }}</textarea></label>
+                                                <div class="sm:col-span-2"><button class="btn-secondary">Save item</button></div>
+                                            </form>
+                                        </details>
+                                    </td>
                                     <td class="py-3 pr-4">{{ ['asset' => 'Fixed asset', 'guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'other' => 'Other'][$item->category] ?? 'Other' }}</td>
                                     <td class="py-3 pr-4"><div class="flex flex-wrap gap-2">@foreach($item->stocks as $balance)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs">{{ $balance->location->name }}: {{ number_format((float) $balance->quantity, 3) }}</span>@endforeach</div></td>
                                     <td class="py-3 pr-4 text-right font-semibold {{ $item->is_low_stock ? 'text-amber-700' : '' }}">{{ number_format((float) $item->quantity_on_hand, 3) }} {{ $item->unit_of_measure }}</td>
