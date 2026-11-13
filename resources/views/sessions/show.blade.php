@@ -104,6 +104,18 @@
         </div>
     @else
 
+@if($session->status === 'in_progress' && ! request()->has('edit_report'))
+    <div class="mx-4 mt-4 rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h3 class="font-semibold text-gray-900">Guest supplies</h3>
+                <p class="mt-1 text-sm text-gray-500">Record what is already in each guest area and what you replenish from the supply closet.</p>
+            </div>
+            <a href="{{ route('sessions.inventory', $session) }}" class="btn-secondary">Record inventory</a>
+        </div>
+    </div>
+@endif
+
 @php
     $queryParams = [];
     if (request()->has('edit_report')) {
