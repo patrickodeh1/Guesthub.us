@@ -136,7 +136,8 @@ class DirectBookingCheckoutTest extends TestCase
         $checkIn = now('America/Los_Angeles')->addDays(9)->toDateString();
         $checkOut = now('America/Los_Angeles')->addDays(11)->toDateString();
 
-        $this->get(route('public.checkout.show', $this->listing->listing_slug, [
+        $this->get(route('public.checkout.show', [
+            'listing_slug' => $this->listing->listing_slug,
             'check_in' => $checkIn,
             'check_out' => $checkOut,
             'guests' => 2,
