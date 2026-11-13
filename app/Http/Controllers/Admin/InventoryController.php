@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryMovement;
+use App\Models\CleaningSession;
 use App\Models\Property;
 use App\Services\Inventory\InventoryStockService;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class InventoryController extends Controller
 
         $locations = InventoryLocation::query()->where('property_id', $property->id)->orderBy('name')->get();
         $movements = InventoryMovement::query()->where('property_id', $property->id)
-            ->with(['item', 'fromLocation', 'toLocation', 'recorder'])
+            ->with(['item', 'fromLocation', 'toLocation', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout'])
             ->latest('occurred_at')->limit(30)->get();
 
         return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements'));
@@ -67,8 +68,13 @@ class InventoryController extends Controller
             'reorder_level' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'default_location_id' => ['nullable', 'integer', Rule::exists('inventory_locations', 'id')->where('property_id', $property->id)],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'photo' => ['nullable', 'image', 'max:5120'],
         ]);
 
+        if ($request->hasFile('photo')) {
+            $data['photo_path'] = $request->file('photo')->store('inventory', 'public');
+        }
+        unset($data['photo']);
         InventoryItem::create($data + ['property_id' => $property->id]);
         return back()->with('success', 'Inventory item added.');
     }
@@ -91,9 +97,14 @@ class InventoryController extends Controller
             'reorder_level' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             'default_location_id' => ['nullable', 'integer', Rule::exists('inventory_locations', 'id')->where('property_id', $property->id)],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'photo' => ['nullable', 'image', 'max:5120'],
         ]);
 
         abort_unless((int) $item->property_id === (int) $property->id, 404);
+        if ($request->hasFile('photo')) {
+            $data['photo_path'] = $request->file('photo')->store('inventory', 'public');
+        }
+        unset($data['photo']);
         $item->update($data);
         return back()->with('success', 'Inventory item updated.');
     }
@@ -159,6 +170,12 @@ class InventoryController extends Controller
         $property = $this->property($request, (int) $data['property_id']);
         $item = InventoryItem::query()->where('property_id', $property->id)->findOrFail($data['item_id']);
         $location = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['location_id']);
+        if (! empty($data['cleaning_session_id'])) {
+            $session = CleaningSession::query()->where('property_id', $property->id)->findOrFail($data['cleaning_session_id']);
+            if ($request->user()->hasRole('housekeeper')) {
+                abort_unless((int) $session->housekeeper_id === (int) $request->user()->id && $session->status === 'in_progress', 403);
+            }
+        }
         $stock->consume($item, $location, (float) $data['quantity'], $request->user()->id, $data);
         return back()->with('success', 'Usage recorded.');
     }
