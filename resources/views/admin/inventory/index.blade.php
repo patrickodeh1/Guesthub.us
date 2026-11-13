@@ -286,8 +286,8 @@
                     const supplier = document.getElementById('po-supplier');
                     const unitCost = document.getElementById('po-unit-cost');
                     const quantity = document.getElementById('po-quantity');
-                    if (supplier && button.dataset.reorderSupplier) supplier.value = button.dataset.reorderSupplier;
-                    if (unitCost && button.dataset.reorderCost) unitCost.value = button.dataset.reorderCost;
+                    if (supplier) supplier.value = button.dataset.reorderSupplier || '';
+                    if (unitCost) unitCost.value = button.dataset.reorderCost || '';
                     if (quantity && Number(button.dataset.reorderQuantity) > 0) quantity.value = button.dataset.reorderQuantity;
                     document.getElementById('create-purchase-order')?.scrollIntoView({behavior: 'smooth', block: 'start'});
                 });
