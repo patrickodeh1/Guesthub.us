@@ -146,7 +146,6 @@ class PublicListingController extends Controller
         return response()->view('public.embed', [
             'listing' => $listing,
             'quoteUrl' => route('public.listing.quote', $listing->listing_slug),
-            'checkoutUrl' => route('public.checkout.start', $listing->listing_slug),
             'canCard' => $canCard,
             'manualMethods' => $manualMethods,
             'minimumDate' => now($this->timezone($listing->property->timezone))->toDateString(),
