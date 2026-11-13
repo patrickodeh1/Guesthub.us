@@ -90,10 +90,11 @@ class SyncBillingResourceQuantitiesTest extends TestCase
         $billing = Mockery::mock(BillingService::class);
         $billing->shouldReceive('changeAddons')
             ->once()
-            ->withArgs(function (HostPackage $actualPlan, array $quote, ?Package $actualPackage) use ($plan, $package) {
+            ->withArgs(function (HostPackage $actualPlan, array $quote, ?Package $actualPackage, array $addons) use ($plan, $package) {
                 return $actualPlan->is($plan)
                     && $actualPackage?->is($package)
-                    && collect($quote['lines'])->contains(fn ($line) => $line['key'] === 'test-per-property' && $line['quantity'] === 2);
+                    && collect($quote['lines'])->contains(fn ($line) => $line['key'] === 'test-per-property' && $line['quantity'] === 2)
+                    && ($addons['test-per-property'] ?? null) === 2;
             })
             ->andReturn($subscription);
         $this->app->instance(BillingService::class, $billing);
