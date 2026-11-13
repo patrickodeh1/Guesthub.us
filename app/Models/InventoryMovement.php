@@ -10,12 +10,12 @@ class InventoryMovement extends Model
     protected $fillable = [
         'property_id', 'inventory_item_id', 'from_location_id', 'to_location_id',
         'recorded_by', 'cleaning_session_id', 'movement_type', 'quantity',
-        'reference', 'notes', 'occurred_at',
+        'reference', 'supplier', 'ordered_at', 'notes', 'occurred_at',
     ];
 
     protected function casts(): array
     {
-        return ['quantity' => 'decimal:3', 'occurred_at' => 'datetime'];
+        return ['quantity' => 'decimal:3', 'ordered_at' => 'date', 'occurred_at' => 'datetime'];
     }
 
     public function item(): BelongsTo
