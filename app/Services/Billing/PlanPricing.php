@@ -35,7 +35,10 @@ class PlanPricing
             if (in_array($f->key, $included, true) || (int) $f->price_cents <= 0) {
                 continue;
             }
-            $qty = ($f->billing_unit ?: 'flat') === 'flat' ? 1 : max(1, (int) $addons[$f->key]);
+            $qty = ($f->billing_unit ?: 'flat') === 'flat' ? 1 : max(0, (int) $addons[$f->key]);
+            if ($qty < 1) {
+                continue;
+            }
             $lines[] = ['type' => 'addon', 'key' => $f->key, 'name' => $f->name, 'unit_cents' => (int) $f->price_cents, 'quantity' => $qty];
         }
 
