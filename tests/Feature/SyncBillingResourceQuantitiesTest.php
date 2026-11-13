@@ -54,32 +54,20 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $subscription = new class($owner->id, $package->id, $feature->key) {
-            public string $id = 'sub_free';
-            public string $status = 'active';
-            public string $customer = 'cus_free';
-            public ?int $current_period_end = null;
-            public ?int $trial_end = null;
-            public bool $cancel_at_period_end = false;
-            public object $metadata;
-            public object $items;
-
-            public function __construct(private int $userId, private int $packageId, private string $featureKey)
-            {
-                $this->metadata = new class($userId, $packageId, $featureKey) {
-                    public function __construct(private int $userId, private int $packageId, private string $featureKey) {}
-                    public function toArray(): array
-                    {
-                        return [
-                            'user_id' => (string) $this->userId,
-                            'package_id' => (string) $this->packageId,
-                            'addons' => json_encode([$this->featureKey => 0]),
-                        ];
-                    }
-                };
-                $this->items = (object) ['data' => []];
-            }
-        };
+        $subscription = \\Stripe\\Subscription::constructFrom([
+            'id' => 'sub_free',
+            'status' => 'active',
+            'customer' => 'cus_free',
+            'current_period_end' => null,
+            'trial_end' => null,
+            'cancel_at_period_end' => false,
+            'metadata' => [
+                'user_id' => (string) $owner->id,
+                'package_id' => (string) $package->id,
+                'addons' => json_encode([$feature->key => 0]),
+            ],
+            'items' => ['data' => []],
+        ]);
 
         $billing = Mockery::mock(BillingService::class);
         $billing->shouldReceive('changeAddons')
@@ -147,32 +135,20 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $subscription = new class($owner->id, $package->id, $feature->key) {
-            public string $id = 'sub_test';
-            public string $status = 'active';
-            public string $customer = 'cus_test';
-            public ?int $current_period_end = null;
-            public ?int $trial_end = null;
-            public bool $cancel_at_period_end = false;
-            public object $metadata;
-            public object $items;
-
-            public function __construct(private int $userId, private int $packageId, private string $featureKey)
-            {
-                $this->metadata = new class($userId, $packageId, $featureKey) {
-                    public function __construct(private int $userId, private int $packageId, private string $featureKey) {}
-                    public function toArray(): array
-                    {
-                        return [
-                            'user_id' => (string) $this->userId,
-                            'package_id' => (string) $this->packageId,
-                            'addons' => json_encode([$this->featureKey => 2]),
-                        ];
-                    }
-                };
-                $this->items = (object) ['data' => []];
-            }
-        };
+        $subscription = \\Stripe\\Subscription::constructFrom([
+            'id' => 'sub_test',
+            'status' => 'active',
+            'customer' => 'cus_test',
+            'current_period_end' => null,
+            'trial_end' => null,
+            'cancel_at_period_end' => false,
+            'metadata' => [
+                'user_id' => (string) $owner->id,
+                'package_id' => (string) $package->id,
+                'addons' => json_encode([$feature->key => 2]),
+            ],
+            'items' => ['data' => []],
+        ]);
 
         $billing = Mockery::mock(BillingService::class);
         $billing->shouldReceive('changeAddons')
