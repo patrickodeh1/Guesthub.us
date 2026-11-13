@@ -43,7 +43,7 @@
             <div class="grid gap-5 xl:grid-cols-2">
                 <section class="card card-pad">
                     <h2 class="section-title">Add inventory item</h2>
-                    <form method="post" action="{{ route('admin.inventory.items.store') }}" class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <form method="post" enctype="multipart/form-data" action="{{ route('admin.inventory.items.store') }}" class="mt-4 grid gap-3 sm:grid-cols-2">
                         @csrf
                         <input type="hidden" name="property_id" value="{{ $property->id }}">
                         <label class="field-label sm:col-span-2">Item name<input class="input" name="name" required maxlength="160" placeholder="e.g. Bath towels"></label>
@@ -59,6 +59,7 @@
                         <label class="field-label">Unit cost<input class="input" type="number" name="unit_cost" min="0" step="0.01"></label>
                         <label class="field-label">Low-stock threshold<input class="input" type="number" name="reorder_level" min="0" step="0.001" value="0"></label>
                         <label class="field-label">Default location<select class="input" name="default_location_id"><option value="">Not set</option>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
+                        <label class="field-label sm:col-span-2">Photo<input class="input" type="file" name="photo" accept="image/*"></label>
                         <label class="field-label sm:col-span-2">Notes<textarea class="input" name="notes" rows="2"></textarea></label>
                         <div class="sm:col-span-2"><button class="btn-primary">Add item</button></div>
                     </form>
@@ -101,7 +102,7 @@
                         <tbody class="divide-y">
                             @forelse($items as $item)
                                 <tr>
-                                    <td class="py-3 pr-4"><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div></td>
+                                    <td class="py-3 pr-4"><div class="flex items-center gap-3">@if($item->photo_path)<img src="{{ asset('storage/'.$item->photo_path) }}" alt="" class="h-10 w-10 rounded-lg object-cover">@endif<div><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div></div></div></td>
                                     <td class="py-3 pr-4">{{ ['asset' => 'Fixed asset', 'guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'other' => 'Other'][$item->category] ?? 'Other' }}</td>
                                     <td class="py-3 pr-4"><div class="flex flex-wrap gap-2">@foreach($item->stocks as $balance)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs">{{ $balance->location->name }}: {{ number_format((float) $balance->quantity, 3) }}</span>@endforeach</div></td>
                                     <td class="py-3 pr-4 text-right font-semibold {{ $item->is_low_stock ? 'text-amber-700' : '' }}">{{ number_format((float) $item->quantity_on_hand, 3) }} {{ $item->unit_of_measure }}</td>
@@ -143,6 +144,31 @@
                     </form>
                 </section>
             </div>
+
+            <section class="card card-pad mt-5">
+                <div class="flex flex-wrap items-end justify-between gap-2">
+                    <div><h2 class="section-title">Usage by stay and cleaner</h2><p class="mt-1 text-sm text-slate-500">Recorded usage linked to a cleaning session, for the last 90 days.</p></div>
+                    <span class="text-xs text-slate-500">Up to 100 records</span>
+                </div>
+                <div class="mt-3 overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead><tr class="border-b text-left text-slate-500"><th class="py-3 pr-4">Date</th><th class="py-3 pr-4">Item</th><th class="py-3 pr-4">Quantity</th><th class="py-3 pr-4">Guest / stay</th><th class="py-3">Cleaner</th></tr></thead>
+                        <tbody class="divide-y">
+                            @forelse($usageMovements as $usage)
+                                <tr>
+                                    <td class="py-3 pr-4 whitespace-nowrap">{{ $usage->occurred_at?->format('M j, Y') }}</td>
+                                    <td class="py-3 pr-4">{{ $usage->item->name }}</td>
+                                    <td class="py-3 pr-4">{{ number_format((float) $usage->quantity, 3) }} {{ $usage->item->unit_of_measure }}</td>
+                                    <td class="py-3 pr-4">{{ $usage->cleaningSession?->guestLabel() ?: 'Stay not linked' }}</td>
+                                    <td class="py-3">{{ $usage->recorder?->name ?? 'Unknown' }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5" class="py-6 text-center text-slate-500">No usage has been linked to a cleaning session yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
             <section class="card card-pad mt-5">
                 <h2 class="section-title">Recent inventory activity</h2>
