@@ -37,11 +37,9 @@ class InventoryStockServiceTest extends TestCase
         $this->assertSame(6.0, (float) InventoryStock::where('inventory_item_id', $item->id)->where('inventory_location_id', $closet->id)->value('quantity'));
         $this->assertSame(3.5, (float) InventoryStock::where('inventory_item_id', $item->id)->where('inventory_location_id', $bathroom->id)->value('quantity'));
         $this->assertSame(3, InventoryMovement::where('inventory_item_id', $item->id)->count());
-        $this->assertDatabaseHas('inventory_movements', [
-            'inventory_item_id' => $item->id,
-            'movement_type' => 'consume',
-            'quantity' => '0.500',
-        ]);
+        $lastMovement = InventoryMovement::query()->where('inventory_item_id', $item->id)->latest('id')->firstOrFail();
+        $this->assertSame('consume', $lastMovement->movement_type);
+        $this->assertSame(0.5, (float) $lastMovement->quantity);
     }
 
     public function test_consumption_cannot_make_a_location_balance_negative(): void
