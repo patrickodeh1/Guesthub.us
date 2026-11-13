@@ -51,6 +51,7 @@
                     </label>
                     <label class="block text-sm font-medium text-gray-700">Guest area / destination
                         <select name="guest_location_id" required class="input mt-1 w-full">
+                            <option value="">Choose guest area</option>
                             @foreach($locations as $location)
                                 <option value="{{ $location->id }}">{{ $location->name }}</option>
                             @endforeach
