@@ -23,7 +23,7 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
 | 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | James: packages "should be next", inventory "now if not too much" |
-| 56 | Inventory categories and fields | doing | Initial property-scoped catalogue, locations, stock balances, receiving/transfers/usage/adjustments, fractional quantities, asset photos, low-stock threshold and session-linked usage report are on `feature/complete-client-scope`; cleaner-facing session workflow, item editing, alerts/reorder and end-to-end verification remain |
+| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view and per-stay/per-cleaner report. Automated reorder alerts, local migration/test run and UI verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
 | 71 | Lockbox photo steps, auto-advance, step order bugs | todo | Verify |
@@ -38,15 +38,18 @@ Done, in order:
 4. Admin Host billing `/admin/host-packages`: pick package, status, trial end, add-on features with quantity, monthly total preview. Admin only.
 5. Billing columns on `host_packages` (migration `..._180000_add_billing_to_host_packages`): billing_source (admin or stripe), stripe ids, period end, cancel flag, past_due_since. Grace period for past due: 7 days (`HostPackage::PAST_DUE_GRACE_DAYS`).
 
-Next, in order:
-1. Read `app/Http/Controllers/StripeWebhookController.php` and `app/Models/User.php` before touching billing. Do not break guest payments on that webhook.
-2. Host Plan page (owner and company roles only, not manager): choose package, start free trial, add-ons with quantity. Stripe Checkout in subscription mode with inline recurring prices built from the admin prices. Features turn on only after the webhook confirms trialing or active.
-3. Webhook sync for subscription events on the platform webhook (trial will end, invoice paid, payment failed). Rows with billing_source = admin are never changed by webhooks.
-4. Stripe billing portal for card update and cancel. Past due handling uses the 7-day grace.
-5. Test in Stripe test mode with the Stripe CLI forwarding webhooks. Keys are `sk_test_` now.
-6. Mark 80 and 58 done only after one trial start and one automatic charge work end to end.
+Implemented since the original package foundation:
+- Host Plan page for owner/company roles: package comparison, trial selection, add-on quantities, monthly quote, subscription management and billing portal.
+- `BillingService`: Stripe Checkout subscription flow, SetupIntent/subscription flow, add-on/plan updates and billing portal.
+- `SubscriptionSync`: subscription-created/updated/deleted handling, Stripe-managed package/add-on sync, and protection for admin-managed package rows.
+- Platform Stripe webhook dispatches subscription events while retaining existing guest PaymentIntent finalization.
+- Past-due grace period remains 7 days.
 
-Known issue: the `down()` in the billing migration only drops two indexes and leaves the columns. Fix before any production rollback.
+Still to verify:
+1. Run the plan and inventory tests locally.
+2. Verify Stripe test-mode trial start, webhook activation, automatic trial-end charge, failed-payment grace, card update and cancellation with Stripe CLI/test clock.
+3. Verify that property/device add-on quantities correspond to actual billable property and device counts; host UI currently accepts quantities rather than deriving them from connected inventory.
+4. Mark 80 and 58 done only after the end-to-end billing checks and James's acceptance.
 
 ## Other open items (small)
 
@@ -63,7 +66,8 @@ Known issue: the `down()` in the billing migration only drops two indexes and le
 
 ## Log
 
-- 2026-11-13: Started inventory implementation on `feature/complete-client-scope`: property-scoped inventory schema, stock movement service, management page, low-stock view and stock service tests. Local migration and feature tests still need to be run.
+- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added stock-service tests; local migrations, tests and UI checks remain outstanding.
+- 2026-11-13: Verified the host Plan, Stripe BillingService, SubscriptionSync and billing portal implementation exist in the feature branch. Stripe test-mode end-to-end trial and automatic charge remain unverified.
 
 - 2026-11-11: direct booking, lease, refund split, SEO fixes, notification templates (guest_refund_issued, host_card_paid), robots fix, packages data model and gate, admin Packages and Host billing pages, billing columns.
 
