@@ -86,17 +86,27 @@
         @if($shownAddons->isNotEmpty())
             <div class="card card-pad mb-6">
                 <h2 class="section-title">Add-ons</h2>
+                <p class="mt-1 text-xs text-slate-500">Per-property and per-device quantities are calculated from your active properties and connected smart locks.</p>
                 <div class="mt-3 grid gap-3">
                     @foreach($shownAddons as $f)
-                        @php $inPkg = in_array($f->key, $includedKeys, true) @endphp
-                        <div class="flex items-center justify-between gap-3 text-sm">
+                        @php
+                            $inPkg = in_array($f->key, $includedKeys, true);
+                            $unit = $f->billing_unit ?: 'flat';
+                            $quantity = $unit === 'flat' ? 1 : ($billingQuantities[$unit] ?? 0);
+                        @endphp
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg)>
-                                {{ $f->name }} <span class="text-slate-400">{{ $money($f->price_cents) }}{{ $unitLabels[$f->billing_unit ?: 'flat'] ?? '' }}</span>
+                                <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg || ($unit !== 'flat' && $quantity < 1))>
+                                {{ $f->name }} <span class="text-slate-400">{{ $money($f->price_cents) }}{{ $unitLabels[$unit] ?? '' }}</span>
                                 @if($inPkg)<span class="text-xs text-emerald-700">included</span>@endif
                             </label>
-                            @if(($f->billing_unit ?: 'flat') !== 'flat' && ! $inPkg)
-                                <input type="number" min="1" max="100000" name="addons[{{ $f->key }}][quantity]" value="{{ $addons[$f->key] ?? 1 }}" class="input w-24">
+                            @if($unit !== 'flat' && ! $inPkg)
+                                <span class="text-xs text-slate-500">{{ $quantity }}{{ $unitLabels[$unit] ?? '' }}</span>
+                                @if($quantity > 0)
+                                    <input type="hidden" name="addons[{{ $f->key }}][quantity]" value="{{ $quantity }}">
+                                @else
+                                    <span class="text-xs text-amber-700">Add a property or connect a device to enable</span>
+                                @endif
                             @endif
                         </div>
                     @endforeach
