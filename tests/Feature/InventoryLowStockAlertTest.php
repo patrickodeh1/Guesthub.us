@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Mail\InventoryLowStockMail;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
-use App\Models\InventoryStock;
 use App\Models\Property;
 use App\Models\User;
 use App\Services\Inventory\InventoryStockService;
