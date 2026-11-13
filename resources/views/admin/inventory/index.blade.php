@@ -74,7 +74,7 @@
                     <label class="field-label">Unit of measure<input class="input mt-1" name="unit_of_measure" maxlength="40" placeholder="each, bottle, roll, pack"><span class="mt-1 block text-xs font-normal text-slate-500">Use the unit your team counts. Fractions are supported.</span></label>
                     <label class="field-label">Photo<input class="input mt-1" type="file" name="photo" accept="image/*"></label>
                     <label class="field-label">Default stock location<select class="input mt-1" name="default_location_id"><option value="">Choose later</option>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
-                    <details class="rounded-xl border border-slate-200 p-4 sm:col-span-2"><summary class="cursor-pointer font-semibold text-sm">Identification details <span class="font-normal text-slate-500">· SKU, barcode and asset serial number</span></summary><div class="mt-4 grid gap-3 sm:grid-cols-2"><label class="field-label">SKU<input class="input mt-1" name="sku" maxlength="80" placeholder="Your internal item code"></label><label class="field-label">Barcode value<input class="input mt-1" name="barcode" maxlength="120" placeholder="Scan or enter the printed barcode"><span class="mt-1 block text-xs font-normal text-slate-500">A barcode is stored as text, not a numeric quantity. A scanner can enter its encoded value here.</span></label><label class="field-label">Manufacturer<input class="input mt-1" name="manufacturer" maxlength="120"></label><label class="field-label">Model<input class="input mt-1" name="model" maxlength="120"></label><label class="field-label">Model number<input class="input mt-1" name="model_number" maxlength="120"></label><label class="field-label">Serial number<input class="input mt-1" name="serial_number" maxlength="160"><span class="mt-1 block text-xs font-normal text-slate-500">Usually unique to one physical asset.</span></label></div></details>
+                    <details class="rounded-xl border border-slate-200 p-4 sm:col-span-2"><summary class="cursor-pointer font-semibold text-sm">Identification details <span class="font-normal text-slate-500">· SKU, barcode and asset serial number</span></summary><div class="mt-4 grid gap-3 sm:grid-cols-2"><label class="field-label">SKU<input class="input mt-1" name="sku" maxlength="80" placeholder="Your internal item code"></label><label class="field-label">Barcode value<div class="mt-1 flex gap-2"><input data-barcode-input class="input min-w-0 flex-1" name="barcode" maxlength="120" placeholder="Scan or enter the printed barcode"><button type="button" data-barcode-scan class="btn-secondary shrink-0">Scan</button></div><span class="mt-1 block text-xs font-normal text-slate-500">Stores the barcode's encoded text (including letters and leading zeroes). Scanning uses your device camera on supported browsers.</span></label><label class="field-label">Manufacturer<input class="input mt-1" name="manufacturer" maxlength="120"></label><label class="field-label">Model<input class="input mt-1" name="model" maxlength="120"></label><label class="field-label">Model number<input class="input mt-1" name="model_number" maxlength="120"></label><label class="field-label">Serial number<input class="input mt-1" name="serial_number" maxlength="160"><span class="mt-1 block text-xs font-normal text-slate-500">Usually unique to one physical asset.</span></label></div></details>
                     <details class="rounded-xl border border-slate-200 p-4 sm:col-span-2"><summary class="cursor-pointer font-semibold text-sm">Purchasing and reorder details <span class="font-normal text-slate-500">· optional</span></summary><div class="mt-4 grid gap-3 sm:grid-cols-2"><label class="field-label">Supplier / vendor<input class="input mt-1" name="supplier" maxlength="160"></label><label class="field-label">Unit cost<input class="input mt-1" type="number" name="unit_cost" min="0" step="0.01"></label><label class="field-label">Low-stock threshold<input class="input mt-1" type="number" name="reorder_level" min="0" step="0.001" value="0"><span class="mt-1 block text-xs font-normal text-slate-500">We'll flag the item when stock reaches this amount.</span></label></div></details>
                     <label class="field-label sm:col-span-2">Notes<textarea class="input mt-1" name="notes" rows="2" placeholder="Optional description or handling notes"></textarea></label>
                     <div class="sm:col-span-2 flex flex-wrap gap-2"><button class="btn-primary">Save item</button><a href="{{ route('admin.inventory.index', ['property_id' => $property->id, 'section' => 'items']) }}" class="btn-secondary">Cancel</a></div>
@@ -96,7 +96,7 @@
                                 <label class="field-label">Category<select class="input mt-1" name="category">@foreach($categoryNames as $key => $label)<option value="{{ $key }}" @selected($item->category === $key)>{{ $label }}</option>@endforeach</select></label>
                                 <label class="field-label">Unit<input class="input mt-1" name="unit_of_measure" value="{{ $item->unit_of_measure }}"></label>
                                 <label class="field-label">SKU<input class="input mt-1" name="sku" value="{{ $item->sku }}"></label>
-                                <label class="field-label">Barcode value<input class="input mt-1" name="barcode" value="{{ $item->barcode }}"></label>
+                                <label class="field-label">Barcode value<div class="mt-1 flex gap-2"><input data-barcode-input class="input min-w-0 flex-1" name="barcode" value="{{ $item->barcode }}"><button type="button" data-barcode-scan class="btn-secondary shrink-0">Scan</button></div></label>
                                 <label class="field-label">Supplier<input class="input mt-1" name="supplier" value="{{ $item->supplier }}"></label>
                                 <label class="field-label">Manufacturer<input class="input mt-1" name="manufacturer" value="{{ $item->manufacturer }}"></label>
                                 <label class="field-label">Model<input class="input mt-1" name="model" value="{{ $item->model }}"></label>
@@ -200,6 +200,83 @@
                 itemCards.forEach(card => card.classList.toggle('hidden', !card.dataset.itemSearch.includes(term)));
             });
             
+        })();
+    </script>
+    <dialog id="inventory-barcode-dialog" class="w-[min(92vw,30rem)] rounded-2xl border border-slate-200 p-0 shadow-xl backdrop:bg-slate-900/50">
+        <div class="p-4">
+            <div class="flex items-center justify-between gap-3"><h2 class="font-semibold">Scan product barcode</h2><button type="button" id="inventory-barcode-close" class="btn-secondary">Close</button></div>
+            <p id="inventory-barcode-status" class="mt-2 text-sm text-slate-600">Point your camera at the barcode.</p>
+            <video id="inventory-barcode-video" class="mt-3 aspect-video w-full rounded-xl bg-slate-950 object-cover" autoplay muted playsinline></video>
+            <p class="mt-2 text-xs text-slate-500">Camera access requires permission and a secure connection (HTTPS or localhost). If scanning is unavailable, type the barcode value instead.</p>
+        </div>
+    </dialog>
+    <script>
+        (() => {
+            const dialog = document.getElementById('inventory-barcode-dialog');
+            const video = document.getElementById('inventory-barcode-video');
+            const status = document.getElementById('inventory-barcode-status');
+            const close = document.getElementById('inventory-barcode-close');
+            let stream = null;
+            let frame = null;
+            let target = null;
+            let detector = null;
+            const stop = () => {
+                if (frame) cancelAnimationFrame(frame);
+                frame = null;
+                if (stream) stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                if (video) video.srcObject = null;
+                if (dialog?.open) dialog.close();
+            };
+            const scanFrame = async () => {
+                if (!detector || !video || video.readyState < 2) {
+                    frame = requestAnimationFrame(scanFrame);
+                    return;
+                }
+                try {
+                    const codes = await detector.detect(video);
+                    if (codes.length && codes[0].rawValue) {
+                        if (target) {
+                            target.value = codes[0].rawValue;
+                            target.dispatchEvent(new Event('input', {bubbles: true}));
+                        }
+                        status.textContent = 'Barcode captured. You can now save the item.';
+                        stop();
+                        return;
+                    }
+                } catch (error) {
+                    status.textContent = 'Could not read that barcode. Hold it steady and try again.';
+                }
+                frame = requestAnimationFrame(scanFrame);
+            };
+            document.querySelectorAll('[data-barcode-scan]').forEach(button => button.addEventListener('click', async () => {
+                target = button.closest('label')?.querySelector('[data-barcode-input]');
+                if (!target) return;
+                if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+                    status.textContent = 'Barcode scanning is not supported by this browser. Enter the printed barcode value manually.';
+                    if (!dialog.open) dialog.showModal();
+                    video.classList.add('hidden');
+                    return;
+                }
+                try {
+                    const formats = await window.BarcodeDetector.getSupportedFormats();
+                    detector = new window.BarcodeDetector({formats});
+                    stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: 'environment'}}, audio: false});
+                    video.classList.remove('hidden');
+                    video.srcObject = stream;
+                    if (!dialog.open) dialog.showModal();
+                    status.textContent = 'Starting camera…';
+                    await video.play();
+                    frame = requestAnimationFrame(scanFrame);
+                } catch (error) {
+                    status.textContent = 'Camera permission was denied or no camera is available. You can enter the barcode value manually.';
+                    if (!dialog.open) dialog.showModal();
+                    video.classList.add('hidden');
+                }
+            }));
+            close?.addEventListener('click', stop);
+            dialog?.addEventListener('cancel', stop);
+            dialog?.addEventListener('close', stop);
         })();
     </script>
 </x-admin-layout>
