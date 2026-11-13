@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryMovement;
+use App\Models\InventorySessionRecord;
 use App\Models\CleaningSession;
 use App\Models\InventorySessionRecord;
 use Illuminate\Support\Facades\DB;
@@ -47,13 +48,12 @@ class InventoryController extends Controller
         $movements = InventoryMovement::query()->where('property_id', $property->id)
             ->with(['item', 'fromLocation', 'toLocation', 'recorder'])
             ->latest('occurred_at')->limit(30)->get();
-        $usageMovements = InventoryMovement::query()->where('property_id', $property->id)
-            ->where('movement_type', 'consume')->whereNotNull('cleaning_session_id')
-            ->where('occurred_at', '>=', now()->subDays(90))
-            ->with(['item', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout'])
-            ->latest('occurred_at')->limit(100)->get();
+        $sessionRecords = InventorySessionRecord::query()->where('property_id', $property->id)
+            ->where('created_at', '>=', now()->subDays(90))
+            ->with(['item', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout', 'fromLocation', 'guestLocation'])
+            ->latest('created_at')->limit(100)->get();
 
-        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements', 'usageMovements'));
+        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements', 'sessionRecords'));
     }
 
     public function storeItem(Request $request)
