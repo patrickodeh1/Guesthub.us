@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryMovement;
-use App\Models\InventorySessionRecord;
 use App\Models\CleaningSession;
 use App\Models\InventorySessionRecord;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +14,7 @@ use App\Models\Property;
 use App\Services\Inventory\InventoryStockService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class InventoryController extends Controller
 {
@@ -247,7 +247,7 @@ class InventoryController extends Controller
         $fromLocation = null;
         if ((float) $data['quantity_taken'] > 0) {
             if (empty($data['from_location_id'])) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages(['from_location_id' => 'Choose the stock location to take items from.']);
+                throw ValidationException::withMessages(['from_location_id' => 'Choose the stock location to take items from.']);
             }
             $fromLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['from_location_id']);
             abort_unless(! $fromLocation->is($guestLocation), 422, 'Choose a different stock closet and guest location.');
