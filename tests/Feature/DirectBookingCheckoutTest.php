@@ -131,6 +131,16 @@ class DirectBookingCheckoutTest extends TestCase
         Mail::assertSent(DirectBookingMail::class, 2);
     }
 
+    public function test_host_can_embed_a_direct_booking_form_on_an_external_website(): void
+    {
+        $this->get(route('public.listing.embed', $this->listing->listing_slug))
+            ->assertOk()
+            ->assertSee('id="embed-booking-form"', false)
+            ->assertSee(route('public.listing.quote', $this->listing->listing_slug), false)
+            ->assertSee('frame-ancestors *;', false)
+            ->assertHeader('Content-Security-Policy', 'frame-ancestors *;');
+    }
+
     public function test_checkout_page_shows_a_live_quote_summary_for_selected_dates(): void
     {
         $checkIn = now('America/Los_Angeles')->addDays(9)->toDateString();
