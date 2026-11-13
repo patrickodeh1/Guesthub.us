@@ -23,7 +23,7 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
 | 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | James: packages "should be next", inventory "now if not too much" |
-| 56 | Inventory categories and fields | todo | Not started. Categories: high value (serial, photo), cleaning supply, guest supply, other. Cleaner records closet take and room count, partial amounts. Usage report per stay and per cleaner |
+| 56 | Inventory categories and fields | doing | Initial property-scoped catalogue, locations, stock balances, receiving/transfers/usage/adjustments, fractional quantities, asset photos, low-stock threshold and session-linked usage report are on `feature/complete-client-scope`; cleaner-facing session workflow, item editing, alerts/reorder and end-to-end verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
 | 71 | Lockbox photo steps, auto-advance, step order bugs | todo | Verify |
@@ -62,6 +62,8 @@ Known issue: the `down()` in the billing migration only drops two indexes and le
 - Check the test listing with a $500.00 application fee.
 
 ## Log
+
+- 2026-11-13: Started inventory implementation on `feature/complete-client-scope`: property-scoped inventory schema, stock movement service, management page, low-stock view and stock service tests. Local migration and feature tests still need to be run.
 
 - 2026-11-11: direct booking, lease, refund split, SEO fixes, notification templates (guest_refund_issued, host_card_paid), robots fix, packages data model and gate, admin Packages and Host billing pages, billing columns.
 
