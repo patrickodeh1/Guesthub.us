@@ -221,6 +221,7 @@ class InventoryController extends Controller
         abort_unless($property, 404);
 
         $items = InventoryItem::query()->where('property_id', $property->id)->where('active', true)
+            ->whereIn('category', ['guest_supply', 'cleaning_supply'])
             ->with('stocks.location')->orderBy('name')->get();
         $locations = InventoryLocation::query()->where('property_id', $property->id)->orderBy('name')->get();
         $records = InventorySessionRecord::query()->where('cleaning_session_id', $session->id)
