@@ -45,6 +45,7 @@ Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapp
 Schedule::command('lease-offers:expire')->everyFiveMinutes()->withoutOverlapping(4);
 Schedule::command('lease-installments:remind')->dailyAt('09:00')->withoutOverlapping();
 Schedule::command('inventory:send-low-stock-alerts')->everyFifteenMinutes()->withoutOverlapping(10);
+Schedule::command('billing:sync-resource-quantities')->hourly()->withoutOverlapping(30);
 Schedule::command('ids:purge-declined')->dailyAt('02:30')->withoutOverlapping();
 Schedule::command('direct-bookings:remind-hosts')->hourly()->withoutOverlapping();
 
