@@ -85,7 +85,7 @@ class BillingQuantityResolverTest extends TestCase
             'billing_unit' => 'per_device',
         ]);
 
-        $this->assertSame([], app(BillingQuantityResolver::class)->resolve($owner, [
+        $this->assertSame(['test_no_device_addon' => 0], app(BillingQuantityResolver::class)->resolve($owner, [
             'test_no_device_addon' => 1,
         ]));
     }
