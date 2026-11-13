@@ -102,12 +102,7 @@ class PlanController extends Controller
         if ($existing && $existing->stripe_subscription_id && in_array($existing->status, ['active', 'trialing', 'past_due'], true)) {
             return ['error' => 'You already have a subscription. Use Manage billing to change or cancel it.'];
         }
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user());
         $quote = PlanPricing::quote($package, $addons);
         if ($quote['total_cents'] <= 0) {
             return ['error' => 'Nothing to charge for this selection.'];
@@ -157,12 +152,7 @@ class PlanController extends Controller
             return back()->withErrors(['package' => 'There is no active subscription to change.']);
         }
 
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user());
         $quote = PlanPricing::quote($hp->package, $addons);
         if ($quote['total_cents'] <= 0) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
