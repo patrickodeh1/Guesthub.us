@@ -263,6 +263,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::post('items', [\App\Http\Controllers\Admin\InventoryController::class, 'storeItem'])->name('items.store');
         Route::put('items/{item}', [\App\Http\Controllers\Admin\InventoryController::class, 'updateItem'])->name('items.update');
         Route::post('locations', [\App\Http\Controllers\Admin\InventoryController::class, 'storeLocation'])->name('locations.store');
+        Route::post('purchase-orders', [\App\Http\Controllers\Admin\InventoryController::class, 'storePurchaseOrder'])->name('purchase-orders.store');
+        Route::post('purchase-orders/{order}/receive', [\App\Http\Controllers\Admin\InventoryController::class, 'receivePurchaseOrder'])->name('purchase-orders.receive');
         Route::post('receive', [\App\Http\Controllers\Admin\InventoryController::class, 'receive'])->name('receive');
         Route::post('transfer', [\App\Http\Controllers\Admin\InventoryController::class, 'transfer'])->name('transfer');
         Route::post('consume', [\App\Http\Controllers\Admin\InventoryController::class, 'consume'])->name('consume');
