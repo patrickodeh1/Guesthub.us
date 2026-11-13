@@ -136,7 +136,7 @@ class PublicListingController extends Controller
 
         $owner = $listing->property->owner;
         $canCard = $this->paymentMethodAvailable($listing, 'card')
-            && app(\\App\\Services\\Payments\\PaymentService::class)->isConfigured();
+            && app(\App\Services\Payments\PaymentService::class)->isConfigured();
         $manualMethods = FeatureGate::enabled($owner, 'manual_payments')
             ? $owner->hostPaymentMethods->where('enabled', true)->values()
             : collect();
