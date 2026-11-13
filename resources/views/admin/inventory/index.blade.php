@@ -174,6 +174,20 @@
             </section>
 
             <section class="card card-pad mt-5">
+                <h2 class="section-title">Record waste or theft</h2>
+                <p class="mt-1 text-sm text-slate-500">This removes the quantity from the selected location and keeps a reason in the movement history.</p>
+                <form method="post" action="{{ route('admin.inventory.loss') }}" class="mt-4 grid gap-3 sm:grid-cols-2">
+                    @csrf<input type="hidden" name="property_id" value="{{ $property->id }}">
+                    <label class="field-label">Item<select class="input" name="item_id" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select></label>
+                    <label class="field-label">Location<select class="input" name="location_id" required>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
+                    <label class="field-label">Type<select class="input" name="movement_type" required><option value="waste">Waste / damaged</option><option value="theft">Missing / suspected theft</option></select></label>
+                    <label class="field-label">Quantity<input class="input" type="number" name="quantity" min="0.001" step="0.001" required></label>
+                    <label class="field-label sm:col-span-2">Reason / notes<input class="input" name="notes" maxlength="2000" required></label>
+                    <div class="sm:col-span-2"><button class="btn-secondary" @disabled($items->isEmpty() || $locations->isEmpty())>Record loss</button></div>
+                </form>
+            </section>
+
+            <section class="card card-pad mt-5">
                 <h2 class="section-title">Recent inventory activity</h2>
                 <div class="mt-3 divide-y">
                     @forelse($movements as $movement)
