@@ -11,6 +11,7 @@
         .card{border:1px solid #dfe6e1;border-radius:16px;overflow:hidden;background:#fff}
         .hero{display:grid;grid-template-columns:180px minmax(0,1fr);gap:16px;padding:16px;border-bottom:1px solid #e7ece8}
         .hero img{width:100%;height:130px;object-fit:cover;border-radius:10px}
+        .widget-form{display:grid;gap:16px;padding:18px}
         h1{font-size:20px;line-height:1.25;margin:4px 0 6px}
         .muted{color:#66746d;font-size:13px}
         form{padding:18px;display:grid;gap:16px}
@@ -29,7 +30,7 @@
         button{min-height:48px;border:0;border-radius:11px;padding:12px 18px;background:#1f6f54;color:#fff;font:inherit;font-weight:750;cursor:pointer}
         button:disabled{opacity:.55;cursor:not-allowed}
         .foot{text-align:center;font-size:11px;color:#7b8981;margin-top:12px}
-        @media(max-width:560px){.wrap{padding:10px}.hero{grid-template-columns:104px minmax(0,1fr);gap:12px;padding:12px}.hero img{height:100px}h1{font-size:17px}.grid{grid-template-columns:1fr}form{padding:14px}}
+        @media(max-width:560px){.wrap{padding:10px}.hero{grid-template-columns:104px minmax(0,1fr);gap:12px;padding:12px}.hero img{height:100px}h1{font-size:17px}.grid{grid-template-columns:1fr}.widget-form{padding:14px}}
     </style>
 </head>
 <body>
@@ -52,7 +53,7 @@
             </div>
         </div>
 
-        <div id="embed-booking-form" class="grid gap-4 p-4">
+        <div id="embed-booking-form" class="widget-form">
             <div class="grid grid-cols-2 gap-3">
                 <label>Check-in
                     <input type="date" id="embed-check-in" min="{{ $minimumDate }}" required>
