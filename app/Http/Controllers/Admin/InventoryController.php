@@ -161,7 +161,10 @@ class InventoryController extends Controller
         $item = InventoryItem::query()->where('property_id', $property->id)->findOrFail($data['item_id']);
         $location = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['location_id']);
         $stock->receive($item, $location, (float) $data['quantity'], $request->user()->id, $data);
-        $item->update(['last_ordered_at' => $data['ordered_at'] ?? now()->toDateString()]);
+        $item->update([
+            'last_ordered_at' => $data['ordered_at'] ?? now()->toDateString(),
+            'supplier' => filled($data['supplier'] ?? null) ? $data['supplier'] : $item->supplier,
+        ]);
         return back()->with('success', 'Stock received and added to the selected location.');
     }
 
