@@ -266,6 +266,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::post('receive', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'receive'])->name('receive');
         Route::post('transfer', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'transfer'])->name('transfer');
         Route::post('consume', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'consume'])->name('consume');
+        Route::post('loss', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'loss'])->name('loss');
         Route::post('adjust', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'adjust'])->middleware('role:admin,owner,company')->name('adjust');
     });
 
