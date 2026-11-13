@@ -96,12 +96,12 @@
                 </section>
             </div>
 
-            <section class="card card-pad mt-5">
+            <section id="create-purchase-order" class="card card-pad mt-5">
                 <h2 class="section-title">Create purchase order</h2>
                 <p class="mt-1 text-sm text-slate-500">Record what you ordered. When a delivery arrives, receive all or part of it into the selected stock location.</p>
                 <form method="post" action="{{ route('admin.inventory.purchase-orders.store') }}" class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @csrf<input type="hidden" name="property_id" value="{{ $property->id }}">
-                    <label class="field-label">Item<select class="input" name="item_id" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select></label>
+                    <label class="field-label">Item<select id="po-item-id" class="input" name="item_id" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select></label>
                     <label class="field-label">Receive into<select class="input" name="destination_location_id" required>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
                     <label class="field-label">Supplier / vendor<input class="input" name="supplier" maxlength="160" required placeholder="e.g. Amazon, Walmart"></label>
                     <label class="field-label">Order reference<input class="input" name="reference" maxlength="160" placeholder="Optional"></label>
@@ -185,7 +185,7 @@
                                     <td class="py-3 pr-4">{{ ['asset' => 'Fixed asset', 'guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'other' => 'Other'][$item->category] ?? 'Other' }}</td>
                                     <td class="py-3 pr-4"><div class="flex flex-wrap gap-2">@foreach($item->stocks as $balance)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs">{{ $balance->location->name }}: {{ number_format((float) $balance->quantity, 3) }}</span>@endforeach</div></td>
                                     <td class="py-3 pr-4 text-right font-semibold {{ $item->is_low_stock ? 'text-amber-700' : '' }}">{{ number_format((float) $item->quantity_on_hand, 3) }} {{ $item->unit_of_measure }}</td>
-                                    <td class="py-3 text-right">{{ number_format((float) $item->reorder_level, 3) }}</td>
+                                    <td class="py-3 text-right">{{ number_format((float) $item->reorder_level, 3) }}@if($item->is_low_stock)<button type="button" data-reorder-item="{{ $item->id }}" class="mt-2 block text-xs font-semibold text-emerald-700 underline">Reorder</button>@endif</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="5" class="py-8 text-center text-slate-500">No inventory items have been added for this property.</td></tr>
@@ -278,5 +278,14 @@
                 </div>
             </section>
         @endif
+        <script>
+            document.querySelectorAll('[data-reorder-item]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const itemSelect = document.getElementById('po-item-id');
+                    if (itemSelect) itemSelect.value = button.dataset.reorderItem;
+                    document.getElementById('create-purchase-order')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+                });
+            });
+        </script>
     @endif
 </x-admin-layout>
