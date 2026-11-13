@@ -103,11 +103,11 @@
                     @csrf<input type="hidden" name="property_id" value="{{ $property->id }}">
                     <label class="field-label">Item<select id="po-item-id" class="input" name="item_id" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select></label>
                     <label class="field-label">Receive into<select class="input" name="destination_location_id" required>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
-                    <label class="field-label">Supplier / vendor<input class="input" name="supplier" maxlength="160" required placeholder="e.g. Amazon, Walmart"></label>
+                    <label class="field-label">Supplier / vendor<input id="po-supplier" class="input" name="supplier" maxlength="160" required placeholder="e.g. Amazon, Walmart"></label>
                     <label class="field-label">Order reference<input class="input" name="reference" maxlength="160" placeholder="Optional"></label>
                     <label class="field-label">Order date<input class="input" type="date" name="ordered_at"></label>
-                    <label class="field-label">Quantity ordered<input class="input" type="number" name="quantity_ordered" min="0.001" step="0.001" required></label>
-                    <label class="field-label">Unit cost<input class="input" type="number" name="unit_cost" min="0" step="0.01"></label>
+                    <label class="field-label">Quantity ordered<input id="po-quantity" class="input" type="number" name="quantity_ordered" min="0.001" step="0.001" required></label>
+                    <label class="field-label">Unit cost<input id="po-unit-cost" class="input" type="number" name="unit_cost" min="0" step="0.01"></label>
                     <label class="field-label sm:col-span-2">Notes<input class="input" name="notes" maxlength="2000"></label>
                     <div class="sm:col-span-2 lg:col-span-3"><button class="btn-primary" @disabled($items->isEmpty() || $locations->isEmpty())>Create purchase order</button></div>
                 </form>
@@ -185,7 +185,7 @@
                                     <td class="py-3 pr-4">{{ ['asset' => 'Fixed asset', 'guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'other' => 'Other'][$item->category] ?? 'Other' }}</td>
                                     <td class="py-3 pr-4"><div class="flex flex-wrap gap-2">@foreach($item->stocks as $balance)<span class="rounded-md bg-slate-100 px-2 py-1 text-xs">{{ $balance->location->name }}: {{ number_format((float) $balance->quantity, 3) }}</span>@endforeach</div></td>
                                     <td class="py-3 pr-4 text-right font-semibold {{ $item->is_low_stock ? 'text-amber-700' : '' }}">{{ number_format((float) $item->quantity_on_hand, 3) }} {{ $item->unit_of_measure }}</td>
-                                    <td class="py-3 text-right">{{ number_format((float) $item->reorder_level, 3) }}@if($item->is_low_stock)<button type="button" data-reorder-item="{{ $item->id }}" class="mt-2 block text-xs font-semibold text-emerald-700 underline">Reorder</button>@endif</td>
+                                    <td class="py-3 text-right">{{ number_format((float) $item->reorder_level, 3) }}@if($item->is_low_stock)<button type="button" data-reorder-item="{{ $item->id }}" data-reorder-supplier="{{ $item->supplier }}" data-reorder-cost="{{ $item->unit_cost }}" data-reorder-quantity="{{ max(0, round((float) $item->reorder_level - (float) $item->quantity_on_hand, 3)) }}" class="mt-2 block text-xs font-semibold text-emerald-700 underline">Reorder</button>@endif</td>
                                 </tr>
                             @empty
                                 <tr><td colspan="5" class="py-8 text-center text-slate-500">No inventory items have been added for this property.</td></tr>
@@ -283,6 +283,12 @@
                 button.addEventListener('click', () => {
                     const itemSelect = document.getElementById('po-item-id');
                     if (itemSelect) itemSelect.value = button.dataset.reorderItem;
+                    const supplier = document.getElementById('po-supplier');
+                    const unitCost = document.getElementById('po-unit-cost');
+                    const quantity = document.getElementById('po-quantity');
+                    if (supplier && button.dataset.reorderSupplier) supplier.value = button.dataset.reorderSupplier;
+                    if (unitCost && button.dataset.reorderCost) unitCost.value = button.dataset.reorderCost;
+                    if (quantity && Number(button.dataset.reorderQuantity) > 0) quantity.value = button.dataset.reorderQuantity;
                     document.getElementById('create-purchase-order')?.scrollIntoView({behavior: 'smooth', block: 'start'});
                 });
             });
