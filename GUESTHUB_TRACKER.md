@@ -23,7 +23,7 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
 | 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | Package/Stripe foundation and host Plan page exist; property/device quantities are server-derived on subscription changes and automatically reconciled hourly. Inventory catalogue, cleaner session workflow and scheduled low-stock alerts are built on the feature branch. Published listings also expose an embeddable booking widget for a host's own website. PriceLabs/Wheelhouse already support host API keys; Channex currently uses the platform key; its booking importer preserves OTA names such as Booking.com and VRBO. Remaining: Stripe E2E, credential ownership decision, channel-account certification in Channex, and local inventory/billing verification |
-| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view, per-stay/per-cleaner report, and scheduled owner email alerts with recovery/re-alert logic. Automated tests are added; local migration/test run and UI verification remain |
+| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view, per-stay/per-cleaner report, scheduled owner email alerts with recovery/re-alert logic, purchase orders, partial receiving and one-click reorder from low-stock rows. Automated tests are added; local migration/test run and UI verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
 | 71 | Lockbox photo steps, auto-advance, step order bugs | todo | Verify |
@@ -66,7 +66,7 @@ Still to verify:
 
 ## Log
 
-- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added scheduled low-stock owner email alerts that send once per low-stock episode and re-arm after recovery. Added stock-service and low-stock alert tests; local migrations, tests and UI checks remain outstanding.
+- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added scheduled low-stock owner email alerts that send once per low-stock episode and re-arm after recovery. Added stock-service, cleaner session, low-stock alert and purchase-order tests; local migrations, tests and UI checks remain outstanding.
 - 2026-11-13: Added a public embeddable direct-booking widget with live quotes and a copyable iframe snippet in host listing settings; guests continue to GuestHub's top-level checkout for their details and payment. Channex import tests cover OTA names and availability push payloads.
 - 2026-11-13: Verified the host Plan, Stripe BillingService, SubscriptionSync and billing portal implementation exist in the feature branch. Stripe test-mode end-to-end trial and automatic charge remain unverified.
 
@@ -81,7 +81,7 @@ Work is being committed directly to remote branch `feature/complete-client-scope
 - Booking: direct checkout shows live quote breakdown; published listings expose an embeddable booking widget for external websites; Channex OTA import preserves Booking.com/VRBO source labels.
 - Tests added: `InventoryStockServiceTest`, `InventorySessionWorkflowTest`, `InventoryLowStockAlertTest`, `BillingQuantityResolverTest`, `SyncBillingResourceQuantitiesTest`, `ChannexProviderTest`, and expanded `DirectBookingCheckoutTest`.
 - No Docker migrations, PHP lint, PHPUnit run, Stripe test-mode run, or live OTA/provider verification has been observed. Do not mark related tracker tasks done yet.
-- Remaining code/design work: confirm James's credential ownership preference before changing Channex from GuestHub-managed to host-managed; purchase-order/reorder workflow beyond low-stock notifications; live Channex/PriceLabs/Wheelhouse certification; full Stripe E2E verification.
+- Remaining code/design work: confirm James's credential ownership preference before changing Channex from GuestHub-managed to host-managed; live supplier ordering/payment automation beyond purchase-order tracking; live Channex/PriceLabs/Wheelhouse certification; full Stripe E2E verification.
 
 The following 2026-11-11 notes are historical and superseded where they conflict with the current branch handoff.
 
