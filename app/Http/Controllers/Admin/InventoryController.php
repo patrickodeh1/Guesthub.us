@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryMovement;
+use App\Models\InventoryPurchaseOrder;
 use App\Models\CleaningSession;
 use App\Models\InventorySessionRecord;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +35,7 @@ class InventoryController extends Controller
         $property = $properties->firstWhere('id', (int) $request->query('property_id')) ?? $properties->first();
 
         if (! $property) {
-            return view('admin.inventory.index', ['properties' => $properties, 'property' => null, 'items' => collect(), 'locations' => collect(), 'movements' => collect()]);
+            return view('admin.inventory.index', ['properties' => $properties, 'property' => null, 'items' => collect(), 'locations' => collect(), 'movements' => collect(), 'purchaseOrders' => collect()]);
         }
 
         $items = InventoryItem::query()
@@ -49,12 +50,15 @@ class InventoryController extends Controller
         $movements = InventoryMovement::query()->where('property_id', $property->id)
             ->with(['item', 'fromLocation', 'toLocation', 'recorder'])
             ->latest('occurred_at')->limit(30)->get();
+        $purchaseOrders = InventoryPurchaseOrder::query()->where('property_id', $property->id)
+            ->with(['lines.item', 'lines.destinationLocation', 'creator'])
+            ->latest('ordered_at')->latest('id')->limit(30)->get();
         $sessionRecords = InventorySessionRecord::query()->where('property_id', $property->id)
             ->where('created_at', '>=', now()->subDays(90))
             ->with(['item', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout', 'fromLocation', 'guestLocation'])
             ->latest('created_at')->limit(100)->get();
 
-        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements', 'sessionRecords'));
+        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements', 'purchaseOrders', 'sessionRecords'));
     }
 
     public function storeItem(Request $request)
@@ -143,6 +147,93 @@ class InventoryController extends Controller
         ]);
         InventoryLocation::create($data);
         return back()->with('success', 'Stock location created.');
+    }
+
+    public function storePurchaseOrder(Request $request)
+    {
+        $data = $request->validate([
+            'property_id' => ['required', 'integer'],
+            'item_id' => ['required', 'integer'],
+            'destination_location_id' => ['required', 'integer'],
+            'supplier' => ['required', 'string', 'max:160'],
+            'reference' => ['nullable', 'string', 'max:160'],
+            'ordered_at' => ['nullable', 'date'],
+            'quantity_ordered' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $property = $this->property($request, (int) $data['property_id']);
+        $item = InventoryItem::query()->where('property_id', $property->id)->findOrFail($data['item_id']);
+        $location = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['destination_location_id']);
+
+        DB::transaction(function () use ($request, $data, $property, $item, $location) {
+            $order = InventoryPurchaseOrder::create([
+                'property_id' => $property->id,
+                'created_by' => $request->user()->id,
+                'supplier' => $data['supplier'],
+                'reference' => $data['reference'] ?: null,
+                'status' => 'ordered',
+                'ordered_at' => $data['ordered_at'] ?? now()->toDateString(),
+                'notes' => $data['notes'] ?? null,
+            ]);
+            if (! $order->reference) {
+                $order->update(['reference' => 'PO-'.$order->id]);
+            }
+            $order->lines()->create([
+                'inventory_item_id' => $item->id,
+                'destination_location_id' => $location->id,
+                'quantity_ordered' => $data['quantity_ordered'],
+                'quantity_received' => 0,
+                'unit_cost' => $data['unit_cost'] ?? $item->unit_cost,
+            ]);
+        });
+
+        return back()->with('success', 'Purchase order created. Record each delivery as it arrives.');
+    }
+
+    public function receivePurchaseOrder(Request $request, InventoryPurchaseOrder $order, InventoryStockService $stock)
+    {
+        $property = $this->property($request, (int) $order->property_id);
+        $data = $request->validate([
+            'line_id' => ['required', 'integer'],
+            'quantity' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+        ]);
+
+        $line = $order->lines()->with(['item', 'destinationLocation'])->findOrFail($data['line_id']);
+        abort_unless((int) $line->item->property_id === (int) $property->id
+            && (int) $line->destinationLocation->property_id === (int) $property->id, 404);
+        abort_if(in_array($order->status, ['received', 'cancelled'], true), 422, 'This purchase order is already closed.');
+
+        $outstanding = round((float) $line->quantity_ordered - (float) $line->quantity_received, 3);
+        $quantity = round((float) $data['quantity'], 3);
+        if ($quantity > $outstanding + 0.000001) {
+            throw ValidationException::withMessages(['quantity' => 'Received quantity cannot exceed the outstanding order quantity.']);
+        }
+
+        DB::transaction(function () use ($request, $order, $line, $quantity, $stock) {
+            $stock->receive($line->item, $line->destinationLocation, $quantity, $request->user()->id, [
+                'reference' => $order->reference,
+                'supplier' => $order->supplier,
+                'ordered_at' => $order->ordered_at?->toDateString(),
+                'notes' => 'Received against purchase order '.$order->reference,
+            ]);
+
+            $line->increment('quantity_received', $quantity);
+            $line->refresh();
+            $line->item->update([
+                'supplier' => $order->supplier,
+                'last_ordered_at' => $order->ordered_at ?? now()->toDateString(),
+                'unit_cost' => $line->unit_cost ?? $line->item->unit_cost,
+            ]);
+
+            $lines = $order->lines()->get();
+            $allReceived = $lines->every(fn ($row) => (float) $row->quantity_received + 0.000001 >= (float) $row->quantity_ordered);
+            $anyReceived = $lines->contains(fn ($row) => (float) $row->quantity_received > 0);
+            $order->update(['status' => $allReceived ? 'received' : ($anyReceived ? 'partially_received' : 'ordered')]);
+        });
+
+        return back()->with('success', 'Received quantity added to the selected stock location.');
     }
 
     public function receive(Request $request, InventoryStockService $stock)
