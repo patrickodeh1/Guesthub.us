@@ -55,8 +55,22 @@ class SyncBillingResourceQuantities extends Command
                     }
 
                     $quote = PlanPricing::quote($plan->package, $resolved);
-                    if ($quote['total_cents'] <= 0) {
-                        Log::warning('Billing quantity sync skipped a zero-value subscription', [
+                    if ($quote['total_cents'] <= 0 && (int) $plan->package->price_cents <= 0) {
+                        // Stripe subscriptions need at least one recurring item.
+                        // A zero-dollar placeholder prevents a stale per-resource
+                        // add-on from continuing to bill when the host has no
+                        // billable properties/devices on a free base package.
+                        $quote['lines'][] = [
+                            'type' => 'package',
+                            'key' => $plan->package->key,
+                            'name' => $plan->package->name,
+                            'unit_cents' => 0,
+                            'quantity' => 1,
+                        ];
+                    }
+
+                    if ($quote['lines'] === []) {
+                        Log::warning('Billing quantity sync could not construct a recurring subscription line', [
                             'host_package_id' => $plan->id,
                             'user_id' => $plan->user_id,
                         ]);
