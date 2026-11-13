@@ -60,7 +60,7 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $subscription = new class {
+        $subscription = new class($owner->id, $package->id, $feature->key) {
             public string $id = 'sub_test';
             public string $status = 'active';
             public string $customer = 'cus_test';
@@ -70,33 +70,20 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             public object $metadata;
             public object $items;
 
-            public function __construct()
+            public function __construct(private int $userId, private int $packageId, private string $featureKey)
             {
-                $this->metadata = new class {
+                $this->metadata = new class($userId, $packageId, $featureKey) {
+                    public function __construct(private int $userId, private int $packageId, private string $featureKey) {}
                     public function toArray(): array
                     {
                         return [
-                            'user_id' => '1',
-                            'package_id' => '1',
-                            'addons' => json_encode(['test-per-property' => 2]),
+                            'user_id' => (string) $this->userId,
+                            'package_id' => (string) $this->packageId,
+                            'addons' => json_encode([$this->featureKey => 2]),
                         ];
                     }
                 };
                 $this->items = (object) ['data' => []];
-            }
-        };
-
-        // SubscriptionSync reads identity and package metadata from the event,
-        // so bind the real test IDs after creating the fixtures.
-        $subscription->metadata = new class($owner->id, $package->id, $feature->key) {
-            public function __construct(private int $userId, private int $packageId, private string $featureKey) {}
-            public function toArray(): array
-            {
-                return [
-                    'user_id' => (string) $this->userId,
-                    'package_id' => (string) $this->packageId,
-                    'addons' => json_encode([$this->featureKey => 2]),
-                ];
             }
         };
 
