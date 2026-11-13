@@ -144,4 +144,51 @@ class InventorySessionWorkflowTest extends TestCase
             ->assertSee('0.5 = half a bottle or roll');
     }
 
+
+    public function test_cleaner_cannot_use_the_same_location_as_stock_source_and_guest_destination(): void
+    {
+        Role::firstOrCreate(['name' => 'housekeeper', 'guard_name' => 'web']);
+        $owner = User::factory()->create();
+        $cleaner = User::factory()->create();
+        $cleaner->assignRole('housekeeper');
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $location = InventoryLocation::create(['property_id' => $property->id, 'name' => 'Supply closet']);
+        $item = InventoryItem::create([
+            'property_id' => $property->id,
+            'name' => 'Hand soap',
+            'category' => 'guest_supply',
+            'unit_of_measure' => 'bottle',
+            'default_location_id' => $location->id,
+        ]);
+        app(InventoryStockService::class)->receive($item, $location, 5, $owner->id);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => $owner->id,
+            'housekeeper_id' => $cleaner->id,
+            'status' => 'in_progress',
+            'scheduled_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($cleaner)
+            ->from(route('sessions.inventory', $session))
+            ->post(route('sessions.inventory.record', $session), [
+                'item_id' => $item->id,
+                'from_location_id' => $location->id,
+                'guest_location_id' => $location->id,
+                'quantity_available' => 1,
+                'quantity_taken' => 1,
+            ])
+            ->assertRedirect(route('sessions.inventory', $session))
+            ->assertSessionHasErrors('from_location_id');
+
+        $this->assertDatabaseMissing('inventory_session_records', [
+            'cleaning_session_id' => $session->id,
+            'inventory_item_id' => $item->id,
+        ]);
+        $this->assertSame(5.0, (float) InventoryStock::query()
+            ->where('inventory_item_id', $item->id)
+            ->where('inventory_location_id', $location->id)
+            ->value('quantity'));
+    }
+
 }
