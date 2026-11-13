@@ -27,6 +27,7 @@ class BillingQuantityResolverTest extends TestCase
 
         PropertyLock::create(['property_id' => $propertyA->id, 'seam_device_id' => 'lock-a', 'label' => 'Front door']);
         PropertyLock::create(['property_id' => $propertyA->id, 'seam_device_id' => 'lock-b', 'label' => 'Back door']);
+        PropertyLock::create(['property_id' => $propertyB->id, 'seam_device_id' => '', 'label' => 'Not connected']);
 
         Feature::create([
             'key' => 'test_inventory_per_property',
