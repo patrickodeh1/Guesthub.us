@@ -76,10 +76,10 @@ Still to verify:
 
 Work is being committed directly to remote branch `feature/complete-client-scope`; the user is continuing independent fixes on `main`. This branch is 0 commits behind main at the last comparison. Do not merge it into main until the user asks.
 
-- Inventory: property-scoped catalogue, item editing/photos, stock locations/balances, receiving/transfers/consumption/adjustments/waste/theft, supplier and purchase history, cleaner fractional counts in active cleaning sessions, estimated guest usage and reporting. Scheduled owner low-stock emails suppress duplicates and re-arm after stock recovery.
+- Inventory: property-scoped catalogue, item editing/photos, stock locations/balances, receiving/transfers/consumption/adjustments/waste/theft, supplier and purchase history, purchase orders with partial receiving, one-click reorder from low-stock rows, cleaner fractional counts in active cleaning sessions, estimated guest usage and reporting. Scheduled owner low-stock emails suppress duplicates and re-arm after stock recovery.
 - Billing: server-derived property and connected-lock quantities, with hourly Stripe subscription reconciliation and zero-quantity add-on selection retention.
 - Booking: direct checkout shows live quote breakdown; published listings expose an embeddable booking widget for external websites; Channex OTA import preserves Booking.com/VRBO source labels.
-- Tests added: `InventoryStockServiceTest`, `InventorySessionWorkflowTest`, `InventoryLowStockAlertTest`, `BillingQuantityResolverTest`, `SyncBillingResourceQuantitiesTest`, `ChannexProviderTest`, and expanded `DirectBookingCheckoutTest`.
+- Tests added: `InventoryStockServiceTest`, `InventorySessionWorkflowTest`, `InventoryLowStockAlertTest`, `InventoryPurchaseOrderTest`, `BillingQuantityResolverTest`, `SyncBillingResourceQuantitiesTest`, `SubscriptionSyncTest`, `ChannexProviderTest`, and expanded `DirectBookingCheckoutTest`.
 - No Docker migrations, PHP lint, PHPUnit run, Stripe test-mode run, or live OTA/provider verification has been observed. Do not mark related tracker tasks done yet.
 - Remaining code/design work: confirm James's credential ownership preference before changing Channex from GuestHub-managed to host-managed; live supplier ordering/payment automation beyond purchase-order tracking; live Channex/PriceLabs/Wheelhouse certification; full Stripe E2E verification.
 
