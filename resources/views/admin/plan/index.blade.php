@@ -97,6 +97,9 @@
                         <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <label class="flex items-center gap-2">
                                 <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg || ($unit !== 'flat' && $quantity < 1))>
+                                @if(! $inPkg && $unit !== 'flat' && $quantity < 1 && isset($addons[$f->key]))
+                                    <input type="hidden" name="addons[{{ $f->key }}][enabled]" value="1">
+                                @endif
                                 {{ $f->name }} <span class="text-slate-400">{{ $money($f->price_cents) }}{{ $unitLabels[$unit] ?? '' }}</span>
                                 @if($inPkg)<span class="text-xs text-emerald-700">included</span>@endif
                             </label>
