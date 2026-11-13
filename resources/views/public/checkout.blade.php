@@ -9,7 +9,7 @@
         $isRequest = $listing->booking_mode === 'request';
         $photo = $listing->photos->first();
         $photoUrl = $photo?->url ?? ($photo?->path ? asset('storage/'.$photo->path) : null);
-        $defaultPaymentMethod = old('payment_method', $canCard ? 'card' : 'manual');
+        $defaultPaymentMethod = old('payment_method', request('payment_method', $canCard ? 'card' : 'manual'));
         $policyText = filled($listing->cancellation_policy_text)
             ? $listing->cancellation_policy_text
             : null;
