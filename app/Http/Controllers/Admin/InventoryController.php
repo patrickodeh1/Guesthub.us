@@ -298,6 +298,24 @@ class InventoryController extends Controller
         return redirect()->route('sessions.inventory', $session)->with('success', 'Guest-area stock count saved.');
     }
 
+    public function loss(Request $request, InventoryStockService $stock)
+    {
+        $data = $request->validate([
+            'property_id' => ['required', 'integer'],
+            'item_id' => ['required', 'integer'],
+            'location_id' => ['required', 'integer'],
+            'movement_type' => ['required', Rule::in(['waste', 'theft'])],
+            'quantity' => ['required', 'numeric', 'gt:0', 'max:99999999'],
+            'notes' => ['required', 'string', 'max:2000'],
+        ]);
+        $property = $this->property($request, (int) $data['property_id']);
+        $item = InventoryItem::query()->where('property_id', $property->id)->findOrFail($data['item_id']);
+        $location = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['location_id']);
+        $stock->recordLoss($item, $location, (float) $data['quantity'], $data['movement_type'], $request->user()->id, $data);
+
+        return back()->with('success', ucfirst($data['movement_type']).' recorded.');
+    }
+
     public function adjust(Request $request, InventoryStockService $stock)
     {
         abort_unless($request->user()->hasAnyRole(['admin', 'owner', 'company']), 403);
