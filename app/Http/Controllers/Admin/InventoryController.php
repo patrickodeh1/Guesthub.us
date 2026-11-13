@@ -7,6 +7,8 @@ use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\InventoryMovement;
 use App\Models\CleaningSession;
+use App\Models\InventorySessionRecord;
+use Illuminate\Support\Facades\DB;
 use App\Models\Property;
 use App\Services\Inventory\InventoryStockService;
 use Illuminate\Http\Request;
@@ -183,6 +185,115 @@ class InventoryController extends Controller
         }
         $stock->consume($item, $location, (float) $data['quantity'], $request->user()->id, $data);
         return back()->with('success', 'Usage recorded.');
+    }
+
+
+    private function assertInventorySessionAccess(Request $request, CleaningSession $session): void
+    {
+        $user = $request->user();
+        if ($user->hasRole('housekeeper')) {
+            abort_unless(
+                (int) $session->housekeeper_id === (int) $user->id && $session->status === 'in_progress',
+                403,
+                'Only your active cleaning session can record inventory.'
+            );
+            return;
+        }
+
+        abort_unless(
+            $user->hasAnyRole(['admin', 'owner', 'company', 'manager'])
+                && Property::query()->visibleTo($user)->whereKey($session->property_id)->exists(),
+            403
+        );
+        abort_unless($session->status === 'in_progress', 422, 'Inventory can only be recorded during an active cleaning.');
+    }
+
+    public function sessionInventory(Request $request, CleaningSession $session)
+    {
+        $this->assertInventorySessionAccess($request, $session);
+        $property = $session->property;
+        abort_unless($property, 404);
+
+        $items = InventoryItem::query()->where('property_id', $property->id)->where('active', true)
+            ->with('stocks.location')->orderBy('name')->get();
+        $locations = InventoryLocation::query()->where('property_id', $property->id)->orderBy('name')->get();
+        $records = InventorySessionRecord::query()->where('cleaning_session_id', $session->id)
+            ->with(['item', 'fromLocation', 'guestLocation'])->orderBy('id')->get();
+
+        return view('sessions.inventory', compact('session', 'property', 'items', 'locations', 'records'));
+    }
+
+    public function recordSessionInventory(Request $request, CleaningSession $session, InventoryStockService $stock)
+    {
+        $this->assertInventorySessionAccess($request, $session);
+        $data = $request->validate([
+            'item_id' => ['required', 'integer'],
+            'from_location_id' => ['nullable', 'integer'],
+            'guest_location_id' => ['required', 'integer', 'different:from_location_id'],
+            'quantity_available' => ['required', 'numeric', 'min:0', 'max:99999999'],
+            'quantity_taken' => ['required', 'numeric', 'min:0', 'max:99999999'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $property = $session->property;
+        $item = InventoryItem::query()->where('property_id', $property->id)->where('active', true)->findOrFail($data['item_id']);
+        $guestLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['guest_location_id']);
+        $fromLocation = null;
+        if ((float) $data['quantity_taken'] > 0) {
+            $fromLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['from_location_id'] ?? 0);
+            abort_unless(! $fromLocation->is($guestLocation), 422, 'Choose a different stock closet and guest location.');
+        }
+
+        DB::transaction(function () use ($request, $session, $item, $guestLocation, $fromLocation, $data, $stock) {
+            $previous = InventorySessionRecord::query()
+                ->where('inventory_item_id', $item->id)
+                ->where('cleaning_session_id', '!=', $session->id)
+                ->latest('created_at')->first();
+
+            $current = (float) (\App\Models\InventoryStock::query()
+                ->where('inventory_item_id', $item->id)
+                ->where('inventory_location_id', $guestLocation->id)
+                ->value('quantity') ?? 0);
+            $counted = (float) $data['quantity_available'];
+            $difference = round($counted - $current, 3);
+
+            if (abs($difference) >= 0.001) {
+                $stock->adjust($item, $guestLocation, $difference, $request->user()->id, [
+                    'cleaning_session_id' => $session->id,
+                    'notes' => 'Cleaner count before replenishment'.(! empty($data['notes']) ? ': '.$data['notes'] : ''),
+                ]);
+            }
+
+            $taken = (float) $data['quantity_taken'];
+            if ($taken > 0 && $fromLocation) {
+                $stock->transfer($item, $fromLocation, $guestLocation, $taken, $request->user()->id, [
+                    'cleaning_session_id' => $session->id,
+                    'notes' => 'Cleaner replenishment'.(! empty($data['notes']) ? ': '.$data['notes'] : ''),
+                ]);
+            }
+
+            $after = round($counted + $taken, 3);
+            $consumed = $previous
+                ? max(0, round((float) $previous->quantity_after_restock - $counted, 3))
+                : null;
+
+            InventorySessionRecord::query()->updateOrCreate(
+                ['cleaning_session_id' => $session->id, 'inventory_item_id' => $item->id],
+                [
+                    'property_id' => $propertyId = $session->property_id,
+                    'from_location_id' => $fromLocation?->id,
+                    'guest_location_id' => $guestLocation->id,
+                    'recorded_by' => $request->user()->id,
+                    'quantity_available' => $counted,
+                    'quantity_taken' => $taken,
+                    'quantity_after_restock' => $after,
+                    'quantity_guest_consumed' => $consumed,
+                    'notes' => $data['notes'] ?? null,
+                ]
+            );
+        });
+
+        return redirect()->route('sessions.inventory', $session)->with('success', 'Guest-area stock count saved.');
     }
 
     public function adjust(Request $request, InventoryStockService $stock)
