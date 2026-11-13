@@ -119,7 +119,7 @@ class InventoryController extends Controller
 
         try {
             $item->update($data);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             if ($newPhotoPath) {
                 Storage::disk('public')->delete($newPhotoPath);
             }
