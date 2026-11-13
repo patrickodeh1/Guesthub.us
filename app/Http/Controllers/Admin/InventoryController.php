@@ -10,6 +10,7 @@ use App\Models\InventorySessionRecord;
 use App\Models\CleaningSession;
 use App\Models\InventorySessionRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Property;
 use App\Services\Inventory\InventoryStockService;
 use Illuminate\Http\Request;
@@ -109,6 +110,9 @@ class InventoryController extends Controller
 
         abort_unless((int) $item->property_id === (int) $property->id, 404);
         if ($request->hasFile('photo')) {
+            if ($item->photo_path) {
+                Storage::disk('public')->delete($item->photo_path);
+            }
             $data['photo_path'] = $request->file('photo')->store('inventory', 'public');
         }
         unset($data['photo']);
@@ -242,7 +246,10 @@ class InventoryController extends Controller
         $guestLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['guest_location_id']);
         $fromLocation = null;
         if ((float) $data['quantity_taken'] > 0) {
-            $fromLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['from_location_id'] ?? 0);
+            if (empty($data['from_location_id'])) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages(['from_location_id' => 'Choose the stock location to take items from.']);
+            }
+            $fromLocation = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['from_location_id']);
             abort_unless(! $fromLocation->is($guestLocation), 422, 'Choose a different stock closet and guest location.');
         }
 
