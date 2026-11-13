@@ -76,7 +76,7 @@
                             @if($record->quantity_guest_consumed !== null)
                                 <p class="text-sm text-gray-500">Estimated guest use since previous cleaning: {{ number_format((float) $record->quantity_guest_consumed, 3) }}</p>
                             @endif
-                            <p class="text-xs text-gray-400">{{ $record->fromLocation?->name ?? 'No stock taken' }} → {{ $record->guestLocation->name }}</p>
+                            <p class="text-xs text-gray-400">{{ $record->fromLocation?->name ?? 'No stock taken' }} → {{ $record->guestLocation?->name ?? 'Location removed' }}</p>
                             @if($record->notes)<p class="mt-1 text-sm text-gray-500">{{ $record->notes }}</p>@endif
                         </div>
                         <span class="text-xs text-gray-400">{{ $record->updated_at->format('M j, g:i A') }}</span>
