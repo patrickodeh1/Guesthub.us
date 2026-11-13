@@ -81,23 +81,28 @@
                                 <span class="text-sm text-slate-500">{{ $item->unit_of_measure ?: 'units' }}</span>
                             </div>
                         </div>
-                        <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="grid gap-3 sm:grid-cols-2" data-inventory-location-pair>
                             <label class="block text-sm font-medium text-slate-700">Take stock from
-                                <select name="from_location_id" class="input mt-1 w-full">
-                                    <option value="">Choose storage location</option>
+                                <select name="from_location_id" data-stock-source class="input mt-1 w-full">
+                                    <option value="">Choose supply closet / storage</option>
                                     @foreach($locations as $location)
                                         <option value="{{ $location->id }}" @selected(old('from_location_id', $sourceLocation?->id ?? $item->default_location_id) == $location->id)>{{ $location->name }}</option>
                                     @endforeach
                                 </select>
+                                <span class="mt-1 block text-xs font-normal text-slate-500">This is where you physically collect the extra supplies.</span>
+                                @error('from_location_id')<span class="mt-1 block text-xs font-medium text-red-600">{{ $message }}</span>@enderror
                             </label>
                             <label class="block text-sm font-medium text-slate-700">Guest area being refilled
-                                <select name="guest_location_id" required class="input mt-1 w-full">
+                                <select name="guest_location_id" data-guest-destination required class="input mt-1 w-full">
                                     <option value="">Choose guest area</option>
                                     @foreach($locations as $location)
                                         <option value="{{ $location->id }}" @selected(old('guest_location_id', $guestLocation?->id) == $location->id)>{{ $location->name }}</option>
                                     @endforeach
                                 </select>
+                                <span class="mt-1 block text-xs font-normal text-slate-500">Choose the bathroom, kitchen or other area where the supplies will be placed.</span>
+                                @error('guest_location_id')<span class="mt-1 block text-xs font-medium text-red-600">{{ $message }}</span>@enderror
                             </label>
+                            <p data-location-warning class="hidden rounded-lg bg-amber-50 p-3 text-xs text-amber-800 sm:col-span-2">Choose two different locations. The supply closet and guest area cannot be the same place.</p>
                         </div>
                         <label class="block text-sm font-medium text-slate-700">Note (optional)
                             <textarea name="notes" rows="2" maxlength="2000" class="input mt-1 w-full" placeholder="For example: one bottle was damaged">{{ old('item_id') == $item->id ? old('notes') : ($record?->notes ?? '') }}</textarea>
@@ -130,4 +135,41 @@
             </section>
         @endif
     </div>
+    <script>
+        document.querySelectorAll('[data-inventory-location-pair]').forEach(pair => {
+            const source = pair.querySelector('[data-stock-source]');
+            const destination = pair.querySelector('[data-guest-destination]');
+            const warning = pair.querySelector('[data-location-warning]');
+            const takenInput = pair.closest('form')?.querySelector('[name="quantity_taken"]');
+            if (!source || !destination) return;
+
+            const syncLocations = () => {
+                const conflict = source.value !== '' && source.value === destination.value;
+                [...source.options].forEach(option => {
+                    option.disabled = option.value !== '' && option.value === destination.value;
+                });
+                [...destination.options].forEach(option => {
+                    option.disabled = option.value !== '' && option.value === source.value;
+                });
+                warning?.classList.toggle('hidden', !conflict);
+                if (takenInput && Number(takenInput.value || 0) > 0) {
+                    source.required = true;
+                } else {
+                    source.required = false;
+                }
+            };
+
+            source.addEventListener('change', syncLocations);
+            destination.addEventListener('change', syncLocations);
+            takenInput?.addEventListener('input', syncLocations);
+            syncLocations();
+            pair.closest('form')?.addEventListener('submit', event => {
+                if (Number(takenInput?.value || 0) > 0 && (!source.value || source.value === destination.value)) {
+                    event.preventDefault();
+                    warning?.classList.remove('hidden');
+                    (source.value === destination.value ? destination : source).focus();
+                }
+            });
+        });
+    </script>
 </x-dynamic-component>
