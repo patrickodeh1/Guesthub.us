@@ -200,37 +200,41 @@ class InventoryController extends Controller
             'quantity' => ['required', 'numeric', 'gt:0', 'max:99999999'],
         ]);
 
-        $line = $order->lines()->with(['item', 'destinationLocation'])->findOrFail($data['line_id']);
-        abort_unless((int) $line->item->property_id === (int) $property->id
-            && (int) $line->destinationLocation->property_id === (int) $property->id, 404);
-        abort_if(in_array($order->status, ['received', 'cancelled'], true), 422, 'This purchase order is already closed.');
-
-        $outstanding = round((float) $line->quantity_ordered - (float) $line->quantity_received, 3);
         $quantity = round((float) $data['quantity'], 3);
-        if ($quantity > $outstanding + 0.000001) {
-            throw ValidationException::withMessages(['quantity' => 'Received quantity cannot exceed the outstanding order quantity.']);
-        }
+        DB::transaction(function () use ($request, $order, $property, $data, $quantity, $stock) {
+            $lockedOrder = InventoryPurchaseOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_if(in_array($lockedOrder->status, ['received', 'cancelled'], true), 422, 'This purchase order is already closed.');
 
-        DB::transaction(function () use ($request, $order, $line, $quantity, $stock) {
+            $line = $lockedOrder->lines()->with(['item', 'destinationLocation'])
+                ->whereKey($data['line_id'])->lockForUpdate()->firstOrFail();
+            abort_unless($line->item && $line->destinationLocation
+                && (int) $line->item->property_id === (int) $property->id
+                && (int) $line->destinationLocation->property_id === (int) $property->id, 404);
+
+            $outstanding = round((float) $line->quantity_ordered - (float) $line->quantity_received, 3);
+            if ($quantity > $outstanding + 0.000001) {
+                throw ValidationException::withMessages(['quantity' => 'Received quantity cannot exceed the outstanding order quantity.']);
+            }
+
             $stock->receive($line->item, $line->destinationLocation, $quantity, $request->user()->id, [
-                'reference' => $order->reference,
-                'supplier' => $order->supplier,
-                'ordered_at' => $order->ordered_at?->toDateString(),
-                'notes' => 'Received against purchase order '.$order->reference,
+                'reference' => $lockedOrder->reference,
+                'supplier' => $lockedOrder->supplier,
+                'ordered_at' => $lockedOrder->ordered_at?->toDateString(),
+                'notes' => 'Received against purchase order '.$lockedOrder->reference,
             ]);
 
             $line->increment('quantity_received', $quantity);
             $line->refresh();
             $line->item->update([
-                'supplier' => $order->supplier,
-                'last_ordered_at' => $order->ordered_at ?? now()->toDateString(),
+                'supplier' => $lockedOrder->supplier,
+                'last_ordered_at' => $lockedOrder->ordered_at ?? now()->toDateString(),
                 'unit_cost' => $line->unit_cost ?? $line->item->unit_cost,
             ]);
 
-            $lines = $order->lines()->get();
+            $lines = $lockedOrder->lines()->get();
             $allReceived = $lines->every(fn ($row) => (float) $row->quantity_received + 0.000001 >= (float) $row->quantity_ordered);
             $anyReceived = $lines->contains(fn ($row) => (float) $row->quantity_received > 0);
-            $order->update(['status' => $allReceived ? 'received' : ($anyReceived ? 'partially_received' : 'ordered')]);
+            $lockedOrder->update(['status' => $allReceived ? 'received' : ($anyReceived ? 'partially_received' : 'ordered')]);
         });
 
         return back()->with('success', 'Received quantity added to the selected stock location.');
