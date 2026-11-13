@@ -17,6 +17,10 @@ The following item at **{{ $item->property->name }}** has reached or fallen belo
 @endif
 Please review the stock and arrange a reorder or transfer.
 
+@component('mail::button', ['url' => route('admin.inventory.index', ['property_id' => $item->property_id])])
+Open inventory
+@endcomponent
+
 Thanks,
 {{ config('app.name') }}
 @endcomponent
