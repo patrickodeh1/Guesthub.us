@@ -39,12 +39,12 @@ class SyncBillingResourceQuantities extends Command
                     $existing = DB::table('host_features')
                         ->where('user_id', $plan->user_id)
                         ->where('source', 'stripe_addon')
-                        ->where('enabled', true)
                         ->pluck('quantity', 'feature_key')
                         ->map(fn ($quantity) => (int) $quantity)
                         ->all();
 
                     $selected = array_fill_keys(array_keys($existing), 1);
+                    $selected = array_diff_key($selected, array_flip($plan->package->allFeatureKeys()));
                     $resolved = $resolver->resolve($plan->user, $selected);
                     ksort($existing);
                     ksort($resolved);
@@ -65,7 +65,7 @@ class SyncBillingResourceQuantities extends Command
                     }
 
                     try {
-                        $subscription = $billing->changeAddons($plan, $quote, $plan->package);
+                        $subscription = $billing->changeAddons($plan, $quote, $plan->package, $resolved);
                         if (! empty($subscription->pending_update)) {
                             throw new \RuntimeException('Stripe returned a pending subscription update.');
                         }
