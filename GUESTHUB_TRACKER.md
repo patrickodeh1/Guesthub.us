@@ -48,7 +48,7 @@ Implemented since the original package foundation:
 Still to verify:
 1. Run the plan and inventory tests locally.
 2. Verify Stripe test-mode trial start, webhook activation, automatic trial-end charge, failed-payment grace, card update and cancellation with Stripe CLI/test clock.
-3. Verify that property/device add-on quantities correspond to actual billable property and device counts; host UI currently accepts quantities rather than deriving them from connected inventory.
+3. Verify resource-based add-on quantities in Stripe test mode. Host selections now derive per-property quantity from active visible properties and per-device quantity from registered smart locks (`BillingQuantityResolver`); changes are applied when the host updates the subscription, not automatically at the instant a property/device is added or removed.
 4. Mark 80 and 58 done only after the end-to-end billing checks and James's acceptance.
 
 ## Other open items (small)
