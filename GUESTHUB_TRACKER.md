@@ -22,7 +22,7 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
-| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | James: packages "should be next", inventory "now if not too much" |
+| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | Package/Stripe foundation and host Plan page exist; property/device quantities are server-derived on subscription changes. Inventory catalogue and cleaner session workflow are built on the feature branch. PriceLabs/Wheelhouse already support host API keys; Channex currently uses the platform key. Remaining: Stripe E2E, quantity resync when resources change, credential ownership decision, reorder alerts and local verification |
 | 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view and per-stay/per-cleaner report. Automated reorder alerts, local migration/test run and UI verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
