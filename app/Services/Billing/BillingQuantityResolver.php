@@ -44,10 +44,9 @@ class BillingQuantityResolver
                 default => 1,
             };
 
-            // Do not create a paid line for a resource the host does not have.
-            if ($quantity > 0) {
-                $resolved[$key] = $quantity;
-            }
+            // Keep zero-quantity selections so a later property/device can
+            // reactivate the add-on without requiring the host to select it again.
+            $resolved[$key] = $quantity;
         }
 
         return $resolved;
