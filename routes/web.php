@@ -747,6 +747,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::get('/sessions', [CleaningSessionController::class, 'index'])->name('sessions.index');
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
+    Route::get('/sessions/{session}/inventory', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'sessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory');
+    Route::post('/sessions/{session}/inventory', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'recordSessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory.record');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
     Route::post('/sessions/{session}/cancel-assignment', [SessionController::class, 'cancelAssignment'])->name('sessions.cancel-assignment');
