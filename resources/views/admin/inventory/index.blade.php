@@ -1,7 +1,7 @@
 <x-admin-layout title="Property inventory">
     @php
         $section = request('section', 'overview');
-        $sections = ['overview' => 'Overview', 'items' => 'Items', 'stock' => 'Stock', 'orders' => 'Purchase orders', 'reports' => 'Reports'];
+        $sections = ['overview' => 'Overview', 'items' => 'Items', 'add' => 'Add item', 'stock' => 'Stock', 'orders' => 'Purchase orders', 'reports' => 'Reports'];
         $lowItems = $items->filter(fn ($item) => $item->is_low_stock);
         $totalUnits = $items->sum(fn ($item) => (float) $item->quantity_on_hand);
         $categoryNames = ['asset' => 'Fixed asset', 'guest_supply' => 'Guest supply', 'cleaning_supply' => 'Cleaning supply', 'tool' => 'Tool', 'other' => 'Other'];
@@ -9,7 +9,7 @@
 
     <div class="page-header">
         <div><p class="eyebrow">Operations</p><h1 class="page-title">Inventory</h1><p class="page-subtitle">A clear view of what each property owns, stores and uses.</p></div>
-        <a href="{{ route('admin.inventory.index', ['property_id' => $property?->id, 'section' => 'items', 'create' => 1]) }}" class="btn-primary">Add item</a>
+        <a href="{{ route('admin.inventory.index', ['property_id' => $property?->id, 'section' => 'add']) }}" class="btn-primary">Add item</a>
     </div>
 
     @if(session('success'))<div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('success') }}</div>@endif
@@ -64,7 +64,7 @@
             @if($lowItems->isNotEmpty())
                 <section class="card card-pad"><h2 class="section-title">Needs reordering</h2><div class="mt-3 divide-y divide-slate-100">@foreach($lowItems as $item)<div class="flex flex-wrap items-center justify-between gap-2 py-3"><div><p class="font-medium">{{ $item->name }}</p><p class="text-xs text-slate-500">{{ number_format((float) $item->quantity_on_hand, 2) }} {{ $item->unit_of_measure }} remaining · threshold {{ number_format((float) $item->reorder_level, 2) }}</p></div><a class="text-sm font-semibold underline" href="{{ route('admin.inventory.index', ['property_id' => $property->id, 'section' => 'orders', 'item_id' => $item->id]) }}">Create order</a></div>@endforeach</div></section>
             @endif
-        @elseif($section === 'items')
+        @elseif($section === 'add')
             <section class="card card-pad mb-5" id="add-item">
                 <div class="flex flex-wrap items-start justify-between gap-3"><div><h2 class="section-title">Add an inventory item</h2><p class="mt-1 text-sm text-slate-500">Start with the basics. Add asset or purchasing details only when they apply.</p></div><span class="text-xs text-slate-500">Property: {{ $property->name }}</span></div>
                 <form method="post" enctype="multipart/form-data" action="{{ route('admin.inventory.items.store') }}" class="mt-5 grid gap-4 sm:grid-cols-2">
@@ -81,6 +81,7 @@
                 </form>
             </section>
 
+        @elseif($section === 'items')
             <section class="card card-pad"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 class="section-title">Items at this property</h2><p class="mt-1 text-sm text-slate-500">{{ $items->count() }} active items</p></div><input id="item-search" class="input w-full sm:max-w-xs" type="search" placeholder="Search inventory"></div>
                 <div class="mt-4 space-y-3" id="item-cards">
                     @forelse($items as $item)
@@ -198,7 +199,7 @@
                 const term = itemSearch.value.trim().toLowerCase();
                 itemCards.forEach(card => card.classList.toggle('hidden', !card.dataset.itemSearch.includes(term)));
             });
-            if (new URLSearchParams(window.location.search).get('create') === '1') document.getElementById('add-item')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+            
         })();
     </script>
 </x-admin-layout>
