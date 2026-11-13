@@ -50,7 +50,7 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'stripe_subscription_id' => 'sub_test',
         ]);
 
-        Illuminate\Support\Facades\DB::table('host_features')->insert([
+        \Illuminate\Support\Facades\DB::table('host_features')->insert([
             'user_id' => $owner->id,
             'feature_key' => $feature->key,
             'enabled' => true,
