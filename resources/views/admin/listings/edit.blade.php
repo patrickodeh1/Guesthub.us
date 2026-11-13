@@ -316,6 +316,20 @@
                 </label>
                 @if($listing->published_at)
                     <p class="mt-2 text-xs text-emerald-700">Published {{ $listing->published_at->format('M j, Y') }}. Unchecking will take it offline.</p>
+                    @php
+                        $embedUrl = route('public.listing.embed', $listing->listing_slug);
+                        $embedCode = '<iframe src="'.$embedUrl.'" width="100%" height="760" style="border:0;max-width:100%;border-radius:12px" loading="lazy" title="'.e($listing->public_title).'"></iframe>';
+                    @endphp
+                    <div class="mt-5 border-t border-slate-200 pt-5">
+                        <h3 class="text-sm font-semibold text-slate-900">Add booking to your own website</h3>
+                        <p class="mt-1 text-xs text-slate-500">Embed this responsive booking form on your website. Guests can check dates, see the live total and continue to secure checkout on GuestHub.</p>
+                        <textarea id="listing-embed-code" class="textarea mt-3 w-full font-mono text-xs" rows="5" readonly>{{ $embedCode }}</textarea>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button type="button" id="copy-listing-embed" class="btn-secondary">Copy embed code</button>
+                            <a href="{{ $embedUrl }}" target="_blank" rel="noopener" class="btn-secondary">Preview widget</a>
+                        </div>
+                        <p id="listing-embed-copied" class="mt-2 text-xs text-emerald-700" role="status"></p>
+                    </div>
                 @else
                     <p class="mt-2 text-xs text-slate-500">Unpublished listings are not public.</p>
                 @endif
@@ -327,6 +341,19 @@
 
     <script>
         (() => {
+            const copyButton = document.getElementById('copy-listing-embed');
+            copyButton?.addEventListener('click', async () => {
+                const field = document.getElementById('listing-embed-code');
+                const status = document.getElementById('listing-embed-copied');
+                try {
+                    await navigator.clipboard.writeText(field.value);
+                } catch {
+                    field.select();
+                    document.execCommand('copy');
+                }
+                status.textContent = 'Embed code copied.';
+            });
+
             const list = document.getElementById('listing-photo-sort');
             if (!list) return;
             let dragged = null;
