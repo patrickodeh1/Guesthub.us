@@ -43,10 +43,15 @@ class InventoryController extends Controller
 
         $locations = InventoryLocation::query()->where('property_id', $property->id)->orderBy('name')->get();
         $movements = InventoryMovement::query()->where('property_id', $property->id)
-            ->with(['item', 'fromLocation', 'toLocation', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout'])
+            ->with(['item', 'fromLocation', 'toLocation', 'recorder'])
             ->latest('occurred_at')->limit(30)->get();
+        $usageMovements = InventoryMovement::query()->where('property_id', $property->id)
+            ->where('movement_type', 'consume')->whereNotNull('cleaning_session_id')
+            ->where('occurred_at', '>=', now()->subDays(90))
+            ->with(['item', 'recorder', 'cleaningSession.booking', 'cleaningSession.checkout'])
+            ->latest('occurred_at')->limit(100)->get();
 
-        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements'));
+        return view('admin.inventory.index', compact('properties', 'property', 'items', 'locations', 'movements', 'usageMovements'));
     }
 
     public function storeItem(Request $request)
