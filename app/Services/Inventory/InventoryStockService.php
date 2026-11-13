@@ -30,6 +30,15 @@ class InventoryStockService
         return $this->move($item, $from, null, $quantity, 'consume', $userId, $meta);
     }
 
+    public function recordLoss(InventoryItem $item, InventoryLocation $location, float $quantity, string $type, ?int $userId, array $meta = []): InventoryMovement
+    {
+        if (! in_array($type, ['waste', 'theft'], true)) {
+            throw ValidationException::withMessages(['movement_type' => 'Choose waste or theft.']);
+        }
+
+        return $this->move($item, $location, null, $quantity, $type, $userId, $meta);
+    }
+
     public function adjust(InventoryItem $item, InventoryLocation $location, float $quantity, ?int $userId, array $meta = []): InventoryMovement
     {
         if ($quantity == 0.0) {
