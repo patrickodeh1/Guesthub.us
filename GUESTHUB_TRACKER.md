@@ -22,8 +22,8 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
-| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | Package/Stripe foundation and host Plan page exist; property/device quantities are server-derived on subscription changes. Inventory catalogue and cleaner session workflow are built on the feature branch. PriceLabs/Wheelhouse already support host API keys; Channex currently uses the platform key. Remaining: Stripe E2E, quantity resync when resources change, credential ownership decision, reorder alerts and local verification |
-| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view and per-stay/per-cleaner report. Automated reorder alerts, local migration/test run and UI verification remain |
+| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | Package/Stripe foundation and host Plan page exist; property/device quantities are server-derived on subscription changes. Inventory catalogue and cleaner session workflow are built on the feature branch. PriceLabs/Wheelhouse already support host API keys; Channex currently uses the platform key. Remaining: Stripe E2E, quantity resync when resources change, credential ownership decision, and local inventory/billing verification |
+| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view, per-stay/per-cleaner report, and scheduled owner email alerts with recovery/re-alert logic. Automated tests are added; local migration/test run and UI verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
 | 71 | Lockbox photo steps, auto-advance, step order bugs | todo | Verify |
@@ -66,7 +66,7 @@ Still to verify:
 
 ## Log
 
-- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added stock-service tests; local migrations, tests and UI checks remain outstanding.
+- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added scheduled low-stock owner email alerts that send once per low-stock episode and re-arm after recovery. Added stock-service and low-stock alert tests; local migrations, tests and UI checks remain outstanding.
 - 2026-11-13: Verified the host Plan, Stripe BillingService, SubscriptionSync and billing portal implementation exist in the feature branch. Stripe test-mode end-to-end trial and automatic charge remain unverified.
 
 - 2026-11-11: direct booking, lease, refund split, SEO fixes, notification templates (guest_refund_issued, host_card_paid), robots fix, packages data model and gate, admin Packages and Host billing pages, billing columns.
