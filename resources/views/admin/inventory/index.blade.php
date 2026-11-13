@@ -88,6 +88,8 @@
                         <label class="field-label">Location<select class="input" name="location_id" required>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
                         <label class="field-label">Quantity<input class="input" name="quantity" type="number" min="0.001" step="0.001" required></label>
                         <label class="field-label">Order / receipt reference<input class="input" name="reference" maxlength="160"></label>
+                        <label class="field-label">Supplier / vendor<input class="input" name="supplier" maxlength="160" placeholder="e.g. Amazon, Walmart"></label>
+                        <label class="field-label">Purchase date<input class="input" type="date" name="ordered_at"></label>
                         <label class="field-label sm:col-span-2">Notes<input class="input" name="notes" maxlength="2000"></label>
                         <div class="sm:col-span-2"><button class="btn-primary" @disabled($items->isEmpty() || $locations->isEmpty())>Receive stock</button></div>
                     </form>
@@ -176,7 +178,7 @@
                 <div class="mt-3 divide-y">
                     @forelse($movements as $movement)
                         <div class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                            <div><span class="font-medium">{{ $movement->item->name }}</span><span class="text-slate-500"> · {{ ucfirst($movement->movement_type) }} {{ number_format((float) $movement->quantity, 3) }}</span><div class="text-xs text-slate-500">{{ $movement->fromLocation?->name ?? 'External'}}, {{ $movement->toLocation?->name ?? '—' }} · {{ $movement->recorder?->name ?? 'System' }}</div>@if($movement->notes)<div class="text-xs text-slate-500">{{ $movement->notes }}</div>@endif</div>
+                            <div><span class="font-medium">{{ $movement->item->name }}</span><span class="text-slate-500"> · {{ ucfirst($movement->movement_type) }} {{ number_format((float) $movement->quantity, 3) }}</span><div class="text-xs text-slate-500">{{ $movement->fromLocation?->name ?? 'External'}}, {{ $movement->toLocation?->name ?? '—' }} · {{ $movement->recorder?->name ?? 'System' }}</div>@if($movement->supplier || $movement->reference || $movement->ordered_at)<div class="text-xs text-slate-500">{{ $movement->supplier }} {{ $movement->reference ? '· '.$movement->reference : '' }} {{ $movement->ordered_at ? '· Ordered '.$movement->ordered_at->format('M j, Y') : '' }}</div>@endif@if($movement->notes)<div class="text-xs text-slate-500">{{ $movement->notes }}</div>@endif</div>
                             <time class="text-xs text-slate-500">{{ $movement->occurred_at?->format('M j, Y g:i A') }}</time>
                         </div>
                     @empty
