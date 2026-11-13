@@ -50,6 +50,9 @@
                 <p class="muted" style="margin:0">{{ $listing->property->city }}@if($listing->property->state), {{ $listing->property->state }}@endif · Up to {{ $listing->max_guests }} guests</p>
                 <p class="muted" style="margin:7px 0 0">Secure booking powered by GuestHub</p>
                 <a href="{{ route('public.listing.show', $listing->listing_slug) }}" target="_top" style="display:inline-block;margin-top:7px;color:#1f6f54;font-size:12px;font-weight:700;text-decoration:underline">View photos and property details</a>
+                @if($listing->lease_enabled && ($listing->listing_type ?? 'both') === 'both')
+                    <p class="muted" style="margin:6px 0 0">For 29+ night stays, open the full listing to apply for a lease.</p>
+                @endif
             </div>
         </div>
 
