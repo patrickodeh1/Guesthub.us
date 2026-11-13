@@ -83,6 +83,8 @@ class InventoryStockService
                 'movement_type' => $type,
                 'quantity' => $quantity,
                 'reference' => $meta['reference'] ?? null,
+                'supplier' => $meta['supplier'] ?? null,
+                'ordered_at' => $meta['ordered_at'] ?? null,
                 'notes' => $meta['notes'] ?? null,
                 'occurred_at' => $meta['occurred_at'] ?? now(),
             ]);
