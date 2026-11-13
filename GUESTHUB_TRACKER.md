@@ -48,17 +48,17 @@ Implemented since the original package foundation:
 Still to verify:
 1. Run the plan and inventory tests locally.
 2. Verify Stripe test-mode trial start, webhook activation, automatic trial-end charge, failed-payment grace, card update and cancellation with Stripe CLI/test clock.
-3. Verify resource-based add-on quantities in Stripe test mode. Host selections now derive per-property quantity from active visible properties and per-device quantity from registered smart locks (`BillingQuantityResolver`); changes are applied when the host updates the subscription, not automatically at the instant a property/device is added or removed.
+3. Verify resource-based add-on quantities in Stripe test mode. Host selections derive per-property quantity from active visible properties and per-device quantity from registered connected smart locks (`BillingQuantityResolver`). The scheduled `billing:sync-resource-quantities` command reconciles existing Stripe subscriptions hourly with no mid-cycle proration; zero-quantity selections are retained for later reactivation.
 4. Mark 80 and 58 done only after the end-to-end billing checks and James's acceptance.
 
 ## Other open items (small)
 
 - Cleaning session status rejects `cancelled` (needs the column type: `show columns from cleaning_sessions where Field='status'`).
-- `pms:sync` fails in the Channex provider (need the top of the error).
+- `pms:sync` still needs a live-config verification run. Added `ChannexProviderTest` for booking revision normalization, OTA labels and availability push; tests do not replace a real Channex credential/account check.
 - Application fee refund button for hosts is not built.
 - Declined lease ID: applicant is not emailed and cannot re-upload.
 - Lease next step after approval: waiting on James (rental contract vs convert to booking).
-- PriceLabs, Wheelhouse, iCal import untested. Test rate precedence by writing a rate row in tinker.
+- PriceLabs, Wheelhouse and iCal import still need live provider/configuration verification. Host PriceLabs and Wheelhouse API keys are encrypted on the user model; Channex continues to use the platform credential pending James's ownership decision. Test rate precedence by writing a rate row in tinker.
 - Refund email and host-paid email: confirm real values appear (not literal braces).
 - Full test suite had 48 unattributed failures before this work. Run `php artisan test`.
 - Remove dead code (old lease `storeId`/`retryId`, `updateDirect`, screening route, unused `PhotoIdDeclinedMail`, dead `cancel()` in `DirectBookingController`) and the six `-copy-` test listings.
@@ -71,6 +71,19 @@ Still to verify:
 - 2026-11-13: Verified the host Plan, Stripe BillingService, SubscriptionSync and billing portal implementation exist in the feature branch. Stripe test-mode end-to-end trial and automatic charge remain unverified.
 
 - 2026-11-11: direct booking, lease, refund split, SEO fixes, notification templates (guest_refund_issued, host_card_paid), robots fix, packages data model and gate, admin Packages and Host billing pages, billing columns.
+
+## Current feature-branch handoff (2026-11-13)
+
+Work is being committed directly to remote branch `feature/complete-client-scope`; the user is continuing independent fixes on `main`. This branch is 0 commits behind main at the last comparison. Do not merge it into main until the user asks.
+
+- Inventory: property-scoped catalogue, item editing/photos, stock locations/balances, receiving/transfers/consumption/adjustments/waste/theft, supplier and purchase history, cleaner fractional counts in active cleaning sessions, estimated guest usage and reporting. Scheduled owner low-stock emails suppress duplicates and re-arm after stock recovery.
+- Billing: server-derived property and connected-lock quantities, with hourly Stripe subscription reconciliation and zero-quantity add-on selection retention.
+- Booking: direct checkout shows live quote breakdown; published listings expose an embeddable booking widget for external websites; Channex OTA import preserves Booking.com/VRBO source labels.
+- Tests added: `InventoryStockServiceTest`, `InventorySessionWorkflowTest`, `InventoryLowStockAlertTest`, `BillingQuantityResolverTest`, `SyncBillingResourceQuantitiesTest`, `ChannexProviderTest`, and expanded `DirectBookingCheckoutTest`.
+- No Docker migrations, PHP lint, PHPUnit run, Stripe test-mode run, or live OTA/provider verification has been observed. Do not mark related tracker tasks done yet.
+- Remaining code/design work: confirm James's credential ownership preference before changing Channex from GuestHub-managed to host-managed; purchase-order/reorder workflow beyond low-stock notifications; live Channex/PriceLabs/Wheelhouse certification; full Stripe E2E verification.
+
+The following 2026-11-11 notes are historical and superseded where they conflict with the current branch handoff.
 
 ## Session handoff (2026-11-11, end of session)
 
