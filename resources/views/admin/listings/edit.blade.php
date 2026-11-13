@@ -316,6 +316,7 @@
                 </label>
                 @if($listing->published_at)
                     <p class="mt-2 text-xs text-emerald-700">Published {{ $listing->published_at->format('M j, Y') }}. Unchecking will take it offline.</p>
+                    @if(($listing->listing_type ?? 'both') !== 'long_term')
                     @php
                         $embedUrl = route('public.listing.embed', $listing->listing_slug);
                         $embedCode = '<iframe src="'.$embedUrl.'" width="100%" height="760" style="border:0;max-width:100%;border-radius:12px" loading="lazy" title="'.e($listing->public_title).'"></iframe>';
@@ -330,6 +331,9 @@
                         </div>
                         <p id="listing-embed-copied" class="mt-2 text-xs text-emerald-700" role="status"></p>
                     </div>
+                    @else
+                        <p class="mt-3 text-xs text-slate-500">Long-term-only listings use the lease application flow and cannot be embedded as short-stay booking forms.</p>
+                    @endif
                 @else
                     <p class="mt-2 text-xs text-slate-500">Unpublished listings are not public.</p>
                 @endif
