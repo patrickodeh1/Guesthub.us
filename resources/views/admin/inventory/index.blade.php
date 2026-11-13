@@ -105,7 +105,7 @@
                             @forelse($items as $item)
                                 <tr>
                                     <td class="py-3 pr-4">
-                                        <div class="flex items-center gap-3">@if($item->photo_path)<img src="{{ asset('storage/'.$item->photo_path) }}" alt="" class="h-10 w-10 rounded-lg object-cover">@endif<div><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div></div></div>
+                                        <div class="flex items-center gap-3">@if($item->photo_path)<img src="{{ asset('storage/'.$item->photo_path) }}" alt="" class="h-10 w-10 rounded-lg object-cover">@endif<div><div class="font-medium">{{ $item->name }}</div><div class="text-xs text-slate-500">{{ $item->sku ?: $item->barcode ?: $item->serial_number }}</div><div class="text-xs text-slate-400">{{ $item->supplier }}{{ $item->last_ordered_at ? ' · Ordered '.$item->last_ordered_at->format('M j, Y') : '' }}</div></div></div>
                                         <details class="mt-2">
                                             <summary class="cursor-pointer text-xs font-medium text-slate-600">Edit item details</summary>
                                             <form method="post" enctype="multipart/form-data" action="{{ route('admin.inventory.items.update', $item) }}" class="mt-3 grid min-w-[280px] gap-2 sm:grid-cols-2">
