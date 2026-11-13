@@ -7,11 +7,40 @@ use App\Models\Feature;
 use App\Models\HostPackage;
 use App\Models\Package;
 use App\Services\Billing\BillingService;
+use App\Services\Billing\BillingQuantityResolver;
+use App\Models\User;
 use App\Services\Billing\PlanPricing;
 use Illuminate\Http\Request;
 
 class PlanController extends Controller
 {
+
+    /**
+     * Accept selected feature keys only. Billable quantities are calculated
+     * server-side from active properties and registered smart-lock devices.
+     *
+     * @param array<int,string> $excluded
+     * @return array<string,int>
+     */
+    private function selectedAddons(Request $request, User $user, array $excluded = []): array
+    {
+        $request->validate([
+            'addons' => ['nullable', 'array'],
+            'addons.*' => ['array'],
+            'addons.*.enabled' => ['nullable', 'boolean'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        ]);
+
+        $selected = [];
+        foreach ((array) $request->input('addons', []) as $key => $row) {
+            if (! empty($row['enabled']) && ! in_array($key, $excluded, true)) {
+                $selected[$key] = 1;
+            }
+        }
+
+        return app(BillingQuantityResolver::class)->resolve($user, $selected);
+    }
+
     public function checkout(Request $request, BillingService $billing)
     {
         $user = $request->user();
@@ -28,12 +57,7 @@ class PlanController extends Controller
             return back()->withErrors(['package' => 'You already have a subscription. Use Manage billing to change or cancel it.']);
         }
 
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user());
         $quote = PlanPricing::quote($package, $addons);
 
         if ($quote['total_cents'] <= 0) {
@@ -175,12 +199,7 @@ class PlanController extends Controller
         }
 
         $included = $package->allFeatureKeys();
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled']) && ! in_array($key, $included, true)) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user(), $included);
         $quote = PlanPricing::quote($package, $addons);
         if ($quote['total_cents'] <= 0) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
@@ -234,9 +253,12 @@ class PlanController extends Controller
                 ->pluck('quantity', 'feature_key')->map(fn ($q) => (int) $q)->all();
         foreach ((array) $request->query('addons', []) as $key => $row) {
             if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
+                $addons[$key] = 1;
             }
         }
+        $quantityResolver = app(BillingQuantityResolver::class);
+        $billingQuantities = $quantityResolver->counts($request->user());
+        $addons = $quantityResolver->resolve($request->user(), $addons);
 
         return view('admin.plan.index', [
             'current' => $current,
@@ -244,6 +266,7 @@ class PlanController extends Controller
             'addonFeatures' => $addonFeatures,
             'selected' => $selected,
             'addons' => $addons,
+            'billingQuantities' => $billingQuantities,
             'quote' => PlanPricing::quote($selected, $addons),
             'keysByPackage' => $packages->mapWithKeys(fn ($p) => [$p->id => $p->allFeatureKeys()]),
             'compareFeatures' => Feature::query()->whereIn('key', $packages->flatMap(fn ($p) => $p->allFeatureKeys())->unique()->values()->all())->orderBy('name')->get(),
