@@ -133,7 +133,7 @@ Run these from the project root after switching to `feature/complete-client-scop
 
 ```bash
 docker compose exec app php artisan migrate
-docker compose exec app php artisan storage:link
+docker compose exec app sh -lc 'test -L public/storage || php artisan storage:link'
 docker compose exec app php artisan view:clear
 docker compose exec app php artisan schedule:list
 
