@@ -105,10 +105,10 @@ class DirectBookingCheckoutTest extends TestCase
         $booking = Booking::query()->where('email', 'taylor@example.test')->firstOrFail();
         $response->assertRedirect(route('public.checkout.pay', [$booking->booking_id, $booking->token]));
         $this->assertSame(24000, $booking->accommodation_cents);
-        $this->assertSame(2500, $booking->cleaning_fee_cents);
-        $this->assertSame(2650, $booking->tax_cents);
+        $this->assertSame(0, $booking->cleaning_fee_cents);
+        $this->assertSame(2400, $booking->tax_cents);
         $this->assertSame(0, $booking->processing_fee_cents);
-        $this->assertSame(29150, $booking->total_cents);
+        $this->assertSame(26400, $booking->total_cents);
         $this->assertSame('+2348012345678', $booking->phone);
         $this->assertSame(Booking::STATUS_PENDING_PAYMENT, $booking->status);
         $this->assertSame('manual', $booking->payment_method);
