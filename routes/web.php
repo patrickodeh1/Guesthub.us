@@ -257,6 +257,18 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('plan/addons', [\App\Http\Controllers\Admin\PlanController::class, 'changeAddons'])->middleware('role:owner,company')->name('plan.addons');
     Route::post('plan/switch', [\App\Http\Controllers\Admin\PlanController::class, 'switchPlan'])->middleware('role:owner,company')->name('plan.switch');
 
+    // ─── Property inventory ──────────────────────────────────────────────────
+    Route::middleware('role:admin,owner,company,manager')->prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'index'])->name('index');
+        Route::post('items', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'storeItem'])->name('items.store');
+        Route::put('items/{item}', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'updateItem'])->name('items.update');
+        Route::post('locations', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'storeLocation'])->name('locations.store');
+        Route::post('receive', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'receive'])->name('receive');
+        Route::post('transfer', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'transfer'])->name('transfer');
+        Route::post('consume', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'consume'])->name('consume');
+        Route::post('adjust', [\\App\\Http\\Controllers\\Admin\\InventoryController::class, 'adjust'])->middleware('role:admin,owner,company')->name('adjust');
+    });
+
     // ─── Guest Guide (per-property categories) ──────────────────────────────
     Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index')->middleware('role:admin,owner,company,manager');
     Route::get('properties/{property}/categories', [PropertyController::class, 'guide'])->name('guest-guide.show')->middleware(['role:admin,owner,company,manager', 'property.access']);
