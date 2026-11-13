@@ -229,7 +229,7 @@ class InventoryController extends Controller
         $data = $request->validate([
             'item_id' => ['required', 'integer'],
             'from_location_id' => ['nullable', 'integer'],
-            'guest_location_id' => ['required', 'integer', 'different:from_location_id'],
+            'guest_location_id' => ['required', 'integer'],
             'quantity_available' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'quantity_taken' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -280,7 +280,7 @@ class InventoryController extends Controller
             InventorySessionRecord::query()->updateOrCreate(
                 ['cleaning_session_id' => $session->id, 'inventory_item_id' => $item->id],
                 [
-                    'property_id' => $propertyId = $session->property_id,
+                    'property_id' => $session->property_id,
                     'from_location_id' => $fromLocation?->id,
                     'guest_location_id' => $guestLocation->id,
                     'recorded_by' => $request->user()->id,
