@@ -37,4 +37,9 @@ class InventoryMovement extends Model
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
+
+    public function cleaningSession(): BelongsTo
+    {
+        return $this->belongsTo(CleaningSession::class, 'cleaning_session_id');
+    }
 }
