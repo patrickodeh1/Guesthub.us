@@ -42,6 +42,11 @@
                 <p class="mt-1 text-sm text-slate-500">Ask your property manager to create a supply closet and guest-area locations before recording stock.</p>
             </section>
         @else
+            @if($locations->count() < 2)
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    <strong>Restocking needs two locations.</strong> You can record the current guest-area count, but to move supplies from storage you need your manager to add a separate supply-closet location and guest-area location.
+                </div>
+            @endif
             @foreach($items as $item)
                 @php
                     $record = $records->firstWhere('inventory_item_id', $item->id);
