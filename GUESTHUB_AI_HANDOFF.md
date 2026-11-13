@@ -1,5 +1,19 @@
 # GuestHub: AI pickup note
 
+## Current branch state (2026-11-13) — supersedes older notes below where they conflict
+
+- Active implementation branch: `feature/complete-client-scope`. Do not commit this work to `main`; the user is making independent fixes on `main`. Merge latest `main` into this branch later, resolve conflicts, test, then wait for the user's approval before merging.
+- Inventory has been added on this branch. New migrations:
+  - `2026_11_13_100000_create_property_inventory_tables.php`
+  - `2026_11_13_110000_create_inventory_session_records.php`
+  - `2026_11_13_120000_add_supplier_to_inventory_movements.php`
+- Inventory includes property-scoped items, locations, balances, receiving, transfers, fractional quantities, supplier/purchase history, item photos/editing, waste/theft movements, low-stock display, cleaner session stock counts and a usage report by stay/cleaner.
+- Inventory stock tests: `tests/Feature/InventoryStockServiceTest.php`. No local migration, lint, test or UI result has yet been confirmed. Do not mark tracker 56 done. Automated reorder alerts and a full UI verification remain open.
+- Host Plan and Stripe billing code now exists: `app/Http/Controllers/Admin/PlanController.php`, `app/Services/Billing/BillingService.php`, `PlanPricing.php`, `SubscriptionSync.php`, and `resources/views/admin/plan/index.blade.php`. The platform webhook dispatches subscription events while retaining guest PaymentIntent finalization. Do not follow older statements below saying the Plan page or billing code is not written. Stripe test-mode trial, automatic charge, failed-payment and portal flows still need end-to-end verification.
+- Add-on quantities are currently entered by the host/admin; automatic reconciliation against actual property/device counts remains unverified.
+- Client API credential ownership is still an open design choice pending James's reply. Preserve support for both GuestHub-managed credentials and host-managed credentials; do not force one model.
+
+
 Read this first. It replaces the full chat history. Keep work in small steps.
 
 ## Setup
