@@ -247,7 +247,7 @@
                 {{-- Channex room type --}}
                 <div>
                     <h3 class="font-semibold text-slate-900">Channex room type</h3>
-                    <p class="section-copy">Required to send availability to Channex.</p>
+                    <p class="section-copy">Connect your OTA channels in Channex first (for example Airbnb, Vrbo and Booking.com), then map this GuestHub property to its Channex property and room type. Reservations imported through Channex retain the OTA name in GuestHub.</p>
                     <div class="mt-3 flex items-center gap-3">
                         <span class="text-sm {{ $isMapped ? 'text-emerald-700' : 'text-amber-700' }} font-medium">{{ $isMapped ? 'Mapped' : 'Not mapped yet' }}</span>
                         @if($isMapped)
