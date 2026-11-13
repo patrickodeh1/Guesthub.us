@@ -136,13 +136,15 @@ class InventoryController extends Controller
             'location_id' => ['required', 'integer'],
             'quantity' => ['required', 'numeric', 'gt:0', 'max:99999999'],
             'reference' => ['nullable', 'string', 'max:160'],
+            'supplier' => ['nullable', 'string', 'max:160'],
+            'ordered_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
         $property = $this->property($request, (int) $data['property_id']);
         $item = InventoryItem::query()->where('property_id', $property->id)->findOrFail($data['item_id']);
         $location = InventoryLocation::query()->where('property_id', $property->id)->findOrFail($data['location_id']);
         $stock->receive($item, $location, (float) $data['quantity'], $request->user()->id, $data);
-        $item->update(['last_ordered_at' => now()->toDateString()]);
+        $item->update(['last_ordered_at' => $data['ordered_at'] ?? now()->toDateString()]);
         return back()->with('success', 'Stock received and added to the selected location.');
     }
 
