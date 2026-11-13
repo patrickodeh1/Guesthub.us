@@ -10,7 +10,7 @@
 - Inventory includes property-scoped items, locations, balances, receiving, transfers, fractional quantities, supplier/purchase history, item photos/editing, waste/theft movements, low-stock display, cleaner session stock counts and a usage report by stay/cleaner.
 - Inventory stock tests: `tests/Feature/InventoryStockServiceTest.php`. No local migration, lint, test or UI result has yet been confirmed. Do not mark tracker 56 done. Automated reorder alerts and a full UI verification remain open.
 - Host Plan and Stripe billing code now exists: `app/Http/Controllers/Admin/PlanController.php`, `app/Services/Billing/BillingService.php`, `PlanPricing.php`, `SubscriptionSync.php`, and `resources/views/admin/plan/index.blade.php`. The platform webhook dispatches subscription events while retaining guest PaymentIntent finalization. Do not follow older statements below saying the Plan page or billing code is not written. Stripe test-mode trial, automatic charge, failed-payment and portal flows still need end-to-end verification.
-- Add-on quantities are currently entered by the host/admin; automatic reconciliation against actual property/device counts remains unverified.
+- Host Plan add-on quantities are now resolved server-side: `per_property` uses the host's active visible properties; `per_device` uses registered `PropertyLock` records (current device scope = smart locks). A host must submit the Plan page's add-on update to apply a changed quantity; immediate automatic subscription updates when resources are added/removed are not implemented.
 - Client API credential ownership is still an open design choice pending James's reply. Preserve support for both GuestHub-managed credentials and host-managed credentials; do not force one model.
 
 
