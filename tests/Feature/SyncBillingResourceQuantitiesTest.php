@@ -54,7 +54,7 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $subscription = \\Stripe\\Subscription::constructFrom([
+        $subscription = \Stripe\Subscription::constructFrom([
             'id' => 'sub_free',
             'status' => 'active',
             'customer' => 'cus_free',
@@ -135,7 +135,7 @@ class SyncBillingResourceQuantitiesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $subscription = \\Stripe\\Subscription::constructFrom([
+        $subscription = \Stripe\Subscription::constructFrom([
             'id' => 'sub_test',
             'status' => 'active',
             'customer' => 'cus_test',
