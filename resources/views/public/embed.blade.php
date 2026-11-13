@@ -48,6 +48,7 @@
                 <h1>{{ $listing->public_title }}</h1>
                 <p class="muted" style="margin:0">{{ $listing->property->city }}@if($listing->property->state), {{ $listing->property->state }}@endif · Up to {{ $listing->max_guests }} guests</p>
                 <p class="muted" style="margin:7px 0 0">Secure booking powered by GuestHub</p>
+                <a href="{{ route('public.listing.show', $listing->listing_slug) }}" target="_top" style="display:inline-block;margin-top:7px;color:#1f6f54;font-size:12px;font-weight:700;text-decoration:underline">View photos and property details</a>
             </div>
         </div>
 
