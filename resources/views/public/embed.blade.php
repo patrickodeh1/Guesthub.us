@@ -51,41 +51,23 @@
             </div>
         </div>
 
-        <form id="embed-booking-form" method="post" action="{{ $checkoutUrl }}" target="_top">
-            @csrf
-            <div class="grid">
+        <div id="embed-booking-form" class="grid gap-4 p-4">
+            <div class="grid grid-cols-2 gap-3">
                 <label>Check-in
-                    <input type="date" name="check_in" id="embed-check-in" min="{{ $minimumDate }}" required>
+                    <input type="date" id="embed-check-in" min="{{ $minimumDate }}" required>
                 </label>
                 <label>Check-out
-                    <input type="date" name="check_out" id="embed-check-out" min="{{ $minimumDate }}" required>
+                    <input type="date" id="embed-check-out" min="{{ $minimumDate }}" required>
                 </label>
                 <label>Guests
-                    <input type="number" name="guests" id="embed-guests" min="1" max="{{ $listing->max_guests }}" value="1" required>
+                    <input type="number" id="embed-guests" min="1" max="{{ $listing->max_guests }}" value="1" required>
                 </label>
                 <label>Payment method
-                    <select name="payment_method" id="embed-payment-method" required>
+                    <select id="embed-payment-method" required>
                         @if($canCard)<option value="card">Credit or debit card</option>@endif
                         @if($manualMethods->isNotEmpty())<option value="manual">Pay host directly</option>@endif
                     </select>
                 </label>
-            </div>
-
-            @if($manualMethods->isNotEmpty())
-                <label id="embed-manual-method-wrap">Choose payment option
-                    <select name="host_payment_method_id" id="embed-manual-method">
-                        @foreach($manualMethods as $method)
-                            <option value="{{ $method->id }}">{{ $method->label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-            @endif
-
-            <div class="grid">
-                <label>Full name<input name="guest_name" maxlength="255" autocomplete="name" required></label>
-                <label>Email<input type="email" name="email" maxlength="255" autocomplete="email" required></label>
-                <label>Phone (optional)<input type="tel" name="phone" maxlength="40" autocomplete="tel"></label>
-                <input type="hidden" name="phone_country_code" value="+1">
             </div>
 
             <div class="summary">
@@ -95,24 +77,19 @@
             </div>
 
             <p id="embed-error" class="error" role="alert"></p>
-            <label class="terms">
-                <input type="checkbox" name="terms" value="1" required>
-                <span>I agree to the host's house rules and cancellation policy.</span>
-            </label>
-            <button type="submit" id="embed-submit" disabled>Continue to secure checkout</button>
-        </form>
+            <button type="button" id="embed-submit" disabled>Continue to booking</button>
+            <p class="muted" style="margin:0;text-align:center">You'll enter your details and complete payment securely on GuestHub.</p>
+        </div>
     </div>
     <p class="foot">Booking and payment are completed securely on GuestHub.</p>
 </div>
 
 <script>
 (() => {
-    const form = document.getElementById('embed-booking-form');
     const ci = document.getElementById('embed-check-in');
     const co = document.getElementById('embed-check-out');
     const guests = document.getElementById('embed-guests');
     const payment = document.getElementById('embed-payment-method');
-    const manualWrap = document.getElementById('embed-manual-method-wrap');
     const total = document.getElementById('embed-total');
     const lines = document.getElementById('embed-lines');
     const status = document.getElementById('embed-quote-status');
@@ -122,10 +99,6 @@
     let controller = null;
     let sequence = 0;
     let validQuote = false;
-
-    function refreshManual() {
-        if (manualWrap) manualWrap.hidden = payment.value !== 'manual';
-    }
 
     async function quote() {
         const current = ++sequence;
@@ -196,14 +169,19 @@
     });
     co.addEventListener('change', quote);
     guests.addEventListener('change', quote);
-    payment.addEventListener('change', () => { refreshManual(); quote(); });
-    refreshManual();
+    payment.addEventListener('change', quote);
 
-    form.addEventListener('submit', (event) => {
-        if (!validQuote) {
-            event.preventDefault();
+    submit.addEventListener('click', () => {
+        if (!validQuote || submit.disabled) {
             error.textContent = 'Choose available dates and wait for the price to finish calculating.';
+            return;
         }
+        const url = new URL(@json(route('public.checkout.show', $listing->listing_slug)));
+        url.searchParams.set('check_in', ci.value);
+        url.searchParams.set('check_out', co.value);
+        url.searchParams.set('guests', guests.value || '1');
+        url.searchParams.set('payment_method', payment.value);
+        window.top.location.assign(url.toString());
     });
 })();
 </script>
