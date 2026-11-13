@@ -44,6 +44,7 @@ Schedule::command('directbookings:release-expired-holds')->everyFiveMinutes()->w
 Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('lease-offers:expire')->everyFiveMinutes()->withoutOverlapping(4);
 Schedule::command('lease-installments:remind')->dailyAt('09:00')->withoutOverlapping();
+Schedule::command('inventory:send-low-stock-alerts')->everyFifteenMinutes()->withoutOverlapping(10);
 Schedule::command('ids:purge-declined')->dailyAt('02:30')->withoutOverlapping();
 Schedule::command('direct-bookings:remind-hosts')->hourly()->withoutOverlapping();
 
