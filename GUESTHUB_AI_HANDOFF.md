@@ -125,3 +125,28 @@ cd ~/soarer-blog
 docker compose exec -T web python manage.py shell -c "from tracker.models import Task; t=Task.objects.get(id=ID); print(t.title); print(t.source_message); [print('COMMENT', c.body) for c in t.comments.all()]"
 ```
 Use his wording, not a summary, when deciding what "done" means.
+
+
+## Local verification checklist (after pulling this branch)
+
+Run these from the project root after switching to `feature/complete-client-scope`:
+
+```bash
+docker compose exec app php artisan migrate
+docker compose exec app php artisan storage:link
+docker compose exec app php artisan view:clear
+docker compose exec app php artisan schedule:list
+
+docker compose exec app php artisan test --filter=InventoryStockServiceTest
+docker compose exec app php artisan test --filter=InventorySessionWorkflowTest
+docker compose exec app php artisan test --filter=InventoryLowStockAlertTest
+docker compose exec app php artisan test --filter=InventoryPurchaseOrderTest
+
+docker compose exec app php artisan test --filter=BillingQuantityResolverTest
+docker compose exec app php artisan test --filter=SyncBillingResourceQuantitiesTest
+docker compose exec app php artisan test --filter=SubscriptionSyncTest
+docker compose exec app php artisan test --filter=ChannexProviderTest
+docker compose exec app php artisan test --filter=DirectBookingCheckoutTest
+```
+
+Also verify the inventory page and cleaner session flow in the browser, run Stripe test-mode trial/automatic-charge/card-update/cancel checks, and test a real Channex property/channel mapping. These environment-dependent checks cannot be certified from the remote repository alone.
