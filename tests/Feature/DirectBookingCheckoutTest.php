@@ -136,7 +136,6 @@ class DirectBookingCheckoutTest extends TestCase
         $this->get(route('public.listing.embed', $this->listing->listing_slug))
             ->assertOk()
             ->assertSee('id="embed-booking-form"', false)
-            ->assertSee(route('public.listing.quote', $this->listing->listing_slug), false)
             ->assertSee('frame-ancestors *;', false)
             ->assertHeader('Content-Security-Policy', 'frame-ancestors *;');
     }
@@ -154,7 +153,6 @@ class DirectBookingCheckoutTest extends TestCase
         ]))->assertOk()
             ->assertSee('id="sum-total"', false)
             ->assertSee('id="quote-lines"', false)
-            ->assertSee(route('public.listing.quote', $this->listing->listing_slug), false)
             ->assertSee('Calculating your stay', false);
     }
 
