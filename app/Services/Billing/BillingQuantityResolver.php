@@ -65,7 +65,8 @@ class BillingQuantityResolver
 
         return [
             'per_property' => $propertyIds->count(),
-            'per_device' => PropertyLock::query()->whereIn('property_id', $propertyIds)->count(),
+            'per_device' => PropertyLock::query()->whereIn('property_id', $propertyIds)
+                ->whereNotNull('seam_device_id')->where('seam_device_id', '!=', '')->count(),
         ];
     }
 }
