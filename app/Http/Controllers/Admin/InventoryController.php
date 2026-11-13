@@ -109,14 +109,27 @@ class InventoryController extends Controller
         ]);
 
         abort_unless((int) $item->property_id === (int) $property->id, 404);
+        $oldPhotoPath = $item->photo_path;
+        $newPhotoPath = null;
         if ($request->hasFile('photo')) {
-            if ($item->photo_path) {
-                Storage::disk('public')->delete($item->photo_path);
-            }
-            $data['photo_path'] = $request->file('photo')->store('inventory', 'public');
+            $newPhotoPath = $request->file('photo')->store('inventory', 'public');
+            $data['photo_path'] = $newPhotoPath;
         }
         unset($data['photo']);
-        $item->update($data);
+
+        try {
+            $item->update($data);
+        } catch (\\Throwable $exception) {
+            if ($newPhotoPath) {
+                Storage::disk('public')->delete($newPhotoPath);
+            }
+            throw $exception;
+        }
+
+        if ($newPhotoPath && $oldPhotoPath && $oldPhotoPath !== $newPhotoPath) {
+            Storage::disk('public')->delete($oldPhotoPath);
+        }
+
         return back()->with('success', 'Inventory item updated.');
     }
 
