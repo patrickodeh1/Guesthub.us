@@ -94,11 +94,11 @@
                             $unit = $f->billing_unit ?: 'flat';
                             $quantity = $unit === 'flat' ? 1 : ($billingQuantities[$unit] ?? 0);
                         @endphp
-                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                        <div data-addon-row="{{ $f->key }}" class="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <label class="flex items-center gap-2">
                                 <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg || ($unit !== 'flat' && $quantity < 1))>
                                 @if(! $inPkg && $unit !== 'flat' && $quantity < 1 && isset($addons[$f->key]))
-                                    <input type="hidden" name="addons[{{ $f->key }}][enabled]" value="1">
+                                    <input class="zero-addon-selection" type="hidden" name="addons[{{ $f->key }}][enabled]" value="1">
                                 @endif
                                 {{ $f->name }} <span class="text-slate-400">{{ $money($f->price_cents) }}{{ $unitLabels[$unit] ?? '' }}</span>
                                 @if($inPkg)<span class="text-xs text-emerald-700">included</span>@endif
@@ -109,6 +109,9 @@
                                     <input type="hidden" name="addons[{{ $f->key }}][quantity]" value="{{ $quantity }}">
                                 @else
                                     <span class="text-xs text-amber-700">Add a property or connect a device to enable</span>
+                                    @if(isset($addons[$f->key]))
+                                        <button type="button" data-remove-zero-addon class="text-xs font-medium text-slate-500 underline">Remove selection</button>
+                                    @endif
                                 @endif
                             @endif
                         </div>
@@ -248,4 +251,15 @@
             </script>
         @endif
     @endif
+<script>
+    document.querySelectorAll('[data-remove-zero-addon]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const row = button.closest('[data-addon-row]');
+            row?.querySelector('.zero-addon-selection')?.remove();
+            const checkbox = row?.querySelector('input[type="checkbox"]');
+            if (checkbox) checkbox.checked = false;
+            button.remove();
+        });
+    });
+</script>
 </x-admin-layout>
