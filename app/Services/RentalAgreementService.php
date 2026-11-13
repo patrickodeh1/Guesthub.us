@@ -26,7 +26,7 @@ class RentalAgreementService
         $idType = $booking->id_type === 'passport' ? 'Passport' : 'State-issued ID';
 
         $template = $this->templateFor($booking, $property);
-        $fullLayout = str_contains($template, '[[signed_name]]');
+        $fullLayout = (bool) $booking->lease_offer_id || str_contains($template, '[[signed_name]]');
         $signedAtObj = $booking->localTimestamp($booking->contract_accepted_at);
         $sigFmt = fn ($v) => e(filled($v) ? $v : '-');
         $idImg = $this->idImageDataUri($booking);
@@ -69,6 +69,7 @@ class RentalAgreementService
             'fullLayout' => $fullLayout,
             'signedAt' => $booking->localTimestamp($booking->contract_accepted_at),
             'agreementVersion' => $booking->contract_version,
+            'isLeaseAgreement' => (bool) $booking->lease_offer_id,
             'idImage' => $this->idImageDataUri($booking),
         ];
     }
@@ -113,6 +114,15 @@ HTML;
     /** Signed text wins, then the property's own agreement, then the global one. */
     public function templateFor(Booking $booking, $property = null): string
     {
+        // Lease bookings must always use the exact contract stored on the offer
+        // that was emailed and signed, never the property's short-stay template.
+        if ($booking->lease_offer_id) {
+            $booking->loadMissing('leaseOffer.installments', 'leaseOffer.application', 'leaseOffer.property.owner');
+            if ($booking->leaseOffer) {
+                return app(\App\Services\LeaseOfferService::class)->renderContract($booking->leaseOffer);
+            }
+        }
+
         if (filled($booking->contract_snapshot)) {
             return $booking->contract_snapshot;
         }

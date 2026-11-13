@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Rental Agreement — {{ $booking->reservation_id ?: $booking->booking_id }} · {{ $websiteName }}</title>
+    <title>{{ !empty($isLeaseAgreement) ? 'Lease Agreement' : 'Rental Agreement' }} — {{ $booking->reservation_id ?: $booking->booking_id }} · {{ $websiteName }}</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; color: #0f172a; font-size: 12px; line-height: 1.55; margin: 0; padding: 0; }
@@ -46,7 +46,7 @@
             <div class="website">{{ $websiteName }}</div>
         </div>
 
-        <h1>Rental Agreement</h1>
+        <h1>{{ !empty($isLeaseAgreement) ? 'Lease Agreement' : 'Rental Agreement' }}</h1>
         <p class="muted">Agreement version {{ $agreementVersion ?: '1' }}{{ $signedAt ? ' · Accepted '.$signedAt->format('M j, Y g:i A T') : '' }}</p>
 
         @unless(! empty($fullLayout))

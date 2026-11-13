@@ -144,6 +144,16 @@ class Booking extends Model
         });
     }
 
+    public function leaseOffer(): BelongsTo
+    {
+        return $this->belongsTo(LeaseOffer::class, 'lease_offer_id');
+    }
+
+    public function leaseApplication(): BelongsTo
+    {
+        return $this->belongsTo(LeaseApplication::class, 'lease_application_id');
+    }
+
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
@@ -1943,7 +1953,8 @@ class Booking extends Model
     /** Direct bookings pay by card on our site only; no off-platform option. */
     public function isDirectBooking(): bool
     {
-        return in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
+        return ! $this->lease_offer_id && ! $this->lease_application_id
+            && in_array(strtolower(trim((string) $this->booking_platform)), ['direct', 'direct booking'], true);
     }
 
     public function isPendingPayment(): bool
@@ -1953,6 +1964,10 @@ class Booking extends Model
 
     public function platformLabel(): string
     {
+        if ($this->lease_offer_id || $this->lease_application_id) {
+            return 'Lease';
+        }
+
         $platform = trim((string) ($this->booking_platform ?? ''));
 
         if ($platform === '') {
@@ -1964,6 +1979,7 @@ class Booking extends Model
             'vrbo', 'homeaway' => 'Vrbo',
             'booking.com', 'booking' => 'Booking.com',
             'expedia' => 'Expedia',
+            'direct', 'direct booking' => 'Direct booking',
             default => $platform,
         };
     }

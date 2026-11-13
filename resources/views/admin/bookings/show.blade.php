@@ -19,6 +19,11 @@
                 <h1 class="page-title !mt-0.5 text-2xl font-bold">{{ $booking->guest_name }}</h1>
                 <p class="page-subtitle !mt-1">{{ $booking->property->name }}</p>
                 <p class="page-subtitle !mt-1">{{ $booking->stayRangeLabel() }}</p>
+                @if($booking->lease_offer_id || $booking->lease_application_id)
+                    <span class="mt-2 inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">Long-term lease</span>
+                @else
+                    <span class="mt-2 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">{{ $booking->platformLabel() }}</span>
+                @endif
                 @if($showCheckinReq || $showCheckoutReq)
                     <div class="mt-3 flex flex-col gap-2 text-sm">
                         @if($showCheckinReq)
@@ -79,7 +84,71 @@
             </div>
         @endif
 
-        @if($booking->source === 'direct')
+        @if($booking->lease_offer_id || $booking->lease_application_id)
+            @php
+                $leaseOffer = $booking->leaseOffer;
+                $leaseApplication = $leaseOffer?->application ?: $booking->leaseApplication;
+                $leaseInstallments = $leaseOffer?->installments ?? collect();
+                $applicationCharges = $leaseApplication?->charges ?? collect();
+                $initialCharge = $leaseOffer?->charges?->firstWhere('type', \App\Models\Charge::TYPE_LEASE_INITIAL_PAYMENT);
+                $moneyCents = fn ($cents) => '$'.number_format(((int) $cents) / 100, 2);
+                $paymentStatusLabel = fn ($status) => match ($status) {
+                    'success', 'paid' => 'Paid', 'pending' => 'Pending', 'failed' => 'Failed',
+                    'refunded' => 'Refunded', 'partially_captured' => 'Partially captured',
+                    'released' => 'Released', 'held' => 'Authorized / held', 'waived' => 'Waived',
+                    default => str($status ?: 'unknown')->replace('_', ' ')->title()->toString(),
+                };
+            @endphp
+            <section class="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-sm font-bold text-slate-950">Long-term lease</h2><span class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">Lease reservation</span></div>
+                <p class="mt-2 text-sm text-slate-600">Application #{{ $leaseApplication?->id ?? '—' }} · Offer {{ $leaseOffer ? '#'.$leaseOffer->id : 'not available' }} @if($leaseOffer) · {{ str($leaseOffer->status)->replace('_', ' ')->title() }} @endif</p>
+                @if($leaseOffer)
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Monthly rent</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->monthly_rent_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Deposit</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->deposit_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Lease total</p><p class="mt-1 font-semibold">{{ $moneyCents($leaseOffer->total_cents) }}</p></div>
+                        <div class="rounded-lg bg-slate-50 p-3"><p class="text-xs text-slate-500">Payment method</p><p class="mt-1 font-semibold">{{ $leaseOffer->payment_method === 'manual' ? ($leaseOffer->hostPaymentMethod?->label ?: 'Manual') : 'Card' }}</p></div>
+                    </div>
+                    @if($initialCharge)
+                        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div><p class="text-sm font-semibold text-slate-900">Combined initial payment</p><p class="mt-1 text-xs text-slate-500">First rent + security deposit + additional fees · Card</p>@if($initialCharge->captured_at)<p class="mt-1 text-xs text-slate-500">Paid {{ $booking->localTimestamp($initialCharge->captured_at)?->format('M j, Y g:i A') }}</p>@endif @if($initialCharge->stripe_payment_intent_id)<p class="mt-1 break-all text-xs text-slate-400">Stripe: {{ $initialCharge->stripe_payment_intent_id }}</p>@endif</div>
+                                <div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($initialCharge->amount_cents) }}</p><span class="text-xs font-semibold">{{ $paymentStatusLabel($initialCharge->status) }}</span></div>
+                            </div>
+                        </div>
+                    @endif
+                    <h3 class="mt-4 text-sm font-semibold">Installment payments</h3>
+                    <div class="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                        @forelse($leaseInstallments as $installment)
+                            @php
+                                $installmentCharge = $installment->charges->sortByDesc('id')->first();
+                                $recordedStatus = $installmentCharge?->status ?: $installment->status;
+                                $recordedMethod = $installment->method ?: ($installmentCharge ? 'card' : ($leaseOffer->payment_method === 'manual' ? 'manual' : 'card'));
+                                $recordedAt = $installment->paid_at ?: $installmentCharge?->captured_at;
+                            @endphp
+                            <div class="flex flex-wrap items-start justify-between gap-3 p-3"><div><p class="text-sm font-semibold">{{ $installment->label }}</p><p class="mt-0.5 text-xs text-slate-500">Due {{ $installment->due_date?->format('M j, Y') }} · {{ ucfirst($recordedMethod) }}</p>
+                                @if($recordedAt)<p class="mt-1 text-xs text-slate-500">Recorded {{ $booking->localTimestamp($recordedAt)?->format('M j, Y g:i A') }}</p>@endif
+                                @if($installmentCharge?->stripe_payment_intent_id)<p class="mt-1 break-all text-xs text-slate-400">Stripe payment: {{ $installmentCharge->stripe_payment_intent_id }}</p>@endif
+                                @if($installment->receipt_path)<p class="mt-1 text-xs text-slate-500">Receipt uploaded</p>@endif
+                            </div><div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($installment->amount_cents) }}</p><span class="mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold {{ in_array($recordedStatus, ['paid', 'success'], true) ? 'bg-emerald-50 text-emerald-700' : (in_array($recordedStatus, ['failed', 'refunded'], true) ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800') }}">{{ $paymentStatusLabel($recordedStatus) }}</span></div></div>
+                        @empty
+                            <p class="p-3 text-sm text-slate-500">No installments found for this offer.</p>
+                        @endforelse
+                    </div>
+                @endif
+                @if($applicationCharges->isNotEmpty())
+                    <h3 class="mt-4 text-sm font-semibold">Application fee payments</h3>
+                    @foreach($applicationCharges as $feeCharge)
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3"><div><p class="text-sm font-medium">{{ $feeCharge->description ?: 'Lease application fee' }}</p><p class="text-xs text-slate-500">{{ $feeCharge->billing_moment ?: 'Application' }} @if($feeCharge->captured_at) · {{ $booking->localTimestamp($feeCharge->captured_at)?->format('M j, Y g:i A') }} @endif</p>@if($feeCharge->stripe_payment_intent_id)<p class="break-all text-xs text-slate-400">{{ $feeCharge->stripe_payment_intent_id }}</p>@endif</div><div class="text-right"><p class="text-sm font-bold">{{ $moneyCents($feeCharge->amount_cents) }}</p><span class="text-xs font-semibold">{{ $paymentStatusLabel($feeCharge->status) }}</span></div></div>
+                    @endforeach
+                @elseif($leaseApplication && $leaseApplication->total_fee_cents > 0)
+                    <p class="mt-3 text-sm text-slate-600">Application fee: {{ $moneyCents($leaseApplication->total_fee_cents) }} · {{ ucfirst($leaseApplication->fee_status) }} ({{ ucfirst($leaseApplication->payment_method ?: 'not specified') }})</p>
+                @endif
+                <p class="mt-4 text-sm font-medium text-slate-700">Reservation status: {{ $booking->statusLabel() }} · Lease contract total: {{ $moneyCents($booking->total_cents) }}</p>
+                @if($booking->payment_confirmed_at)<p class="mt-1 text-xs text-slate-500">Initial payment requirements satisfied {{ $booking->localTimestamp($booking->payment_confirmed_at)?->format('M j, Y g:i A') }}</p>@endif
+            </section>
+        @endif
+        @if($booking->source === 'direct' && ! $booking->lease_offer_id && ! $booking->lease_application_id)
             <section class="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                 <h2 class="flex items-center gap-2 text-sm font-bold text-emerald-950">Direct booking payment <span class="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold text-white">Direct booking</span></h2>
                 <p class="mt-2 text-sm text-emerald-900">

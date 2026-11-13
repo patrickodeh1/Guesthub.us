@@ -23,8 +23,20 @@ use Illuminate\Validation\ValidationException;
 
 class LeaseApplicationController extends Controller
 {
-    public function apply(string $listingSlug)
+    public function apply(Request $request, string $listingSlug)
     {
+        $sessionKey = 'lease_prefill_'.$listingSlug;
+        $prefill = $request->session()->get($sessionKey);
+        if (! is_array($prefill) && is_array($request->session()->get('lease_prefill'))) {
+            $prefill = $request->session()->pull('lease_prefill');
+            $request->session()->put($sessionKey, $prefill);
+        }
+        if ($request->filled('check_in') && $request->filled('check_out')) {
+            $prefill = ['check_in' => $request->query('check_in'), 'check_out' => $request->query('check_out'), 'guests' => $request->query('guests', 1)];
+            $request->session()->put($sessionKey, $prefill);
+        } elseif (is_array($prefill)) {
+            $request->session()->put($sessionKey, $prefill);
+        }
         return view('public.lease-application-id', [
             'listing' => $this->publishedLeaseListing($listingSlug),
             'application' => null,
@@ -86,6 +98,7 @@ class LeaseApplicationController extends Controller
             'applicant_phone' => ['required', 'string', 'max:40'],
             'phone_country_code' => ['nullable', 'string', 'max:10'],
             'move_in_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'requested_end_date' => ['nullable', 'date_format:Y-m-d', 'after:move_in_date'],
             'lease_term_months' => ['required', 'integer', 'min:1', 'max:600'],
             'occupants' => ['required', 'integer', 'min:1', 'max:30'],
             'pets' => ['nullable', 'string', 'max:1000'],
@@ -104,6 +117,7 @@ class LeaseApplicationController extends Controller
             'applicant_email' => $data['applicant_email'],
             'applicant_phone' => $data['applicant_phone'],
             'move_in_date' => $data['move_in_date'],
+            'requested_end_date' => $data['requested_end_date'] ?? null,
             'lease_term_months' => $data['lease_term_months'],
             'occupants' => $data['occupants'],
             'pets' => $data['pets'] ?? null,
@@ -375,6 +389,30 @@ class LeaseApplicationController extends Controller
         return redirect()->route('public.lease-application.fee', [$application->id, $application->token]);
     }
 
+
+    private function applyLeasePrefill(Request $request, LeaseApplication $application): void
+    {
+        $application->loadMissing('listing');
+        $sessionKey = 'lease_prefill_'.($application->listing?->listing_slug ?? '');
+        $prefill = $request->session()->get($sessionKey);
+        if (! is_array($prefill) || empty($prefill['check_in']) || empty($prefill['check_out'])) return;
+        try {
+            $start = \Carbon\Carbon::parse($prefill['check_in'])->startOfDay();
+            $end = \Carbon\Carbon::parse($prefill['check_out'])->startOfDay();
+            $nights = $start->diffInDays($end);
+            if ($nights < 29 || $end->lte($start)) return;
+            $application->update([
+                'move_in_date' => $start->toDateString(),
+                'requested_end_date' => $end->toDateString(),
+                'lease_term_months' => max(1, (int) ceil($nights / 30)),
+                'occupants' => max(1, min(30, (int) ($prefill['guests'] ?? 1))),
+            ]);
+            $request->session()->forget($sessionKey);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     private function scanAndContinue(
         Request $request,
         PropertyListing $listing,
@@ -408,6 +446,7 @@ class LeaseApplicationController extends Controller
             'id_scan_attempts' => $attempts,
             'id_scan_path' => $path,
         ])->save();
+        $this->applyLeasePrefill(request(), $application);
 
         if ($oldPath && $oldPath !== $path && Storage::disk('local')->exists($oldPath)
             && ! Storage::disk('local')->delete($oldPath)) {
@@ -508,6 +547,7 @@ class LeaseApplicationController extends Controller
             'id_scan_path' => $frontPath,
             'id_back_scan_path' => $backPath,
         ])->save();
+        $this->applyLeasePrefill($request, $application);
 
         foreach ($oldPaths as $old) {
             if (! in_array($old, [$frontPath, $backPath], true) && Storage::disk('local')->exists($old)) {

@@ -4,6 +4,7 @@
 @endphp
 <tr>
     <td><a class="font-semibold text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
+        @if($booking->lease_offer_id || $booking->lease_application_id)<span class="ml-2 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">Lease</span>@endif
         @if($cleanerName)
             <p class="text-xs text-slate-500">Cleaner: {{ $cleanerName }}</p>
         @endif

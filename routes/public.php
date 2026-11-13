@@ -36,6 +36,10 @@ Route::middleware('web')->group(function (): void {
     Route::post('/stay/checkout/{booking_id}/{token}/confirm', [DirectBookingController::class, 'confirm'])
         ->middleware('throttle:20,1')
         ->name('public.checkout.confirm');
+    Route::get('/stay/application/{application}/{token}/offer/{offerToken}', [\App\Http\Controllers\LeaseOfferController::class, 'show'])->name('public.lease-offer.show');
+    Route::post('/stay/application/{application}/{token}/offer/{offerToken}/sign', [\App\Http\Controllers\LeaseOfferController::class, 'sign'])->middleware('throttle:10,1')->name('public.lease-offer.sign');
+    Route::post('/stay/application/{application}/{token}/offer/{offerToken}/decline', [\App\Http\Controllers\LeaseOfferController::class, 'decline'])->middleware('throttle:5,1')->name('public.lease-offer.decline');
+    Route::post('/stay/application/{application}/{token}/offer/{offerToken}/confirm-payment', [\App\Http\Controllers\LeaseOfferController::class, 'confirmPayment'])->middleware('throttle:10,1')->name('public.lease-offer.confirm');
     Route::get('/stay/{listing_slug}/apply', [LeaseApplicationController::class, 'apply'])
         ->name('public.lease-application.apply');
     Route::post('/stay/{listing_slug}/apply', [LeaseApplicationController::class, 'storeId'])

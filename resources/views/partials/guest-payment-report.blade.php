@@ -1,4 +1,4 @@
-@if($booking->source === 'direct' && $booking->payment_method === 'manual' && $booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && ! $booking->payment_confirmed_at && ! $booking->guest_payment_reported_at)
+@if($booking->isDirectBooking() && $booking->payment_method === 'manual' && $booking->status === \App\Models\Booking::STATUS_PENDING_PAYMENT && ! $booking->payment_confirmed_at && ! $booking->guest_payment_reported_at)
     <div class="mt-4 rounded-xl border border-slate-200 p-4">
         <p class="text-sm font-semibold text-slate-900">Already sent your payment?</p>
         <p class="mt-1 text-sm text-slate-600">Upload a screenshot, photo or PDF of your receipt. Your stay is confirmed once the host confirms they received the money.</p>

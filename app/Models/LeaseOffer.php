@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Charge;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -48,6 +49,9 @@ class LeaseOffer extends Model
         'accept_by',
         'contract_html',
         'contract_version',
+        'term_months',
+        'currency',
+        'guest_payment_reference',
         'host_signed_name',
         'host_signed_at',
         'host_signed_ip',
@@ -75,6 +79,7 @@ class LeaseOffer extends Model
             'deposit_cents' => 'integer',
             'total_cents' => 'integer',
             'initial_due_cents' => 'integer',
+            'term_months' => 'integer',
             'fees' => 'array',
             'accept_by' => 'datetime',
             'host_signed_at' => 'datetime',
@@ -118,6 +123,11 @@ class LeaseOffer extends Model
     public function installments(): HasMany
     {
         return $this->hasMany(LeaseInstallment::class)->orderBy('due_date')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function charges(): HasMany
+    {
+        return $this->hasMany(Charge::class, 'lease_offer_id');
     }
 
     public function isEditable(): bool

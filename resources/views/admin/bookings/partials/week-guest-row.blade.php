@@ -12,6 +12,7 @@
             <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">{{ $booking->arrivalCountdownLabel() }}</p>
         @endif
         <a class="block break-words pr-2 text-[17px] font-bold leading-6 text-slate-950 hover:text-teal-800" href="{{ route('admin.guests.show', $booking) }}">{{ $booking->guest_name }}</a>
+        @if($booking->lease_offer_id || $booking->lease_application_id)<span class="mt-1 inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">Long-term lease</span>@endif
         <p class="break-words text-sm font-normal italic text-slate-500">{{ $booking->property->name }}</p>
         @if($cleanerName)
             <p class="text-sm text-slate-600">Cleaner: {{ $cleanerName }}</p>
@@ -83,7 +84,7 @@
 
             @unless($booking->isCancelled())
                 <div class="my-1 border-t border-slate-100"></div>
-                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" @if($booking->source === 'direct') onsubmit="return confirm('Cancel this direct booking and release the dates? Any refund is handled separately afterwards.')" @else onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')" @endif>
+                <form method="post" action="{{ route('admin.guests.update-status', $booking) }}" @if($booking->source === 'direct' && ! $booking->lease_offer_id && ! $booking->lease_application_id) onsubmit="return confirm('Cancel this direct booking and release the dates? Any refund is handled separately afterwards.')" @else onsubmit="return confirm('Cancel this reservation? If check-in is within 30 days, a cancellation fee applies and it will stay active but locked. Otherwise it will be archived immediately.')" @endif>
                     @csrf
                     <input type="hidden" name="status" value="cancelled">
                     <button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"><x-icon name="x" class="h-4 w-4" />Cancel Reservation</button>

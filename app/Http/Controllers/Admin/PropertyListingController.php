@@ -67,6 +67,8 @@ class PropertyListingController extends Controller
             'cancellation_policy_text' => ['nullable', 'string', 'max:2000'],
             'house_rules' => ['nullable', 'string', 'max:20000'],
             'lease_enabled' => ['nullable', 'boolean'],
+            'listing_type' => ['required', Rule::in(['short_term', 'long_term', 'both'])],
+            'lease_auto_route_29_nights' => ['nullable', 'boolean'],
             'lease_application_fee' => ['nullable', 'string', 'max:11', 'regex:/\A\d{1,8}(?:\.\d{1,2})?\z/'],
             'lease_allow_passport' => ['nullable', 'boolean'],
             'lease_fee_refund_policy' => ['nullable', 'in:unset,non_refundable,refundable_if_declined'],
@@ -90,6 +92,10 @@ class PropertyListingController extends Controller
             'payment_methods.*.instructions' => ['nullable', 'string', 'max:5000'],
             'payment_methods.*.enabled' => ['nullable', 'boolean'],
         ]);
+
+        if (($data['listing_type'] ?? 'both') === 'long_term' && (! ($data['lease_enabled'] ?? false) || ! \App\Services\FeatureGate::enabled($property->owner, 'lease_applications'))) {
+            throw ValidationException::withMessages(['listing_type' => 'Long-term-only advertising requires long-term lease applications to be enabled for this account.']);
+        }
 
         $published = (bool) $data['published'];
         $wasPublished = $listing->exists && $listing->published_at !== null;
@@ -130,6 +136,8 @@ class PropertyListingController extends Controller
             'cancellation_policy_text' => filled($data['cancellation_policy_text'] ?? null) ? trim($data['cancellation_policy_text']) : null,
             'house_rules' => $data['house_rules'] ?? null,
             'lease_enabled' => (bool) ($data['lease_enabled'] ?? false),
+            'listing_type' => $data['listing_type'],
+            'lease_auto_route_29_nights' => (bool) ($data['lease_auto_route_29_nights'] ?? true),
             'lease_application_fee_cents' => $leaseFeeCents,
             'lease_allow_passport' => (bool) ($data['lease_allow_passport'] ?? false),
             'lease_fee_refund_policy' => $data['lease_fee_refund_policy'] ?? 'unset',
@@ -346,7 +354,9 @@ class PropertyListingController extends Controller
             ? "Amenities selected by the host for this property include: {$amenities}."
             : 'No amenities have been selected for display on this listing.';
 
-        return implode("\n\n", [
+        return implode("
+
+", [
             "{$title} is a {$beds}-bedroom, {$baths}-bathroom property in {$city}. This page presents the information the host has provided so guests can review the home and its booking details before choosing dates. The listing is part of GuestHub's direct booking service, where availability and pricing are shown for the dates selected. The host can update listing details as the property or its arrangements change.",
             $amenityCopy." Please review the amenity list on this page and contact the host if you need to confirm whether a particular item is available during your stay. The amenities displayed here come from the host's selected property details and should not be read as a guarantee beyond those details.",
             'Before submitting a booking, check the guest limit, minimum stay, house rules and cancellation policy shown on this listing. The quote is based on the dates and guest count entered, and the final total is presented before checkout. Availability can change while a reservation is being completed. Arrival instructions and access details are handled after a booking is confirmed; this public listing does not show the exact street address or private entry information.',

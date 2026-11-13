@@ -5,6 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\LeaseApplication;
 use App\Models\PaymentReceipt;
+use App\Models\LeaseOffer;
+use App\Models\LeaseInstallment;
+use App\Models\HostPaymentMethod;
+use App\Services\LeaseOfferService;
+use App\Mail\DirectBookingMail;
+use Illuminate\Support\Facades\Mail;
 use App\Services\LeaseApplicationNotificationService;
 use App\Services\PaymentReceiptService;
 use Illuminate\Http\Request;
@@ -26,9 +32,32 @@ class LeaseApplicationAdminController extends Controller
     {
         $this->authorizeApplication($request, $application);
         abort_unless($application->status !== 'draft', 404);
-        $application->load(['listing', 'property', 'hostPaymentMethod', 'charges']);
+        $application->load(['listing', 'property', 'hostPaymentMethod', 'charges', 'offers.installments', 'offers.booking']);
+        $paymentMethods = HostPaymentMethod::query()->where('owner_id', $application->property->owner_id)->where('enabled', true)->orderBy('id')->get();
+        $leaseTemplate = app(\App\Services\LeaseAgreementService::class)->templateFor($application->property);
+        $owner = $application->property->owner;
+        $canCard = filled($owner?->stripe_account_id) && $owner?->stripe_charges_enabled && app(\App\Services\Payments\PaymentService::class)->isConfigured();
 
-        return view('admin.lease-applications.show', compact('application'));
+        return view('admin.lease-applications.show', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
+    }
+
+    public function contract(Request $request, LeaseApplication $application)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless($application->status === 'approved', 409, 'Approve the application before preparing the rental contract.');
+        $application->load(['listing', 'property', 'offers.installments', 'offers.booking']);
+        $paymentMethods = HostPaymentMethod::query()
+            ->where('owner_id', $application->property->owner_id)
+            ->where('enabled', true)
+            ->orderBy('id')
+            ->get();
+        $leaseTemplate = app(\App\Services\LeaseAgreementService::class)->templateFor($application->property);
+        $owner = $application->property->owner;
+        $canCard = filled($owner?->stripe_account_id)
+            && $owner?->stripe_charges_enabled
+            && app(\App\Services\Payments\PaymentService::class)->isConfigured();
+
+        return view('admin.lease-applications.contract', compact('application', 'paymentMethods', 'leaseTemplate', 'canCard'));
     }
 
     public function update(
@@ -66,7 +95,67 @@ class LeaseApplicationAdminController extends Controller
             $notifications->statusChanged($application->fresh(), $firstApproval);
         }
 
+        if ($firstApproval) {
+            return redirect()->route('admin.lease-applications.contract', $application);
+        }
+
         return back()->with('success', 'Application updated.');
+    }
+
+
+    public function createOffer(Request $request, LeaseApplication $application, LeaseOfferService $offers)
+    {
+        $this->authorizeApplication($request, $application);
+        $data = $request->validate([
+            'start_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after:start_date'],
+            'term_months' => ['required', 'integer', 'min:1', 'max:600'],
+            'monthly_rent' => ['required', 'numeric', 'gt:0', 'max:999999'],
+            'deposit' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            'fees' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            // The initial amount is calculated server-side: first month's rent + deposit + fees.
+            'contract_html' => ['required', 'string', 'max:50000'],
+            'payment_method' => ['required', 'in:card,manual'],
+            'host_payment_method_id' => ['required_if:payment_method,manual', 'nullable', 'integer'],
+            'accept_by' => ['required', 'date', 'after:now', 'before_or_equal:'.now()->addDays(30)->toDateTimeString()],
+        ]);
+        $offer = $offers->create($application, $data, (int) $request->user()->id);
+        try {
+            Mail::to($application->applicant_email)->send(new DirectBookingMail(
+                'Your rental offer is ready',
+                'The host has prepared a rental offer for '.$application->listing->public_title.'. Review the dates, payment schedule and agreement, then sign before the acceptance deadline.',
+                route('public.lease-offer.show', [$application->id, $application->token, $offer->token]),
+                'Review rental offer',
+            ));
+        } catch (\Throwable $e) { report($e); }
+        return redirect()->route('admin.lease-applications.show', $application)
+            ->with('success', 'Rental offer sent. The dates are now temporarily held until '.$offer->accept_by->format('M j, Y g:i A').'.');
+    }
+
+
+    public function cancelOffer(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id, 404);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
+        $service->cancel($offer, (int) $request->user()->id, (string) ($data['reason'] ?? ''));
+        return back()->with('success', 'Rental offer cancelled and its calendar dates released. Paid installments remain in the payment history; review any refund separately.');
+    }
+
+    public function markInitialPaymentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id, 404);
+        $service->markInitialPaymentPaid($offer, (int) $request->user()->id);
+        return back()->with('success', 'Combined initial payment recorded: first month rent, security deposit and additional fees.');
+    }
+
+    public function markInstallmentReceived(Request $request, LeaseApplication $application, LeaseOffer $offer, LeaseInstallment $installment, LeaseOfferService $service)
+    {
+        $this->authorizeApplication($request, $application);
+        abort_unless((int) $offer->lease_application_id === (int) $application->id && (int) $installment->lease_offer_id === (int) $offer->id, 404);
+        $service->markInstallmentPaid($installment, (int) $request->user()->id);
+        return back()->with('success', 'Installment payment recorded.');
     }
 
     public function markFeeReceived(

@@ -960,6 +960,12 @@ class GuestController extends Controller
             return $request->expectsJson() ? response()->json(['ok' => true]) : back();
         }
 
+        // Lease agreements are already signed through the emailed lease offer.
+        // Do not let the generic guest agreement flow replace that signed document.
+        if ($booking->lease_offer_id) {
+            return $request->expectsJson() ? response()->json(['ok' => true]) : back();
+        }
+
         if (! app(\App\Services\RentalAgreementService::class)->isRequired($booking)) {
             return $request->expectsJson() ? response()->json(['ok' => true]) : back();
         }

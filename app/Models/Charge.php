@@ -24,6 +24,8 @@ class Charge extends Model
 
     public const TYPE_APPLICATION_FEE = 'application_fee';
 
+    public const TYPE_LEASE_INITIAL_PAYMENT = 'lease_initial_payment';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_HELD = 'held';
@@ -39,7 +41,7 @@ class Charge extends Model
     public const STATUS_REFUNDED = 'refunded';
 
     protected $fillable = [
-        'booking_id', 'lease_application_id', 'type', 'amount_cents', 'status',
+        'booking_id', 'lease_application_id', 'lease_offer_id', 'lease_installment_id', 'type', 'amount_cents', 'status',
         'stripe_payment_intent_id', 'billing_moment',
         'captured_at', 'released_at', 'description', 'stripe_account_id', 'refunded_cents',
     ];
@@ -52,6 +54,16 @@ class Charge extends Model
             'released_at' => 'datetime',
             'refunded_cents' => 'integer',
         ];
+    }
+
+    public function leaseOffer(): BelongsTo
+    {
+        return $this->belongsTo(LeaseOffer::class, 'lease_offer_id');
+    }
+
+    public function leaseInstallment(): BelongsTo
+    {
+        return $this->belongsTo(LeaseInstallment::class, 'lease_installment_id');
     }
 
     public function booking(): BelongsTo

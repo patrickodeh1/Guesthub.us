@@ -294,9 +294,14 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
         Route::post('/{application}/id/{side}/approve', [\App\Http\Controllers\Admin\LeaseApplicationAdminController::class, 'approveIdSide'])->name('id.approve');
         Route::post('/{application}/id/{side}/decline', [\App\Http\Controllers\Admin\LeaseApplicationAdminController::class, 'declineIdSide'])->name('id.decline');
         Route::get('/', [LeaseApplicationAdminController::class, 'index'])->name('index');
+        Route::get('/{application}/contract', [LeaseApplicationAdminController::class, 'contract'])->name('contract');
         Route::get('/{application}', [LeaseApplicationAdminController::class, 'show'])->name('show');
         Route::put('/{application}', [LeaseApplicationAdminController::class, 'update'])->name('update');
         Route::post('/{application}/fee-received', [LeaseApplicationAdminController::class, 'markFeeReceived'])->name('fee-received');
+        Route::post('/{application}/offers', [LeaseApplicationAdminController::class, 'createOffer'])->name('offers.create');
+        Route::post('/{application}/offers/{offer}/cancel', [LeaseApplicationAdminController::class, 'cancelOffer'])->name('offers.cancel');
+        Route::post('/{application}/offers/{offer}/initial-payment/received', [LeaseApplicationAdminController::class, 'markInitialPaymentReceived'])->name('offers.initial-payment.received');
+        Route::post('/{application}/offers/{offer}/installments/{installment}/received', [LeaseApplicationAdminController::class, 'markInstallmentReceived'])->name('offers.installments.received');
         Route::post('/{application}/screening', [LeaseApplicationAdminController::class, 'requestScreening'])->name('screening');
         Route::get('/{application}/id', [LeaseApplicationAdminController::class, 'idDocument'])->name('id');
     });

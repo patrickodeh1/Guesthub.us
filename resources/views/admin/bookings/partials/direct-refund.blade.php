@@ -1,4 +1,4 @@
-@if($booking->source === 'direct' && $booking->isCancelled() && $booking->payment_confirmed_at)
+@if($booking->isDirectBooking() && $booking->isCancelled() && $booking->payment_confirmed_at)
     @php
         $money = fn ($c) => '$'.number_format(((int) $c) / 100, 2);
         $isManual = $booking->payment_method === 'manual';

@@ -113,3 +113,6 @@ find-changes-since.sh
 # public/build, composer.lock, and package-lock.json are committed intentionally.
 /storage/app/og-cache/
 storage/app
+
+# Local SQLite database
+/guesthub
