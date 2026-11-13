@@ -24,8 +24,8 @@ return new class extends Migration
         Schema::create('inventory_purchase_order_lines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('purchase_order_id')->constrained('inventory_purchase_orders')->cascadeOnDelete();
-            $table->foreignId('inventory_item_id')->constrained('inventory_items')->cascadeOnDelete();
-            $table->foreignId('destination_location_id')->constrained('inventory_locations')->cascadeOnDelete();
+            $table->foreignId('inventory_item_id')->constrained('inventory_items');
+            $table->foreignId('destination_location_id')->constrained('inventory_locations');
             $table->decimal('quantity_ordered', 12, 3);
             $table->decimal('quantity_received', 12, 3)->default(0);
             $table->decimal('unit_cost', 12, 2)->nullable();
