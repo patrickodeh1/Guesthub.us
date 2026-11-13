@@ -42,11 +42,12 @@
             <div class="mr-auto min-w-0 sm:mr-0 sm:text-right">
                 @php $cleaningGuestLabel = $session && method_exists($session, 'guestLabel') ? $session->guestLabel() : null; @endphp
                 @if(! empty($row['cleaner_pending']))
-                    <p class="min-w-0 break-words text-sm italic text-slate-400">{{ $row['cleaner'] }}@if($cleaningGuestLabel) · {{ $cleaningGuestLabel }}@endif · pending acceptance</p>
+                    <p class="min-w-0 break-words text-sm italic text-slate-400">{{ $row['cleaner'] }} · pending acceptance</p>
                 @else
-                    <p class="min-w-0 break-words text-sm font-semibold text-emerald-700">{{ $row['cleaner'] }}@if($cleaningGuestLabel) <span class="font-normal text-slate-500">· {{ $cleaningGuestLabel }}</span>@endif</p>
+                    <p class="min-w-0 break-words text-sm font-semibold text-emerald-700">{{ $row['cleaner'] }}</p>
                 @endif
                 <p class="text-xs text-slate-500">
+                    @if($session->scheduled_date && $session->scheduled_date->toDateString() !== $row['date']->toDateString())<span class="font-semibold text-amber-700">{{ $session->scheduled_date->format('D, M j') }}</span> @endif
                     @if($session->scheduled_time){{ $session->scheduled_time->format('g:i A') }}@endif
                 </p>
             </div>

@@ -183,7 +183,8 @@ class CalendarController extends Controller
 
             foreach ($checkouts as $b) {
                 $d = Carbon::parse($b->check_out_date)->toDateString();
-                if ($covered->has($b->property_id . '|' . $d)) continue;
+                if ($covered->has($b->property_id . '|' . $d)
+                    || CleaningSession::where('booking_id', $b->getKey())->where('status', '<>', 'cancelled')->exists()) continue;
                 $unscheduledByDate->push([
                     'id' => null,
                     'booking_id' => $b->getKey(),

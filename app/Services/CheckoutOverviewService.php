@@ -77,6 +77,13 @@ class CheckoutOverviewService
             ->get()
             ->groupBy(fn (CleaningSession $s) => $s->property_id.'|'.$s->scheduled_date->toDateString());
 
+        // A cleaning is tied to its guest by booking_id, wherever it was moved to (even outside the window).
+        $byBooking = CleaningSession::with('housekeeper:id,name')
+            ->whereIn('booking_id', $bookings->pluck('id'))
+            ->where('status', '<>', 'cancelled')
+            ->get()
+            ->groupBy('booking_id');
+
         $arrivals = $this->active(Booking::query())
             ->whereIn('property_id', $propertyIds)
             ->whereDate('check_in_date', '>=', $today->toDateString())
@@ -87,7 +94,7 @@ class CheckoutOverviewService
         // One row per property per checkout day (that is also how a cleaning job is matched).
         $rows = $bookings
             ->groupBy(fn (Booking $b) => $b->property_id.'|'.$b->check_out_date->toDateString())
-            ->map(function ($group, $key) use ($sessions, $arrivals, $today, $tomorrow, $cleanerOptions) {
+            ->map(function ($group, $key) use ($sessions, $byBooking, $arrivals, $today, $tomorrow, $cleanerOptions) {
                 $primary = $group->first();
                 $outDate = $primary->check_out_date->toDateString();
                 $ids = $group->pluck('id');
@@ -96,9 +103,15 @@ class CheckoutOverviewService
                     ->first(fn (Booking $a) => ! $ids->contains($a->id) && $a->check_in_date->toDateString() >= $outDate);
 
                 // If several sessions exist for that day, prefer one that has a cleaner.
-                $session = $sessions->get($key)
-                    ?->sortByDesc(fn (CleaningSession $s) => $s->housekeeper_id ? 1 : 0)
-                    ->first();
+                // Explicit booking link first, so a cleaning moved off the checkout date is still this guest's.
+                $linked = $group->flatMap(fn (Booking $gb) => $byBooking->get($gb->id) ?? collect())
+                    ->reject(fn (CleaningSession $s) => $s->scheduled_date === null);
+                $session = $linked->first(fn (CleaningSession $s) => $s->scheduled_date->toDateString() === $outDate)
+                    ?? $linked->sortBy('id')->first()
+                    ?? $sessions->get($key)
+                        ?->filter(fn (CleaningSession $s) => ! $s->booking_id || $ids->contains($s->booking_id))
+                        ->sortByDesc(fn (CleaningSession $s) => $s->housekeeper_id ? 1 : 0)
+                        ->first();
 
                 $sameDay = $next && $next->check_in_date->toDateString() === $outDate;
 

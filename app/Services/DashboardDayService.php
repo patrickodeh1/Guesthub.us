@@ -290,6 +290,11 @@ class DashboardDayService
                 $cleaner = ! empty($cr['cleaner_pending'])
                     ? ['text' => $cr['cleaner'].' · pending acceptance', 'tone' => 'slate']
                     : ['text' => (string) $cr['cleaner'], 'tone' => 'green'];
+                // A cleaning moved off the checkout day: say when it actually happens.
+                $sd = ($cr['session'] ?? null)?->scheduled_date;
+                if ($sd && Carbon::parse($sd)->toDateString() !== $cr['date']->toDateString()) {
+                    $cleaner['text'] .= ' · cleans '.Carbon::parse($sd)->format('D, M j');
+                }
             }
         }
 

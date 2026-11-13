@@ -167,6 +167,22 @@ class CleaningJobService
         return $result;
     }
 
+    /**
+     * A cleaning moved off its guest's checkout date is a deliberate choice: flag it so the
+     * checkout sync stops snapping it back. Never clears the flag (a custom time may rely on it).
+     */
+    public function markScheduleOverride(CleaningSession $session): CleaningSession
+    {
+        if ($session->booking_id
+            && ($lb = Booking::find($session->booking_id))
+            && $lb->check_out_date
+            && $lb->check_out_date->toDateString() !== $session->scheduled_date?->toDateString()) {
+            $session->forceFill(['schedule_overridden' => true])->saveQuietly();
+        }
+
+        return $session;
+    }
+
     public const MIN_TURNOVER_MINUTES = 240;
 
     /**

@@ -211,11 +211,18 @@ class ManageSessionController extends Controller
                 ->map(fn ($s) => $s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())
                 ->flip();
 
+            // A cleaning linked to the booking covers it wherever it was moved to.
+            $linkedBookingIds = CleaningSession::query()
+                ->whereIn('booking_id', $upcoming->pluck('id'))
+                ->where('status', '<>', 'cancelled')
+                ->pluck('booking_id')
+                ->flip();
+
             $names = $properties->pluck('name', 'id');
             foreach ($upcoming as $b) {
                 $d = \Carbon\Carbon::parse($b->check_out_date)->toDateString();
                 $key = $b->property_id . '|' . $d;
-                if ($coveredKeys->has($key)) { continue; }
+                if ($coveredKeys->has($key) || $linkedBookingIds->has($b->getKey())) { continue; }
                 $coveredKeys->put($key, true);
                 $needsCleaner->push([
                     'booking_id' => $b->getKey(),
@@ -241,7 +248,11 @@ class ManageSessionController extends Controller
                 ->get()
                 ->groupBy(fn ($b) => $b->property_id . '|' . \Carbon\Carbon::parse($b->check_out_date)->toDateString());
             foreach ($datedJobs as $s) {
-                $b = $jobBookings->get($s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())?->first();
+                // The explicit booking link wins; the date match is only a fallback for unlinked jobs.
+                $b = $s->booking_id
+                    ? \App\Models\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
+                    : null;
+                $b = $b ?: $jobBookings->get($s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())?->first();
                 if ($b) {
                     $bookingByJob[$s->id] = ['id' => $b->getKey(), 'guest' => $b->guest_name ?: 'Guest'];
                 }
@@ -467,7 +478,8 @@ class ManageSessionController extends Controller
             403,
             'You do not have access to that property.'
         );
-        $cleaningJobService->update($request->user(), $session, $data);
+        $updated = $cleaningJobService->update($request->user(), $session, $data);
+        $cleaningJobService->markScheduleOverride($updated instanceof \App\Models\CleaningSession ? $updated : $session->fresh());
 
         return redirect()->to(
             $request->input('_return_to', route('manage.sessions.index'))

@@ -71,7 +71,7 @@ class CleaningFlowService
                     ->whereDate('scheduled_date', $date)
                     ->whereNotNull('booking_id')->where('booking_id', '<>', $booking->id)
                     ->whereNotIn('booking_id', $otherCheckouts)
-                    ->where('no_guest', false)->whereNull('started_at')
+                    ->where('no_guest', false)->where('schedule_overridden', false)->whereNull('started_at')
                     ->whereNotIn('status', ['cancelled', 'completed'])
                     ->orderByRaw('housekeeper_id is null')->orderBy('id')->first();
                 if ($moved) {
