@@ -41,19 +41,34 @@ class ChannexProviderTest extends TestCase
                             'phone' => '+15551234567',
                         ],
                     ],
+                ], [
+                    'id' => 'revision-vrbo-234',
+                    'attributes' => [
+                        'id' => 'revision-vrbo-234',
+                        'booking_id' => 'booking-vrbo-567',
+                        'property_id' => 'property-789',
+                        'arrival_date' => '2026-12-18',
+                        'departure_date' => '2026-12-21',
+                        'status' => 'new',
+                        'ota_name' => 'VRBO',
+                        'ota_reservation_code' => 'VR-2002',
+                        'customer' => ['name' => 'Morgan', 'surname' => 'Traveler'],
+                    ],
                 ]],
             ], 200),
         ]);
 
         $bookings = app(ChannexProvider::class)->getBookings();
 
-        $this->assertCount(1, $bookings);
+        $this->assertCount(2, $bookings);
         $this->assertSame('booking-456', $bookings[0]->externalBookingId);
         $this->assertSame('property-789', $bookings[0]->externalPropertyId);
         $this->assertSame('revision-123', $bookings[0]->revisionId);
         $this->assertSame('Booking.com', $bookings[0]->otaName);
         $this->assertSame('BC-1001', $bookings[0]->otaReservationCode);
         $this->assertSame('Taylor Guest', $bookings[0]->guestName);
+        $this->assertSame('VRBO', $bookings[1]->otaName);
+        $this->assertSame('booking-vrbo-567', $bookings[1]->externalBookingId);
 
         Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && str_contains($request->url(), '/booking_revisions/feed')
