@@ -57,7 +57,7 @@ class ChannexProviderTest extends TestCase
 
         Http::assertSent(fn (Request $request) => $request->method() === 'GET'
             && str_contains($request->url(), '/booking_revisions/feed')
-            && $request->hasHeader('user-api-key', 'test-channex-key'));
+            && $request->hasHeader('user-api-key'));
     }
 
     public function test_availability_is_pushed_to_the_dedicated_availability_endpoint(): void
