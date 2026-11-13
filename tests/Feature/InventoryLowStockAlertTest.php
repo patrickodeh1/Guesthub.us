@@ -50,8 +50,7 @@ class InventoryLowStockAlertTest extends TestCase
 
     public function test_item_without_owner_email_does_not_get_marked_as_alerted(): void
     {
-        $owner = User::factory()->create(['email' => null]);
-        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $property = Property::factory()->create(['owner_id' => null]);
         $item = InventoryItem::create([
             'property_id' => $property->id,
             'name' => 'Hand soap',
