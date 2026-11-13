@@ -152,14 +152,14 @@ class PlanController extends Controller
             return back()->withErrors(['package' => 'There is no active subscription to change.']);
         }
 
-        $addons = $this->selectedAddons($request, $request->user());
+        $addons = $this->selectedAddons($request, $request->user(), $hp->package->allFeatureKeys());
         $quote = PlanPricing::quote($hp->package, $addons);
         if ($quote['total_cents'] <= 0) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
         }
 
         try {
-            $sub = $billing->changeAddons($hp, $quote);
+            $sub = $billing->changeAddons($hp, $quote, $hp->package, $addons);
             if (! empty($sub->pending_update)) {
                 return back()->withErrors(['package' => 'Your payment did not go through, so your add-ons were not changed. Update your card under Manage billing and try again.']);
             }
@@ -196,7 +196,7 @@ class PlanController extends Controller
         }
 
         try {
-            $sub = $billing->changeAddons($hp, $quote, $package);
+            $sub = $billing->changeAddons($hp, $quote, $package, $addons);
             if (! empty($sub->pending_update)) {
                 return back()->withErrors(['package' => 'Your payment did not go through, so your plan was not changed. Update your card under Manage billing and try again.']);
             }
@@ -239,7 +239,7 @@ class PlanController extends Controller
         $addons = ($request->has('package') || ! $current || $current->billing_source !== 'stripe')
             ? []
             : \Illuminate\Support\Facades\DB::table('host_features')
-                ->where('user_id', $request->user()->id)->where('source', 'stripe_addon')->where('enabled', 1)
+                ->where('user_id', $request->user()->id)->where('source', 'stripe_addon')
                 ->pluck('quantity', 'feature_key')->map(fn ($q) => (int) $q)->all();
         foreach ((array) $request->query('addons', []) as $key => $row) {
             if (! empty($row['enabled'])) {
