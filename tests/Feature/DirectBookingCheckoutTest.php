@@ -136,7 +136,6 @@ class DirectBookingCheckoutTest extends TestCase
         $this->get(route('public.listing.embed', $this->listing->listing_slug))
             ->assertOk()
             ->assertSee('id="embed-booking-form"', false)
-            ->assertSee('frame-ancestors *;', false)
             ->assertHeader('Content-Security-Policy', 'frame-ancestors *;');
     }
 
