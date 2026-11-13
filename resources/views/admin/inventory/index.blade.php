@@ -97,6 +97,59 @@
             </div>
 
             <section class="card card-pad mt-5">
+                <h2 class="section-title">Create purchase order</h2>
+                <p class="mt-1 text-sm text-slate-500">Record what you ordered. When a delivery arrives, receive all or part of it into the selected stock location.</p>
+                <form method="post" action="{{ route('admin.inventory.purchase-orders.store') }}" class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    @csrf<input type="hidden" name="property_id" value="{{ $property->id }}">
+                    <label class="field-label">Item<select class="input" name="item_id" required>@foreach($items as $item)<option value="{{ $item->id }}">{{ $item->name }}</option>@endforeach</select></label>
+                    <label class="field-label">Receive into<select class="input" name="destination_location_id" required>@foreach($locations as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
+                    <label class="field-label">Supplier / vendor<input class="input" name="supplier" maxlength="160" required placeholder="e.g. Amazon, Walmart"></label>
+                    <label class="field-label">Order reference<input class="input" name="reference" maxlength="160" placeholder="Optional"></label>
+                    <label class="field-label">Order date<input class="input" type="date" name="ordered_at"></label>
+                    <label class="field-label">Quantity ordered<input class="input" type="number" name="quantity_ordered" min="0.001" step="0.001" required></label>
+                    <label class="field-label">Unit cost<input class="input" type="number" name="unit_cost" min="0" step="0.01"></label>
+                    <label class="field-label sm:col-span-2">Notes<input class="input" name="notes" maxlength="2000"></label>
+                    <div class="sm:col-span-2 lg:col-span-3"><button class="btn-primary" @disabled($items->isEmpty() || $locations->isEmpty())>Create purchase order</button></div>
+                </form>
+
+                <div class="mt-6 border-t border-slate-200 pt-5">
+                    <h3 class="font-semibold text-slate-900">Recent purchase orders</h3>
+                    <div class="mt-3 space-y-3">
+                        @forelse($purchaseOrders as $order)
+                            <div class="rounded-xl border border-slate-200 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="font-semibold text-slate-900">{{ $order->reference }} · {{ $order->supplier }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">Ordered {{ $order->ordered_at?->format('M j, Y') ?? 'date not set' }} · {{ ucfirst(str_replace('_', ' ', $order->status)) }}</p>
+                                    </div>
+                                    <span class="text-xs text-slate-500">{{ $order->creator?->name ?? 'Team member' }}</span>
+                                </div>
+                                @foreach($order->lines as $line)
+                                    @php $outstanding = max(0, round((float) $line->quantity_ordered - (float) $line->quantity_received, 3)) @endphp
+                                    <div class="mt-3 border-t border-slate-100 pt-3">
+                                        <div class="flex flex-wrap justify-between gap-2 text-sm">
+                                            <span class="font-medium">{{ $line->item?->name ?? 'Item removed' }} → {{ $line->destinationLocation?->name ?? 'Location removed' }}</span>
+                                            <span class="text-slate-600">{{ number_format((float) $line->quantity_received, 3) }} / {{ number_format((float) $line->quantity_ordered, 3) }} received</span>
+                                        </div>
+                                        @if($outstanding > 0 && $line->item && $line->destinationLocation)
+                                            <form method="post" action="{{ route('admin.inventory.purchase-orders.receive', $order) }}" class="mt-3 flex flex-wrap items-end gap-2">
+                                                @csrf<input type="hidden" name="line_id" value="{{ $line->id }}">
+                                                <label class="field-label w-36">Receive now<input class="input" type="number" name="quantity" min="0.001" max="{{ $outstanding }}" step="0.001" value="{{ $outstanding }}" required></label>
+                                                <button class="btn-secondary">Add received stock</button>
+                                                <span class="text-xs text-slate-500">{{ number_format($outstanding, 3) }} outstanding</span>
+                                            </form>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @empty
+                            <p class="py-3 text-sm text-slate-500">No purchase orders yet. Create one when you need to reorder supplies or assets.</p>
+                        @endforelse
+                    </div>
+                </div>
+            </section>
+
+            <section class="card card-pad mt-5">
                 <h2 class="section-title">Inventory levels</h2>
                 <div class="mt-4 overflow-x-auto">
                     <table class="min-w-full text-sm">
