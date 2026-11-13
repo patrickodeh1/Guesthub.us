@@ -129,6 +129,11 @@ class PublicListingController extends Controller
     public function embed(string $listingSlug)
     {
         $listing = $this->findPublicListing($listingSlug);
+        if (($listing->listing_type ?? 'both') === 'long_term') {
+            abort_unless($listing->lease_enabled, 404);
+            return redirect()->route('public.lease-application.apply', $listingSlug);
+        }
+
         $owner = $listing->property->owner;
         $canCard = $this->paymentMethodAvailable($listing, 'card')
             && app(\\App\\Services\\Payments\\PaymentService::class)->isConfigured();
@@ -145,8 +150,7 @@ class PublicListingController extends Controller
             'canCard' => $canCard,
             'manualMethods' => $manualMethods,
             'minimumDate' => now($this->timezone($listing->property->timezone))->toDateString(),
-        ])->header('X-Frame-Options', 'SAMEORIGIN')
-          ->header('Content-Security-Policy', "frame-ancestors 'self' *");
+        ])->header('Content-Security-Policy', 'frame-ancestors *;');
     }
 
     public function quote(Request $request, string $listingSlug, QuoteService $quotes)
