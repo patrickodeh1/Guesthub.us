@@ -131,6 +131,22 @@ class DirectBookingCheckoutTest extends TestCase
         Mail::assertSent(DirectBookingMail::class, 2);
     }
 
+    public function test_checkout_page_shows_a_live_quote_summary_for_selected_dates(): void
+    {
+        $checkIn = now('America/Los_Angeles')->addDays(9)->toDateString();
+        $checkOut = now('America/Los_Angeles')->addDays(11)->toDateString();
+
+        $this->get(route('public.checkout.show', $this->listing->listing_slug, [
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'guests' => 2,
+        ]))->assertOk()
+            ->assertSee('id="sum-total"', false)
+            ->assertSee('id="quote-lines"', false)
+            ->assertSee(route('public.listing.quote', $this->listing->listing_slug), false)
+            ->assertSee('Calculating your stay', false);
+    }
+
     public function test_checkout_phone_uses_the_selected_country_code(): void
     {
         $this->get(route('public.checkout.show', $this->listing->listing_slug))
