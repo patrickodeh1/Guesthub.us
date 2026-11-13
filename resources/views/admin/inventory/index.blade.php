@@ -269,7 +269,27 @@
                 <div class="mt-3 divide-y">
                     @forelse($movements as $movement)
                         <div class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                            <div><span class="font-medium">{{ $movement->item->name }}</span><span class="text-slate-500"> · {{ ucfirst($movement->movement_type) }} {{ number_format((float) $movement->quantity, 3) }}</span><div class="text-xs text-slate-500">{{ $movement->fromLocation?->name ?? 'External'}}, {{ $movement->toLocation?->name ?? '—' }} · {{ $movement->recorder?->name ?? 'System' }}</div>@if($movement->supplier || $movement->reference || $movement->ordered_at)<div class="text-xs text-slate-500">{{ $movement->supplier }} {{ $movement->reference ? '· '.$movement->reference : '' }} {{ $movement->ordered_at ? '· Ordered '.$movement->ordered_at->format('M j, Y') : '' }}</div>@endif@if($movement->notes)<div class="text-xs text-slate-500">{{ $movement->notes }}</div>@endif</div>
+                            <div>
+                                <span class="font-medium">{{ $movement->item->name }}</span>
+                                <span class="text-slate-500"> · {{ ucfirst($movement->movement_type) }} {{ number_format((float) $movement->quantity, 3) }}</span>
+                                <div class="text-xs text-slate-500">
+                                    {{ $movement->fromLocation?->name ?? 'External' }},
+                                    {{ $movement->toLocation?->name ?? '—' }} ·
+                                    {{ $movement->recorder?->name ?? 'System' }}
+                                </div>
+
+                                @if ($movement->supplier || $movement->reference || $movement->ordered_at)
+                                    <div class="text-xs text-slate-500">
+                                        {{ $movement->supplier }}
+                                        {{ $movement->reference ? '· '.$movement->reference : '' }}
+                                        {{ $movement->ordered_at ? '· Ordered '.$movement->ordered_at->format('M j, Y') : '' }}
+                                    </div>
+                                @endif
+
+                                @if ($movement->notes)
+                                    <div class="text-xs text-slate-500">{{ $movement->notes }}</div>
+                                @endif
+                            </div>
                             <time class="text-xs text-slate-500">{{ $movement->occurred_at?->format('M j, Y g:i A') }}</time>
                         </div>
                     @empty
