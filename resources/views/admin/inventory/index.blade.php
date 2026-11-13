@@ -147,23 +147,24 @@
 
             <section class="card card-pad mt-5">
                 <div class="flex flex-wrap items-end justify-between gap-2">
-                    <div><h2 class="section-title">Usage by stay and cleaner</h2><p class="mt-1 text-sm text-slate-500">Recorded usage linked to a cleaning session, for the last 90 days.</p></div>
+                    <div><h2 class="section-title">Guest supply usage by stay and cleaner</h2><p class="mt-1 text-sm text-slate-500">Based on before-restock counts recorded during cleaning sessions in the last 90 days.</p></div>
                     <span class="text-xs text-slate-500">Up to 100 records</span>
                 </div>
                 <div class="mt-3 overflow-x-auto">
                     <table class="min-w-full text-sm">
-                        <thead><tr class="border-b text-left text-slate-500"><th class="py-3 pr-4">Date</th><th class="py-3 pr-4">Item</th><th class="py-3 pr-4">Quantity</th><th class="py-3 pr-4">Guest / stay</th><th class="py-3">Cleaner</th></tr></thead>
+                        <thead><tr class="border-b text-left text-slate-500"><th class="py-3 pr-4">Date</th><th class="py-3 pr-4">Item</th><th class="py-3 pr-4">Guest use</th><th class="py-3 pr-4">Replenished</th><th class="py-3 pr-4">Guest / stay</th><th class="py-3">Cleaner</th></tr></thead>
                         <tbody class="divide-y">
-                            @forelse($usageMovements as $usage)
+                            @forelse($sessionRecords as $record)
                                 <tr>
-                                    <td class="py-3 pr-4 whitespace-nowrap">{{ $usage->occurred_at?->format('M j, Y') }}</td>
-                                    <td class="py-3 pr-4">{{ $usage->item->name }}</td>
-                                    <td class="py-3 pr-4">{{ number_format((float) $usage->quantity, 3) }} {{ $usage->item->unit_of_measure }}</td>
-                                    <td class="py-3 pr-4">{{ $usage->cleaningSession?->guestLabel() ?: 'Stay not linked' }}</td>
-                                    <td class="py-3">{{ $usage->recorder?->name ?? 'Unknown' }}</td>
+                                    <td class="py-3 pr-4 whitespace-nowrap">{{ $record->created_at?->format('M j, Y') }}</td>
+                                    <td class="py-3 pr-4">{{ $record->item->name }}</td>
+                                    <td class="py-3 pr-4">{{ $record->quantity_guest_consumed === null ? '—' : number_format((float) $record->quantity_guest_consumed, 3).' '.$record->item->unit_of_measure }}</td>
+                                    <td class="py-3 pr-4">{{ number_format((float) $record->quantity_taken, 3) }} {{ $record->item->unit_of_measure }}</td>
+                                    <td class="py-3 pr-4">{{ $record->cleaningSession?->guestLabel() ?: 'Stay not linked' }}</td>
+                                    <td class="py-3">{{ $record->recorder?->name ?? 'Unknown' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-6 text-center text-slate-500">No usage has been linked to a cleaning session yet.</td></tr>
+                                <tr><td colspan="6" class="py-6 text-center text-slate-500">No cleaner inventory records have been saved yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
