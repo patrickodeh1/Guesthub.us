@@ -605,7 +605,7 @@ Before confirmation, recheck availability to prevent overlapping bookings. If th
 This gives us the rental-contract functionality while reusing the existing booking and guest-portal features.
 Keep in mind that this rental application is prompted when a guest selects 29 days or longer as well as I need a separate option to show guests who want to apply. Basically I want to advertise the unit as long term and short term but long term (29 days or more) will generate this flow automatically if the host has this option selected in their settings
 
-## 93. Ask when update test available and bypass unnecessary lockbox screen  [NOT DONE] (To do)
+## 93. Ask when update test available and bypass unnecessary lockbox screen  [IN PROGRESS] (Lockbox task now appears only when selected for the cleaning; scheduling selector exposes lockbox tasks, and lockbox is forced to the final exit position. Regression tests added; local suite still needs to be run.)
 
 Project: Guesthub | key: m-d56c04601f5f | created: 2026-11-13
 
