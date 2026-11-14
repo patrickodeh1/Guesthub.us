@@ -271,7 +271,7 @@ class SessionReportController extends Controller
             ])->filter());
         }
         $startedActivity = \Spatie\Activitylog\Models\Activity::query()
-            ->where('subject_type', CleaningSession::class)
+            ->where('subject_type', $session->getMorphClass())
             ->where('subject_id', $session->id)
             ->where('event', 'started')
             ->with('causer')
