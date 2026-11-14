@@ -6,6 +6,39 @@
         <h2 class="text-lg sm:text-xl font-semibold">Cleaning Schedule</h2>
     </x-slot>
 
+    @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+        <x-card class="mb-4">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaner start window</h3>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">How early an assigned cleaner can start before the scheduled time.</p>
+                </div>
+                <form method="post" action="{{ route('manage.sessions.cleaning-window.update') }}" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    @if(auth()->user()->hasRole('admin'))
+                        <div>
+                            <x-form.label value="Host" />
+                            <select name="host_id" required class="rounded border-gray-300 text-sm">
+                                @foreach($cleaningWindowHosts as $host)
+                                    <option value="{{ $host->id }}" @selected((string) old('host_id', $selectedCleaningWindowHost?->id) === (string) $host->id)>{{ $host->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+                    <div>
+                        <x-form.label value="Allow start before schedule" />
+                        <select name="minutes" class="rounded border-gray-300 text-sm">
+                            @foreach([0,15,30,45,60,90,120,150,180,210,240] as $minutes)
+                                <option value="{{ $minutes }}" @selected((int) old('minutes', $selectedCleaningWindowMinutes) === $minutes)>{{ $minutes === 0 ? 'At scheduled time only' : $minutes.' minutes early' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <x-button>Save window</x-button>
+                </form>
+            </div>
+        </x-card>
+    @endif
+
     <x-card class="mb-4">
         <form method="get" class="space-y-4 px-1 sm:px-0">
             <div class="flex flex-wrap gap-4">
