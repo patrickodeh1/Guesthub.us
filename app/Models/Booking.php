@@ -159,12 +159,21 @@ class Booking extends Model
         return $this->belongsTo(Property::class);
     }
 
-    /** Cleanings tied to this stay: explicit booking link, or same-property cleaning on the check-out date. */
+    /**
+     * Cleanings tied to this stay. An unlinked legacy session may be matched by
+     * property + checkout date only when that date resolves to this booking uniquely.
+     */
     public function linkedCleanings(): Builder
     {
-        return CleaningSession::query()->where(function ($q) {
+        $canUseDateFallback = $this->check_out_date
+            && \\App\\Services\\CleaningFlowService::bookingForPropertyDate(
+                (int) $this->property_id,
+                $this->check_out_date->toDateString()
+            )?->getKey() === $this->getKey();
+
+        return CleaningSession::query()->where(function ($q) use ($canUseDateFallback) {
             $q->where('booking_id', $this->id);
-            if ($this->check_out_date) {
+            if ($canUseDateFallback) {
                 $q->orWhere(function ($q2) {
                     $q2->whereNull('booking_id')
                         ->where('property_id', $this->property_id)
