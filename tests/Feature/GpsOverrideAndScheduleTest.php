@@ -23,11 +23,11 @@ class GpsOverrideAndScheduleTest extends TestCase
         ]);
     }
 
-    public function test_cleaner_cannot_start_session_when_too_far()
+    public function test_cleaner_cannot_verify_location_when_too_far(): void
     {
         $cleaner = $this->createUser();
         $cleaner->assignRole('housekeeper');
-        
+
         $owner = $this->createUser();
         $owner->assignRole('owner');
 
@@ -46,14 +46,15 @@ class GpsOverrideAndScheduleTest extends TestCase
             'scheduled_date' => now()->toDateString(),
         ]);
 
-        // Coordinates very far away from New York
-        $response = $this->actingAs($cleaner)->post(route('sessions.start', $session), [
+        $response = $this->actingAs($cleaner)->postJson(route('sessions.verify-location', $session), [
             'latitude' => 34.0522,
             'longitude' => -118.2437,
+            'accuracy' => 10,
         ]);
 
-        $response->assertSessionHasErrors(['gps']);
-        $this->assertEquals('pending', $session->fresh()->status);
+        $response->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertNull($session->fresh()->gps_confirmed_at);
+        $this->assertSame('pending', $session->fresh()->status);
     }
 
     public function test_admin_can_grant_gps_override()
