@@ -65,6 +65,36 @@ class CleaningGuestLinkResolutionTest extends TestCase
         );
     }
 
+    public function test_legacy_unlinked_cleaning_is_visible_only_to_the_unique_checkout_guest(): void
+    {
+        $booking = $this->booking('2026-11-10', '2026-11-14');
+        $session = CleaningSession::factory()->create([
+            'property_id' => $this->property->id,
+            'owner_id' => $this->owner->id,
+            'scheduled_date' => '2026-11-14',
+            'booking_id' => null,
+            'no_guest' => false,
+        ]);
+
+        $this->assertTrue($booking->linkedCleanings()->whereKey($session->id)->exists());
+    }
+
+    public function test_legacy_unlinked_cleaning_is_not_shown_under_overlapping_guests(): void
+    {
+        $first = $this->booking('2026-11-10', '2026-11-14');
+        $second = $this->booking('2026-11-11', '2026-11-14');
+        $session = CleaningSession::factory()->create([
+            'property_id' => $this->property->id,
+            'owner_id' => $this->owner->id,
+            'scheduled_date' => '2026-11-14',
+            'booking_id' => null,
+            'no_guest' => false,
+        ]);
+
+        $this->assertFalse($first->linkedCleanings()->whereKey($session->id)->exists());
+        $this->assertFalse($second->linkedCleanings()->whereKey($session->id)->exists());
+    }
+
     public function test_auto_tag_leaves_ambiguous_cleaning_unlinked(): void
     {
         $this->booking('2026-11-10', '2026-11-14');
