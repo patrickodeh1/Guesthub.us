@@ -44,8 +44,8 @@
                     <div>
                         <label class="field-label" for="role">Role <span class="text-red-500">*</span></label>
                         <select id="role" name="role" required class="input">
-                            @foreach(\App\Models\User::ROLE_LABELS as $key => $label)
-                                <option value="{{ $key }}" @selected(old('role', $user->getRoleNames()->first()) === $key)>{{ $label }}</option>
+                            @foreach($assignableRoles as $key)
+                                <option value="{{ $key }}" @selected(old('role', $user->getRoleNames()->first()) === $key)>{{ \App\Models\User::ROLE_LABELS[$key] ?? ucfirst($key) }}</option>
                             @endforeach
                         </select>
                         @error('role') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
