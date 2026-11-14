@@ -818,6 +818,8 @@ Route::middleware('auth')->group(function () {
     // User Management Routes
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->middleware('role:admin,owner,company')->name('users.index');
     Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,owner,company')->name('users.create');
+    Route::post('/users/{user}/deactivate', [UserController::class, 'deactivateCleaner'])->middleware('role:admin')->name('users.deactivate');
+    Route::post('/users/{user}/reactivate', [UserController::class, 'reactivateCleaner'])->middleware('role:admin')->name('users.reactivate');
     Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->middleware('role:admin,owner,company')->name('users.edit');
 
     Route::post('/users/{user}/familiarity/reset', [UserFamiliarityController::class, 'resetAll'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_all');
