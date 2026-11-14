@@ -312,7 +312,7 @@ class CleanerAccessSteps
         if (! $s->requires_photo) {
             return [];
         }
-        if (! auth()->check() || (int) $session->housekeeper_id !== (int) auth()->id()) {
+        if (! self::isCleanerForSession($session)) {
             return [];
         }
 
