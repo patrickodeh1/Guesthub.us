@@ -1195,7 +1195,7 @@ class SessionController extends Controller
             }
         }
 
-        activity()->performedOn($session)->event('started')->log('Session started');
+        activity()->performedOn($session)->causedBy(auth()->user())->event('started')->log('Session started');
 
         // Trigger SMS notification for cleaning started
         try {
@@ -1260,7 +1260,7 @@ class SessionController extends Controller
             ChecklistItem::insertOrIgnore($rows);
         }
 
-        return redirect()->route('sessions.show', $session);
+        return redirect()->route('sessions.show', array_merge([$session], \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
     }
 
     /** The assigned cleaner gives a job back before starting it. It returns to the pool unassigned. */
@@ -1394,9 +1394,9 @@ class SessionController extends Controller
         }
 
         if ($isOverride) {
-            activity()->performedOn($session)->event('completed')->log('Session closed by manager override: ' . $request->input('note'));
+            activity()->performedOn($session)->causedBy(auth()->user())->event('completed')->log('Session closed by manager override: ' . $request->input('note'));
         } else {
-            activity()->performedOn($session)->event('completed')->log('Session completed');
+            activity()->performedOn($session)->causedBy(auth()->user())->event('completed')->log('Session completed');
         }
 
         // Trigger SMS notification for cleaning finished
