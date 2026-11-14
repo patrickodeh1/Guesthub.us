@@ -93,7 +93,8 @@ class UnifiedNavigationTest extends TestCase
         $this->assertArrayNotHasKey('Media', $items);
         $this->assertArrayNotHasKey('Administration', $items);
 
-        $sections = collect(app(Navigation::class)->forUser(auth()->user()));
+        $housekeeper = $this->userWithRoles(['housekeeper']);
+        $sections = collect(app(Navigation::class)->forUser($housekeeper));
         $work = $sections->firstWhere('label', 'My Work');
         $this->assertSame(['Dashboard', 'My Jobs', 'Training', 'My Account'], collect($work['items'])->pluck('label')->all());
     }
@@ -104,7 +105,7 @@ class UnifiedNavigationTest extends TestCase
         $items = $this->itemsFor($admin);
 
         $this->assertArrayHasKey('Jobs', $items);
-        $this->assertArrayNotHasKey('My Jobs', $items);
-        $this->assertArrayNotHasKey('Training', $items);
+        $work = collect(app(Navigation::class)->forUser($admin))->firstWhere('label', 'My Work');
+        $this->assertSame([], $work['items']);
     }
 }
