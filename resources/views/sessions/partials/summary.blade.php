@@ -234,7 +234,7 @@
             <div id="complete-area">
             {{-- Notes and Submission --}}
             <x-card class="p-6">
-                <form method="post" action="{{ route('sessions.complete', $session) }}" onsubmit="alert('All tasks complete!'); return true;">
+                <form method="post" action="{{ route('sessions.complete', array_merge([$session], request()->boolean('view_as_cleaner') ? ['view_as_cleaner' => 1] : [])) }}" onsubmit="alert('All tasks complete!'); return true;">
                     @csrf
                     <div class="mb-6">
                         <label for="session_note" class="block text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Session Notes (Optional)</label>
