@@ -7,6 +7,7 @@ use App\Models\Property;
 use App\Models\User;
 use App\Services\CleaningStartWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class CleaningStartWindowTest extends TestCase
@@ -15,7 +16,7 @@ class CleaningStartWindowTest extends TestCase
 
     protected function tearDown(): void
     {
-        \Carbon\Carbon::setTestNow();
+        Carbon::setTestNow();
         parent::tearDown();
     }
 
@@ -37,7 +38,7 @@ class CleaningStartWindowTest extends TestCase
             'status' => 'pending',
         ]);
 
-        \Carbon\Carbon::setTestNow('2026-11-14 09:25:00');
+        Carbon::setTestNow('2026-11-14 09:25:00');
 
         $window = app(CleaningStartWindow::class);
 
@@ -62,7 +63,7 @@ class CleaningStartWindowTest extends TestCase
             'status' => 'pending',
         ]);
 
-        \Carbon\Carbon::setTestNow('2026-11-14 09:39:00');
+        Carbon::setTestNow('2026-11-14 09:39:00');
 
         $window = app(CleaningStartWindow::class);
 
