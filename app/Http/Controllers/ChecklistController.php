@@ -27,7 +27,7 @@ class ChecklistController extends Controller
         if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
             return;
         }
-        if ($user->hasAnyRole(['admin', 'owner', 'company']) || (int) $session->housekeeper_id !== (int) $user->id) {
+        if ($user->hasAnyRole(['admin', 'owner', 'company', 'manager']) || (int) $session->housekeeper_id !== (int) $user->id) {
             return;
         }
         if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
@@ -121,6 +121,8 @@ class ChecklistController extends Controller
             }
         }
 
+        $wasChecked = (bool) $item->checked;
+
         $item->update([
             'checked'    => $nowChecked,
             'checked_at' => $nowChecked ? now() : null,
@@ -128,7 +130,7 @@ class ChecklistController extends Controller
             'quantity'   => $request->input('quantity'),
         ]);
 
-        if ($nowChecked && !$item->checked) {
+        if ($nowChecked && ! $wasChecked) {
             activity('checklist')
                 ->performedOn($session)
                 ->causedBy(auth()->user())
