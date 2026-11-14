@@ -192,13 +192,13 @@ Project: Guesthub | key: f3-2ce48fff9f | created: 2026-11-03
 
 **Client's words:** I’m also not seeing the finished photos or the required photos from any of the jobs prior to the merge of the two sites
 
-## 35. Occasional tasks appear randomly in checklist instead of correct positions  [IN PROGRESS] (Cleaner task filtering updated; verify selected tasks and configured order against property data)
+## 35. Occasional tasks appear randomly in checklist instead of correct positions  [IN PROGRESS] (Cleaner task filtering and optional lockbox selection updated; configured anchor placement is now honored for exit tasks too. Verify against property data.)
 
 Project: Guesthub | key: f3-13cbd074bc | created: 2026-11-03
 
 **Client's words:** Also, you really need to work on this checklist as far as the additional tasks that I assigned that are occasional because they’re appearing randomly tasks that I’m not even selecting them to do or appearing for the cleaners and then also test that I’m selecting for them to appear are appearing at random intervals throughout the checklist instead of where they’re supposed to actually show up during the checklist
 
-## 36. Reorder tasks; ensure lockbox code appears only once at final step  [IN PROGRESS] (Lockbox tasks moved to one final exit step and phase ordering updated; property selection and full workflow still need testing)
+## 36. Reorder tasks; ensure lockbox code appears only once at final step  [IN PROGRESS] (Lockbox is opt-in, de-duplicated, anchored tasks honor configured positions, and lockbox is forced to the final exit position. Full workflow test remains.)
 
 Project: Guesthub | key: f3-826ebc58de | created: 2026-11-03
 
@@ -264,7 +264,7 @@ Project: Guesthub | key: f3-473e83f4fb | created: 2026-11-03
 
 ![Pasted_image_20261031094340.png](photos/p3_Pasted_image_20261031094340.png)
 
-## 45. Lockbox code order wrong, extra verification button causing unnecessary step  [NOT DONE] (To do)
+## 45. Lockbox code order wrong, extra verification button causing unnecessary step  [IN PROGRESS] (Lockbox opt-in and final ordering fixed in code; extra verification-button behavior still needs reproduction and regression test.)
 
 Project: Guesthub | key: f3-4eb36e103f | created: 2026-11-03
 
