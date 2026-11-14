@@ -296,7 +296,7 @@ class DirectBookingCheckoutTest extends TestCase
         $this->assertSame('pending', $booking->status);
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
-        Mail::assertSent(DirectBookingMail::class, 3);
+        Mail::assertSent(DirectBookingMail::class, 4);
     }
 
     public function test_card_payment_returns_to_success_page_instead_of_opening_guest_portal(): void
