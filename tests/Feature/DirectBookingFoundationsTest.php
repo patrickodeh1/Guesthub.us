@@ -55,6 +55,7 @@ class DirectBookingFoundationsTest extends TestCase
 
         $response = $this->actingAs($owner)->put(route('admin.properties.listing.save', $property), [
             'published' => '1',
+            'listing_type' => 'short_term',
             'booking_mode' => 'instant',
             'advance_notice_hours' => '24',
             'same_day_cutoff_time' => '10:00',
@@ -102,6 +103,7 @@ class DirectBookingFoundationsTest extends TestCase
         $property = Property::factory()->create(['owner_id' => $owner->id]);
         $payload = [
             'published' => '1',
+            'listing_type' => 'short_term',
             'booking_mode' => 'instant',
             'advance_notice_hours' => '24',
             'min_nights' => '1',
