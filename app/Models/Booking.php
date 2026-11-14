@@ -175,7 +175,13 @@ class Booking extends Model
                 ->count()
             : 0;
 
-        $canUseDateFallback = $legacyCandidateCount === 1
+        $hasExplicitCleaning = CleaningSession::query()
+            ->where('booking_id', $this->id)
+            ->where('status', '<>', 'cancelled')
+            ->exists();
+
+        $canUseDateFallback = ! $hasExplicitCleaning
+            && $legacyCandidateCount === 1
             && $this->check_out_date
             && \App\Services\CleaningFlowService::bookingForPropertyDate(
                 (int) $this->property_id,
