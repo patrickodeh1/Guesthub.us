@@ -30,9 +30,9 @@ class CleanerAccessSteps
         );
     }
 
-    private static function cleanerQueryParams(): array
+    private static function cleanerQueryParams(CleaningSession $session): array
     {
-        return self::isActingAsCleaner() ? ['view_as_cleaner' => 1] : [];
+        return self::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : [];
     }
     /**
      * Property access + parking steps for the cleaner on this session.
@@ -209,7 +209,7 @@ class CleanerAccessSteps
                 'image'     => null,
                 'images'    => [],
                 'action'    => 'content',
-                'task_url'  => route('checklist.property-task.toggle', array_merge([$session, $t], self::cleanerQueryParams())),
+                'task_url'  => route('checklist.property-task.toggle', array_merge([$session, $t], self::cleanerQueryParams($session))),
                 'task_done' => in_array((int) $t->id, $doneIds, true),
                 'auto_complete' => $t->type === 'instructions',
                 'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', array_merge([$session], self::cleanerQueryParams())) : null,
