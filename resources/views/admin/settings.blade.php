@@ -98,6 +98,33 @@
         </section>
 
 
+        <section class="card card-pad xl:col-span-2">
+            <h2 class="section-title">Reports</h2>
+            <p class="section-copy">Set the colors used in generated cleaning reports and PDF exports.</p>
+            @php
+                $reportColors = [
+                    'report_header_color' => 'Report header',
+                    'report_status_color' => 'Status',
+                    'report_checklist_color' => 'Checklist',
+                    'report_issues_color' => 'Issues',
+                    'report_photos_color' => 'Photos',
+                    'report_time_color' => 'Time',
+                    'report_supplies_color' => 'Supplies',
+                    'report_audit_color' => 'Audit',
+                    'report_button_primary_color' => 'Primary button',
+                    'report_button_secondary_color' => 'Secondary button',
+                ];
+            @endphp
+            <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach($reportColors as $key => $label)
+                    <label class="field-label flex items-center justify-between gap-3">
+                        <span>{{ $label }}</span>
+                        <input type="color" name="{{ $key }}" value="{{ old($key, $settings[$key] ?? '#842eb8') }}" class="h-10 w-16 cursor-pointer rounded border border-slate-200 bg-white p-1">
+                    </label>
+                @endforeach
+            </div>
+        </section>
+
         <aside class="card card-pad">
             <x-media-image-field
                 name="site_logo"
