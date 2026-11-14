@@ -364,7 +364,7 @@
             @php
                 $ghHideGettingIn = $session->status === 'pending'
                     && auth()->check()
-                    && (int) $session->housekeeper_id === (int) auth()->id()
+                    && \App\Services\CleanerAccessSteps::isCleanerForSession($session)
                     && ! \App\Services\CleanerAccessSteps::locationVerified($session)
                     && count($accessSteps ?? []) === 0;
             @endphp
