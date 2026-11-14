@@ -125,6 +125,10 @@ class SessionController extends Controller
         }
 
         $data = $this->prepareSessionData($session);
+        if ($viewAsCleaner) {
+            $data['is_admin'] = false;
+        }
+
         return response()->json([
             'success' => true,
             'data' => $data,
@@ -1323,7 +1327,9 @@ class SessionController extends Controller
             return back()->with('error', 'Session is already completed.');
         }
 
-        if (!$isOverride && $session->stage !== 'summary' && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+        if (!$isOverride && $session->stage !== 'summary'
+            && (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                || \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session))) {
             $msg = 'Finish all stages, including the checkout steps, before completing.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
