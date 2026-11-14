@@ -42,6 +42,10 @@ class QuickAssignController extends Controller
             'The cleaning job changed. Refresh the dashboard and try again.'
         );
 
+        // A new assignment from this checkout row must inherit the exact booking,
+        // otherwise it becomes an unrelated, unlinked cleaning session.
+        $data['booking_id'] = $row['session']?->booking_id ?? $row['booking']->getKey();
+
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
         $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $row['session']) : [];
 
