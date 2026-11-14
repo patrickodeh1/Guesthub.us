@@ -62,7 +62,8 @@ class PhotoController extends Controller
     {
         $this->assertSessionAccess($session);
         $this->assertEditWindowOpen($session);
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
+        if ((!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
+                || \App\Services\CleanerAccessSteps::isActingAsCleaner($session))
             && is_null($session->photo_tutorial_viewed_at)
             && $session->property->effectivePhotoReferences()->exists()) {
             abort(403, 'Please review the photo guide before taking photos.');
