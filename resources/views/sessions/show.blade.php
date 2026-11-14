@@ -9,11 +9,6 @@
 @endphp
 <x-dynamic-component :component="$cleanerLayout ? 'cleaner-layout' : 'app-layout'">
     <div class="cleaner-skin-marker" hidden></div>
-    @if($viewAsCleaner)
-        <div class="mx-4 mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800" role="status">
-            You are performing this cleaning. GPS verification and the normal cleaner workflow are required. The assigned cleaner remains unchanged.
-        </div>
-    @endif
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
@@ -548,7 +543,7 @@
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
                     'propertyRadius' => \App\Support\GpsRadius::base(),
-                    'overrideEnabled' => $viewAsCleaner ? false : $session->gps_override_enabled
+                    'overrideEnabled' => $session->gps_override_enabled
                 ])
             @endif
         @else

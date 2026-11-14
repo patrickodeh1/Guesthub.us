@@ -326,6 +326,6 @@ class CleanerAccessSteps
     /** Location counts as verified once the cleaner passed the check (or an admin granted a GPS override). */
     public static function locationVerified(CleaningSession $session): bool
     {
-        return (bool) ($session->gps_confirmed_at || ($session->gps_override_enabled && ! self::isActingAsCleaner($session)));
+        return (bool) ($session->gps_confirmed_at || $session->gps_override_enabled);
     }
 }
