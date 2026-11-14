@@ -36,11 +36,21 @@ class QuickAssignController extends Controller
                 && $item['date']->toDateString() === $data['scheduled_date']);
 
         abort_unless($row, 404, 'The checkout is no longer on the dashboard.');
+        if ($row['overlap']) {
+            return response()->json([
+                'message' => 'Multiple guests check out at this property on this date. Open the specific guest record to schedule its cleaning so the assignment is linked to the correct stay.',
+            ], 422);
+        }
+
         abort_unless(
             ($row['session']?->id ?? null) === (isset($data['session_id']) ? (int) $data['session_id'] : null),
             409,
             'The cleaning job changed. Refresh the dashboard and try again.'
         );
+
+        // A new assignment from this checkout row must inherit the exact booking,
+        // otherwise it becomes an unrelated, unlinked cleaning session.
+        $data['booking_id'] = $row['session']?->booking_id ?? (! $row['overlap'] ? $row['booking']->getKey() : null);
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
         $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $row['session']) : [];

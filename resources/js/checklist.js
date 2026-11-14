@@ -722,7 +722,7 @@ export default function checklist(config = {}) {
                 }
             }
 
-            if (currentStage === 'photos' && Array.isArray(sd.exit_steps) && sd.exit_steps.length > 0
+            if (currentStage === 'post_cleaning' && Array.isArray(sd.exit_steps) && sd.exit_steps.length > 0
                 && !renderer._exitAcked && sd.session?.status !== 'completed' && window.ghShowExitWizard) {
                 window.ghShowExitWizard();
                 return;

@@ -52,12 +52,16 @@ class CleaningFlowService
             $time = self::timeOrNull($booking->effectiveCheckoutTimeFormatted());
 
             if (! $session) {
-                // Adopt a manually created clean for the same property/day instead of duplicating it.
-                $manual = CleaningSession::where('property_id', $property->id)
+                // Adopt a legacy/manual clean only when both the guest match and
+                // the candidate session are unique. Never attach an arbitrary job.
+                $manualCandidates = CleaningSession::where('property_id', $property->id)
                     ->whereDate('scheduled_date', $date)
                     ->whereNull('booking_id')->where('no_guest', false)
-                    ->where('status', '<>', 'cancelled')->first();
-                if ($manual) {
+                    ->where('status', '<>', 'cancelled')
+                    ->get();
+                $matchedBooking = self::bookingForPropertyDate((int) $property->id, $date);
+                if ($manualCandidates->count() === 1 && $matchedBooking?->getKey() === $booking->getKey()) {
+                    $manual = $manualCandidates->first();
                     $manual->update(['booking_id' => $booking->id]);
                     return $manual;
                 }
@@ -165,6 +169,35 @@ class CleaningFlowService
         return $live->first() ?? $sessions->first();
     }
 
+    /**
+     * Resolve a guest for a property/date only when the match is unambiguous.
+     * Prefer a checkout on that date; otherwise allow one booking covering the date.
+     * Never attach a cleaner's job to an arbitrary guest when stays overlap.
+     */
+    public static function bookingForPropertyDate(int $propertyId, string $date): ?Booking
+    {
+        $base = Booking::query()
+            ->where('property_id', $propertyId)
+            ->whereNull('cancelled_at')
+            ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', self::DEAD_STATUSES));
+
+        $checkouts = (clone $base)->whereDate('check_out_date', $date)->orderBy('id')->get();
+        if ($checkouts->count() === 1) {
+            return $checkouts->first();
+        }
+        if ($checkouts->isNotEmpty()) {
+            return null;
+        }
+
+        $stays = (clone $base)
+            ->whereDate('check_in_date', '<=', $date)
+            ->whereDate('check_out_date', '>=', $date)
+            ->orderBy('id')
+            ->get();
+
+        return $stays->count() === 1 ? $stays->first() : null;
+    }
+
     /** Tag a manually created session to the departing (or current) guest. */
     public static function autoTag(CleaningSession $session): void
     {
@@ -176,12 +209,8 @@ class CleaningFlowService
             if (! $date) {
                 return;
             }
-            $base = Booking::where('property_id', $session->property_id)->whereNull('cancelled_at')
-                ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', self::DEAD_STATUSES));
 
-            $booking = (clone $base)->whereDate('check_out_date', $date)->first()
-                ?? (clone $base)->whereDate('check_in_date', '<=', $date)->whereDate('check_out_date', '>=', $date)->first();
-
+            $booking = self::bookingForPropertyDate((int) $session->property_id, $date);
             if ($booking) {
                 $session->forceFill(['booking_id' => $booking->id])->saveQuietly();
             }

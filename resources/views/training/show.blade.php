@@ -52,7 +52,7 @@
                     @if($type === 'video')
                         <div class="aspect-video mb-6 bg-black rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner">
                             <video id="training-video" controls playsinline preload="metadata" class="w-full h-full object-contain" x-ref="video" @timeupdate="updateVideoProgress" @ended="completeVideo">
-                                <source src="{{ $item->video_url }}" type="video/mp4">
+                                <source src="{{ $item->video_url }}">
                                 Your browser does not support the video tag.
                             </video>
                         </div>

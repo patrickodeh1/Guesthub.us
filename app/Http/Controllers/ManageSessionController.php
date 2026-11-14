@@ -248,11 +248,14 @@ class ManageSessionController extends Controller
                 ->get()
                 ->groupBy(fn ($b) => $b->property_id . '|' . \Carbon\Carbon::parse($b->check_out_date)->toDateString());
             foreach ($datedJobs as $s) {
-                // The explicit booking link wins; the date match is only a fallback for unlinked jobs.
+                // An explicit link remains authoritative, even if its booking is now cancelled.
+                // For an unlinked job, only show a guest when the property/date match is unique.
                 $b = $s->booking_id
                     ? \App\Models\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
-                    : null;
-                $b = $b ?: $jobBookings->get($s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())?->first();
+                    : \App\Services\CleaningFlowService::bookingForPropertyDate(
+                        (int) $s->property_id,
+                        \Carbon\Carbon::parse($s->scheduled_date)->toDateString()
+                    );
                 if ($b) {
                     $bookingByJob[$s->id] = ['id' => $b->getKey(), 'guest' => $b->guest_name ?: 'Guest'];
                 }
@@ -478,6 +481,19 @@ class ManageSessionController extends Controller
             403,
             'You do not have access to that property.'
         );
+
+        // Resolve a legacy unlinked job against its original date before the date
+        // is changed, so moving it to tomorrow cannot erase its guest association.
+        if (! $session->booking_id && ! $session->no_guest && $session->scheduled_date) {
+            $linkedBooking = \App\Services\CleaningFlowService::bookingForPropertyDate(
+                (int) $session->property_id,
+                $session->scheduled_date->toDateString()
+            );
+            if ($linkedBooking) {
+                $data['booking_id'] = $linkedBooking->id;
+            }
+        }
+
         $updated = $cleaningJobService->update($request->user(), $session, $data);
         $cleaningJobService->markScheduleOverride($updated instanceof \App\Models\CleaningSession ? $updated : $session->fresh());
 
@@ -532,7 +548,12 @@ class ManageSessionController extends Controller
             ->get();
 
         // 3. Find ALL property-level tasks marked sporadic for this property
-        $propertyTasks = $property->propertyTasks()->where('is_sporadic', true)->get();
+        $propertyTasks = $property->propertyTasks()
+            ->where(function ($query) {
+                $query->where('is_sporadic', true)
+                    ->orWhere('tasks.type', 'lockbox');
+            })
+            ->get();
 
         // 4. Helper: find when a task was last completed for this property
         $propertySessionIds = CleaningSession::where('property_id', $property->id)

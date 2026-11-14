@@ -99,10 +99,39 @@ class CleanerAccessSteps
     /** Extra tasks (phase during_cleaning) shown as wizard steps right after the step chosen for each. $kind is 'checkin' (access steps) or 'checkout' (exit steps). */
     private static function withPreEntryTasks(array $steps, CleaningSession $session, string $kind = 'checkin'): array
     {
+        $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];
+        $selectedGlobalIds = collect($sporadics)
+            ->filter(fn ($item) => str_ends_with((string) $item, '_global'))
+            ->map(fn ($item) => (int) substr((string) $item, 0, -7))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         $tasks = $session->property->propertyTasks()
-            ->where('tasks.phase', 'during_cleaning')
+            ->where(function ($query) {
+                $query->where('tasks.phase', 'during_cleaning')
+                    ->orWhere('tasks.type', 'lockbox');
+            })
             ->wherePivot('visible_to_housekeeper', true)
-            ->get();
+            ->where(function ($query) use ($selectedGlobalIds) {
+                $query->where('tasks.is_sporadic', false)
+                    ->orWhereNull('tasks.is_sporadic')
+                    ->orWhereIn('tasks.id', $selectedGlobalIds);
+            })
+            ->orderBy('property_tasks.sort_order')
+            ->orderBy('tasks.id')
+            ->get()
+            ->filter(function ($task) use ($selectedGlobalIds) {
+                // Changing a lockbox code is always opt-in for an individual cleaning,
+                // even when an older property task was not marked as occasional.
+                if ($task->type === 'lockbox') {
+                    return in_array((int) $task->id, $selectedGlobalIds, true);
+                }
+
+                return ! $task->is_sporadic || in_array((int) $task->id, $selectedGlobalIds, true);
+            })
+            ->values();
         if ($tasks->isEmpty()) {
             return $steps;
         }
@@ -127,10 +156,19 @@ class CleanerAccessSteps
 
         $atStart = [];
         $atEnd = [];
+        $lockboxEntry = null;
         $after = [];
+        $lockboxAdded = false;
         foreach ($tasks as $t) {
+            // Lockbox code is a single final action, never an arrival/pre-entry step.
+            if ($t->type === 'lockbox') {
+                if ($lockboxAdded) {
+                    continue;
+                }
+                $lockboxAdded = true;
+            }
             $afterId = (int) ($t->pivot->show_after_step_id ?? 0);
-            $isExit = $afterId === -1 || in_array($afterId, $checkoutIds, true);
+            $isExit = $t->type === 'lockbox' || $afterId === -1 || in_array($afterId, $checkoutIds, true);
             if ($isExit !== ($kind === 'checkout')) {
                 continue;
             }
@@ -145,6 +183,7 @@ class CleanerAccessSteps
                 'action'    => 'content',
                 'task_url'  => route('checklist.property-task.toggle', [$session, $t]),
                 'task_done' => in_array((int) $t->id, $doneIds, true),
+                'auto_complete' => $t->type === 'instructions',
                 'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', $session) : null,
                 'lockbox_key' => 'lockbox_saved_' . $session->id,
             ];
@@ -155,12 +194,17 @@ class CleanerAccessSteps
                 $entry['photo_video'] = $t->type === 'verify_video';
                 $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
             }
-            if ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
+            if ($t->type === 'lockbox') {
+                $lockboxEntry = $entry;
+            } elseif ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
+                // Honor the selected anchor step for both arrival and exit tasks.
                 $after[$afterId][] = $entry;
+            } elseif ($afterId > 0
+                && in_array($afterId, $kind === 'checkout' ? $checkoutIds : $checkinIds, true)
+                && ! in_array($afterId, $visibleIds, true)) {
+                continue; // its anchor step is not visible in this wizard; show it when it is
             } elseif ($isExit) {
                 $atEnd[] = $entry;
-            } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true) && ! in_array($afterId, $hiddenIds, true)) {
-                continue; // its step is not visible yet (before location check); show it later
             } else {
                 $atStart[] = $entry;
             }
@@ -173,7 +217,9 @@ class CleanerAccessSteps
                 $out[] = $e;
             }
         }
-        return array_merge($out, $atEnd);
+        // The lockbox code change must be the final exit action, regardless of
+        // the task's configured sort order or other checkout-step placement.
+        return array_merge($out, $atEnd, $lockboxEntry ? [$lockboxEntry] : []);
     }
 
     /** The assigned cleaner sees only "show before GPS" steps until the session is started at the property. */

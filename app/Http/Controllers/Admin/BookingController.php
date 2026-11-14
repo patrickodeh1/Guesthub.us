@@ -367,7 +367,7 @@ class BookingController extends Controller
         // separate edit page used.
         $properties = Property::visibleTo(auth()->user())->where('active', true)->orderBy('name')->get();
 
-        $cleanings = $booking->linkedCleanings()->with('housekeeper:id,name')->orderByDesc('scheduled_date')->get();
+        $cleanings = $booking->linkedCleanings()->with(['housekeeper:id,name', 'checklistItems.task', 'checklistItems.photos'])->orderByDesc('scheduled_date')->get();
 
         return view('admin.bookings.show', compact('booking', 'guestLogs', 'properties', 'cleanings'));
     }
