@@ -1121,7 +1121,7 @@ class SessionController extends Controller
             return back()->withErrors(['gps' => 'Please verify your location first.']);
         }
         $property = $session->property;
-        $actingAsCleaner = \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session);
+        $actingAsCleaner = \App\Services\\CleanerAccessSteps::isActingAsCleaner($session);
         $latitudeInput = $request->validated('latitude');
         $longitudeInput = $request->validated('longitude');
 
@@ -1138,7 +1138,7 @@ class SessionController extends Controller
                 (float) $property->latitude,
                 (float) $property->longitude
             );
-            if ($startDistance > \\App\\Support\\GpsRadius::base()) {
+            if ($startDistance > \App\Support\\GpsRadius::base()) {
                 return back()->withErrors(['gps' => 'GPS validation failed. You are too far from the property to start.']);
             }
         }
