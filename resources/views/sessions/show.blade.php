@@ -275,18 +275,19 @@
         @php
             $ghStartBlocked = false; $ghStartBlockMsg = '';
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
-                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
-                // Match the controller's schedule gate timezone fallback.
+                && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+                // Use the same property-specific window and timezone calculation as the start endpoint.
+                $ghWindow = app(\\App\\Services\\CleaningStartWindow::class);
+                $ghAt = $ghWindow->scheduledAt($session);
+                $ghOpens = $ghWindow->opensAt($session);
+                $ghCloses = $ghWindow->closesAt($session);
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
-                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5), $ghTz);
-                $ghNow = now($ghTz);
-                $ghOpens = $ghAt->copy()->subHours(2);
-                $ghCloses = $ghAt->copy()->addHours(2);
+                $ghNow = \\Illuminate\\Support\\Carbon::now($ghTz);
                 $ghWhen = fn ($c) => ($c->isSameDay($ghNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
-                if ($ghNow->lt($ghOpens)) {
+                if ($ghAt && $ghOpens && $ghCloses && $ghNow->lt($ghOpens)) {
                     $ghStartBlocked = true;
                     $ghStartBlockMsg = 'You cannot start yet. Your scheduled start is '.$ghAt->format('g:i A').'. You can begin '.$ghWhen($ghOpens).'.';
-                } elseif ($ghNow->gt($ghCloses)) {
+                } elseif ($ghCloses && $ghNow->gt($ghCloses)) {
                     $ghStartBlocked = true;
                     $ghStartBlockMsg = 'You can no longer begin this cleaning. The start window ended '.$ghWhen($ghCloses).' (2 hours after the scheduled start). Please contact your manager.';
                 }
