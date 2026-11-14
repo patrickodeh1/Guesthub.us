@@ -183,8 +183,8 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
-        $response->assertSee('Session Not Yet Available');
-        $response->assertSee('This cleaning is not yet available. Access will be granted at the scheduled start time');
+        $response->assertSee('You cannot start yet.');
+        $response->assertDontSee('Ready to start');
         
         // Assert we do not see the View Only mode (which shows they can view it)
         $response->assertDontSee('You can view the checklist, but you can only start working');
