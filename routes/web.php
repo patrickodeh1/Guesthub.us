@@ -820,6 +820,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,owner,company')->name('users.create');
     Route::post('/users/{user}/deactivate', [UserController::class, 'deactivateCleaner'])->middleware('role:admin')->name('users.deactivate');
     Route::post('/users/{user}/reactivate', [UserController::class, 'reactivateCleaner'])->middleware('role:admin')->name('users.reactivate');
+    Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
     Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->middleware('role:admin,owner,company')->name('users.edit');
 
     Route::post('/users/{user}/familiarity/reset', [UserFamiliarityController::class, 'resetAll'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_all');
