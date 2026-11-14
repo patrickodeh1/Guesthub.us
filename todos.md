@@ -1,6 +1,6 @@
 # Todo Export
 
-## 6. Fix duplicate buttons, rename, adjust session‑closed UI, 30‑min edit limit  [SHIPPED] (The 30-minute cleaner report edit permission, edit-report stage handling, and distinct Next Stage/Close Report behavior are included in the ZIP; verify the closed-session UI on the deployed build)
+## 6. Fix duplicate buttons, rename, adjust session‑closed UI, 30‑min edit limit  [SHIPPED] (The 30-minute cleaner report edit permission, edit-report stage handling, and distinct Next Stage/Close Report behavior are included in the ZIP; verify the closed-session UI on the deployed build)  {added to update}
 
 Project: Guesthub | key: f3-2f14353f0b | created: 2026-11-03
 
@@ -10,7 +10,11 @@ Project: Guesthub | key: f3-2f14353f0b | created: 2026-11-03
 
 Project: Guesthub | key: f3-2402744d24 | created: 2026-11-03
 
-**Client's words:** Still not linking the guest to the cleaning when I change the date, it thinks it’s an unrelated cleaning please advise. Also can you change the nav: DASHBOARD CALENDAR -Add new booking -View Calendar (Calendar should show availability and pricing of properties and cleaner and check in check out dates guests staying, flags for errors like no cleaner scheduled, and other conflicts, should look and perform similar to Airbnb calendar) HOSPITALITY -Guests -Arrival/Departure Guide —properties (List properties, clicking on property name allows you to edit that property arrival departure guide) -Guest Guide —properties (List properties, clicking on property name allows you to edit that property guest guide) -Direct Booking Page —properties (List properties, clicking on property name allows you to edit that property booking page) CLEANING -Schedule -Reports -Checklists —properties (List properties, clicking on property name allows you to edit that property checklist) USERS -Add New User -Search Users -Roles SETTINGS -Global Settings (me only) -Property Settings -Website Settings —General Settings —API Settings -etc If I left anything out let me know and I’ll try to figure out a spot it would work best in
+**Client's words:** Still not linking the guest to the cleaning when I change the date, it thinks it’s an unrelated cleaning please advise.  {added to update}
+
+
+
+[NOT DONE]Also can you change the nav: DASHBOARD CALENDAR -Add new booking -View Calendar (Calendar should show availability and pricing of properties and cleaner and check in check out dates guests staying, flags for errors like no cleaner scheduled, and other conflicts, should look and perform similar to Airbnb calendar) HOSPITALITY -Guests -Arrival/Departure Guide —properties (List properties, clicking on property name allows you to edit that property arrival departure guide) -Guest Guide —properties (List properties, clicking on property name allows you to edit that property guest guide) -Direct Booking Page —properties (List properties, clicking on property name allows you to edit that property booking page) CLEANING -Schedule -Reports -Checklists —properties (List properties, clicking on property name allows you to edit that property checklist) USERS -Add New User -Search Users -Roles SETTINGS -Global Settings (me only) -Property Settings -Website Settings —General Settings —API Settings -etc If I left anything out let me know and I’ll try to figure out a spot it would work best in
 
 ## 8. Create SEO‑optimized direct booking link with full contract features  [DONE] (Done - please verify)
 
@@ -20,19 +24,20 @@ Project: Guesthub | key: f3-ee66800072 | created: 2026-11-03
 
 **How to test:** Make a direct booking and pay. Open the guest link: the agreement and signature, photo ID, parking and check-in steps are there. The host gets an email when the booking is created and another when a card payment is confirmed. Search visibility is the same as the SEO task: /robots.txt, /sitemap.xml, /llms.txt and structured data on each listing. Rankings cannot be guaranteed.
 
-## 9. Add cleaner and cleaning report view to guest page  [SHIPPED] (Guest record cleaner/report link changes are included in the ZIP)
+## 9. Add cleaner and cleaning report view to guest page  [SHIPPED] (Guest record cleaner/report link changes are included in the ZIP){added to update}
+
 
 Project: Guesthub | key: f3-ac0fd42f44 | created: 2026-11-03
 
 **Client's words:** Also, when I search for a guest, I should be able to see the cleaner and also view the Cleaning report without having to go to different sections of the website all that should be tied to the guest under the guest page
 
-## 10. Unable to locate guest cleaning report, must search dates  [SHIPPED] (Guest record now links to the associated cleaning report; included in the ZIP)
+## 10. Unable to locate guest cleaning report, must search dates  [SHIPPED] (Guest record now links to the associated cleaning report; included in the ZIP)){added to update}
 
 Project: Guesthub | key: f3-7de5110711 | created: 2026-11-03
 
 **Client's words:** Right now, I’m trying to leave a review for a GUEST and I can’t seem to find their cleaning report so I have to look for the dates which is aggravating
 
-## 11. Add guest name, stay dates, and cleaner info to all cleaning reports  [SHIPPED] (Guest/cleaning association and guest-facing report context changes are included; verify remaining report surfaces)
+## 11. Add guest name, stay dates, and cleaner info to all cleaning reports  [SHIPPED] (Guest/cleaning association and guest-facing report context changes are included; verify remaining report surfaces)){added to update}
 
 Project: Guesthub | key: f3-3de329248f | created: 2026-11-03
 
