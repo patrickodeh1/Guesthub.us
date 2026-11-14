@@ -190,15 +190,20 @@
             var fd = new FormData(); fd.append("photo", inp.files[0]);
             fetch(inp.dataset.url, { method: "POST", body: fd, headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" } })
                 .then(function (r) {
-                    if (!r.ok) throw new Error();
-                    photoNeeded[idx] = false;
-                    if (st) { st.textContent = "Photo saved"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; }
-                    var label = inp.parentElement ? inp.parentElement.querySelector("span") : null;
-                    if (label) label.textContent = inp.accept === "video/*" ? "Replace video" : "Retake photo";
-                    if (current === idx && current < total - 1) goTo(current + 1);
-                    else applyPhotoGate();
+                    return r.json().catch(function () { return {}; }).then(function (d) {
+                        if (!r.ok || d.success === false) throw new Error(d.message || "Upload failed.");
+                        photoNeeded[idx] = false;
+                        if (st) { st.textContent = "Photo saved"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; }
+                        var label = inp.parentElement ? inp.parentElement.querySelector("span") : null;
+                        if (label) label.textContent = inp.accept === "video/*" ? "Replace video" : "Retake photo";
+                        if (current === idx && current < total - 1) goTo(current + 1);
+                        else applyPhotoGate();
+                    });
                 })
-                .catch(function () { if (st) st.textContent = "Upload failed. Try again."; });
+                .catch(function (e) {
+                    inp.value = "";
+                    if (st) st.textContent = e.message || "Upload failed. Try again.";
+                });
         });
     });
 
