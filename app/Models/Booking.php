@@ -165,7 +165,18 @@ class Booking extends Model
      */
     public function linkedCleanings(): Builder
     {
-        $canUseDateFallback = $this->check_out_date
+        $legacyCandidateCount = $this->check_out_date
+            ? CleaningSession::query()
+                ->where('property_id', $this->property_id)
+                ->whereDate('scheduled_date', $this->check_out_date)
+                ->whereNull('booking_id')
+                ->where('no_guest', false)
+                ->where('status', '<>', 'cancelled')
+                ->count()
+            : 0;
+
+        $canUseDateFallback = $legacyCandidateCount === 1
+            && $this->check_out_date
             && \App\Services\CleaningFlowService::bookingForPropertyDate(
                 (int) $this->property_id,
                 $this->check_out_date->toDateString()
