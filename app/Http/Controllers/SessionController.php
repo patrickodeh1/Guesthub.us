@@ -559,16 +559,16 @@ class SessionController extends Controller
         $isViewOnly = false;
         $isTooEarly = false;
 
-        if (auth()->check() && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+        if (auth()->check() && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
             $propertyTz = $session->property->timezone ?? config('app.timezone');
-            $window = app(\\App\\Services\\CleaningStartWindow::class);
+            $window = app(\App\Services\CleaningStartWindow::class);
             $isTooEarly = $session->status === 'pending' && $window->isTooEarly($session);
             if ($isTooEarly) {
                 $canEdit = false;
                 $isViewOnly = true;
             }
 
-            $isCurrentDate = \\Carbon\\Carbon::parse($session->scheduled_date)->format('Y-m-d') === now($propertyTz)->format('Y-m-d');
+            $isCurrentDate = \Carbon\Carbon::parse($session->scheduled_date)->format('Y-m-d') === now($propertyTz)->format('Y-m-d');
             if (! $isCurrentDate && $session->status === 'pending' && ! $isTooEarly) {
                 $canEdit = false;
                 $isViewOnly = true;
@@ -1059,9 +1059,9 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
 
-        if (\\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)
+        if (\App\Services\CleanerAccessSteps::isCleanerForSession($session)
             && $session->status === 'pending') {
-            $window = app(\\App\\Services\\CleaningStartWindow::class);
+            $window = app(\App\Services\CleaningStartWindow::class);
             if (! $window->canStart($session)) {
                 $opensAt = $window->opensAt($session);
                 $closesAt = $window->closesAt($session);
