@@ -23,7 +23,7 @@ class PreCheckinChargeTest extends TestCase
 
     public function test_charge_is_zero_when_nothing_is_due(): void
     {
-        $booking = Booking::factory()->create();
+        $booking = Booking::factory()->create(['additional_deposit_mode' => false, 'incidentals_charge' => 0]);
 
         $this->assertSame(0, $booking->calculatePreCheckinChargeCents());
     }
@@ -39,14 +39,15 @@ class PreCheckinChargeTest extends TestCase
         ]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
+            'additional_deposit_mode' => false,
             'parking_needed' => true,
             'check_in_date' => '2026-08-24', // Monday
             'check_out_date' => '2026-08-25',
             'incidentals_charge' => 30,
         ]);
 
-        // 20 (parking) + 30 (incidentals) = 50, no cap set, no fee set.
-        $this->assertSame(5000, $booking->calculatePreCheckinChargeCents(), json_encode([
+        // The pre-check-in card charge is the configured incidentals hold only.
+        $this->assertSame(3000, $booking->calculatePreCheckinChargeCents(), json_encode([
             'property_cap' => $property->fresh()->deposit_cap_cents,
             'global_cap' => Setting::getValue('default_deposit_cap_cents', 0),
             'parking' => $booking->effectiveParkingCharge(),
@@ -59,11 +60,12 @@ class PreCheckinChargeTest extends TestCase
         $property = Property::factory()->create(['early_checkin_rate_8am' => 40]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
+            'additional_deposit_mode' => false,
             'early_checkin_tier' => '8am',
             'incidentals_charge' => 10,
         ]);
 
-        $this->assertSame(5000, $booking->calculatePreCheckinChargeCents());
+        $this->assertSame(1000, $booking->calculatePreCheckinChargeCents());
     }
 
     public function test_early_checkin_uses_new_three_tier_windows(): void
@@ -136,6 +138,7 @@ class PreCheckinChargeTest extends TestCase
         ]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
+            'additional_deposit_mode' => false,
             'parking_needed' => true,
             'check_in_date' => '2026-08-24',
             'check_out_date' => '2026-08-25',
@@ -151,6 +154,7 @@ class PreCheckinChargeTest extends TestCase
         $property = Property::factory()->create(['deposit_cap_cents' => null]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 100,
         ]);
 
@@ -177,6 +181,7 @@ class PreCheckinChargeTest extends TestCase
         $property = Property::factory()->create(['deposit_cap_cents' => 0]);
         $booking = Booking::factory()->create([
             'property_id' => $property->id,
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 500,
         ]);
 
@@ -188,6 +193,7 @@ class PreCheckinChargeTest extends TestCase
     public function test_unbilled_incidentals_is_full_amount_when_nothing_billed_yet(): void
     {
         $booking = Booking::factory()->create([
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 40,
             'incidentals_billed_cents' => 0,
         ]);
@@ -211,6 +217,7 @@ class PreCheckinChargeTest extends TestCase
         // raises it to $60 — only the extra $20 should be billable post-checkout,
         // not the full $60 again.
         $booking = Booking::factory()->create([
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 60,
             'incidentals_billed_cents' => 4000,
         ]);
@@ -221,6 +228,7 @@ class PreCheckinChargeTest extends TestCase
     public function test_unbilled_incidentals_never_goes_negative_if_admin_lowers_it(): void
     {
         $booking = Booking::factory()->create([
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 20,
             'incidentals_billed_cents' => 4000, // was billed at a higher amount before being lowered
         ]);
@@ -230,7 +238,8 @@ class PreCheckinChargeTest extends TestCase
 
     public function test_finalize_snapshots_incidentals_billed_cents_on_deposit_capture(): void
     {
-        $booking = Booking::factory()->create(['incidentals_charge' => 25]);
+        $booking = Booking::factory()->create(['additional_deposit_mode' => false,
+            'incidentals_charge' => 25]);
         $charge = $booking->charges()->create([
             'type' => Charge::TYPE_DEPOSIT,
             'amount_cents' => 2500,
