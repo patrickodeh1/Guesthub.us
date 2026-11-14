@@ -109,7 +109,10 @@ class CleanerAccessSteps
             ->all();
 
         $tasks = $session->property->propertyTasks()
-            ->where('tasks.phase', 'during_cleaning')
+            ->where(function ($query) {
+                $query->where('tasks.phase', 'during_cleaning')
+                    ->orWhere('tasks.type', 'lockbox');
+            })
             ->wherePivot('visible_to_housekeeper', true)
             ->where(function ($query) use ($selectedGlobalIds) {
                 $query->where('tasks.is_sporadic', false)
