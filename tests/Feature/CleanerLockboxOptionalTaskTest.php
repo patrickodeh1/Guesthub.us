@@ -20,7 +20,13 @@ class CleanerLockboxOptionalTaskTest extends TestCase
 
         $this->actingAs($cleaner);
 
-        $this->assertSame([], CleanerAccessSteps::exitForSession($session));
+        $steps = CleanerAccessSteps::exitForSession($session);
+
+        // The ordinary final-exit instruction should remain; only the
+        // unselected lockbox-code step must be omitted.
+        $this->assertCount(1, $steps);
+        $this->assertSame('Final exit instruction', $steps[0]['title']);
+        $this->assertNull($steps[0]['lockbox_url']);
     }
 
     public function test_selected_sporadic_lockbox_task_is_kept_last_in_the_exit_wizard(): void
