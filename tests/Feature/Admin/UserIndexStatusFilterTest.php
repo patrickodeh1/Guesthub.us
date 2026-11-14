@@ -28,10 +28,14 @@ class UserIndexStatusFilterTest extends TestCase
         $activeUser = User::factory()->create([
             'email' => 'active-user@example.test',
             'is_active' => true,
+            'status' => 'active',
+            'approval_status' => 'approved',
         ]);
         $inactiveUser = User::factory()->create([
             'email' => 'inactive-user@example.test',
             'is_active' => false,
+            'status' => 'inactive',
+            'approval_status' => 'approved',
         ]);
 
         $this->actingAs($admin)
