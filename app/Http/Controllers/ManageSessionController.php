@@ -541,10 +541,11 @@ class ManageSessionController extends Controller
 
         $data = $request->validate([
             'property_id' => ['required', 'integer', 'exists:properties,id'],
-            'duration' => ['required', 'regex:/^(?:0?[0-3]:[0-5][0-9]|4:00)$/'],
+            'duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
         ]);
 
         [$hours, $minutes] = array_map('intval', explode(':', $data['duration']));
+        abort_if($hours > intdiv(PHP_INT_MAX - $minutes, 60), 422, 'The cleaning window is too large.');
         $totalMinutes = ($hours * 60) + $minutes;
 
         $property = Property::query()->visibleTo($user)->findOrFail($data['property_id']);
