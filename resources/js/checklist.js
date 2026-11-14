@@ -770,10 +770,10 @@ export default function checklist(config = {}) {
                 // Forward edit_report param so backend allows stage advance on completed sessions
                 const pageParams = new URLSearchParams(window.location.search);
                 const isEditReport = pageParams.get('edit_report') === '1';
-                const editSuffix = isEditReport ? '?edit_report=1' : '';
+                const requestSuffix = pageParams.toString() ? `?${pageParams.toString()}` : '';
                 const postBody = { current_stage: renderer.sessionData.stage };
                 if (isEditReport) postBody.edit_report = '1';
-                const response = await window.api.post(`/sessions/${sessionId}/advance-stage${editSuffix}`, postBody);
+                const response = await window.api.post(`/sessions/${sessionId}/advance-stage${requestSuffix}`, postBody);
 
                 if (response.success) {
                     this.showSuccess(response.message || 'Progress saved! Moving to next stage...');
