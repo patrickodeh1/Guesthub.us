@@ -6,6 +6,15 @@
 @php
     $viewAsCleaner = (bool) ($viewAsCleaner ?? false);
     $cleanerLayout = $viewAsCleaner || ! (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']));
+    $previewAvailabilityBlocked = false;
+    if ($viewAsCleaner && $session->status === 'pending' && $session->scheduled_date) {
+        $previewTz = $session->property?->timezone ?: config('app.timezone');
+        $rawPreviewTime = (string) ($session->getRawOriginal('scheduled_time') ?? '00:00:00');
+        $previewAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr($rawPreviewTime, 0, 8), $previewTz);
+        $previewNow = now($previewTz);
+        $previewAvailabilityBlocked = $previewNow->lt($previewAt->copy()->subHours(2))
+            || $previewNow->gt($previewAt->copy()->addHours(2));
+    }
 @endphp
 <x-dynamic-component :component="$cleanerLayout ? 'cleaner-layout' : 'app-layout'">
     <div class="cleaner-skin-marker" hidden></div>
@@ -110,7 +119,7 @@
         </div>
     @else
 
-@if($session->status === 'in_progress' && ! request()->has('edit_report'))
+@if($session->status === 'in_progress' && ! request()->has('edit_report') && !$viewAsCleaner)
     <div class="mx-4 mt-4 rounded-xl border border-gray-200 bg-white p-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -257,7 +266,7 @@
                     </div>
                 </div>
             </div>
-        @elseif (isset($isViewOnly) && $isViewOnly)
+        @elseif (!$viewAsCleaner && isset($isViewOnly) && $isViewOnly)
             <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -400,7 +409,19 @@
                 </div>
                 <div class="px-6 py-10 md:py-16">
                 <div class="max-w-2xl mx-auto text-center">
-                    @if (isset($isViewOnly) && $isViewOnly)
+                    @if ($viewAsCleaner)
+                        <div class="mb-6">
+                            <h1 class="guest-status-title">{{ $previewAvailabilityBlocked ? 'Session Not Available Yet' : 'Ready to start' }}</h1>
+                            <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">
+                                @if ($previewAvailabilityBlocked)
+                                    This cleaner cannot start yet. The permitted start window is two hours before to two hours after the scheduled time, based on the property's local time.
+                                @else
+                                    The cleaner can proceed when at the property and after location verification.
+                                @endif
+                            </p>
+                            <button type="button" class="guest-primary-btn is-go w-full" disabled aria-disabled="true">Begin (preview only)</button>
+                        </div>
+                    @elseif (isset($isViewOnly) && $isViewOnly)
                         <div class="mb-6">
                             <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                                 <svg class="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -515,7 +536,7 @@
             </div>
         </div>
 
-            @if ($is_admin)
+            @if ($is_admin && !$viewAsCleaner)
                 <x-modal name="gps-override-modal" :show="false" maxWidth="md">
                     <form method="post" action="{{ route('sessions.gps-override', $session) }}" class="p-6">
                         @csrf
@@ -608,7 +629,7 @@
                                 </a>
                             @endif
 
-                            @if ($is_admin && $session->status !== 'completed')
+                            @if ($is_admin && !$viewAsCleaner && $session->status !== 'completed')
                                 <button type="button" onclick="window.dispatchEvent(new CustomEvent('open-modal', { detail: 'admin-close-modal' }))" class="guest-outline-btn">
                                     Close Session
                                 </button>
@@ -668,7 +689,7 @@
                 $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
                 $exitIsCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
             @endphp
-            @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
+            @if (!$viewAsCleaner && ($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
                 <div id="exit-wizard-panel" style="display:none" class="mb-4">
                     <x-step-wizard :steps="$exitWiz" type="exit" kicker="Before you leave" done-label="Complete session" next-section="exit-wizard-panel" />
                     <div class="mt-3 text-center"><button type="button" id="exit-wizard-back" class="guest-outline-btn">Back to photos</button></div>
@@ -727,6 +748,9 @@
                 }
                 if (request()->has('stage')) {
                     $queryParams2['stage'] = request()->query('stage');
+                }
+                if ($viewAsCleaner) {
+                    $queryParams2['view_as_cleaner'] = 1;
                 }
                 $dataUrl = route('sessions.data', array_merge(['session' => $session->id], $queryParams2));
                 $photoDeleteUrl = route('photos.destroy', ['session' => $session->id, 'photo' => 0]);
