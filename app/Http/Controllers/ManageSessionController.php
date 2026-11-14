@@ -548,7 +548,12 @@ class ManageSessionController extends Controller
             ->get();
 
         // 3. Find ALL property-level tasks marked sporadic for this property
-        $propertyTasks = $property->propertyTasks()->where('is_sporadic', true)->get();
+        $propertyTasks = $property->propertyTasks()
+            ->where(function ($query) {
+                $query->where('is_sporadic', true)
+                    ->orWhere('tasks.type', 'lockbox');
+            })
+            ->get();
 
         // 4. Helper: find when a task was last completed for this property
         $propertySessionIds = CleaningSession::where('property_id', $property->id)
