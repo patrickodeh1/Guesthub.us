@@ -93,7 +93,7 @@
             <div class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24">
                 <h1 class="guest-status-title">Session not available yet</h1>
                 <p class="max-w-md text-sm leading-6 text-slate-600">
-                    This cleaning is not yet available. Access will be granted at the scheduled start time
+                    You cannot start yet. Access will be granted at the scheduled start time
                     ({{ $session->scheduled_date->format('F j, Y') }}@if($session->scheduled_time) at {{ \Carbon\Carbon::parse($session->scheduled_time)->format('g:i A') }}@endif).
                 </p>
                 @php
@@ -272,7 +272,8 @@
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
                 && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
                 && ! auth()->user()->hasRole('admin')) {
-                $ghTz = $session->property?->timezone ?: config('app.display_timezone');
+                // Match the controller's schedule gate timezone fallback.
+                $ghTz = $session->property?->timezone ?: config('app.timezone');
                 $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $ghTz);
                 $ghNow = now($ghTz);
                 $ghOpens = $ghAt->copy()->subHours(2);
