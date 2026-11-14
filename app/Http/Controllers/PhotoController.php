@@ -109,7 +109,7 @@ class PhotoController extends Controller
                 timezone: $session->property->timezone ?? config('app.timezone'),
                 propertyName: $session->property->name ?? null,
                 roomName: $room->name ?? null,
-                cleanerName: $session->housekeeper->name ?? null,
+                cleanerName: auth()->user()?->name ?? $session->housekeeper?->name,
                 latitude: $session->start_latitude ? (float) $session->start_latitude : null,
                 longitude: $session->start_longitude ? (float) $session->start_longitude : null,
             );
@@ -121,6 +121,7 @@ class PhotoController extends Controller
 
             $photo    = $session->photos()->create([
                 'room_id'     => $room->id,
+                'uploaded_by' => auth()->id(),
                 'path'        => $filename,
                 'captured_at' => now(),
             ]);
