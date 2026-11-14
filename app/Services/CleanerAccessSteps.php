@@ -7,6 +7,33 @@ use App\Models\InstructionStep;
 
 class CleanerAccessSteps
 {
+    /** Whether an authorized manager is deliberately using the cleaner workflow. */
+    public static function isActingAsCleaner(?CleaningSession $session = null): bool
+    {
+        $user = auth()->user();
+        if (! request()->boolean('view_as_cleaner') || ! $user
+            || ! $user->hasAnyRole(['admin', 'owner', 'company', 'manager'])) {
+            return false;
+        }
+
+        return $session === null
+            || \App\Models\Property::visibleTo($user)->whereKey($session->property_id)->exists()
+            || $user->hasRole('admin');
+    }
+
+    /** The assigned cleaner or an authorized manager in explicit cleaner mode. */
+    public static function isCleanerForSession(CleaningSession $session): bool
+    {
+        return auth()->check() && (
+            (int) $session->housekeeper_id === (int) auth()->id()
+            || self::isActingAsCleaner($session)
+        );
+    }
+
+    private static function cleanerQueryParams(): array
+    {
+        return self::isActingAsCleaner() ? ['view_as_cleaner' => 1] : [];
+    }
     /**
      * Property access + parking steps for the cleaner on this session.
      * Returns [] until the cleaner has answered the parking question.
@@ -14,8 +41,9 @@ class CleanerAccessSteps
      */
     public static function forSession(CleaningSession $session): array
     {
-        // Access ends when the assignment is done (admins keep the preview).
-        if (in_array($session->status, ['completed', 'cancelled'], true) && ! auth()->user()?->hasRole('admin')) {
+        // Cleaner mode follows cleaner visibility, including after completion.
+        if (in_array($session->status, ['completed', 'cancelled'], true)
+            && (self::isActingAsCleaner($session) || ! auth()->user()?->hasRole('admin'))) {
             return [];
         }
 
@@ -25,7 +53,7 @@ class CleanerAccessSteps
         $property = $session->property;
         $preStart = self::isPreStart($session);
         $hidePreGps = ! $preStart
-            && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+            && self::isCleanerForSession($session)
             && (self::locationVerified($session) || $session->status === 'in_progress')
             && \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps');
         // Before verification the assigned cleaner sees only the "show before GPS" steps (filtered below).
@@ -63,7 +91,7 @@ class CleanerAccessSteps
      */
     public static function exitForSession(CleaningSession $session): array
     {
-        $isAdmin = (bool) auth()->user()?->hasRole('admin');
+        $isAdmin = (bool) auth()->user()?->hasRole('admin') && ! self::isActingAsCleaner($session);
         if (in_array($session->status, ['completed', 'cancelled'], true)) {
             return [];
         }
@@ -147,7 +175,7 @@ class CleanerAccessSteps
         $visibleIds = array_map('intval', array_column($steps, 'step_id'));
         $hiddenIds = [];
         if ($kind === 'checkin' && \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')
-            && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+            && self::isCleanerForSession($session)
             && (self::locationVerified($session) || $session->status === 'in_progress')) {
             $hiddenIds = InstructionStep::where('property_id', $session->property_id)
                 ->where('show_before_gps', true)->where(fn ($q) => $q->whereNull('action')->orWhere('action', '!=', 'door_lock'))
@@ -181,16 +209,16 @@ class CleanerAccessSteps
                 'image'     => null,
                 'images'    => [],
                 'action'    => 'content',
-                'task_url'  => route('checklist.property-task.toggle', [$session, $t]),
+                'task_url'  => route('checklist.property-task.toggle', array_merge([$session, $t], self::cleanerQueryParams())),
                 'task_done' => in_array((int) $t->id, $doneIds, true),
                 'auto_complete' => $t->type === 'instructions',
-                'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', $session) : null,
+                'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', array_merge([$session], self::cleanerQueryParams())) : null,
                 'lockbox_key' => 'lockbox_saved_' . $session->id,
             ];
             if (in_array($t->type, ['verify', 'verify_video'], true)) {
                 $entry['task_url'] = null;
                 $entry['task_done'] = false;
-                $entry['photo_url'] = route('checklist.property-task.photo', [$session, $t]);
+                $entry['photo_url'] = route('checklist.property-task.photo', array_merge([$session, $t], self::cleanerQueryParams()));
                 $entry['photo_video'] = $t->type === 'verify_video';
                 $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
             }
@@ -228,7 +256,7 @@ class CleanerAccessSteps
         if ($session->status !== 'pending') {
             return false;
         }
-        if (! auth()->check() || (int) $session->housekeeper_id !== (int) auth()->id()) {
+        if (! self::isCleanerForSession($session)) {
             return false;
         }
         if (! \Illuminate\Support\Facades\Schema::hasColumn('instruction_steps', 'show_before_gps')) {
@@ -252,7 +280,7 @@ class CleanerAccessSteps
         if (($s->action ?? 'content') !== 'door_lock') {
             return $plain;
         }
-        $isCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+        $isCleaner = self::isCleanerForSession($session);
         $open = $session->status === 'in_progress'
             || ($session->status === 'pending' && self::locationVerified($session));
         if (! $isCleaner || ! $open) {
@@ -272,9 +300,9 @@ class CleanerAccessSteps
             'action' => 'door_lock',
             'lock_id' => $lock->id,
             'lock_status' => $status,
-            'unlock_url' => route('sessions.door.unlock', [$session, $lock]),
-            'lock_url' => route('sessions.door.lock', [$session, $lock]),
-            'status_url' => route('sessions.door.status', [$session, $lock]),
+            'unlock_url' => route('sessions.door.unlock', array_merge([$session, $lock], self::cleanerQueryParams())),
+            'lock_url' => route('sessions.door.lock', array_merge([$session, $lock], self::cleanerQueryParams())),
+            'status_url' => route('sessions.door.status', array_merge([$session, $lock], self::cleanerQueryParams())),
         ];
     }
 
@@ -289,7 +317,7 @@ class CleanerAccessSteps
         }
 
         return [
-            'photo_url' => route('sessions.access-photo', [$session, $s->id]),
+            'photo_url' => route('sessions.access-photo', array_merge([$session, $s->id], self::cleanerQueryParams())),
             'photo_done' => \App\Models\SessionAccessPhoto::where('cleaning_session_id', $session->id)
                 ->where('instruction_step_id', $s->id)->exists(),
         ];
@@ -298,6 +326,6 @@ class CleanerAccessSteps
     /** Location counts as verified once the cleaner passed the check (or an admin granted a GPS override). */
     public static function locationVerified(CleaningSession $session): bool
     {
-        return (bool) ($session->gps_confirmed_at || $session->gps_override_enabled);
+        return (bool) ($session->gps_confirmed_at || ($session->gps_override_enabled && ! self::isActingAsCleaner($session)));
     }
 }
