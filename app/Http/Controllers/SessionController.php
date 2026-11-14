@@ -559,8 +559,11 @@ class SessionController extends Controller
             if ($session->scheduled_date && $session->status === 'pending') {
                 $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
                 if ($session->scheduled_time) {
+                    // The model casts scheduled_time as a datetime, so the raw database
+                    // value may include a date (Y-m-d H:i:s), not just H:i:s.
+                    // Parse either representation and copy only its clock time.
                     $rawScheduledTime = (string) $session->getRawOriginal('scheduled_time');
-                    $time = \Carbon\Carbon::createFromFormat('H:i:s', substr($rawScheduledTime, 0, 8), $propertyTz);
+                    $time = \Carbon\Carbon::parse($rawScheduledTime, $propertyTz);
                     $scheduledDateTime->setTime($time->hour, $time->minute, $time->second);
                 } else {
                     $scheduledDateTime->startOfDay();
