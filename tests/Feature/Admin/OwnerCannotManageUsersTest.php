@@ -1,11 +1,11 @@
 <?php
 
-namespace Tests\\Feature\\Admin;
+namespace Tests\Feature\Admin;
 
-use App\\Models\\User;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Spatie\\Permission\\Models\\Role;
-use Tests\\TestCase;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class OwnerCannotManageUsersTest extends TestCase
 {
