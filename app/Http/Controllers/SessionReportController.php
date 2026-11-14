@@ -270,15 +270,14 @@ class SessionReportController extends Controller
                 $session->started_at,
             ])->filter());
         }
-
-        $startedActivity = \${ns}\${ns}\${ns}\\Activity::query()
+        $startedActivity = \Spatie\Activitylog\Models\Activity::query()
             ->where('subject_type', CleaningSession::class)
             ->where('subject_id', $session->id)
             ->where('event', 'started')
             ->with('causer')
             ->latest('id')
             ->first();
-        $completedActivity = \${ns}\${ns}\${ns}\\Activity::query()
+        $completedActivity = \Spatie\Activitylog\Models\Activity::query()
             ->where('subject_type', CleaningSession::class)
             ->where('subject_id', $session->id)
             ->where('event', 'completed')
