@@ -11,7 +11,7 @@
     <div class="cleaner-skin-marker" hidden></div>
     @if($viewAsCleaner)
         <div class="mx-4 mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800" role="status">
-            You are completing this cleaning as the logged-in property manager. GPS verification and the normal cleaner workflow are required. The assigned cleaner remains unchanged.
+            You are performing this cleaning. GPS verification and the normal cleaner workflow are required. The assigned cleaner remains unchanged.
         </div>
     @endif
     <x-slot name="header">
@@ -335,11 +335,13 @@
                         <div class="flex justify-between gap-4"><dt class="text-slate-500">Start time</dt><dd class="font-medium">{{ $fsTime }}</dd></div>
                     </dl>
                     <button type="button" id="gh-first-proceed" class="guest-primary-btn is-go mt-6 w-full">Proceed</button>
+                    @unless($viewAsCleaner)
                     <form method="POST" action="{{ route('sessions.cancel-assignment', $session) }}" class="mt-6 border-t border-slate-200 pt-4 text-center"
                           onsubmit="return confirm('Cancel this job? It will go back to the office to be given to another cleaner.');">
                         @csrf
                         <button type="submit" class="text-sm font-semibold text-red-700 underline">I can't make this job. Cancel it</button>
                     </form>
+                    @endunless
                 </div>
             </div>
             <script>
