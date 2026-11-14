@@ -39,7 +39,10 @@ class UnifiedActivityFeedTest extends TestCase
             'updated_at' => now()->subMinute(),
         ]);
 
-        $feed = app(UnifiedActivityFeed::class)->paginate([], null, 2);
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+
+        $feed = app(UnifiedActivityFeed::class)->paginate([], $admin, 2);
         $this->assertSame(2, $feed->total());
         $this->assertSame('ops', $feed->first()->source);
         $this->assertSame('portal', $feed->last()->source);
@@ -104,10 +107,13 @@ class UnifiedActivityFeedTest extends TestCase
             'updated_at' => now(),
         ]);
 
+        $admin = User::factory()->create(['status' => 'active']);
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+
         $feed = app(UnifiedActivityFeed::class)->paginate([
             'source' => 'ops',
             'search' => 'cleaning',
-        ]);
+        ], $admin);
 
         $this->assertCount(1, $feed->items());
         $this->assertSame('ops', $feed->first()->source);
