@@ -1,6 +1,6 @@
 @php
     $accessSteps = $accessSteps ?? [];
-    $isAssignedCleaner = \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
+    $isAssignedCleaner = \App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
 @endphp
 
 @if ($isAssignedCleaner && $session->status === 'pending')
