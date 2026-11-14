@@ -1054,7 +1054,7 @@ class SessionController extends Controller
         if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
             abort(403, 'Only administrators, owners, and companies can grant GPS overrides.');
         }
-        abort_unless(! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session), 403, 'GPS overrides are unavailable while acting as a cleaner.');
+        abort_unless(! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session), 403, 'GPS overrides are unavailable while acting as a cleaner.');
 
         $validated = $request->validate([
             'reason' => 'required|string|max:255',
