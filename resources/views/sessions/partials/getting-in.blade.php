@@ -1,6 +1,6 @@
 @php
     $accessSteps = $accessSteps ?? [];
-    $isAssignedCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+    $isAssignedCleaner = \App\Services\CleanerAccessSteps::isCleanerForSession($session);
 @endphp
 
 @if ($isAssignedCleaner && $session->status === 'pending')

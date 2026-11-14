@@ -29,6 +29,15 @@ class PhotoController extends Controller
         if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
             return;
         }
+        if (\App\Services\CleanerAccessSteps::isActingAsCleaner($session)) {
+            if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
+                throw new \Symfony\Component\HttpKernel\Exception\HttpResponseException(response()->json([
+                    'success' => false,
+                    'message' => 'The 30-minute window to edit this report has closed.',
+                ], 403));
+            }
+            return;
+        }
         if ($user->hasAnyRole(['admin', 'owner', 'company']) || (int) $session->housekeeper_id !== (int) $user->id) {
             return;
         }
@@ -62,7 +71,8 @@ class PhotoController extends Controller
     {
         $this->assertSessionAccess($session);
         $this->assertEditWindowOpen($session);
-        if (!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
+        if ((!auth()->user()->hasAnyRole(['admin', 'owner', 'manager'])
+                || \App\Services\CleanerAccessSteps::isActingAsCleaner($session))
             && is_null($session->photo_tutorial_viewed_at)
             && $session->property->effectivePhotoReferences()->exists()) {
             abort(403, 'Please review the photo guide before taking photos.');
@@ -109,7 +119,7 @@ class PhotoController extends Controller
                 timezone: $session->property->timezone ?? config('app.timezone'),
                 propertyName: $session->property->name ?? null,
                 roomName: $room->name ?? null,
-                cleanerName: $session->housekeeper->name ?? null,
+                cleanerName: auth()->user()?->name ?? $session->housekeeper?->name,
                 latitude: $session->start_latitude ? (float) $session->start_latitude : null,
                 longitude: $session->start_longitude ? (float) $session->start_longitude : null,
             );
@@ -121,6 +131,7 @@ class PhotoController extends Controller
 
             $photo    = $session->photos()->create([
                 'room_id'     => $room->id,
+                'uploaded_by' => auth()->id(),
                 'path'        => $filename,
                 'captured_at' => now(),
             ]);

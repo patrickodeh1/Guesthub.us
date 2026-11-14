@@ -222,6 +222,140 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response->assertSee('Ready to start');
     }
 
+    public function test_owner_can_open_cleaner_workflow_without_changing_assigned_cleaner(): void
+    {
+        $owner = $this->createUser();
+        $owner->assignRole('owner');
+        $cleaner = $this->createUser();
+        $cleaner->assignRole('housekeeper');
+
+        $property = Property::factory()->create([
+            'owner_id' => $owner->id,
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+        ]);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => $owner->id,
+            'housekeeper_id' => $cleaner->id,
+            'status' => 'pending',
+            'scheduled_date' => now()->toDateString(),
+            'scheduled_time' => now()->format('H:i:s'),
+            'gps_confirmed_at' => null,
+        ]);
+
+        $response = $this->actingAs($owner)->get(route('sessions.show', [
+            'session' => $session->id,
+            'view_as_cleaner' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Verify my location');
+        $response->assertDontSee('Begin (preview only)');
+        $this->assertSame($cleaner->id, $session->fresh()->housekeeper_id);
+    }
+
+    public function test_owner_acting_as_cleaner_must_verify_gps_before_starting(): void
+    {
+        $owner = $this->createUser();
+        $owner->assignRole('owner');
+        $cleaner = $this->createUser();
+        $cleaner->assignRole('housekeeper');
+
+        $property = Property::factory()->create([
+            'owner_id' => $owner->id,
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+            'geo_radius_m' => 100,
+        ]);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => $owner->id,
+            'housekeeper_id' => $cleaner->id,
+            'status' => 'pending',
+            'scheduled_date' => now()->toDateString(),
+            'scheduled_time' => now()->format('H:i:s'),
+            'gps_confirmed_at' => null,
+        ]);
+
+        $verifyUrl = route('sessions.verify-location', [
+            'session' => $session->id,
+            'view_as_cleaner' => 1,
+        ]);
+
+        $startUrl = route('sessions.start', [
+            'session' => $session->id,
+            'view_as_cleaner' => 1,
+        ]);
+        $withoutGps = $this->actingAs($owner)->post($startUrl, [
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+        ]);
+        $withoutGps->assertRedirect()->assertSessionHasErrors('gps');
+        $this->assertSame('pending', $session->fresh()->status);
+
+        $tooFar = $this->postJson($verifyUrl, [
+            'latitude' => 34.0522,
+            'longitude' => -118.2437,
+            'accuracy' => 10,
+        ]);
+        $tooFar->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertNull($session->fresh()->gps_confirmed_at);
+
+        $verified = $this->postJson($verifyUrl, [
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+            'accuracy' => 10,
+        ]);
+        $verified->assertOk()->assertJsonPath('ok', true);
+        $this->assertNotNull($session->fresh()->gps_confirmed_at);
+
+        $started = $this->post($startUrl, [
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+        ]);
+        $started->assertRedirect();
+        $this->assertSame('in_progress', $session->fresh()->status);
+        $this->assertSame($cleaner->id, $session->fresh()->housekeeper_id);
+    }
+
+    public function test_owner_acting_as_cleaner_cannot_use_an_existing_gps_override(): void
+    {
+        $owner = $this->createUser();
+        $owner->assignRole('owner');
+        $cleaner = $this->createUser();
+        $cleaner->assignRole('housekeeper');
+
+        $property = Property::factory()->create([
+            'owner_id' => $owner->id,
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+            'geo_radius_m' => 100,
+        ]);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => $owner->id,
+            'housekeeper_id' => $cleaner->id,
+            'status' => 'pending',
+            'scheduled_date' => now()->toDateString(),
+            'gps_override_enabled' => true,
+            'gps_confirmed_at' => null,
+        ]);
+
+        $response = $this->actingAs($owner)->postJson(route('sessions.verify-location', [
+            'session' => $session->id,
+            'view_as_cleaner' => 1,
+        ]), [
+            'latitude' => 34.0522,
+            'longitude' => -118.2437,
+            'accuracy' => 10,
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertNull($session->fresh()->gps_confirmed_at);
+        $this->assertSame($cleaner->id, $session->fresh()->housekeeper_id);
+    }
+
     public function test_admin_can_access_checklist_before_scheduled_time()
     {
         $admin = $this->createUser();

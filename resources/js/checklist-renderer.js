@@ -835,7 +835,7 @@ export default function checklistRenderer(config = {}) {
 
                         <div x-data="photoUploader(${room.id})" class="mb-6">
                             <form method="post" enctype="multipart/form-data"
-                                  action="${window.APP_BASE}/sessions/${this.sessionId}/rooms/${room.id}/photos"
+                                  action="${window.APP_BASE}/sessions/${this.sessionId}/rooms/${room.id}/photos${window.location.search}"
                                   data-checklist-photo-form
                                   data-room-id="${room.id}"
                                   @submit.prevent.stop="handleSubmit($event)">
@@ -1260,7 +1260,7 @@ export default function checklistRenderer(config = {}) {
                                 @click="
                                     $el.disabled = true;
                                     $el.textContent = 'Submitting...';
-                                    window.api.post('/sessions/${this.sessionId}/complete', {})
+                                    window.api.post('/sessions/${this.sessionId}/complete' + window.location.search, {})
                                     .then(res => {
                                         if (res.success && res.redirect) { window.location.href = res.redirect; }
                                         else if (res.success) { window.location.reload(); }
@@ -1500,7 +1500,7 @@ export default function checklistRenderer(config = {}) {
                                         if (navigating) return;
                                         navigating = true;
                                         $el.textContent = 'Navigating...';
-                                        window.api.post('/sessions/${this.sessionId}/go-back-stage${this.editSuffix}', { current_stage: 'summary', ${this.isEditReport ? "edit_report: '1'" : ''} })
+                                        window.api.post('/sessions/${this.sessionId}/go-back-stage' + window.location.search, { current_stage: 'summary', ${this.isEditReport ? "edit_report: '1'" : ''} })
                                         .then(res => {
                                             if (res.success && res.data) {
                                                 const rendererEl = document.querySelector('[x-data*=\\'checklistRenderer\\']');

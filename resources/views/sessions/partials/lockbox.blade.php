@@ -1,5 +1,5 @@
 @php
-    $isAssignedCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+    $isAssignedCleaner = \App\Services\CleanerAccessSteps::isCleanerForSession($session);
 @endphp
 
 @if ($isAssignedCleaner && $session->status === 'in_progress')
@@ -16,7 +16,7 @@
         if (!v) { if (msg) { msg.textContent = 'Enter the new code first.'; msg.className = 'mt-2 text-sm text-red-600'; } return; }
         if (!confirm('Save this as the new lockbox code?')) return;
         btn.disabled = true;
-        fetch('{{ route('sessions.lockbox', $session) }}', {
+        fetch('{{ route('sessions.lockbox', array_merge([$session], request()->boolean('view_as_cleaner') ? ['view_as_cleaner' => 1] : [])) }}', {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ lockbox_code: v })

@@ -93,7 +93,7 @@ class SessionController extends Controller
         if (! $u) {
             return false;
         }
-        if ($u->hasAnyRole(['admin', 'owner', 'company'])) {
+        if ($u->hasAnyRole(['admin', 'owner', 'company']) && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session)) {
             return true;
         }
         return (int) $session->housekeeper_id === (int) $u->id && $this->editWindowOpen($session);
@@ -127,9 +127,6 @@ class SessionController extends Controller
         $data = $this->prepareSessionData($session);
         if ($viewAsCleaner) {
             $data['is_admin'] = false;
-            $data['can_edit'] = false;
-            $data['is_view_only'] = true;
-            $data['is_preview'] = true;
         }
 
         return response()->json([
@@ -562,7 +559,7 @@ class SessionController extends Controller
         $isViewOnly = false;
         $isTooEarly = false;
 
-        if (auth()->check() && auth()->user()->hasRole('housekeeper') && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+        if (auth()->check() && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
             $propertyTz = $session->property->timezone ?? config('app.timezone');
             
             // Time-based early access check
@@ -596,22 +593,6 @@ class SessionController extends Controller
                 $canEdit = false;
                 $isViewOnly = true;
             }
-        }
-
-        // Administrator cleaner preview must use the assigned cleaner's real schedule,
-        // even though the authenticated user is an administrator rather than a housekeeper.
-        if (request()->boolean('view_as_cleaner')
-            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager'])
-            && $session->status === 'pending'
-            && $session->scheduled_date) {
-            $propertyTz = $session->property?->timezone ?: config('app.timezone');
-            $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
-            $rawScheduledTime = (string) ($session->getRawOriginal('scheduled_time') ?? '00:00:00');
-            $scheduledClock = \Carbon\Carbon::parse($rawScheduledTime, $propertyTz);
-            $scheduledDateTime->setTime($scheduledClock->hour, $scheduledClock->minute, $scheduledClock->second);
-            $isTooEarly = now($propertyTz)->lt($scheduledDateTime);
-            $canEdit = false;
-            $isViewOnly = true;
         }
 
         // Split rooms into first half and second half
@@ -855,7 +836,8 @@ class SessionController extends Controller
             'can_edit' => $canEdit,
             'is_view_only' => $isViewOnly,
             'is_too_early' => $isTooEarly,
-            'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']),
+            'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session),
             'can_edit_report' => $this->canEditReport($session),
             'edit_window_ends_at' => $session->ended_at ? $session->ended_at->copy()->addMinutes(self::REPORT_EDIT_WINDOW_MINUTES)->toIso8601String() : null,
         ];
@@ -865,7 +847,7 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
         abort_unless(
-            (int) $session->housekeeper_id === (int) auth()->id() || auth()->user()->hasRole('admin'),
+            \App\Services\CleanerAccessSteps::isCleanerForSession($session),
             403
         );
         $session->update(['photo_tutorial_viewed_at' => now()]);
@@ -958,8 +940,8 @@ class SessionController extends Controller
             'checkedPreCleaningCount' => $data['counts']['pre_cleaning']['checked'],
             'checkedDuringCleaningCount' => $data['counts']['during_cleaning']['checked'],
             'checkedPostCleaningCount' => $data['counts']['post_cleaning']['checked'],
-            'canEdit' => $viewAsCleaner ? false : $data['can_edit'],
-            'isViewOnly' => $viewAsCleaner ? true : $data['is_view_only'],
+            'canEdit' => $data['can_edit'],
+            'isViewOnly' => $data['is_view_only'],
             'isTooEarly' => $data['is_too_early'],
             'is_admin' => $viewAsCleaner ? false : ($data['is_admin'] ?? false),
             'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
@@ -1072,6 +1054,7 @@ class SessionController extends Controller
         if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
             abort(403, 'Only administrators, owners, and companies can grant GPS overrides.');
         }
+        abort_unless(! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session), 403, 'GPS overrides are unavailable while acting as a cleaner.');
 
         $validated = $request->validate([
             'reason' => 'required|string|max:255',
@@ -1098,8 +1081,7 @@ class SessionController extends Controller
 
         // Start window: 2 hours either side of the scheduled time, in the property's local time.
         if ($session->scheduled_date && $session->scheduled_time
-            && (int) $session->housekeeper_id === (int) auth()->id()
-            && ! auth()->user()->hasRole('admin')) {
+            && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
             $tz = $session->property?->timezone ?: config('app.display_timezone');
             $scheduled = \Carbon\Carbon::parse(
                 $session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5),
@@ -1134,17 +1116,43 @@ class SessionController extends Controller
             }
         }
         // gh-verify-first: the assigned cleaner must have verified location before Begin.
-        if ((int) $session->housekeeper_id === (int) auth()->id()
-            && ! \App\Services\CleanerAccessSteps::locationVerified($session)) {
+        if (\App\Services\CleanerAccessSteps::isCleanerForSession($session)
+            && (\App\Services\CleanerAccessSteps::isActingAsCleaner($session)
+                ? ! $session->gps_confirmed_at
+                : ! \App\Services\CleanerAccessSteps::locationVerified($session))) {
             return back()->withErrors(['gps' => 'Please verify your location first.']);
         }
-        $lat = (float) $request->validated('latitude');
-        $lng = (float) $request->validated('longitude');
-
         $property = $session->property;
+        $actingAsCleaner = \App\Services\CleanerAccessSteps::isActingAsCleaner($session);
+        $latitudeInput = $request->validated('latitude');
+        $longitudeInput = $request->validated('longitude');
+
+        // In acting-cleaner mode, re-check the submitted device coordinates at
+        // the point of starting, even if the session has an admin GPS override.
+        if ($actingAsCleaner && $property->latitude !== null && $property->longitude !== null) {
+            if ($latitudeInput === null || $longitudeInput === null) {
+                return back()->withErrors(['gps' => 'Location is required to start this cleaning. Please verify your location again.']);
+            }
+
+            $startDistance = GpsService::distanceMeters(
+                (float) $latitudeInput,
+                (float) $longitudeInput,
+                (float) $property->latitude,
+                (float) $property->longitude
+            );
+            if ($startDistance > \App\Support\GpsRadius::base()) {
+                return back()->withErrors(['gps' => 'GPS validation failed. You are too far from the property to start.']);
+            }
+        }
+
+        $lat = (float) ($latitudeInput ?? 0);
+        $lng = (float) ($longitudeInput ?? 0);
 
         // Geofence (only if property has coordinates)
-        if (! \App\Services\CleanerAccessSteps::locationVerified($session) && $property->latitude !== null && $property->longitude !== null) {
+        if ((\App\Services\CleanerAccessSteps::isActingAsCleaner($session)
+                ? ! $session->gps_confirmed_at
+                : ! \App\Services\CleanerAccessSteps::locationVerified($session))
+            && $property->latitude !== null && $property->longitude !== null) {
             $distance = GpsService::distanceMeters(
                 $lat,
                 $lng,
@@ -1152,7 +1160,8 @@ class SessionController extends Controller
                 (float) $property->longitude
             );
 
-            if ($distance > \App\Support\GpsRadius::base() && !$session->gps_override_enabled) {
+            if ($distance > \App\Support\GpsRadius::base()
+                && (!$session->gps_override_enabled || \App\Services\CleanerAccessSteps::isActingAsCleaner($session))) {
                 return back()->withErrors(['gps' => 'GPS validation failed. You are too far from the property to start. Please contact an administrator.']);
             }
         }
@@ -1182,7 +1191,9 @@ class SessionController extends Controller
         $session->update([
             'status'           => 'in_progress',
             'started_at'       => now(),
-            'gps_confirmed_at' => $session->gps_override_enabled ? null : now(),
+            'gps_confirmed_at' => ($session->gps_override_enabled && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session))
+                ? null
+                : ($session->gps_confirmed_at ?? now()),
             'start_latitude'   => $lat,
             'start_longitude'  => $lng,
             'stage'            => 'pre_cleaning',
@@ -1207,7 +1218,7 @@ class SessionController extends Controller
             }
         }
 
-        activity()->performedOn($session)->event('started')->log('Session started');
+        activity()->performedOn($session)->causedBy(auth()->user())->event('started')->log('Session started');
 
         // Trigger SMS notification for cleaning started
         try {
@@ -1272,7 +1283,7 @@ class SessionController extends Controller
             ChecklistItem::insertOrIgnore($rows);
         }
 
-        return redirect()->route('sessions.show', $session);
+        return redirect()->route('sessions.show', array_merge([$session], \App\Services\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
     }
 
     /** The assigned cleaner gives a job back before starting it. It returns to the pool unassigned. */
@@ -1335,13 +1346,16 @@ class SessionController extends Controller
 
     public function complete(Request $request, CleaningSession $session)
     {
-        $isOverride = $request->boolean('is_manager_override');
+        $isOverride = $request->boolean('is_manager_override')
+            && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session);
 
         if ($session->status === 'completed') {
             return back()->with('error', 'Session is already completed.');
         }
 
-        if (!$isOverride && $session->stage !== 'summary' && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+        if (!$isOverride && $session->stage !== 'summary'
+            && (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                || \App\Services\CleanerAccessSteps::isActingAsCleaner($session))) {
             $msg = 'Finish all stages, including the checkout steps, before completing.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
@@ -1351,7 +1365,9 @@ class SessionController extends Controller
 
         if (!$isOverride) {
             // Normal completion authorization: must be the assigned housekeeper or an admin/owner
-            if (auth()->id() !== $session->housekeeper_id && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+            if (auth()->id() !== $session->housekeeper_id
+                && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                && !\App\Services\CleanerAccessSteps::isActingAsCleaner($session)) {
                 abort(403, 'Unauthorized to complete this session.');
             }
 
@@ -1402,9 +1418,9 @@ class SessionController extends Controller
         }
 
         if ($isOverride) {
-            activity()->performedOn($session)->event('completed')->log('Session closed by manager override: ' . $request->input('note'));
+            activity()->performedOn($session)->causedBy(auth()->user())->event('completed')->log('Session closed by manager override: ' . $request->input('note'));
         } else {
-            activity()->performedOn($session)->event('completed')->log('Session completed');
+            activity()->performedOn($session)->causedBy(auth()->user())->event('completed')->log('Session completed');
         }
 
         // Trigger SMS notification for cleaning finished

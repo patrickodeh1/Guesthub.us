@@ -6,53 +6,13 @@
 @php
     $viewAsCleaner = (bool) ($viewAsCleaner ?? false);
     $cleanerLayout = $viewAsCleaner || ! (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']));
-    $previewAvailabilityBlocked = false;
-    if ($viewAsCleaner && $session->status === 'pending' && $session->scheduled_date) {
-        $previewTz = $session->property?->timezone ?: config('app.timezone');
-        $rawPreviewTime = (string) ($session->getRawOriginal('scheduled_time') ?? '00:00:00');
-        $previewAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $previewTz);
-        $previewClock = \Carbon\Carbon::parse($rawPreviewTime, $previewTz);
-        $previewAt->setTime($previewClock->hour, $previewClock->minute, $previewClock->second);
-        $previewNow = now($previewTz);
-        $previewAvailabilityBlocked = $previewNow->lt($previewAt)
-            || $previewNow->gt($previewAt->copy()->addHours(2));
-    }
 @endphp
 <x-dynamic-component :component="$cleanerLayout ? 'cleaner-layout' : 'app-layout'">
     <div class="cleaner-skin-marker" hidden></div>
     @if($viewAsCleaner)
         <div class="mx-4 mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800" role="status">
-            Cleaner preview — this is the cleaner-facing layout. You are viewing it as an administrator. All changes are disabled.
+            You are performing this cleaning. GPS verification and the normal cleaner workflow are required. The assigned cleaner remains unchanged.
         </div>
-        <script>
-        document.addEventListener('submit', function (event) {
-            if (event.target.closest('form')) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }, true);
-        document.addEventListener('change', function (event) {
-            if (event.target.matches('input[type="file"]')) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }, true);
-        document.addEventListener('click', function (event) {
-            const button = event.target.closest('button');
-            const inlineAction = button?.getAttribute('@click') || '';
-            if (event.target.closest('[data-checklist-toggle], [data-checklist-note-save], [data-photo-delete], #start-btn, #verify-loc-btn, #exit-confirm-ok, #wizard-done-exit, #stepBtn')
-                || /handleDeletePhoto|saveProgress|save-note|saveNote|completeSession|submitChecklist/i.test(inlineAction)) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }, true);
-        document.addEventListener('click', function (event) {
-            if (event.target.closest('input[type="file"]')) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-        }, true);
-        </script>
     @endif
     <x-slot name="header">
         <div class="flex items-center justify-between">
@@ -88,6 +48,7 @@
 
     @php
         $ghAwaitingConfirm = $cleanerLayout
+            && ! $viewAsCleaner
             && ! request()->has('edit_report')
             && $session->status === 'pending'
             && $session->assignment_status === 'pending_confirmation';
@@ -180,10 +141,10 @@
         ? route('reports.sessions.show', ['token' => $session->report_token])
         : null;
 
-    $photoDeleteUrl = route('photos.destroy', [
+    $photoDeleteUrl = route('photos.destroy', array_merge([
         'session' => $session->id,
-        'photo' => 0
-    ]);
+        'photo' => 0,
+    ], $viewAsCleaner ? ['view_as_cleaner' => 1] : []));
 @endphp
 
 @if(auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']) && request()->query('edit_report') == '1')
@@ -297,7 +258,7 @@
                     </div>
                 </div>
             </div>
-        @elseif (!$viewAsCleaner && isset($isViewOnly) && $isViewOnly)
+        @elseif (isset($isViewOnly) && $isViewOnly)
             <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -319,8 +280,7 @@
         @php
             $ghStartBlocked = false; $ghStartBlockMsg = '';
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
-                && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
-                && ! auth()->user()->hasRole('admin')) {
+                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
                 // Match the controller's schedule gate timezone fallback.
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
                 $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5), $ghTz);
@@ -349,7 +309,7 @@
         @endif
 
         {{-- gh-first-screen: cleaning details, shown first to the assigned cleaner before anything else --}}
-        @if (! $ghStartBlocked && $session->status === 'pending' && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+        @if (! $ghStartBlocked && $session->status === 'pending' && \App\Services\CleanerAccessSteps::isCleanerForSession($session)
             && ! \App\Services\CleanerAccessSteps::locationVerified($session))
             @php
                 $fsProp = $session->property;
@@ -375,11 +335,13 @@
                         <div class="flex justify-between gap-4"><dt class="text-slate-500">Start time</dt><dd class="font-medium">{{ $fsTime }}</dd></div>
                     </dl>
                     <button type="button" id="gh-first-proceed" class="guest-primary-btn is-go mt-6 w-full">Proceed</button>
+                    @unless($viewAsCleaner)
                     <form method="POST" action="{{ route('sessions.cancel-assignment', $session) }}" class="mt-6 border-t border-slate-200 pt-4 text-center"
                           onsubmit="return confirm('Cancel this job? It will go back to the office to be given to another cleaner.');">
                         @csrf
                         <button type="submit" class="text-sm font-semibold text-red-700 underline">I can't make this job. Cancel it</button>
                     </form>
+                    @endunless
                 </div>
             </div>
             <script>
@@ -404,7 +366,7 @@
             @php
                 $ghHideGettingIn = $session->status === 'pending'
                     && auth()->check()
-                    && (int) $session->housekeeper_id === (int) auth()->id()
+                    && \App\Services\CleanerAccessSteps::isCleanerForSession($session)
                     && ! \App\Services\CleanerAccessSteps::locationVerified($session)
                     && count($accessSteps ?? []) === 0;
             @endphp
@@ -418,7 +380,7 @@
         {{-- PENDING: Start gate --}}
         @if ($session->status === 'pending')
             @php
-            $gateCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+            $gateCleaner = \App\Services\CleanerAccessSteps::isCleanerForSession($session);
             $gateWait = $gateCleaner && count($accessSteps ?? []) > 0;
         @endphp
         <div id="pending-gate" @if ($gateWait) style="display:none" @endif>
@@ -440,19 +402,7 @@
                 </div>
                 <div class="px-6 py-10 md:py-16">
                 <div class="max-w-2xl mx-auto text-center">
-                    @if ($viewAsCleaner)
-                        <div class="mb-6">
-                            <h1 class="guest-status-title">{{ $previewAvailabilityBlocked ? 'Session Not Available Yet' : 'Ready to start' }}</h1>
-                            <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">
-                                @if ($previewAvailabilityBlocked)
-                                    This cleaner cannot start yet. The cleaner can start at the scheduled time and up to two hours afterwards, based on the property's local time.
-                                @else
-                                    The cleaner can proceed when at the property and after location verification.
-                                @endif
-                            </p>
-                            <button type="button" class="guest-primary-btn is-go w-full" disabled aria-disabled="true">Begin (preview only)</button>
-                        </div>
-                    @elseif (isset($isViewOnly) && $isViewOnly)
+                    @if (isset($isViewOnly) && $isViewOnly)
                         <div class="mb-6">
                             <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                                 <svg class="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -470,7 +420,7 @@
                         <div class="mb-6">
                             {{-- gh-ready-gate --}}
                             <h1 class="guest-status-title">Ready to start</h1>
-                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id())
+                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) )
                                 <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
                             @endif
                         </div>
@@ -482,12 +432,11 @@
                             </div>
                         @endif
 
-                        @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id(); @endphp
+                        @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) ; @endphp
                         @php
                             $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
-                                && (int) $session->housekeeper_id === (int) auth()->id()
-                                && ! auth()->user()->hasRole('admin')) {
+                                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
                                 $startTz = $session->property?->timezone ?: config('app.display_timezone');
                                 $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
                                 $startNow = now($startTz);
@@ -503,7 +452,7 @@
                             }
                         @endphp
                         @if ($locationVerified)
-                        <form method="post" action="{{ route('sessions.start', $session) }}" id="gps-start">
+                        <form method="post" action="{{ route('sessions.start', array_merge([$session], $viewAsCleaner ? ['view_as_cleaner' => 1] : [])) }}" id="gps-start">
                             @csrf
                             <x-form.input type="hidden" name="latitude" id="lat" />
                             <x-form.input type="hidden" name="longitude" id="lng" />
@@ -532,7 +481,7 @@
                                 if (!navigator.geolocation) { msg.textContent = 'Location is not available in this browser.'; return; }
                                 btn.disabled = true; msg.textContent = 'Checking your location...';
                                 navigator.geolocation.getCurrentPosition(function (pos) {
-                                    fetch('{{ route('sessions.verify-location', $session) }}', {
+                                    fetch('{{ route('sessions.verify-location', array_merge([$session], $viewAsCleaner ? ['view_as_cleaner' => 1] : [])) }}', {
                                         method: 'POST',
                                         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' },
                                         body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy })
@@ -594,12 +543,12 @@
             @endif
 
             {{-- GPS capture and location verification --}}
-            @if ((!isset($isViewOnly) || !$isViewOnly) && (int) $session->housekeeper_id !== (int) auth()->id()) {{-- gh-no-gps-for-cleaner --}}
+            @if ((!isset($isViewOnly) || !$isViewOnly) && ($viewAsCleaner )) {{-- gh-no-gps-for-cleaner --}}
                 @include('sessions.partials.gps-script', [
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
                     'propertyRadius' => \App\Support\GpsRadius::base(),
-                    'overrideEnabled' => $session->gps_override_enabled
+                    'overrideEnabled' => $viewAsCleaner ? false : $session->gps_override_enabled
                 ])
             @endif
         @else
@@ -718,9 +667,9 @@
             {{-- Exit wizard: shown under the header card when the cleaner finishes --}}
             @php
                 $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
-                $exitIsCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+                $exitIsCleaner = \App\Services\CleanerAccessSteps::isCleanerForSession($session);
             @endphp
-            @if (!$viewAsCleaner && ($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
+            @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
                 <div id="exit-wizard-panel" style="display:none" class="mb-4">
                     <x-step-wizard :steps="$exitWiz" type="exit" kicker="Before you leave" done-label="Complete session" next-section="exit-wizard-panel" />
                     <div class="mt-3 text-center"><button type="button" id="exit-wizard-back" class="guest-outline-btn">Back to photos</button></div>

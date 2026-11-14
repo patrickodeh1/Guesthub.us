@@ -44,7 +44,7 @@ class SessionDoorController extends Controller
         $user = $request->user();
         abort_unless($lock->property_id === $session->property_id, 404);
 
-        if (! $user || (int) $session->housekeeper_id !== (int) $user->id) {
+        if (! $user || ! \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
             return response()->json(['ok' => false, 'error' => 'This assignment is not yours.'], 403);
         }
         if (! in_array($session->status, ['pending', 'in_progress'], true)

@@ -22,7 +22,7 @@
             'room_id' => $rid,
         ];
     })->filter()->values();
-    $isCleaner = auth()->check() && (int) $session->housekeeper_id === (int) auth()->id();
+    $isCleaner = \App\Services\CleanerAccessSteps::isCleanerForSession($session);
     $active = $session->status === 'in_progress';
     $viewed = !is_null($session->photo_tutorial_viewed_at);
 @endphp
@@ -114,7 +114,7 @@
             if (rid != null) { seen[rid] = 1; try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch (e) {} }
         }
         if (viewed) { done(); return; }
-        fetch("{{ route('sessions.photo-tutorial', $session) }}", {
+        fetch("{{ route('sessions.photo-tutorial', array_merge([$session], request()->boolean('view_as_cleaner') ? ['view_as_cleaner' => 1] : [])) }}", {
             method: "POST",
             headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" }
         }).then(function (r) { if (!r.ok) throw new Error(); done(); })
