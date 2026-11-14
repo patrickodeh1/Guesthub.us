@@ -19,20 +19,22 @@ class CleaningStartWindow
 
     public function scheduledAt(CleaningSession $session): ?Carbon
     {
-        if (! $session->scheduled_date || ! $session->scheduled_time) {
+        $rawDate = $session->getRawOriginal('scheduled_date');
+        $rawTime = $session->getRawOriginal('scheduled_time');
+
+        if (! $rawDate || ! $rawTime) {
             return null;
         }
 
         $timezone = $session->property?->timezone ?: config('app.timezone');
 
-        // Read the persisted values, not Eloquent's datetime-cast values. The
-        // scheduled date and time represent a wall-clock appointment at the property.
-        $dateValue = $session->getRawOriginal('scheduled_date') ?: $session->scheduled_date->toDateString();
-        $timeValue = $session->getRawOriginal('scheduled_time') ?: (string) $session->scheduled_time;
-        $date = Carbon::parse((string) $dateValue, $timezone);
-        $time = Carbon::parse((string) $timeValue, $timezone);
+        // These columns describe a property-local wall-clock appointment.
+        // Extract the calendar date and clock time independently so a datetime
+        // cast or UTC serialization cannot shift either value across timezones.
+        $date = Carbon::parse((string) $rawDate)->format('Y-m-d');
+        $time = Carbon::parse((string) $rawTime)->format('H:i:s');
 
-        return $date->setTime($time->hour, $time->minute, $time->second);
+        return Carbon::createFromFormat('!Y-m-d H:i:s', $date.' '.$time, $timezone);
     }
 
     public function opensAt(CleaningSession $session): ?Carbon
@@ -70,6 +72,6 @@ class CleaningStartWindow
         $timezone = $session->property?->timezone ?: config('app.timezone');
         $now = Carbon::now($timezone);
 
-        return $now->betweenIncluded($opensAt, $closesAt);
+        return $now->greaterThanOrEqualTo($opensAt) && $now->lessThanOrEqualTo($closesAt);
     }
 }
