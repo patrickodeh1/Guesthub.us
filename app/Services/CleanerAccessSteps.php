@@ -181,10 +181,10 @@ class CleanerAccessSteps
                 $entry['photo_video'] = $t->type === 'verify_video';
                 $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
             }
-            if ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
-                $after[$afterId][] = $entry;
-            } elseif ($isExit) {
+            if ($t->type === 'lockbox' || $isExit) {
                 $atEnd[] = $entry;
+            } elseif ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
+                $after[$afterId][] = $entry;
             } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true) && ! in_array($afterId, $hiddenIds, true)) {
                 continue; // its step is not visible yet (before location check); show it later
             } else {
