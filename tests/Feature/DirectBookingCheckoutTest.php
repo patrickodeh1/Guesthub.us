@@ -126,7 +126,7 @@ class DirectBookingCheckoutTest extends TestCase
             ->assertSee('@coastal-host')
             ->assertSee('Send payment and use your booking reference.')
             ->assertSee($booking->booking_id)
-            ->assertSee("I've sent the payment")
+            ->assertSee('I sent my payment')
             ->assertSee('name="receipt"', false);
         Mail::assertSent(DirectBookingMail::class, 2);
     }
@@ -250,7 +250,8 @@ class DirectBookingCheckoutTest extends TestCase
         );
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
-            ->assertSee('Manual payment instructions');
+            ->assertSee('Waiting for host approval')
+            ->assertDontSee('Amount to pay');
     }
 
     public function test_request_decline_releases_the_dates(): void
@@ -374,7 +375,7 @@ class DirectBookingCheckoutTest extends TestCase
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
             ->assertSee('Payment confirmation in progress.')
-            ->assertSee("We'll let you know when your payment is confirmed.")
+            ->assertSee("We'll let you know when your payment is confirmed.", false)
             ->assertSee('max-height:84vh')
             ->assertDontSee('name="receipt"', false);
 
