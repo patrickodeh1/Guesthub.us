@@ -167,16 +167,11 @@ class CalendarAssignController extends Controller
             ?? $booking?->check_out_date?->toDateString()
             ?? $queryDate;
 
-        // The guest this cleaning follows: the linked booking, else the guest checking out that day.
+        // Keep an explicit booking link authoritative. For an unlinked session,
+        // resolve the guest by date only when exactly one booking matches.
         $guest = $booking;
-        if (! $guest && ! $session && $propertyId && $date) {
-            $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
-            $guest = \App\Models\Booking::query()
-                ->where('property_id', $propertyId)
-                ->whereDate('check_out_date', $date)
-                ->whereNull('cancelled_at')
-                ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead))
-                ->first();
+        if (! $guest && ! $session?->booking_id && $propertyId && $date) {
+            $guest = \\App\\Services\\CleaningFlowService::bookingForPropertyDate((int) $propertyId, $date);
         }
 
         $time = $session?->scheduled_time?->format('H:i');
