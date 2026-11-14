@@ -185,7 +185,7 @@ class SessionReportController extends Controller
             ->sortBy(fn($roomId) => $roomOrder[$roomId] ?? (10000 + (int) $roomId))
             ->values();
 
-        $completionGalleryByRoom = $completionRoomIds->map(function ($roomId) use ($allRoomPhotos, $propertyRoomNames, $session) {
+        $completionGalleryByRoom = $completionRoomIds->map(function ($roomId) use ($completionGalleryPhotos, $propertyRoomNames, $session) {
             $photos = $completionGalleryPhotos
                 ->where('room_id', $roomId)
                 ->sortBy(fn($photo) => $photo['captured_at']?->timestamp ?? PHP_INT_MAX)
