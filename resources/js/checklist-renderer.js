@@ -1500,7 +1500,7 @@ export default function checklistRenderer(config = {}) {
                                         if (navigating) return;
                                         navigating = true;
                                         $el.textContent = 'Navigating...';
-                                        window.api.post('/sessions/${this.sessionId}/go-back-stage${this.editSuffix}', { current_stage: 'summary', ${this.isEditReport ? "edit_report: '1'" : ''} })
+                                        window.api.post('/sessions/${this.sessionId}/go-back-stage' + window.location.search, { current_stage: 'summary', ${this.isEditReport ? "edit_report: '1'" : ''} })
                                         .then(res => {
                                             if (res.success && res.data) {
                                                 const rendererEl = document.querySelector('[x-data*=\\'checklistRenderer\\']');
