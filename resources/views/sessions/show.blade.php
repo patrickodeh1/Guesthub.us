@@ -548,7 +548,7 @@
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
                     'propertyRadius' => \App\Support\GpsRadius::base(),
-                    'overrideEnabled' => $session->gps_override_enabled
+                    'overrideEnabled' => $viewAsCleaner ? false : $session->gps_override_enabled
                 ])
             @endif
         @else
