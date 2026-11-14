@@ -283,7 +283,18 @@ class GpsOverrideAndScheduleTest extends TestCase
             'view_as_cleaner' => 1,
         ]);
 
-        $tooFar = $this->actingAs($owner)->postJson($verifyUrl, [
+        $startUrl = route('sessions.start', [
+            'session' => $session->id,
+            'view_as_cleaner' => 1,
+        ]);
+        $withoutGps = $this->actingAs($owner)->post($startUrl, [
+            'latitude' => 40.7128,
+            'longitude' => -74.0060,
+        ]);
+        $withoutGps->assertRedirect()->assertSessionHasErrors('gps');
+        $this->assertSame('pending', $session->fresh()->status);
+
+        $tooFar = $this->postJson($verifyUrl, [
             'latitude' => 34.0522,
             'longitude' => -118.2437,
             'accuracy' => 10,
@@ -299,10 +310,6 @@ class GpsOverrideAndScheduleTest extends TestCase
         $verified->assertOk()->assertJsonPath('ok', true);
         $this->assertNotNull($session->fresh()->gps_confirmed_at);
 
-        $startUrl = route('sessions.start', [
-            'session' => $session->id,
-            'view_as_cleaner' => 1,
-        ]);
         $started = $this->post($startUrl, [
             'latitude' => 40.7128,
             'longitude' => -74.0060,
