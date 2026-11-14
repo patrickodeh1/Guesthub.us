@@ -56,7 +56,7 @@
                             @if($isVideo)
                                 <div class="bg-black rounded-xl overflow-hidden aspect-video shadow-inner relative mt-6">
                                     <video id="training-video" class="w-full h-full object-contain" controls playsinline preload="auto">
-                                        <source src="{{ $item->video_url }}" type="video/mp4">
+                                        <source src="{{ $item->video_url }}">
                                         Your browser does not support the video tag.
                                     </video>
                                 </div>
