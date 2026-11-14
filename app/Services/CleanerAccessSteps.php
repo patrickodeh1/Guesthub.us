@@ -122,7 +122,15 @@ class CleanerAccessSteps
             ->orderBy('property_tasks.sort_order')
             ->orderBy('tasks.id')
             ->get()
-            ->filter(fn ($task) => ! $task->is_sporadic || in_array((int) $task->id, $selectedGlobalIds, true))
+            ->filter(function ($task) use ($selectedGlobalIds) {
+                // Changing a lockbox code is always opt-in for an individual cleaning,
+                // even when an older property task was not marked as occasional.
+                if ($task->type === 'lockbox') {
+                    return in_array((int) $task->id, $selectedGlobalIds, true);
+                }
+
+                return ! $task->is_sporadic || in_array((int) $task->id, $selectedGlobalIds, true);
+            })
             ->values();
         if ($tasks->isEmpty()) {
             return $steps;
