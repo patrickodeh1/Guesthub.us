@@ -210,7 +210,7 @@ class CleaningFlowService
             if ($booking) {
                 $session->forceFill(['booking_id' => $booking->id])->saveQuietly();
             }
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error('CleaningFlow autoTag failed: '.$e->getMessage());
         }
     }
