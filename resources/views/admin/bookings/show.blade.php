@@ -668,7 +668,7 @@
                     @endif
                 </div>
                 @if($cleaning->report_token && in_array($cleaning->status, ['in_progress', 'completed'], true))
-                    <a href="{{ route('sessions.show', ['session' => $cleaning->id]) }}" class="btn-secondary">Cleaning Report</a>
+                    <a href="{{ route('reports.sessions.show', ['token' => $cleaning->report_token]) }}" class="btn-secondary">Cleaning Report</a>
                 @endif
             </div>
         @empty
