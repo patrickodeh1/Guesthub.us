@@ -20,8 +20,28 @@
     <div class="cleaner-skin-marker" hidden></div>
     @if($viewAsCleaner)
         <div class="mx-4 mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800" role="status">
-            Cleaner preview — this is the cleaner-facing layout. You are viewing it as an administrator.
+            Cleaner preview — this is the cleaner-facing layout. You are viewing it as an administrator. All changes are disabled.
         </div>
+        <script>
+        document.addEventListener('submit', function (event) {
+            if (event.target.closest('form')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('[data-checklist-toggle], [data-checklist-note-save], [data-photo-delete], #start-btn, #verify-loc-btn, #exit-confirm-ok, #wizard-done-exit, #stepBtn')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('input[type="file"]')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
+        </script>
     @endif
     <x-slot name="header">
         <div class="flex items-center justify-between">
