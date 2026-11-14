@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Services;
+namespace App\Services;
 
-use App\\Models\\CleaningSession;
-use Carbon\\Carbon;
+use App\Models\CleaningSession;
+use Carbon\Carbon;
 
 class CleaningStartWindow
 {
