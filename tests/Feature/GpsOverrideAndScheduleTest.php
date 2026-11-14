@@ -43,6 +43,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
+            'gps_confirmed_at' => null,
             'scheduled_date' => now()->toDateString(),
         ]);
 
