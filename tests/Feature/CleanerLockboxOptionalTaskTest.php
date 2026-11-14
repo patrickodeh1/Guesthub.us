@@ -14,7 +14,7 @@ class CleanerLockboxOptionalTaskTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_unselected_sporadic_lockbox_task_does_not_block_the_exit_wizard(): void
+    public function test_unselected_lockbox_task_does_not_block_the_exit_wizard(): void
     {
         [, , $cleaner, , $session] = $this->sessionWithOptionalLockbox();
 
@@ -46,7 +46,7 @@ class CleanerLockboxOptionalTaskTest extends TestCase
             'created_by' => $owner->id,
             'type' => 'lockbox',
             'phase' => 'during_cleaning',
-            'is_sporadic' => true,
+            'is_sporadic' => false,
         ]);
         $property->propertyTasks()->attach($task->id, [
             'sort_order' => 1,
