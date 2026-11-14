@@ -141,10 +141,10 @@
         ? route('reports.sessions.show', ['token' => $session->report_token])
         : null;
 
-    $photoDeleteUrl = route('photos.destroy', [
+    $photoDeleteUrl = route('photos.destroy', array_merge([
         'session' => $session->id,
-        'photo' => 0
-    ]);
+        'photo' => 0,
+    ], $viewAsCleaner ? ['view_as_cleaner' => 1] : []));
 @endphp
 
 @if(auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']) && request()->query('edit_report') == '1')
