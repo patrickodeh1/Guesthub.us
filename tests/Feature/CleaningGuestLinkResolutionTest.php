@@ -1,14 +1,14 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\Booking;
-use App\\Models\\CleaningSession;
-use App\\Models\\Property;
-use App\\Models\\User;
-use App\\Services\\CleaningFlowService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Tests\\TestCase;
+use App\Models\Booking;
+use App\Models\CleaningSession;
+use App\Models\Property;
+use App\Models\User;
+use App\Services\CleaningFlowService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class CleaningGuestLinkResolutionTest extends TestCase
 {
