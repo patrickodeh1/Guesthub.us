@@ -196,12 +196,15 @@ class CleanerAccessSteps
             }
             if ($t->type === 'lockbox') {
                 $lockboxEntry = $entry;
+            } elseif ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
+                // Honor the selected anchor step for both arrival and exit tasks.
+                $after[$afterId][] = $entry;
+            } elseif ($afterId > 0
+                && in_array($afterId, $kind === 'checkout' ? $checkoutIds : $checkinIds, true)
+                && ! in_array($afterId, $visibleIds, true)) {
+                continue; // its anchor step is not visible in this wizard; show it when it is
             } elseif ($isExit) {
                 $atEnd[] = $entry;
-            } elseif ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
-                $after[$afterId][] = $entry;
-            } elseif ($afterId > 0 && in_array($afterId, $checkinIds, true) && ! in_array($afterId, $hiddenIds, true)) {
-                continue; // its step is not visible yet (before location check); show it later
             } else {
                 $atStart[] = $entry;
             }
