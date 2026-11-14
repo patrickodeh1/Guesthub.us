@@ -6,7 +6,7 @@ Project: Guesthub | key: f3-2f14353f0b | created: 2026-11-03
 
 **Client's words:** When editing a report submit and next stage buttons do the same thing. If I only want to edit one item then I should be able to close report, if I want to edit item on the next session I should be able to advance. Please change start cleaning to Cleaning report also on the session closed page confirmation remove the add note and add more images button and instead have a pencil and plus w/camera icon in the same window as session closed if it looks good, otherwise change it to edit report. This feature should only be available for 30 minutes after the cleaner closes it.
 
-## 7. Fix guest‑cleaning link on date change and redesign navigation menu  [IN PROGRESS] (Cleaning-link code updated on cleaning-workflow-fixes; navigation redesign remains out of scope; test required)
+## 7. Fix guest‑cleaning link on date change and redesign navigation menu  [SHIPPED] (Cleaning-link and ambiguous-match safeguards are in the ZIP; navigation redesign is not included and still remains out of scope)
 
 Project: Guesthub | key: f3-2402744d24 | created: 2026-11-03
 
@@ -20,19 +20,19 @@ Project: Guesthub | key: f3-ee66800072 | created: 2026-11-03
 
 **How to test:** Make a direct booking and pay. Open the guest link: the agreement and signature, photo ID, parking and check-in steps are there. The host gets an email when the booking is created and another when a card payment is confirmed. Search visibility is the same as the SEO task: /robots.txt, /sitemap.xml, /llms.txt and structured data on each listing. Rankings cannot be guaranteed.
 
-## 9. Add cleaner and cleaning report view to guest page  [DONE] (Done - please verify)
+## 9. Add cleaner and cleaning report view to guest page  [SHIPPED] (Guest record cleaner/report link changes are included in the ZIP)
 
 Project: Guesthub | key: f3-ac0fd42f44 | created: 2026-11-03
 
 **Client's words:** Also, when I search for a guest, I should be able to see the cleaner and also view the Cleaning report without having to go to different sections of the website all that should be tied to the guest under the guest page
 
-## 10. Unable to locate guest cleaning report, must search dates  [DONE] (Done - please verify)
+## 10. Unable to locate guest cleaning report, must search dates  [SHIPPED] (Guest record now links to the associated cleaning report; included in the ZIP)
 
 Project: Guesthub | key: f3-7de5110711 | created: 2026-11-03
 
 **Client's words:** Right now, I’m trying to leave a review for a GUEST and I can’t seem to find their cleaning report so I have to look for the dates which is aggravating
 
-## 11. Add guest name, stay dates, and cleaner info to all cleaning reports  [DONE] (Done - please verify)
+## 11. Add guest name, stay dates, and cleaner info to all cleaning reports  [SHIPPED] (Guest/cleaning association and guest-facing report context changes are included; verify remaining report surfaces)
 
 Project: Guesthub | key: f3-3de329248f | created: 2026-11-03
 
@@ -116,7 +116,7 @@ These screens I have never seen before and they don’t contain info so what are
 
 ![Pasted_image_20261031093822.png](photos/p3_Pasted_image_20261031093822.png)
 
-## 23. Photos fail to upload, disappearing and causing page reloads  [DONE] (Done - please verify)
+## 23. Photos fail to upload, disappearing and causing page reloads  [SHIPPED] (Cleaner photo upload/advance and retry workflow changes are included in the ZIP)
 
 Project: Guesthub | key: f3-2a26f71026 | created: 2026-11-03
 
@@ -157,7 +157,7 @@ Project: Guesthub | key: f3-cbdd92c2a2 | created: 2026-11-03
 
 **Client's words:** I need to be able to see the cleaners name on the report as well
 
-## 29. Add cleaning damage notes to guest view, hide post‑checkout progress  [IN PROGRESS] (Guest record now shows cleaning exceptions/notes and report link on cleaning-workflow-fixes; hiding post-checkout progress remains; test required)
+## 29. Add cleaning damage notes to guest view, hide post‑checkout progress  [SHIPPED] (Guest cleaning exceptions/notes and report link are included; hiding post-checkout progress remains outstanding)
 Project: Guesthub | key: f3-b5c3cc0735 | created: 2026-11-03
 
 **Client's words:** One of the more important parts of this when you get back online, what you need to finish is I really need to see the Cleaning report for the GUEST like if I look up the GUEST name I should see it right there like right with their ID and and everything like that, but I don’t need to see their progress after they’ve checked out because they’ve already progressed through everything. I really don’t even need to see that at all. But it’s just kind of screen clutter, but I do need to see the report for the Cleaning and specifically I need to know if there are any damages so maybe not the whole report but you know maybe just show me the damages or the exceptions or whatever basically anytime there was a note indicated in the comments because when these guys get their deposit refunded we deduct for any damages or things like that so I need to see those. It’s very important along with their parking and their early check-in and all that stuff that’s why I really need to see how much is it gonna be deducted at a glance And right now it’s very difficult to try to match up the Cleaning report with who stayed there and the cleaner it’s just all over and that was the whole main reason for having these two sites merged together so that way they can interact better and I can see who’s doing what so please fix that part of it as as soon as possible first and priority
@@ -180,7 +180,7 @@ Project: Guesthub | key: f3-015616b99d | created: 2026-11-03
 
 **Client's words:** Also, I’m currently hosting a guest that is not appearing on either list as well
 
-## 33. Allow selecting mandatory videos and fix iPhone playback failure  [IN PROGRESS] (Training video MIME handling updated in both cleaner views; mandatory-video selection and iPhone playback still require verification)
+## 33. Allow selecting mandatory videos and fix iPhone playback failure  [SHIPPED] (Training video MIME handling changes are included; mandatory-video selection and iPhone playback still require verification)
 
 Project: Guesthub | key: f3-1b3211da53 | created: 2026-11-03
 
@@ -192,13 +192,13 @@ Project: Guesthub | key: f3-2ce48fff9f | created: 2026-11-03
 
 **Client's words:** I’m also not seeing the finished photos or the required photos from any of the jobs prior to the merge of the two sites
 
-## 35. Occasional tasks appear randomly in checklist instead of correct positions  [IN PROGRESS] (Cleaner task filtering and optional lockbox selection updated; configured anchor placement is now honored for exit tasks too. Verify against property data.)
+## 35. Occasional tasks appear randomly in checklist instead of correct positions  [SHIPPED] (Task filtering, opt-in lockbox selection, and configured exit-task anchor ordering are included; verify property task configuration)
 
 Project: Guesthub | key: f3-13cbd074bc | created: 2026-11-03
 
 **Client's words:** Also, you really need to work on this checklist as far as the additional tasks that I assigned that are occasional because they’re appearing randomly tasks that I’m not even selecting them to do or appearing for the cleaners and then also test that I’m selecting for them to appear are appearing at random intervals throughout the checklist instead of where they’re supposed to actually show up during the checklist
 
-## 36. Reorder tasks; ensure lockbox code appears only once at final step  [IN PROGRESS] (Lockbox is opt-in, de-duplicated, anchored tasks honor configured positions, and lockbox is forced to the final exit position. Full workflow test remains.)
+## 36. Reorder tasks; ensure lockbox code appears only once at final step  [SHIPPED] (Lockbox opt-in, de-duplication, configured anchors, and final exit placement are included; full workflow verification remains)
 
 Project: Guesthub | key: f3-826ebc58de | created: 2026-11-03
 
@@ -264,7 +264,7 @@ Project: Guesthub | key: f3-473e83f4fb | created: 2026-11-03
 
 ![Pasted_image_20261031094340.png](photos/p3_Pasted_image_20261031094340.png)
 
-## 45. Lockbox code order wrong, extra verification button causing unnecessary step  [IN PROGRESS] (Lockbox opt-in and final ordering fixed in code; extra verification-button behavior still needs reproduction and regression test.)
+## 45. Lockbox code order wrong, extra verification button causing unnecessary step  [SHIPPED] (Lockbox opt-in/final ordering changes are included; extra verification-button behavior is not included and still needs reproduction)
 
 Project: Guesthub | key: f3-4eb36e103f | created: 2026-11-03
 
@@ -405,7 +405,7 @@ Project: Guesthub | key: f3-1ed9570918 | created: 2026-11-03
 
 **Client's words:** When you’re doing the site for the host to have their listings they should be able to edit and create the listings then push them to Airbnb VRBO furnished finder and booking dot com so they don’t have to edit or make changes but only on guest hub and it updates to the others.this should be priority to get this done first
 
-## 67. Assigned guest appears under wrong guest screen  [IN PROGRESS] (Guest/cleaning matching safeguards updated for ambiguous bookings; verify with overlapping and rescheduled stays)
+## 67. Assigned guest appears under wrong guest screen  [SHIPPED] (Unique guest/cleaning matching and ambiguity safeguards are included; verify with overlapping and rescheduled stays)
 
 Project: Guesthub | key: f3-3e74f58fa3 | created: 2026-11-03
 
@@ -441,7 +441,7 @@ Project: Guesthub | key: f3-a44e8467ef | created: 2026-11-03
 
 **Client's words:** Also, I tried to assign myself to a Cleaning project, and my name is not coming up even though I am assigned to the Properties
 
-## 71. Multiple lockbox photo steps, checkbox, image, and workflow navigation bugs  [IN PROGRESS] (Lockbox is now optional per assignment and final in exit order; exit wizard is reached after post-cleaning tasks. Instruction completion/photo auto-advance updates remain in place; bed instruction images and mandatory bed-task behavior still need verification.)
+## 71. Multiple lockbox photo steps, checkbox, image, and workflow navigation bugs  [SHIPPED] (Lockbox opt-in/final ordering and workflow navigation/photo-advance code are included; bed instruction images and mandatory bed-task behavior remain unverified)
 
 Project: Guesthub | key: f3-792139f79f | created: 2026-11-03
 
@@ -580,7 +580,7 @@ Project: Guesthub | key: m-c2a3f218d257 | created: 2026-11-08
 
 ![5f0d1db630444829.png](photos/p3_5f0d1db630444829.png)
 
-## 89. Fix checklist, cleaner linking, and scheduling bugs within two days  [IN PROGRESS] (Cleaning association, rescheduling, and checklist workflow code updated on cleaning-workflow-fixes; full regression and live test still required)
+## 89. Fix checklist, cleaner linking, and scheduling bugs within two days  [SHIPPED] (Cleaning association, rescheduling, checklist filtering/order, and workflow changes are included; full regression/live verification remains)
 
 Project: Guesthub | key: m-29ae17c5e93c | created: 2026-11-08
 
@@ -605,7 +605,7 @@ Before confirmation, recheck availability to prevent overlapping bookings. If th
 This gives us the rental-contract functionality while reusing the existing booking and guest-portal features.
 Keep in mind that this rental application is prompted when a guest selects 29 days or longer as well as I need a separate option to show guests who want to apply. Basically I want to advertise the unit as long term and short term but long term (29 days or more) will generate this flow automatically if the host has this option selected in their settings
 
-## 93. Ask when update test available and bypass unnecessary lockbox screen  [IN PROGRESS] (Lockbox task now appears only when selected for the cleaning; scheduling selector exposes lockbox tasks, and lockbox is forced to the final exit position. Regression tests added; local suite still needs to be run.)
+## 93. Ask when update test available and bypass unnecessary lockbox screen  [SHIPPED] (Lockbox is selectable and appears only when selected, at the final exit position; regression tests are included but must be run locally)
 
 Project: Guesthub | key: m-d56c04601f5f | created: 2026-11-13
 
@@ -619,3 +619,35 @@ Project: Guesthub | key: m-d56c04601f5f | created: 2026-11-13
 Project: Guesthub | key: m-06deae049bee | created: 2026-11-13
 
 **Client's words:** For a new user creation, I need to text The individual to their phone as well as their email with their password. I shouldn’t have to enter the password. It should automatically text them a temporary all numeric password and then they need to be prompted on first login to change this automatically before they are able to access anything else and then additionally include the link to GUEST HUB as well.
+
+## Selective cleaning ZIP manifest — 2026-11-14
+
+Only the following cleaning-related changed files are in scope for the selective ZIP. Do not include unrelated inventory, billing, direct-booking, or general platform files from the other merged branch.
+
+### Runtime/application files
+- `app/Http/Controllers/Admin/BookingController.php`
+- `app/Http/Controllers/Admin/CalendarAssignController.php`
+- `app/Http/Controllers/Admin/QuickAssignController.php`
+- `app/Http/Controllers/ManageSessionController.php`
+- `app/Http/Controllers/SessionController.php`
+- `app/Models/Booking.php`
+- `app/Services/CheckoutOverviewService.php`
+- `app/Services/CleanerAccessSteps.php`
+- `app/Services/CleaningFlowService.php`
+- `app/Services/CleaningSmsNotificationService.php` (cleaning notification idempotency adjustment from the other merge)
+- `resources/js/checklist.js`
+- `resources/views/admin/bookings/show.blade.php`
+- `resources/views/components/step-wizard.blade.php`
+- `resources/views/sessions/training_required.blade.php`
+- `resources/views/training/show.blade.php`
+
+### Regression tests (include only if the ZIP is a source/developer package; not required in a runtime-only deployment package)
+- `tests/Feature/CleanerLockboxOptionalTaskTest.php`
+- `tests/Feature/CleaningGuestLinkResolutionTest.php`
+- `tests/Feature/PropertyNotificationTest.php`
+
+### Not part of this selective cleaning ZIP
+- `todos.md` is the tracking document, not an application payload file.
+- No database migrations, seeders, or one-off data migrations are added by this selective cleaning change set.
+- No unrelated files from the inventory/billing/direct-booking feature merge.
+- Build output is not enumerated here; regenerate it from the merged source with the project's normal production build before packaging if the deployment ZIP includes compiled assets.
