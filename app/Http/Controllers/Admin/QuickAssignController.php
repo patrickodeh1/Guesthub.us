@@ -36,6 +36,12 @@ class QuickAssignController extends Controller
                 && $item['date']->toDateString() === $data['scheduled_date']);
 
         abort_unless($row, 404, 'The checkout is no longer on the dashboard.');
+        if ($row['overlap']) {
+            return response()->json([
+                'message' => 'Multiple guests check out at this property on this date. Open the specific guest record to schedule its cleaning so the assignment is linked to the correct stay.',
+            ], 422);
+        }
+
         abort_unless(
             ($row['session']?->id ?? null) === (isset($data['session_id']) ? (int) $data['session_id'] : null),
             409,
