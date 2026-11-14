@@ -11,7 +11,7 @@ class SessionLockboxController extends Controller
     public function update(Request $request, CleaningSession $session)
     {
         $user = $request->user();
-        abort_unless($user && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session), 403);
+        abort_unless($user && \App\\Services\\CleanerAccessSteps::isCleanerForSession($session), 403);
 
         if (! in_array($session->status, ['pending', 'in_progress'], true)) {
             if ($request->expectsJson()) { return response()->json(['ok' => false, 'message' => 'The lockbox code can only be changed while your cleaning is active.'], 403); }
