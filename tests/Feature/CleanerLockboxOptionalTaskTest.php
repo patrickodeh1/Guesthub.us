@@ -16,23 +16,27 @@ class CleanerLockboxOptionalTaskTest extends TestCase
 
     public function test_unselected_sporadic_lockbox_task_does_not_block_the_exit_wizard(): void
     {
-        [$property, $owner, $cleaner, $task, $session] = $this->sessionWithOptionalLockbox();
+        [, , $cleaner, , $session] = $this->sessionWithOptionalLockbox();
+
+        $this->actingAs($cleaner);
+
+        $this->assertSame([], CleanerAccessSteps::exitForSession($session));
+    }
+
+    public function test_selected_sporadic_lockbox_task_is_kept_in_the_exit_wizard(): void
+    {
+        [, , $cleaner, $task, $session] = $this->sessionWithOptionalLockbox(true);
 
         $this->actingAs($cleaner);
 
         $steps = CleanerAccessSteps::exitForSession($session);
 
-        $this->assertSame([], $steps);
+        $this->assertCount(1, $steps);
+        $this->assertSame($task->name, $steps[0]['title']);
+        $this->assertNotEmpty($steps[0]['lockbox_url']);
     }
 
-    public function test_selected_sporadic_lockbox_task_is_kept_in_the_exit_wizard(): void
-    {
-        [$property, $owner, $cleaner, $task, $session] = $this->sessionWithOptionalLockbox([
-            $taskKey = null,
-        ]);
-    }
-
-    private function sessionWithOptionalLockbox(array $selected = []): array
+    private function sessionWithOptionalLockbox(bool $selected = false): array
     {
         $owner = User::factory()->create();
         $cleaner = User::factory()->create();
@@ -54,7 +58,7 @@ class CleanerLockboxOptionalTaskTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'in_progress',
-            'sporadic_tasks' => $selected,
+            'sporadic_tasks' => $selected ? [$task->id . '_global'] : [],
         ]);
 
         return [$property, $owner, $cleaner, $task, $session];
