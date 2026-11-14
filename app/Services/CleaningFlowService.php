@@ -52,12 +52,16 @@ class CleaningFlowService
             $time = self::timeOrNull($booking->effectiveCheckoutTimeFormatted());
 
             if (! $session) {
-                // Adopt a manually created clean for the same property/day instead of duplicating it.
-                $manual = CleaningSession::where('property_id', $property->id)
+                // Adopt a legacy/manual clean only when both the guest match and
+                // the candidate session are unique. Never attach an arbitrary job.
+                $manualCandidates = CleaningSession::where('property_id', $property->id)
                     ->whereDate('scheduled_date', $date)
                     ->whereNull('booking_id')->where('no_guest', false)
-                    ->where('status', '<>', 'cancelled')->first();
-                if ($manual) {
+                    ->where('status', '<>', 'cancelled')
+                    ->get();
+                $matchedBooking = self::bookingForPropertyDate((int) $property->id, $date);
+                if ($manualCandidates->count() === 1 && $matchedBooking?->getKey() === $booking->getKey()) {
+                    $manual = $manualCandidates->first();
                     $manual->update(['booking_id' => $booking->id]);
                     return $manual;
                 }
