@@ -218,7 +218,7 @@ class CleanerAccessSteps
             if (in_array($t->type, ['verify', 'verify_video'], true)) {
                 $entry['task_url'] = null;
                 $entry['task_done'] = false;
-                $entry['photo_url'] = route('checklist.property-task.photo', array_merge([$session, $t], self::cleanerQueryParams()));
+                $entry['photo_url'] = route('checklist.property-task.photo', array_merge([$session, $t], self::cleanerQueryParams($session)));
                 $entry['photo_video'] = $t->type === 'verify_video';
                 $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
             }
@@ -300,9 +300,9 @@ class CleanerAccessSteps
             'action' => 'door_lock',
             'lock_id' => $lock->id,
             'lock_status' => $status,
-            'unlock_url' => route('sessions.door.unlock', array_merge([$session, $lock], self::cleanerQueryParams())),
-            'lock_url' => route('sessions.door.lock', array_merge([$session, $lock], self::cleanerQueryParams())),
-            'status_url' => route('sessions.door.status', array_merge([$session, $lock], self::cleanerQueryParams())),
+            'unlock_url' => route('sessions.door.unlock', array_merge([$session, $lock], self::cleanerQueryParams($session))),
+            'lock_url' => route('sessions.door.lock', array_merge([$session, $lock], self::cleanerQueryParams($session))),
+            'status_url' => route('sessions.door.status', array_merge([$session, $lock], self::cleanerQueryParams($session))),
         ];
     }
 
@@ -317,7 +317,7 @@ class CleanerAccessSteps
         }
 
         return [
-            'photo_url' => route('sessions.access-photo', array_merge([$session, $s->id], self::cleanerQueryParams())),
+            'photo_url' => route('sessions.access-photo', array_merge([$session, $s->id], self::cleanerQueryParams($session))),
             'photo_done' => \App\Models\SessionAccessPhoto::where('cleaning_session_id', $session->id)
                 ->where('instruction_step_id', $s->id)->exists(),
         ];
