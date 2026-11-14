@@ -169,7 +169,7 @@ class GpsOverrideAndScheduleTest extends TestCase
         ]);
         
         $propertyTz = config('app.timezone');
-        $futureTime = now($propertyTz)->addHours(2);
+        $futureTime = now($propertyTz)->addHours(4);
 
         $session = CleaningSession::factory()->create([
             'property_id' => $property->id,
@@ -218,7 +218,7 @@ class GpsOverrideAndScheduleTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('Session Not Yet Available');
-        $response->assertSee('Ready to Start');
+        $response->assertSee('Ready to start');
     }
 
     public function test_admin_can_access_checklist_before_scheduled_time()
