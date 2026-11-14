@@ -6,33 +6,31 @@
         <h2 class="text-lg sm:text-xl font-semibold">Cleaning Schedule</h2>
     </x-slot>
 
-    @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+    @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']) && $cleaningWindowProperties->isNotEmpty())
         <x-card class="mb-4">
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaner start window</h3>
-                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">How early an assigned cleaner can start before the scheduled time.</p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Set how many minutes before the scheduled time a cleaner can begin at each property.</p>
                 </div>
                 <form method="post" action="{{ route('manage.sessions.cleaning-window.update') }}" class="flex flex-wrap items-end gap-3">
                     @csrf
-                    @if(auth()->user()->hasRole('admin'))
-                        <div>
-                            <x-form.label value="Host" />
-                            <select class="rounded border-gray-300 text-sm" onchange="window.location='{{ route('manage.sessions.index') }}?host_id='+this.value">
-                                @foreach($cleaningWindowHosts as $host)
-                                    <option value="{{ $host->id }}" @selected((string) $selectedCleaningWindowHost?->id === (string) $host->id)>{{ $host->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <input type="hidden" name="host_id" value="{{ $selectedCleaningWindowHost?->id }}">
-                    @endif
                     <div>
-                        <x-form.label value="Allow start before schedule" />
-                        <select name="minutes" class="rounded border-gray-300 text-sm">
-                            @foreach([0,15,30,45,60,90,120,150,180,210,240] as $minutes)
-                                <option value="{{ $minutes }}" @selected((int) old('minutes', $selectedCleaningWindowMinutes) === $minutes)>{{ $minutes === 0 ? 'At scheduled time only' : $minutes.' minutes early' }}</option>
+                        <x-form.label value="Property" />
+                        <select name="property_id" class="rounded border-gray-300 text-sm" onchange="window.location='{{ route('manage.sessions.index') }}?cleaning_window_property_id='+this.value">
+                            @foreach($cleaningWindowProperties as $cleaningProperty)
+                                <option value="{{ $cleaningProperty->id }}" @selected((string) $selectedCleaningWindowProperty?->id === (string) $cleaningProperty->id)>{{ $cleaningProperty->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                    <div>
+                        <x-form.label value="Minutes early" />
+                        <div class="flex items-center gap-1">
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease minutes" onclick="const i=this.parentElement.querySelector('input');i.stepDown();i.dispatchEvent(new Event('input',{bubbles:true}))">−</button>
+                            <input type="number" name="minutes" min="0" max="240" step="1" required value="{{ old('minutes', $selectedCleaningWindowMinutes) }}" class="w-24 rounded border-gray-300 text-center text-sm" />
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase minutes" onclick="const i=this.parentElement.querySelector('input');i.stepUp();i.dispatchEvent(new Event('input',{bubbles:true}))">+</button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">0–240 minutes. Use any whole-minute value.</p>
                     </div>
                     <x-button>Save window</x-button>
                 </form>
