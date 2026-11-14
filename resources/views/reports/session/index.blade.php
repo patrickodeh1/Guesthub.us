@@ -2842,7 +2842,7 @@
                                                     if ($gpsStr) $meta .= "<br>{$gpsStr}";
                                                 @endphp
                                                 <tr>
-                                                    <td>{{ $roomGallery['room_name'] }}<br><small>{{ $photo['caption'] ?? 'Room photo' }}</small></td>
+                                                    <td>{{ $roomGallery['room_name'] }}</td>
                                                     <td>
                                                         <img class="table-thumb" src="{{ $photo['url'] }}" alt="Completion photo">
                                                     </td>
@@ -2916,10 +2916,9 @@
                                                     $localCapturedAt = $photo['captured_at'] ? \App\Helpers\TimezoneHelper::toLocal($photo['captured_at'], $propertyTz) : null;
                                                     $timestamp = $localCapturedAt ? $localCapturedAt->format('m/d/Y g:i:s A (T)') : 'No timestamp';
                                                     $downloadUrl = $photo['download_url'] ?? $photo['url'];
-                                                    $photoCaption = $photo['caption'] ?? 'Room photo';
-                                                    $fullMeta = "Photo: {$photoCaption}<br>Captured: {$timestamp}<br>Cleaner: {$cleanerNameStr}";
+                                                    $fullMeta = "Captured: {$timestamp}<br>Cleaner: {$cleanerNameStr}";
                                                     if ($gpsStr) $fullMeta .= "<br>{$gpsStr}";
-                                                    $fullTitle = $propNameStr . " &mdash; " . $roomGallery['room_name'] . " — " . $photoCaption;
+                                                    $fullTitle = $propNameStr . " &mdash; " . $roomGallery['room_name'];
                                                 @endphp
                                                 <article class="pair-card">
                                                     <button
@@ -2934,8 +2933,7 @@
                                                         <span class="timestamp">{{ $timestamp }}</span>
                                                     </button>
                                                     <div class="pair-footer">
-                                                        <div class="pair-room">{{ $propNameStr }} — {{ $roomGallery['room_name'] }}</div>
-                                                        <div class="pair-time">{{ $photoCaption }}</div>
+                                                        <div class="pair-room">{{ $fullTitle }}</div>
                                                         <div class="pair-time">
                                                             <span>{{ $photo['uploader'] ?? $preparedBy }}</span>
                                                         </div>
