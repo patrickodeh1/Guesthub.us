@@ -24,13 +24,13 @@
                         </select>
                     </div>
                     <div>
-                        <x-form.label value="Minutes early" />
+                        <x-form.label value="Hours before scheduled time" />
                         <div class="flex items-center gap-1">
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease minutes" onclick="const i=this.parentElement.querySelector('input');i.stepDown();i.dispatchEvent(new Event('input',{bubbles:true}))">−</button>
-                            <input type="number" name="minutes" min="0" max="240" step="1" required value="{{ old('minutes', $selectedCleaningWindowMinutes) }}" class="w-24 rounded border-gray-300 text-center text-sm" />
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase minutes" onclick="const i=this.parentElement.querySelector('input');i.stepUp();i.dispatchEvent(new Event('input',{bubbles:true}))">+</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease duration by five minutes" onclick="const i=this.parentElement.querySelector('input');adjustCleaningWindow(i,-5)">−</button>
+                            <input type="text" inputmode="numeric" name="duration" pattern="(?:0?[0-3]:[0-5][0-9]|4:00)" maxlength="4" required value="{{ old('duration', $selectedCleaningWindowDuration) }}" placeholder="2:30" class="w-24 rounded border-gray-300 text-center text-sm" />
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase duration by five minutes" onclick="const i=this.parentElement.querySelector('input');adjustCleaningWindow(i,5)">+</button>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">0–240 minutes. Use any whole-minute value.</p>
+                        <p class="mt-1 text-xs text-gray-500">Enter hours:minutes, e.g. 2:30. Maximum 4:00.</p>
                     </div>
                     <x-button>Save window</x-button>
                 </form>
@@ -407,5 +407,16 @@
         </form>
     </x-modal>
 @endif
+
+@push('scripts')
+<script>
+    function adjustCleaningWindow(input, change) {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(input.value || '0:00');
+        let total = match ? (Number(match[1]) * 60) + Number(match[2]) : 0;
+        total = Math.max(0, Math.min(240, total + change));
+        input.value = Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+    }
+</script>
+@endpush
 
 </x-app-layout>
