@@ -271,6 +271,23 @@ class SessionReportController extends Controller
             ])->filter());
         }
 
+        $startedActivity = \\Spatie\\Activitylog\\Models\\Activity::query()
+            ->where('subject_type', CleaningSession::class)
+            ->where('subject_id', $session->id)
+            ->where('event', 'started')
+            ->with('causer')
+            ->latest('id')
+            ->first();
+        $completedActivity = \\Spatie\\Activitylog\\Models\\Activity::query()
+            ->where('subject_type', CleaningSession::class)
+            ->where('subject_id', $session->id)
+            ->where('event', 'completed')
+            ->with('causer')
+            ->latest('id')
+            ->first();
+        $startedByName = $startedActivity?->causer?->name ?? $session->housekeeper?->name ?? 'housekeeper';
+        $completedByName = $completedActivity?->causer?->name ?? $startedByName;
+
         $editedItems = $checklistItems
             ->filter(fn($item) => $item->updated_at && $item->created_at && $item->updated_at->gt($item->created_at))
             ->count();
@@ -282,7 +299,7 @@ class SessionReportController extends Controller
             ],
             [
                 'at' => $session->gps_confirmed_at ?? $session->started_at,
-                'label' => 'Session started by ' . ($session->housekeeper?->name ?? 'housekeeper'),
+                'label' => 'Session started by ' . $startedByName,
             ],
             [
                 'at' => $firstPhotoAt,
@@ -356,7 +373,7 @@ class SessionReportController extends Controller
             'startedAtForDisplay' => $localStartedAt,
             'endedAtForDisplay' => $localEndedAt,
             'cleaningDate' => $cleaningDate,
-            'preparedBy' => $session->housekeeper?->name ?? 'Unassigned',
+            'preparedBy' => $completedByName,
             'teamName' => $session->owner?->name ?? \App\Support\Branding::siteName(),
             'unitLabel' => $this->extractUnitLabel($session->property->name),
             'durationMinutes' => $this->durationMinutes($session->started_at, $endedAtForDisplay),
