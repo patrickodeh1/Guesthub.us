@@ -127,6 +127,8 @@ class SessionController extends Controller
         $data = $this->prepareSessionData($session);
         if ($viewAsCleaner) {
             $data['is_admin'] = false;
+            $data['can_edit'] = false;
+            $data['is_view_only'] = true;
         }
 
         return response()->json([
@@ -939,8 +941,8 @@ class SessionController extends Controller
             'checkedPreCleaningCount' => $data['counts']['pre_cleaning']['checked'],
             'checkedDuringCleaningCount' => $data['counts']['during_cleaning']['checked'],
             'checkedPostCleaningCount' => $data['counts']['post_cleaning']['checked'],
-            'canEdit' => $data['can_edit'],
-            'isViewOnly' => $data['is_view_only'],
+            'canEdit' => $viewAsCleaner ? false : $data['can_edit'],
+            'isViewOnly' => $viewAsCleaner ? true : $data['is_view_only'],
             'isTooEarly' => $data['is_too_early'],
             'is_admin' => $viewAsCleaner ? false : ($data['is_admin'] ?? false),
             'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
