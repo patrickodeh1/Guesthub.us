@@ -1341,7 +1341,9 @@ class SessionController extends Controller
 
         if (!$isOverride) {
             // Normal completion authorization: must be the assigned housekeeper or an admin/owner
-            if (auth()->id() !== $session->housekeeper_id && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
+            if (auth()->id() !== $session->housekeeper_id
+                && !auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                && !\App\Services\CleanerAccessSteps::isActingAsCleaner($session)) {
                 abort(403, 'Unauthorized to complete this session.');
             }
 
