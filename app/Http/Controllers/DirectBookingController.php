@@ -126,18 +126,24 @@ class DirectBookingController extends Controller
 
     public function cancel(Request $request, string $bookingId, string $token, DirectBookingService $bookings)
     {
-        abort(403, 'Cancellations are handled by the host. Please contact them directly.');
-
-        // Guests cancel through guest services; staff cancel from the admin guest list.
-        abort(404);
-
         $booking = $this->guestBooking($bookingId, $token);
-        $refund = $bookings->cancel($booking, true);
+
+        // Only an unpaid manual hold can be released by its guest. Paid bookings
+        // and receipts awaiting host review remain host-managed.
+        abort_unless(
+            $booking->source === 'direct'
+                && $booking->payment_method === 'manual'
+                && $booking->status === Booking::STATUS_PENDING_PAYMENT
+                && ! $booking->payment_confirmed_at
+                && ! $booking->guest_payment_reported_at,
+            403,
+            'This booking can no longer be cancelled online. Please contact the host.'
+        );
+
+        $bookings->cancel($booking, true);
 
         return redirect()->route('public.checkout.pay', [$booking->booking_id, $booking->token])
-            ->with('status', $refund > 0
-                ? 'Your booking was cancelled and a refund was initiated.'
-                : 'Your booking was cancelled.');
+            ->with('status', 'Your unpaid booking hold was cancelled and the dates are available again.');
     }
 
     private function publishedListing(string $slug): PropertyListing
