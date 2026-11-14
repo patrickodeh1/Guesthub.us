@@ -1223,9 +1223,17 @@ class BookingController extends Controller
             ->get();
 
         $cleanerNames = [];
+        $bookingsById = $bookings->keyBy('id');
         foreach ($sessions as $session) {
             if ($session->booking_id) {
-                $cleanerNames[$session->booking_id] = $session->housekeeper?->name;
+                $owner = $bookingsById[$session->booking_id] ?? null;
+                if ($owner?->check_out_date
+                    && $session->scheduled_date?->toDateString() !== $owner->check_out_date->toDateString()) {
+                    continue; // not this guest's checkout clean (e.g. a turnover clean before they arrived)
+                }
+                if (! isset($cleanerNames[$session->booking_id])) {
+                    $cleanerNames[$session->booking_id] = $session->housekeeper?->name;
+                }
                 continue;
             }
 

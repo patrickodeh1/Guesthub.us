@@ -211,6 +211,20 @@ class CleaningFlowService
             }
 
             $booking = self::bookingForPropertyDate((int) $session->property_id, $date);
+
+            // Arrival day with no checkout: this is the turnover clean for the guest who left last,
+            // not for the guest arriving. Tagging the arriving guest also lets syncForBooking move it to their checkout.
+            if ($booking
+                && $booking->check_in_date?->toDateString() >= $date
+                && $booking->check_out_date?->toDateString() !== $date) {
+                $prev = Booking::where('property_id', $session->property_id)
+                    ->where('id', '<>', $booking->id)->whereNull('cancelled_at')
+                    ->where(fn ($q) => $q->whereNull('status')->orWhereNotIn('status', self::DEAD_STATUSES))
+                    ->whereDate('check_out_date', '<', $date)
+                    ->orderByDesc('check_out_date')->orderByDesc('id')->first();
+                $booking = $prev ?? $booking;
+            }
+
             if ($booking) {
                 $session->forceFill(['booking_id' => $booking->id])->saveQuietly();
             }

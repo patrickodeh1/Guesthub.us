@@ -29,8 +29,8 @@
         @if($acct)
             <p class="min-w-0 break-words text-xs font-semibold {{ $acct['tone'] === 'ok' ? 'text-emerald-700' : ($acct['tone'] === 'warn' ? 'text-amber-700' : 'text-slate-500') }}">{{ $acct['text'] }}</p>
         @endif
-        @if($cleanerName)
-            <p class="min-w-0 break-words text-xs text-slate-500">Cleaner: {{ $cleanerName }}</p>
+        @if($cleanerName && ! $booking->checked_out_at)
+            <p class="min-w-0 break-words text-xs text-slate-500">Checkout clean ({{ $booking->check_out_date->format('M j') }}): {{ $cleanerName }}</p>
         @endif
 
     </a>
