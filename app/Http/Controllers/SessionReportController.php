@@ -28,6 +28,7 @@ class SessionReportController extends Controller
                 'property.rooms' => fn($q) => $q->orderBy('property_room.sort_order'),
                 'owner:id,name,email',
                 'housekeeper:id,name,email',
+                'photos.uploadedBy:id,name',
                 'checklistItems.task:id,name,type,phase',
                 'checklistItems.user:id,name',
                 'checklistItems.photos',
@@ -138,7 +139,7 @@ class SessionReportController extends Controller
                 'captured_at' => $photo->captured_at,
                 'caption' => 'Room photo',
                 'note' => null,
-                'uploader' => $defaultUploader,
+                'uploader' => $photo->uploadedBy?->name ?? $defaultUploader,
                 'source' => 'summary',
             ];
         })->filter()->values();
