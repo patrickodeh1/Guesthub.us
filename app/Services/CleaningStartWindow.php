@@ -52,7 +52,7 @@ class CleaningStartWindow
 
         $timezone = $session->property?->timezone ?: config('app.timezone');
 
-        return now($timezone)->lt($opensAt);
+        return Carbon::now($timezone)->lt($opensAt);
     }
 
     public function canStart(CleaningSession $session): bool
@@ -64,7 +64,7 @@ class CleaningStartWindow
         }
 
         $timezone = $session->property?->timezone ?: config('app.timezone');
-        $now = now($timezone);
+        $now = Carbon::now($timezone);
 
         return $now->betweenIncluded($opensAt, $closesAt);
     }
