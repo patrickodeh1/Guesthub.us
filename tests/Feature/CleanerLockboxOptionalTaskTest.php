@@ -23,7 +23,7 @@ class CleanerLockboxOptionalTaskTest extends TestCase
         $this->assertSame([], CleanerAccessSteps::exitForSession($session));
     }
 
-    public function test_selected_sporadic_lockbox_task_is_kept_in_the_exit_wizard(): void
+    public function test_selected_sporadic_lockbox_task_is_kept_last_in_the_exit_wizard(): void
     {
         [, , $cleaner, $task, $session] = $this->sessionWithOptionalLockbox(true);
 
@@ -31,9 +31,10 @@ class CleanerLockboxOptionalTaskTest extends TestCase
 
         $steps = CleanerAccessSteps::exitForSession($session);
 
-        $this->assertCount(1, $steps);
-        $this->assertSame($task->name, $steps[0]['title']);
-        $this->assertNotEmpty($steps[0]['lockbox_url']);
+        $this->assertCount(2, $steps);
+        $this->assertSame('Final exit instruction', $steps[0]['title']);
+        $this->assertSame($task->name, $steps[1]['title']);
+        $this->assertNotEmpty($steps[1]['lockbox_url']);
     }
 
     private function sessionWithOptionalLockbox(bool $selected = false): array
@@ -52,6 +53,20 @@ class CleanerLockboxOptionalTaskTest extends TestCase
             'instructions' => null,
             'visible_to_owner' => true,
             'visible_to_housekeeper' => true,
+        ]);
+        $exitInstruction = Task::factory()->create([
+            'created_by' => $owner->id,
+            'name' => 'Final exit instruction',
+            'type' => 'instructions',
+            'phase' => 'during_cleaning',
+            'is_sporadic' => false,
+        ]);
+        $property->propertyTasks()->attach($exitInstruction->id, [
+            'sort_order' => 2,
+            'instructions' => 'Close the door.',
+            'visible_to_owner' => true,
+            'visible_to_housekeeper' => true,
+            'show_after_step_id' => -1,
         ]);
         $session = CleaningSession::factory()->create([
             'property_id' => $property->id,
