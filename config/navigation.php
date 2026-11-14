@@ -132,7 +132,7 @@ return [
                         [
                             'label' => 'Users',
                             'routes' => [
-                                ['name' => 'admin.users.index', 'roles' => ['admin', 'owner', 'company']],
+                                ['name' => 'admin.users.index', 'roles' => ['admin', 'company']],
                             ],
                             'active' => ['admin.users.*', 'users.*'],
                         ],
