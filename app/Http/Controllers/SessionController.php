@@ -93,7 +93,7 @@ class SessionController extends Controller
         if (! $u) {
             return false;
         }
-        if ($u->hasAnyRole(['admin', 'owner', 'company']) && ! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
+        if ($u->hasAnyRole(['admin', 'owner', 'company']) && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session)) {
             return true;
         }
         return (int) $session->housekeeper_id === (int) $u->id && $this->editWindowOpen($session);
@@ -837,7 +837,7 @@ class SessionController extends Controller
             'is_view_only' => $isViewOnly,
             'is_too_early' => $isTooEarly,
             'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
-                && ! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session),
+                && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session),
             'can_edit_report' => $this->canEditReport($session),
             'edit_window_ends_at' => $session->ended_at ? $session->ended_at->copy()->addMinutes(self::REPORT_EDIT_WINDOW_MINUTES)->toIso8601String() : null,
         ];
@@ -1054,6 +1054,7 @@ class SessionController extends Controller
         if (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])) {
             abort(403, 'Only administrators, owners, and companies can grant GPS overrides.');
         }
+        abort_unless(! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session), 403, 'GPS overrides are unavailable while acting as a cleaner.');
 
         $validated = $request->validate([
             'reason' => 'required|string|max:255',
@@ -1346,7 +1347,7 @@ class SessionController extends Controller
     public function complete(Request $request, CleaningSession $session)
     {
         $isOverride = $request->boolean('is_manager_override')
-            && ! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session);
+            && ! \App\Services\CleanerAccessSteps::isActingAsCleaner($session);
 
         if ($session->status === 'completed') {
             return back()->with('error', 'Session is already completed.');
