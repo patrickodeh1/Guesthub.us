@@ -48,6 +48,7 @@
 
     @php
         $ghAwaitingConfirm = $cleanerLayout
+            && ! $viewAsCleaner
             && ! request()->has('edit_report')
             && $session->status === 'pending'
             && $session->assignment_status === 'pending_confirmation';
@@ -449,7 +450,7 @@
                             }
                         @endphp
                         @if ($locationVerified)
-                        <form method="post" action="{{ route('sessions.start', $session) }}" id="gps-start">
+                        <form method="post" action="{{ route('sessions.start', array_merge([$session], $viewAsCleaner ? ['view_as_cleaner' => 1] : [])) }}" id="gps-start">
                             @csrf
                             <x-form.input type="hidden" name="latitude" id="lat" />
                             <x-form.input type="hidden" name="longitude" id="lng" />
@@ -478,7 +479,7 @@
                                 if (!navigator.geolocation) { msg.textContent = 'Location is not available in this browser.'; return; }
                                 btn.disabled = true; msg.textContent = 'Checking your location...';
                                 navigator.geolocation.getCurrentPosition(function (pos) {
-                                    fetch('{{ route('sessions.verify-location', $session) }}', {
+                                    fetch('{{ route('sessions.verify-location', array_merge([$session], $viewAsCleaner ? ['view_as_cleaner' => 1] : [])) }}', {
                                         method: 'POST',
                                         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' },
                                         body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy })
