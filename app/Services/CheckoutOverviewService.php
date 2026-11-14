@@ -106,12 +106,18 @@ class CheckoutOverviewService
                 // Explicit booking link first, so a cleaning moved off the checkout date is still this guest's.
                 $linked = $group->flatMap(fn (Booking $gb) => $byBooking->get($gb->id) ?? collect())
                     ->reject(fn (CleaningSession $s) => $s->scheduled_date === null);
+                // Legacy unlinked sessions are safe to match only when both the
+                // checkout group and the candidate session are unique.
+                $legacyCandidates = ($sessions->get($key) ?? collect())
+                    ->filter(fn (CleaningSession $s) => ! $s->booking_id)
+                    ->values();
+                $legacySession = $group->count() === 1 && $legacyCandidates->count() === 1
+                    ? $legacyCandidates->first()
+                    : null;
+
                 $session = $linked->first(fn (CleaningSession $s) => $s->scheduled_date->toDateString() === $outDate)
                     ?? $linked->sortBy('id')->first()
-                    ?? $sessions->get($key)
-                        ?->filter(fn (CleaningSession $s) => ! $s->booking_id || $ids->contains($s->booking_id))
-                        ->sortByDesc(fn (CleaningSession $s) => $s->housekeeper_id ? 1 : 0)
-                        ->first();
+                    ?? $legacySession;
 
                 $sameDay = $next && $next->check_in_date->toDateString() === $outDate;
 
