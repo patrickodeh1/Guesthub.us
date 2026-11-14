@@ -247,7 +247,11 @@ class ChecklistController extends Controller
             'quantity'   => $request->input('quantity'),
         ]);
 
-        if ($nowChecked && !$item->checked) {
+        $wasChecked = (bool) $item->checked;
+
+        $item->update([
+            'checked'    => $nowChecked,
+        if ($nowChecked && ! $wasChecked) {
             activity('checklist')
                 ->performedOn($session)
                 ->causedBy(auth()->user())
