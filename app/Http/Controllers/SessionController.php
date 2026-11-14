@@ -1346,7 +1346,7 @@ class SessionController extends Controller
     public function complete(Request $request, CleaningSession $session)
     {
         $isOverride = $request->boolean('is_manager_override')
-            && ! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session);
+            && ! \App\Services\\CleanerAccessSteps::isActingAsCleaner($session);
 
         if ($session->status === 'completed') {
             return back()->with('error', 'Session is already completed.');
