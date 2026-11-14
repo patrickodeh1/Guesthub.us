@@ -129,6 +129,7 @@ class SessionController extends Controller
             $data['is_admin'] = false;
             $data['can_edit'] = false;
             $data['is_view_only'] = true;
+            $data['is_preview'] = true;
         }
 
         return response()->json([
