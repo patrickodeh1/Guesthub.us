@@ -274,7 +274,7 @@
                 && ! auth()->user()->hasRole('admin')) {
                 // Match the controller's schedule gate timezone fallback.
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
-                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $ghTz);
+                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5), $ghTz);
                 $ghNow = now($ghTz);
                 $ghOpens = $ghAt->copy()->subHours(2);
                 $ghCloses = $ghAt->copy()->addHours(2);
