@@ -1260,7 +1260,7 @@ class SessionController extends Controller
             ChecklistItem::insertOrIgnore($rows);
         }
 
-        return redirect()->route('sessions.show', array_merge([$session], \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
+        return redirect()->route('sessions.show', array_merge([$session], \${ns}\${ns}\\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
     }
 
     /** The assigned cleaner gives a job back before starting it. It returns to the pool unassigned. */
