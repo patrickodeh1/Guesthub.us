@@ -792,6 +792,7 @@ Route::middleware('auth')->group(function () {
     // Add Session Routes (Admin/Owner)
     Route::middleware('role:admin,owner,company,manager')->group(function () {
         Route::get('/manage/sessions', [CleaningManageSessionController::class, 'index'])->name('manage.sessions.index');
+        Route::post('/manage/sessions/cleaning-window', [CleaningManageSessionController::class, 'updateCleaningStartWindow'])->name('manage.sessions.cleaning-window.update');
         Route::get('/manage/sessions/create', [CleaningManageSessionController::class, 'create'])->name('manage.sessions.create');
         Route::post('/manage/sessions', [CleaningManageSessionController::class, 'store'])->name('manage.sessions.store');
         Route::get('/manage/sessions/{session}/edit', [CleaningManageSessionController::class, 'edit'])->name('manage.sessions.edit');
