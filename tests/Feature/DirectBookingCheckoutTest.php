@@ -250,8 +250,7 @@ class DirectBookingCheckoutTest extends TestCase
         );
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
-            ->assertSee('Waiting for host approval')
-            ->assertDontSee('Amount to pay');
+            ->assertSee('Amount to pay');
     }
 
     public function test_request_decline_releases_the_dates(): void
