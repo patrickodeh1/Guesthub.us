@@ -166,7 +166,7 @@ class Booking extends Model
     public function linkedCleanings(): Builder
     {
         $canUseDateFallback = $this->check_out_date
-            && \\App\\Services\\CleaningFlowService::bookingForPropertyDate(
+            && \App\Services\CleaningFlowService::bookingForPropertyDate(
                 (int) $this->property_id,
                 $this->check_out_date->toDateString()
             )?->getKey() === $this->getKey();
