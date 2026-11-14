@@ -1115,7 +1115,9 @@ class SessionController extends Controller
         }
         // gh-verify-first: the assigned cleaner must have verified location before Begin.
         if (\App\Services\CleanerAccessSteps::isCleanerForSession($session)
-            && ! $session->gps_confirmed_at) {
+            && (\App\Services\CleanerAccessSteps::isActingAsCleaner($session)
+                ? ! $session->gps_confirmed_at
+                : ! \App\Services\CleanerAccessSteps::locationVerified($session))) {
             return back()->withErrors(['gps' => 'Please verify your location first.']);
         }
         $lat = (float) $request->validated('latitude');
@@ -1329,7 +1331,7 @@ class SessionController extends Controller
 
         if (!$isOverride && $session->stage !== 'summary'
             && (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
-                || \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session))) {
+                || \App\Services\\CleanerAccessSteps::isActingAsCleaner($session))) {
             $msg = 'Finish all stages, including the checkout steps, before completing.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
