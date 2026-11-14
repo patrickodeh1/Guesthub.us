@@ -1,5 +1,5 @@
 @php
-    $isAssignedCleaner = \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
+    $isAssignedCleaner = \App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
 @endphp
 
 @if ($isAssignedCleaner && $session->status === 'in_progress')
