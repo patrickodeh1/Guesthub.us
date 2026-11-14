@@ -441,7 +441,7 @@ Project: Guesthub | key: f3-a44e8467ef | created: 2026-11-03
 
 **Client's words:** Also, I tried to assign myself to a Cleaning project, and my name is not coming up even though I am assigned to the Properties
 
-## 71. Multiple lockbox photo steps, checkbox, image, and workflow navigation bugs  [IN PROGRESS] (Lockbox placement, instruction completion, and photo-step auto-advance updated; bed instruction images and mandatory bed-task behavior still need verification)
+## 71. Multiple lockbox photo steps, checkbox, image, and workflow navigation bugs  [IN PROGRESS] (Lockbox is now optional per assignment and final in exit order; exit wizard is reached after post-cleaning tasks. Instruction completion/photo auto-advance updates remain in place; bed instruction images and mandatory bed-task behavior still need verification.)
 
 Project: Guesthub | key: f3-792139f79f | created: 2026-11-03
 
