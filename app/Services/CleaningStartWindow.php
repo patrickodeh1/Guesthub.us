@@ -13,8 +13,7 @@ class CleaningStartWindow
 
     public function minutesBefore(CleaningSession $session): int
     {
-        $host = $session->owner ?: $session->property?->owner;
-        $minutes = (int) data_get($host?->preferences, 'cleaner_start_window_minutes', self::DEFAULT_MINUTES);
+        $minutes = (int) ($session->property?->cleaner_start_window_minutes ?? self::DEFAULT_MINUTES);
 
         return max(0, min(self::MAX_MINUTES, $minutes));
     }
