@@ -248,11 +248,14 @@ class ManageSessionController extends Controller
                 ->get()
                 ->groupBy(fn ($b) => $b->property_id . '|' . \Carbon\Carbon::parse($b->check_out_date)->toDateString());
             foreach ($datedJobs as $s) {
-                // The explicit booking link wins; the date match is only a fallback for unlinked jobs.
+                // An explicit link remains authoritative, even if its booking is now cancelled.
+                // For an unlinked job, only show a guest when the property/date match is unique.
                 $b = $s->booking_id
-                    ? \App\Models\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
-                    : null;
-                $b = $b ?: $jobBookings->get($s->property_id . '|' . \Carbon\Carbon::parse($s->scheduled_date)->toDateString())?->first();
+                    ? \\App\\Models\\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
+                    : \\App\\Services\\CleaningFlowService::bookingForPropertyDate(
+                        (int) $s->property_id,
+                        \\Carbon\\Carbon::parse($s->scheduled_date)->toDateString()
+                    );
                 if ($b) {
                     $bookingByJob[$s->id] = ['id' => $b->getKey(), 'guest' => $b->guest_name ?: 'Guest'];
                 }
