@@ -93,7 +93,7 @@ class SessionController extends Controller
         if (! $u) {
             return false;
         }
-        if ($u->hasAnyRole(['admin', 'owner', 'company'])) {
+        if ($u->hasAnyRole(['admin', 'owner', 'company']) && ! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
             return true;
         }
         return (int) $session->housekeeper_id === (int) $u->id && $this->editWindowOpen($session);
@@ -836,7 +836,8 @@ class SessionController extends Controller
             'can_edit' => $canEdit,
             'is_view_only' => $isViewOnly,
             'is_too_early' => $isTooEarly,
-            'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']),
+            'is_admin' => auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
+                && ! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session),
             'can_edit_report' => $this->canEditReport($session),
             'edit_window_ends_at' => $session->ended_at ? $session->ended_at->copy()->addMinutes(self::REPORT_EDIT_WINDOW_MINUTES)->toIso8601String() : null,
         ];
