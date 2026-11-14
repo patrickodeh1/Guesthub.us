@@ -183,9 +183,9 @@ class SettingsController extends Controller
 
     public function resetColors()
     {
-        Setting::putValue('theme_color', '#842eb8');
-        Setting::putValue('brand_color', '#842eb8');
-        Setting::putValue('button_primary_color', '#842eb8');
+        Setting::putValue('theme_color', Branding::DEFAULT_THEME_COLOR);
+        Setting::putValue('brand_color', Branding::DEFAULT_THEME_COLOR);
+        Setting::putValue('button_primary_color', Branding::DEFAULT_BUTTON_COLOR);
 
         return redirect()->back()->with('success', 'Brand colors reset to defaults.');
     }
