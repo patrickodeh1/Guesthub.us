@@ -13,7 +13,7 @@ class SessionAccessPhotoController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session),
+            \App\\Services\\CleanerAccessSteps::isCleanerForSession($session),
             403
         );
         abort_unless($step->requires_photo, 422, 'This step does not need a photo.');
