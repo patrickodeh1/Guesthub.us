@@ -105,14 +105,16 @@ class SessionController extends Controller
         $ok = $u && (
             $u->hasRole('admin')
             || (int) $session->housekeeper_id === (int) $u->id
-            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+            || ($u->hasAnyRole(['owner', 'company', 'manager']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
         );
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
 
-    public function getData(CleaningSession $session)
+    public function getData(Request $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+        $viewAsCleaner = $request->boolean('view_as_cleaner')
+            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']);
         if (!$session->property) {
             return response()->json(['success' => false, 'message' => 'Property not found.'], 404);
         }
@@ -123,6 +125,9 @@ class SessionController extends Controller
         }
 
         $data = $this->prepareSessionData($session);
+        if ($viewAsCleaner) {
+            $data['is_admin'] = false;
+        }
 
         return response()->json([
             'success' => true,
@@ -937,7 +942,7 @@ class SessionController extends Controller
             'canEdit' => $data['can_edit'],
             'isViewOnly' => $data['is_view_only'],
             'isTooEarly' => $data['is_too_early'],
-            'is_admin' => $data['is_admin'] ?? false,
+            'is_admin' => $viewAsCleaner ? false : ($data['is_admin'] ?? false),
             'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
             'exitSteps' => \App\Services\CleanerAccessSteps::exitForSession($session),
         ];
