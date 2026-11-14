@@ -171,11 +171,11 @@
                                 <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
                                     <div></div>
                                     <x-action-dropdown align="right">
-                                        <x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
-    View as Cleaner
-</x-dropdown-link>
-<x-dropdown-link :href="route('sessions.show', $s)">
+                                        <x-dropdown-link :href="route('sessions.show', $s)">
     Cleaning Report
+</x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
+    View as Cleaner
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning
@@ -264,11 +264,11 @@
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-end whitespace-nowrap gap-2 pr-2">
                                                 <x-action-dropdown align="right">
-                                                    <x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
-    View as Cleaner
-</x-dropdown-link>
-<x-dropdown-link :href="route('sessions.show', $s)">
+                                                    <x-dropdown-link :href="route('sessions.show', $s)">
     Cleaning Report
+</x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
+    View as Cleaner
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning
