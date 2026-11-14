@@ -481,6 +481,19 @@ class ManageSessionController extends Controller
             403,
             'You do not have access to that property.'
         );
+
+        // Resolve a legacy unlinked job against its original date before the date
+        // is changed, so moving it to tomorrow cannot erase its guest association.
+        if (! $session->booking_id && ! $session->no_guest && $session->scheduled_date) {
+            $linkedBooking = \App\Services\CleaningFlowService::bookingForPropertyDate(
+                (int) $session->property_id,
+                $session->scheduled_date->toDateString()
+            );
+            if ($linkedBooking) {
+                $data['booking_id'] = $linkedBooking->id;
+            }
+        }
+
         $updated = $cleaningJobService->update($request->user(), $session, $data);
         $cleaningJobService->markScheduleOverride($updated instanceof \App\Models\CleaningSession ? $updated : $session->fresh());
 
