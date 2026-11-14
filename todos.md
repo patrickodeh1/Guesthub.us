@@ -1,6 +1,6 @@
 # Todo Export
 
-## 6. Fix duplicate buttons, rename, adjust session‑closed UI, 30‑min edit limit  [DONE] (Done - please verify)
+## 6. Fix duplicate buttons, rename, adjust session‑closed UI, 30‑min edit limit  [SHIPPED] (The 30-minute cleaner report edit permission, edit-report stage handling, and distinct Next Stage/Close Report behavior are included in the ZIP; verify the closed-session UI on the deployed build)
 
 Project: Guesthub | key: f3-2f14353f0b | created: 2026-11-03
 
@@ -639,6 +639,7 @@ Only the following cleaning-related changed files are in scope for the selective
 - `resources/views/admin/bookings/show.blade.php`
 - `resources/views/components/step-wizard.blade.php`
 - `resources/views/sessions/training_required.blade.php`
+- `resources/views/sessions/show.blade.php` (completed-session report/edit UI)
 - `resources/views/training/show.blade.php`
 
 ### Regression tests (include only if the ZIP is a source/developer package; not required in a runtime-only deployment package)
