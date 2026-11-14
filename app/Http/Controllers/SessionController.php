@@ -568,11 +568,7 @@ class SessionController extends Controller
                 $isViewOnly = true;
             }
 
-            $isCurrentDate = \Carbon\Carbon::parse($session->scheduled_date)->format('Y-m-d') === now($propertyTz)->format('Y-m-d');
-            if (! $isCurrentDate && $session->status === 'pending' && ! $isTooEarly) {
-                $canEdit = false;
-                $isViewOnly = true;
-            }
+            // The configured property start window is the sole timing gate.
         }
 
         // Split rooms into first half and second half
