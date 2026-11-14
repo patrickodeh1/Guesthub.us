@@ -281,7 +281,7 @@ class ManageSessionController extends Controller
         $selectedCleaningWindowHost = $u->hasRole('admin')
             ? $cleaningWindowHosts->firstWhere('id', (int) $request->query('host_id')) ?? $cleaningWindowHosts->first()
             : $u;
-        $selectedCleaningWindowMinutes = (int) data_get($selectedCleaningWindowHost?->preferences, 'cleaner_start_window_minutes', \\App\\Services\\CleaningStartWindow::DEFAULT_MINUTES);
+        $selectedCleaningWindowMinutes = (int) data_get($selectedCleaningWindowHost?->preferences, 'cleaner_start_window_minutes', \App\Services\CleaningStartWindow::DEFAULT_MINUTES);
 
         return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowHosts', 'selectedCleaningWindowHost', 'selectedCleaningWindowMinutes'));
     }
