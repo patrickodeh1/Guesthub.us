@@ -560,7 +560,6 @@ class SessionController extends Controller
         $isTooEarly = false;
 
         if (auth()->check() && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
-            $propertyTz = $session->property->timezone ?? config('app.timezone');
             $window = app(\App\Services\CleaningStartWindow::class);
             $isTooEarly = $session->status === 'pending' && $window->isTooEarly($session);
             if ($isTooEarly) {
