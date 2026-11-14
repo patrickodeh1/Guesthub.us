@@ -99,10 +99,28 @@ class CleanerAccessSteps
     /** Extra tasks (phase during_cleaning) shown as wizard steps right after the step chosen for each. $kind is 'checkin' (access steps) or 'checkout' (exit steps). */
     private static function withPreEntryTasks(array $steps, CleaningSession $session, string $kind = 'checkin'): array
     {
+        $sporadics = is_array($session->sporadic_tasks) ? $session->sporadic_tasks : [];
+        $selectedGlobalIds = collect($sporadics)
+            ->filter(fn ($item) => str_ends_with((string) $item, '_global'))
+            ->map(fn ($item) => (int) substr((string) $item, 0, -7))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         $tasks = $session->property->propertyTasks()
             ->where('tasks.phase', 'during_cleaning')
             ->wherePivot('visible_to_housekeeper', true)
-            ->get();
+            ->where(function ($query) use ($selectedGlobalIds) {
+                $query->where('tasks.is_sporadic', false)
+                    ->orWhereNull('tasks.is_sporadic')
+                    ->orWhereIn('tasks.id', $selectedGlobalIds);
+            })
+            ->orderBy('property_tasks.sort_order')
+            ->orderBy('tasks.id')
+            ->get()
+            ->filter(fn ($task) => ! $task->is_sporadic || in_array((int) $task->id, $selectedGlobalIds, true))
+            ->values();
         if ($tasks->isEmpty()) {
             return $steps;
         }
@@ -128,9 +146,17 @@ class CleanerAccessSteps
         $atStart = [];
         $atEnd = [];
         $after = [];
+        $lockboxAdded = false;
         foreach ($tasks as $t) {
+            // Lockbox code is a single final action, never an arrival/pre-entry step.
+            if ($t->type === 'lockbox') {
+                if ($lockboxAdded) {
+                    continue;
+                }
+                $lockboxAdded = true;
+            }
             $afterId = (int) ($t->pivot->show_after_step_id ?? 0);
-            $isExit = $afterId === -1 || in_array($afterId, $checkoutIds, true);
+            $isExit = $t->type === 'lockbox' || $afterId === -1 || in_array($afterId, $checkoutIds, true);
             if ($isExit !== ($kind === 'checkout')) {
                 continue;
             }
