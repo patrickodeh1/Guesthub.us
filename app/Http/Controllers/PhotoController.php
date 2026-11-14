@@ -29,9 +29,9 @@ class PhotoController extends Controller
         if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
             return;
         }
-        if (\\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
+        if (\App\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
             if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
-                throw new \\Symfony\\Component\\HttpKernel\\Exception\\HttpResponseException(response()->json([
+                throw new \Symfony\Component\HttpKernel\Exception\\HttpResponseException(response()->json([
                     'success' => false,
                     'message' => 'The 30-minute window to edit this report has closed.',
                 ], 403));
