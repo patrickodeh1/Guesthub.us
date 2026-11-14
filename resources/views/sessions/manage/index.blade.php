@@ -174,6 +174,9 @@
                                         <x-dropdown-link :href="route('sessions.show', $s)">
     Cleaning Report
 </x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
+    View as Cleaner
+</x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning
 </x-dropdown-link>
@@ -263,6 +266,9 @@
                                                 <x-action-dropdown align="right">
                                                     <x-dropdown-link :href="route('sessions.show', $s)">
     Cleaning Report
+</x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
+    View as Cleaner
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
     Edit cleaning

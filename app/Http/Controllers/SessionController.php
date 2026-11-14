@@ -105,14 +105,16 @@ class SessionController extends Controller
         $ok = $u && (
             $u->hasRole('admin')
             || (int) $session->housekeeper_id === (int) $u->id
-            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+            || ($u->hasAnyRole(['owner', 'company', 'manager']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
         );
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
 
-    public function getData(CleaningSession $session)
+    public function getData(Request $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+        $viewAsCleaner = $request->boolean('view_as_cleaner')
+            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']);
         if (!$session->property) {
             return response()->json(['success' => false, 'message' => 'Property not found.'], 404);
         }
@@ -123,6 +125,11 @@ class SessionController extends Controller
         }
 
         $data = $this->prepareSessionData($session);
+        if ($viewAsCleaner) {
+            $data['is_admin'] = false;
+            $data['can_edit'] = false;
+            $data['is_view_only'] = true;
+        }
 
         return response()->json([
             'success' => true,
@@ -848,9 +855,11 @@ class SessionController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function show(CleaningSession $session)
+    public function show(Request $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+        $viewAsCleaner = $request->boolean('view_as_cleaner')
+            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']);
         // Ensure report token exists for shareable report URLs (safe if method is missing)
         if (method_exists($session, 'ensureReportToken')) {
             $session->ensureReportToken();
@@ -912,6 +921,7 @@ class SessionController extends Controller
         $photosByRoom = $session->photos()->latest()->get()->groupBy('room_id');
 
         $viewData = [
+            'viewAsCleaner' => $viewAsCleaner,
             'session' => $session,
             'rooms' => $rooms,
             'stage' => $data['stage'],
@@ -931,10 +941,10 @@ class SessionController extends Controller
             'checkedPreCleaningCount' => $data['counts']['pre_cleaning']['checked'],
             'checkedDuringCleaningCount' => $data['counts']['during_cleaning']['checked'],
             'checkedPostCleaningCount' => $data['counts']['post_cleaning']['checked'],
-            'canEdit' => $data['can_edit'],
-            'isViewOnly' => $data['is_view_only'],
+            'canEdit' => $viewAsCleaner ? false : $data['can_edit'],
+            'isViewOnly' => $viewAsCleaner ? true : $data['is_view_only'],
             'isTooEarly' => $data['is_too_early'],
-            'is_admin' => $data['is_admin'] ?? false,
+            'is_admin' => $viewAsCleaner ? false : ($data['is_admin'] ?? false),
             'accessSteps' => \App\Services\CleanerAccessSteps::forSession($session),
             'exitSteps' => \App\Services\CleanerAccessSteps::exitForSession($session),
         ];

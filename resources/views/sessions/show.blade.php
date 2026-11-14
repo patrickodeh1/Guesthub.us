@@ -4,10 +4,16 @@
 @endphp
 
 @php
-    $cleanerLayout = ! (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']));
+    $viewAsCleaner = (bool) ($viewAsCleaner ?? false);
+    $cleanerLayout = $viewAsCleaner || ! (auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']));
 @endphp
 <x-dynamic-component :component="$cleanerLayout ? 'cleaner-layout' : 'app-layout'">
     <div class="cleaner-skin-marker" hidden></div>
+    @if($viewAsCleaner)
+        <div class="mx-4 mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm text-indigo-800" role="status">
+            Cleaner preview — this is the cleaner-facing layout. You are viewing it as an administrator.
+        </div>
+    @endif
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <div>
@@ -125,6 +131,9 @@
         $queryParams['stage'] = request()->query('stage');
     }
 
+    if ($viewAsCleaner) {
+        $queryParams['view_as_cleaner'] = 1;
+    }
     $dataUrl = route('sessions.data', array_merge(['session' => $session->id], $queryParams));
 
     $reportUrl = \Illuminate\Support\Facades\Route::has('reports.sessions.show')
