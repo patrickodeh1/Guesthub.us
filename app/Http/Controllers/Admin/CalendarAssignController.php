@@ -51,11 +51,11 @@ class CalendarAssignController extends Controller
         }
 
         if (! $session && ! empty($data['booking_id'])) {
-            $booking = \\App\\Models\\Booking::query()
+            $booking = \App\Models\Booking::query()
                 ->whereKey($data['booking_id'])
                 ->where('property_id', $data['property_id'])
                 ->firstOrFail();
-            $session = \\App\\Services\\CleaningFlowService::checkoutSessionFor($booking);
+            $session = \App\Services\CleaningFlowService::checkoutSessionFor($booking);
         }
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
@@ -172,7 +172,7 @@ class CalendarAssignController extends Controller
         // resolve the guest by date only when exactly one booking matches.
         $guest = $booking;
         if (! $guest && ! $session?->booking_id && $propertyId && $date) {
-            $guest = \\App\\Services\\CleaningFlowService::bookingForPropertyDate((int) $propertyId, $date);
+            $guest = \App\Services\CleaningFlowService::bookingForPropertyDate((int) $propertyId, $date);
         }
 
         $time = $session?->scheduled_time?->format('H:i');
