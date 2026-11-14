@@ -280,8 +280,9 @@ class ManageSessionController extends Controller
             ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
             ?? $cleaningWindowProperties->first();
         $selectedCleaningWindowMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES);
+        $selectedCleaningWindowDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowMinutes, 60), $selectedCleaningWindowMinutes % 60);
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowMinutes'));
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowMinutes', 'selectedCleaningWindowDuration'));
     }
 
     public function create(Request $request)
@@ -540,11 +541,14 @@ class ManageSessionController extends Controller
 
         $data = $request->validate([
             'property_id' => ['required', 'integer', 'exists:properties,id'],
-            'minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            'duration' => ['required', 'regex:/^(?:0?[0-3]:[0-5][0-9]|4:00)$/'],
         ]);
 
+        [$hours, $minutes] = array_map('intval', explode(':', $data['duration']));
+        $totalMinutes = ($hours * 60) + $minutes;
+
         $property = Property::query()->visibleTo($user)->findOrFail($data['property_id']);
-        $property->forceFill(['cleaner_start_window_minutes' => (int) $data['minutes']])->save();
+        $property->forceFill(['cleaner_start_window_minutes' => $totalMinutes])->save();
 
         return back()->with('ok', 'Cleaner start window saved for '.$property->name.'.');
     }
