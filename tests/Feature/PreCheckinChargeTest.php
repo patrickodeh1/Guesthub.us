@@ -10,12 +10,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Covers Booking::calculatePreCheckinChargeCents() — the corrected combined
- * charge model per client clarification: parking + incidentals + early
- * check-in (if already granted), capped per-property (or global default),
- * plus a global % processing fee. Also covers unbilledIncidentalsCents(),
- * which prevents double-charging incidentals once some of it was already
- * folded into the combined charge.
+ * Covers the current pre-check-in incidentals-hold charge, including caps
+ * and processing fees. Parking and early check-in are covered by deductions
+ * from the hold rather than added as separate pre-check-in card charges.
+ * Also covers the incidentals ledger's double-charge prevention.
  */
 class PreCheckinChargeTest extends TestCase
 {
@@ -28,7 +26,7 @@ class PreCheckinChargeTest extends TestCase
         $this->assertSame(0, $booking->calculatePreCheckinChargeCents());
     }
 
-    public function test_charge_sums_parking_and_incidentals(): void
+    public function test_precheckin_charge_uses_the_incidentals_hold_only(): void
     {
         Setting::putValue('default_deposit_cap_cents', '0');
         Setting::putValue('processing_fee_percent', '0');
@@ -55,7 +53,7 @@ class PreCheckinChargeTest extends TestCase
         ]));
     }
 
-    public function test_charge_includes_early_checkin_when_already_granted(): void
+    public function test_precheckin_charge_remains_the_incidentals_hold_when_early_checkin_is_granted(): void
     {
         $property = Property::factory()->create(['early_checkin_rate_8am' => 40]);
         $booking = Booking::factory()->create([
