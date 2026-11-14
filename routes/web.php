@@ -456,7 +456,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::get('notifications', [NotificationController::class, 'index'])->middleware('role:admin,owner,company,manager')->name('notifications.index');
 
     // ─── Users / Team ─────────────────────────────────────────────────────────
-    Route::middleware('role:admin,owner,company')->group(function () {
+    Route::middleware('role:admin,company')->group(function () {
         Route::resource('users', UserController::class);
         Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     });
@@ -815,8 +815,8 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/training-logs', [TrainingLogController::class, 'index'])->name('admin.training-logs.index')->middleware('role:admin');
 
     // User Management Routes
-    Route::get('/users', fn () => redirect()->route('admin.users.index'))->middleware('role:admin,owner,company')->name('users.index');
-    Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,owner,company')->name('users.create');
+    Route::get('/users', fn () => redirect()->route('admin.users.index'))->middleware('role:admin,company')->name('users.index');
+    Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,company')->name('users.create');
     Route::post('/users/{user}/deactivate', [UserController::class, 'deactivateCleaner'])->middleware('role:admin')->name('users.deactivate');
     Route::post('/users/{user}/reactivate', [UserController::class, 'reactivateCleaner'])->middleware('role:admin')->name('users.reactivate');
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
