@@ -204,6 +204,7 @@ class PreCheckinChargeTest extends TestCase
     public function test_unbilled_incidentals_is_zero_once_fully_billed(): void
     {
         $booking = Booking::factory()->create([
+            'additional_deposit_mode' => false,
             'incidentals_charge' => 40,
             'incidentals_billed_cents' => 4000,
         ]);
