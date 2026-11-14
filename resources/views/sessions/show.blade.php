@@ -10,9 +10,11 @@
     if ($viewAsCleaner && $session->status === 'pending' && $session->scheduled_date) {
         $previewTz = $session->property?->timezone ?: config('app.timezone');
         $rawPreviewTime = (string) ($session->getRawOriginal('scheduled_time') ?? '00:00:00');
-        $previewAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr($rawPreviewTime, 0, 8), $previewTz);
+        $previewAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $previewTz);
+        $previewClock = \Carbon\Carbon::parse($rawPreviewTime, $previewTz);
+        $previewAt->setTime($previewClock->hour, $previewClock->minute, $previewClock->second);
         $previewNow = now($previewTz);
-        $previewAvailabilityBlocked = $previewNow->lt($previewAt->copy()->subHours(2))
+        $previewAvailabilityBlocked = $previewNow->lt($previewAt)
             || $previewNow->gt($previewAt->copy()->addHours(2));
     }
 @endphp
@@ -29,8 +31,17 @@
                 event.stopImmediatePropagation();
             }
         }, true);
+        document.addEventListener('change', function (event) {
+            if (event.target.matches('input[type="file"]')) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        }, true);
         document.addEventListener('click', function (event) {
-            if (event.target.closest('[data-checklist-toggle], [data-checklist-note-save], [data-photo-delete], #start-btn, #verify-loc-btn, #exit-confirm-ok, #wizard-done-exit, #stepBtn')) {
+            const button = event.target.closest('button');
+            const inlineAction = button?.getAttribute('@click') || '';
+            if (event.target.closest('[data-checklist-toggle], [data-checklist-note-save], [data-photo-delete], #start-btn, #verify-loc-btn, #exit-confirm-ok, #wizard-done-exit, #stepBtn')
+                || /handleDeletePhoto|saveProgress|save-note|saveNote|completeSession|submitChecklist/i.test(inlineAction)) {
                 event.preventDefault();
                 event.stopImmediatePropagation();
             }
@@ -434,7 +445,7 @@
                             <h1 class="guest-status-title">{{ $previewAvailabilityBlocked ? 'Session Not Available Yet' : 'Ready to start' }}</h1>
                             <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">
                                 @if ($previewAvailabilityBlocked)
-                                    This cleaner cannot start yet. The permitted start window is two hours before to two hours after the scheduled time, based on the property's local time.
+                                    This cleaner cannot start yet. The cleaner can start at the scheduled time and up to two hours afterwards, based on the property's local time.
                                 @else
                                     The cleaner can proceed when at the property and after location verification.
                                 @endif
