@@ -1120,10 +1120,31 @@ class SessionController extends Controller
                 : ! \App\Services\CleanerAccessSteps::locationVerified($session))) {
             return back()->withErrors(['gps' => 'Please verify your location first.']);
         }
-        $lat = (float) $request->validated('latitude');
-        $lng = (float) $request->validated('longitude');
-
         $property = $session->property;
+        $actingAsCleaner = \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session);
+        $latitudeInput = $request->validated('latitude');
+        $longitudeInput = $request->validated('longitude');
+
+        // In acting-cleaner mode, re-check the submitted device coordinates at
+        // the point of starting, even if the session has an admin GPS override.
+        if ($actingAsCleaner && $property->latitude !== null && $property->longitude !== null) {
+            if ($latitudeInput === null || $longitudeInput === null) {
+                return back()->withErrors(['gps' => 'Location is required to start this cleaning. Please verify your location again.']);
+            }
+
+            $startDistance = GpsService::distanceMeters(
+                (float) $latitudeInput,
+                (float) $longitudeInput,
+                (float) $property->latitude,
+                (float) $property->longitude
+            );
+            if ($startDistance > \\App\\Support\\GpsRadius::base()) {
+                return back()->withErrors(['gps' => 'GPS validation failed. You are too far from the property to start.']);
+            }
+        }
+
+        $lat = (float) ($latitudeInput ?? 0);
+        $lng = (float) ($longitudeInput ?? 0);
 
         // Geofence (only if property has coordinates)
         if ((\App\Services\CleanerAccessSteps::isActingAsCleaner($session)
