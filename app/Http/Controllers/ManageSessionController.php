@@ -274,16 +274,14 @@ class ManageSessionController extends Controller
             ->map(fn ($h) => ['id' => $h->id, 'name' => $h->name])->values();
         $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
 
-        $cleaningWindowHosts = User::query()
-            ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', ['owner', 'company']))
-            ->when(! $u->hasRole('admin'), fn ($query) => $query->whereKey($u->id))
-            ->orderBy('name')->get(['id', 'name', 'preferences']);
-        $selectedCleaningWindowHost = $u->hasRole('admin')
-            ? $cleaningWindowHosts->firstWhere('id', (int) $request->query('host_id')) ?? $cleaningWindowHosts->first()
-            : $u;
-        $selectedCleaningWindowMinutes = (int) data_get($selectedCleaningWindowHost?->preferences, 'cleaner_start_window_minutes', \App\Services\CleaningStartWindow::DEFAULT_MINUTES);
+        // Cleaner start windows are property-specific, not tied to the property's owner account.
+        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes']);
+        $selectedCleaningWindowProperty = $cleaningWindowProperties->firstWhere('id', (int) $request->query('cleaning_window_property_id'))
+            ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
+            ?? $cleaningWindowProperties->first();
+        $selectedCleaningWindowMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \\App\\Services\\CleaningStartWindow::DEFAULT_MINUTES);
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowHosts', 'selectedCleaningWindowHost', 'selectedCleaningWindowMinutes'));
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowMinutes'));
     }
 
     public function create(Request $request)
@@ -537,26 +535,18 @@ class ManageSessionController extends Controller
 
     public function updateCleaningStartWindow(Request $request)
     {
-        $auth = $request->user();
-        abort_unless($auth->hasAnyRole(['admin', 'owner', 'company']), 403);
+        $user = $request->user();
+        abort_unless($user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403);
+
         $data = $request->validate([
-            'host_id' => ['nullable', 'integer', 'exists:users,id'],
-            'minutes' => ['required', 'integer', 'min:0', 'max:240', 'multiple_of:15'],
+            'property_id' => ['required', 'integer', 'exists:properties,id'],
+            'minutes' => ['required', 'integer', 'min:0', 'max:240'],
         ]);
 
-        if ($auth->hasRole('admin')) {
-            $host = User::query()->whereKey($data['host_id'] ?? 0)
-                ->whereHas('roles', fn ($q) => $q->whereIn('name', ['owner', 'company']))->firstOrFail();
-        } else {
-            $host = $auth;
-            abort_unless($host->hasAnyRole(['owner', 'company']), 403);
-        }
+        $property = Property::query()->visibleTo($user)->findOrFail($data['property_id']);
+        $property->forceFill(['cleaner_start_window_minutes' => (int) $data['minutes']])->save();
 
-        $preferences = $host->preferences ?? [];
-        $preferences['cleaner_start_window_minutes'] = (int) $data['minutes'];
-        $host->forceFill(['preferences' => $preferences])->save();
-
-        return back()->with('ok', 'Cleaner start window saved for '.$host->name.'.');
+        return back()->with('ok', 'Cleaner start window saved for '.$property->name.'.');
     }
 
     public function getSporadicTasks(Request $request, Property $property)
