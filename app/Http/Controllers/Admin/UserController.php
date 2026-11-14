@@ -351,6 +351,7 @@ class UserController extends Controller
     public function deactivateCleaner(Request $request, User $user)
     {
         abort_unless($request->user()->hasRole('admin'), 403);
+        abort_if($user->isAdmin(), 403, 'Administrator accounts cannot be deactivated.');
         abort_unless($user->hasRole('housekeeper'), 404);
         abort_if(! $user->is_active, 422, 'This cleaner is already inactive.');
 
@@ -364,6 +365,7 @@ class UserController extends Controller
     public function reactivateCleaner(Request $request, User $user)
     {
         abort_unless($request->user()->hasRole('admin'), 403);
+        abort_if($user->isAdmin(), 403, 'Administrator accounts cannot be reactivated through cleaner controls.');
         abort_unless($user->hasRole('housekeeper'), 404);
         abort_if($user->is_active, 422, 'This cleaner is already active.');
 
