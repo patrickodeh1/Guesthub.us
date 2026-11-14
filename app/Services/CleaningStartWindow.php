@@ -24,10 +24,15 @@ class CleaningStartWindow
         }
 
         $timezone = $session->property?->timezone ?: config('app.timezone');
-        $time = Carbon::parse((string) $session->getRawOriginal('scheduled_time'), $timezone);
 
-        return Carbon::parse($session->scheduled_date->toDateString(), $timezone)
-            ->setTime($time->hour, $time->minute, $time->second);
+        // Read the persisted values, not Eloquent's datetime-cast values. The
+        // scheduled date and time represent a wall-clock appointment at the property.
+        $dateValue = $session->getRawOriginal('scheduled_date') ?: $session->scheduled_date->toDateString();
+        $timeValue = $session->getRawOriginal('scheduled_time') ?: (string) $session->scheduled_time;
+        $date = Carbon::parse((string) $dateValue, $timezone);
+        $time = Carbon::parse((string) $timeValue, $timezone);
+
+        return $date->setTime($time->hour, $time->minute, $time->second);
     }
 
     public function opensAt(CleaningSession $session): ?Carbon
