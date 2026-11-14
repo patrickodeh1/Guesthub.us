@@ -257,7 +257,7 @@
                     </div>
                 </div>
             </div>
-        @elseif (!$viewAsCleaner && isset($isViewOnly) && $isViewOnly)
+        @elseif (isset($isViewOnly) && $isViewOnly)
             <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <div class="flex items-start gap-3">
                     <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
