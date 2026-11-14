@@ -639,9 +639,33 @@
         <h2 class="section-title">Cleanings</h2>
         @forelse(($cleanings ?? collect()) as $cleaning)
             <div class="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 first:mt-2 first:border-t-0 first:pt-0">
-                <div class="min-w-0">
+                <div class="min-w-0 flex-1">
                     <p class="font-semibold text-slate-950">{{ $cleaning->scheduled_date?->format('M j, Y') ?? 'Unscheduled' }}</p>
                     <p class="text-sm text-slate-500">Cleaner: {{ $cleaning->housekeeper?->name ?? 'Unassigned' }} &middot; {{ ucfirst(str_replace('_', ' ', $cleaning->status)) }}</p>
+                    @php
+                        $cleaningIssues = $cleaning->checklistItems
+                            ->filter(fn ($item) => ! $item->isInstructionTask() && $item->isIssue());
+                    @endphp
+                    @if($cleaningIssues->isNotEmpty())
+                        <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                            <p class="text-xs font-bold uppercase tracking-wide text-amber-900">Cleaning notes / exceptions ({{ $cleaningIssues->count() }})</p>
+                            <ul class="mt-2 space-y-2">
+                                @foreach($cleaningIssues as $issue)
+                                    <li class="text-sm text-amber-950">
+                                        <span class="font-semibold">{{ $issue->task?->name ?? 'Cleaning note' }}:</span>
+                                        @if(filled($issue->note))
+                                            {{ $issue->note }}
+                                        @else
+                                            Photo evidence attached
+                                        @endif
+                                        @if($issue->photos->isNotEmpty())
+                                            <span class="text-xs text-amber-800">({{ $issue->photos->count() }} photo{{ $issue->photos->count() === 1 ? '' : 's' }})</span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                 </div>
                 @if($cleaning->report_token && in_array($cleaning->status, ['in_progress', 'completed'], true))
                     <a href="{{ route('sessions.show', ['session' => $cleaning->id]) }}" class="btn-secondary">Cleaning Report</a>
