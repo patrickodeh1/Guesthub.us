@@ -11,13 +11,13 @@ class SessionLocationController extends Controller
     public function verify(Request $request, CleaningSession $session)
     {
         $user = $request->user();
-        if (! $user || ! \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+        if (! $user || ! \App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
             return response()->json(['ok' => false, 'message' => 'This assignment is not yours.'], 403);
         }
         if ($session->status !== 'pending') {
             return response()->json(['ok' => false, 'message' => 'This session has already started or ended.'], 403);
         }
-        if ($session->gps_override_enabled && ! \\App\\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
+        if ($session->gps_override_enabled && ! \App\\Services\\CleanerAccessSteps::isActingAsCleaner($session)) {
             return response()->json(['ok' => true]);
         }
 
