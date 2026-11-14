@@ -279,7 +279,7 @@ class ManageSessionController extends Controller
         $selectedCleaningWindowProperty = $cleaningWindowProperties->firstWhere('id', (int) $request->query('cleaning_window_property_id'))
             ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
             ?? $cleaningWindowProperties->first();
-        $selectedCleaningWindowMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \\App\\Services\\CleaningStartWindow::DEFAULT_MINUTES);
+        $selectedCleaningWindowMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\\CleaningStartWindow::DEFAULT_MINUTES);
 
         return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowMinutes'));
     }
