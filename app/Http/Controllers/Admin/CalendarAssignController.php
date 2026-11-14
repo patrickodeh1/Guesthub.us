@@ -51,10 +51,11 @@ class CalendarAssignController extends Controller
         }
 
         if (! $session && ! empty($data['booking_id'])) {
-            $session = CleaningSession::where('booking_id', $data['booking_id'])
+            $booking = \\App\\Models\\Booking::query()
+                ->whereKey($data['booking_id'])
                 ->where('property_id', $data['property_id'])
-                ->where('status', '<>', 'cancelled')
-                ->latest('id')->first();
+                ->firstOrFail();
+            $session = \\App\\Services\\CleaningFlowService::checkoutSessionFor($booking);
         }
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
