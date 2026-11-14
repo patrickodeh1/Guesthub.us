@@ -1260,7 +1260,7 @@ class SessionController extends Controller
             ChecklistItem::insertOrIgnore($rows);
         }
 
-        return redirect()->route('sessions.show', array_merge([$session], \${ns}\${ns}\\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
+        return redirect()->route('sessions.show', array_merge([$session], \App\Services\CleanerAccessSteps::isActingAsCleaner($session) ? ['view_as_cleaner' => 1] : []));
     }
 
     /** The assigned cleaner gives a job back before starting it. It returns to the pool unassigned. */
@@ -1331,7 +1331,7 @@ class SessionController extends Controller
 
         if (!$isOverride && $session->stage !== 'summary'
             && (!auth()->user()->hasAnyRole(['admin', 'owner', 'company'])
-                || \App\Services\\CleanerAccessSteps::isActingAsCleaner($session))) {
+                || \App\Services\CleanerAccessSteps::isActingAsCleaner($session))) {
             $msg = 'Finish all stages, including the checkout steps, before completing.';
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
