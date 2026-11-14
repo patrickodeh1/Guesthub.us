@@ -18,12 +18,13 @@
                     @if(auth()->user()->hasRole('admin'))
                         <div>
                             <x-form.label value="Host" />
-                            <select name="host_id" required class="rounded border-gray-300 text-sm">
+                            <select class="rounded border-gray-300 text-sm" onchange="window.location='{{ route('manage.sessions.index') }}?host_id='+this.value">
                                 @foreach($cleaningWindowHosts as $host)
-                                    <option value="{{ $host->id }}" @selected((string) old('host_id', $selectedCleaningWindowHost?->id) === (string) $host->id)>{{ $host->name }}</option>
+                                    <option value="{{ $host->id }}" @selected((string) $selectedCleaningWindowHost?->id === (string) $host->id)>{{ $host->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+                        <input type="hidden" name="host_id" value="{{ $selectedCleaningWindowHost?->id }}">
                     @endif
                     <div>
                         <x-form.label value="Allow start before schedule" />
