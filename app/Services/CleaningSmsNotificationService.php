@@ -112,9 +112,11 @@ class CleaningSmsNotificationService
      */
     private static function alreadySent(CleaningSession $session, string $type, ?int $userId = null): bool
     {
+        // One automatic attempt per session/event. Failed deliveries remain
+        // visible in the log and can be retried explicitly by an administrator;
+        // lifecycle hooks must not create duplicate failed/sent records.
         $query = NotificationLog::where('cleaning_session_id', $session->id)
-            ->where('notification_type', $type)
-            ->where('delivery_status', 'sent');
+            ->where('notification_type', $type);
             
         if ($userId) {
             $query->where('user_id', $userId);
