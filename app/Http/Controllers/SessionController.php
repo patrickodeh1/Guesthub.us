@@ -129,6 +129,7 @@ class SessionController extends Controller
             $data['is_admin'] = false;
             $data['can_edit'] = false;
             $data['is_view_only'] = true;
+            $data['is_preview'] = true;
         }
 
         return response()->json([
@@ -595,6 +596,22 @@ class SessionController extends Controller
                 $canEdit = false;
                 $isViewOnly = true;
             }
+        }
+
+        // Administrator cleaner preview must use the assigned cleaner's real schedule,
+        // even though the authenticated user is an administrator rather than a housekeeper.
+        if (request()->boolean('view_as_cleaner')
+            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager'])
+            && $session->status === 'pending'
+            && $session->scheduled_date) {
+            $propertyTz = $session->property?->timezone ?: config('app.timezone');
+            $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
+            $rawScheduledTime = (string) ($session->getRawOriginal('scheduled_time') ?? '00:00:00');
+            $scheduledClock = \Carbon\Carbon::parse($rawScheduledTime, $propertyTz);
+            $scheduledDateTime->setTime($scheduledClock->hour, $scheduledClock->minute, $scheduledClock->second);
+            $isTooEarly = now($propertyTz)->lt($scheduledDateTime);
+            $canEdit = false;
+            $isViewOnly = true;
         }
 
         // Split rooms into first half and second half
