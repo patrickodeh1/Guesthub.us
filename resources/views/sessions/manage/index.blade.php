@@ -30,7 +30,7 @@
                             <input type="text" inputmode="numeric" name="duration" pattern="\d+:[0-5][0-9]" required value="{{ old('duration', $selectedCleaningWindowDuration) }}" placeholder="2:30" class="w-24 rounded border-gray-300 text-center text-sm" />
                             <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase duration by five minutes" onclick="const i=this.parentElement.querySelector('input');adjustCleaningWindow(i,5)">+</button>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">Enter hours:minutes, e.g. 2:30. No maximum duration. Enter hours:minutes, e.g. 2:30.</p>
+                        <p class="mt-1 text-xs text-gray-500">Enter hours:minutes, e.g. 2:30. </p>
                     </div>
                     <x-button>Save window</x-button>
                 </form>
