@@ -144,7 +144,7 @@ class PropertyNotificationTest extends TestCase
 
         Http::assertSent(fn ($request) => $request['text'] !== ''
             && str_contains($request['text'], 'Cleaning has started')
-            && $request['to'] === '+1234567890');
+            && $request['to'] === '+11234567890');
         $this->assertDatabaseHas('notification_logs', [
             'property_id' => $this->property->id,
             'cleaning_session_id' => $session->id,
