@@ -185,6 +185,8 @@ class PublicListingTest extends TestCase
         Storage::fake('public');
         Storage::disk('public')->put('branding/site-logo.svg', '<svg></svg>');
         Setting::set('site_logo', 'branding/site-logo.svg');
+        Setting::set('theme_color', '#082b49');
+        Setting::set('button_primary_color', '#0b2d4d');
 
         $response = $this->get('/stay/coastal-getaway');
 
