@@ -279,7 +279,7 @@
         @php
             $ghStartBlocked = false; $ghStartBlockMsg = '';
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
-                && \App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+                && \App\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
                 // Match the controller's schedule gate timezone fallback.
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
                 $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5), $ghTz);
@@ -377,7 +377,7 @@
         {{-- PENDING: Start gate --}}
         @if ($session->status === 'pending')
             @php
-            $gateCleaner = \App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
+            $gateCleaner = \App\Services\\CleanerAccessSteps::isCleanerForSession($session);
             $gateWait = $gateCleaner && count($accessSteps ?? []) > 0;
         @endphp
         <div id="pending-gate" @if ($gateWait) style="display:none" @endif>
@@ -433,7 +433,7 @@
                         @php
                             $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
-                                && \App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+                                && \App\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
                                 $startTz = $session->property?->timezone ?: config('app.display_timezone');
                                 $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
                                 $startNow = now($startTz);
@@ -664,7 +664,7 @@
             {{-- Exit wizard: shown under the header card when the cleaner finishes --}}
             @php
                 $exitWiz = \App\Services\CleanerAccessSteps::exitForSession($session);
-                $exitIsCleaner = \App\\Services\\CleanerAccessSteps::isCleanerForSession($session);
+                $exitIsCleaner = \App\Services\\CleanerAccessSteps::isCleanerForSession($session);
             @endphp
             @if (($exitIsCleaner || auth()->user()?->hasRole('admin')) && $session->status === 'in_progress' && count($exitWiz) > 0)
                 <div id="exit-wizard-panel" style="display:none" class="mb-4">
