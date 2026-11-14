@@ -115,7 +115,7 @@ class PublicListingTest extends TestCase
             'check_out' => $departure,
             'guests' => 1,
             'payment_method' => 'manual',
-        ]))->assertOk()->assertJsonPath('total_cents', 11550);
+        ]))->assertOk()->assertJsonPath('total_cents', 11000);
     }
 
     public function test_paid_feature_hides_listing_without_current_host_entitlement(): void
@@ -160,9 +160,11 @@ class PublicListingTest extends TestCase
         $response->assertOk()
             ->assertSee('Coastal Getaway')
             ->assertSee('San Diego')
-            ->assertSee('Approximate map location')
-        ->assertSee('data-location-map-src="https://www.openstreetmap.org/export/embed.html?', false)
-        ->assertDontSee(' src="https://www.openstreetmap.org/export/embed.html', false)
+            ->assertSee('Explore San Diego')
+            ->assertSee('The shaded area is approximate. The exact address is shared after booking.')
+            ->assertSee('id="location-map"', false)
+            ->assertSee('data-lat="32.7157360"', false)
+            ->assertSee('data-lng="-117.1610870"', false)
             ->assertSee('noindex,follow')
             ->assertDontSee('987 Hidden Address Lane')
             ->assertDontSee('PRIVATE-LOCK-CODE')
@@ -249,8 +251,8 @@ class PublicListingTest extends TestCase
         $manual = $quotes->quote($this->listing->fresh('property'), $arrival, now('America/Los_Angeles')->addDays(6)->toDateString(), 2, 'manual');
 
         $this->assertSame(22000, $card['subtotal_cents']);
-        $this->assertSame(25493, $card['total_cents']);
-        $this->assertSame(24750, $manual['total_cents']);
+        $this->assertSame(24926, $card['total_cents']);
+        $this->assertSame(24200, $manual['total_cents']);
         $this->assertSame(2, $card['nights']);
         $this->assertContains('Card processing fee', array_column($card['line_items'], 'label'));
         $this->assertNotContains('Card processing fee', array_column($manual['line_items'], 'label'));
@@ -439,6 +441,7 @@ class PublicListingTest extends TestCase
         $this->actingAs($this->owner)
             ->put(route('admin.properties.listing.save', $this->property), [
                 'published' => false,
+                'listing_type' => 'short_term',
                 'booking_mode' => 'instant',
                 'advance_notice_hours' => 24,
                 'min_nights' => 1,
