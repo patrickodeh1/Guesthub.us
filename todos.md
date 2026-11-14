@@ -67,13 +67,13 @@ Project: Guesthub | key: f3-f67b54fcb3 | created: 2026-11-03
 
 **Client's words:** Under HOSPITALITY the first link will then be Manage Listings. Also I’m not sure how to do it But I think you might know. Some hosts have their own domain name and I’ve seen sites that can redirect their domain name directly to the page that we have set up for them on our site so that will need to be a setting as well
 
-## 16. Dashboard lock status colors wrong, both unlocked should show green  [DONE] (Done - please verify)
+## 16. Dashboard lock status colors wrong, both unlocked should show green  [DONE] (Done - please verify){added to update}
 
 Project: Guesthub | key: f3-c825dae6cc | created: 2026-11-03
 
 **Client's words:** Additionally, I’m not sure if this is in the next update or if you have attempted to fix this already but the lock status on the dashboard is still not showing correctly. One is showing green one is showing red and they are both unlocked right now so they should both be showing green.
 
-## 17. Allow signing cleaner immediately after creating guest record  [DONE] (Done - please verify)
+## 17. Allow signing cleaner immediately after creating guest record  [DONE] (Done - please verify){added to update}
 
 Project: Guesthub | key: f3-581da312d1 | created: 2026-11-03
 
@@ -97,7 +97,7 @@ Project: Guesthub | key: f3-959775d9ca | created: 2026-11-03
 
 **Client's words:** I do need this glitch fixed so that I can get the cleaner scheduled for today. It’s not allowing me to schedule.
 
-## 21. Investigate glitch causing packages marked Chicago despite unchecked box  [NOT DONE] (To do)
+## 21. Investigate glitch causing packages marked Chicago despite unchecked box  [NOT CONFIRMED SEAMS TO BE FIXED] (To do)
 
 Project: Guesthub | key: f3-d5abe5b74a | created: 2026-11-03
 
@@ -121,7 +121,7 @@ These screens I have never seen before and they don’t contain info so what are
 
 ![Pasted_image_20261031093822.png](photos/p3_Pasted_image_20261031093822.png)
 
-## 23. Photos fail to upload, disappearing and causing page reloads  [SHIPPED] (Cleaner photo upload/advance and retry workflow changes are included in the ZIP)
+## 23. Photos fail to upload, disappearing and causing page reloads  [SHIPPED] (Cleaner photo upload/advance and retry workflow changes are included in the ZIP){added to update}
 
 Project: Guesthub | key: f3-2a26f71026 | created: 2026-11-03
 
@@ -156,13 +156,13 @@ Project: Guesthub | key: f3-524d41b8d8 | created: 2026-11-03
 
 **Client's words:** Also, the time zone issue needs looked at as well because I just got a text alert telling me that the customer is due to check-in at 9 PM to be on standby and it’s 8:50 PM my time but 9 PM one hour behind in central time zone, which is where the property is located so is this correct and that it alerts me an hour and 10 minutes before they are due to check-in or should it be alerting me 10 minutes before the time in the actual time zone also the time should be adjusted on my text to show my current local time wherever I’m at if that’s possible so if they are due to check in at 9 PM that’s actually 10 PM where I’m at now so please advise on that issue as well
 
-## 28. I need to be able to see the cleaners name on the report as well  [DONE] (Done - please verify)
+## 28. I need to be able to see the cleaners name on the report as well  [DONE] (Done - please verify) {added to report}
 
 Project: Guesthub | key: f3-cbdd92c2a2 | created: 2026-11-03
 
 **Client's words:** I need to be able to see the cleaners name on the report as well
 
-## 29. Add cleaning damage notes to guest view, hide post‑checkout progress  [SHIPPED] (Guest cleaning exceptions/notes and report link are included; hiding post-checkout progress remains outstanding)
+## 29. Add cleaning damage notes to guest view, hide post‑checkout progress  [SHIPPED] (Guest cleaning exceptions/notes and report link are included; hiding post-checkout progress remains outstanding){added to update}
 Project: Guesthub | key: f3-b5c3cc0735 | created: 2026-11-03
 
 **Client's words:** One of the more important parts of this when you get back online, what you need to finish is I really need to see the Cleaning report for the GUEST like if I look up the GUEST name I should see it right there like right with their ID and and everything like that, but I don’t need to see their progress after they’ve checked out because they’ve already progressed through everything. I really don’t even need to see that at all. But it’s just kind of screen clutter, but I do need to see the report for the Cleaning and specifically I need to know if there are any damages so maybe not the whole report but you know maybe just show me the damages or the exceptions or whatever basically anytime there was a note indicated in the comments because when these guys get their deposit refunded we deduct for any damages or things like that so I need to see those. It’s very important along with their parking and their early check-in and all that stuff that’s why I really need to see how much is it gonna be deducted at a glance And right now it’s very difficult to try to match up the Cleaning report with who stayed there and the cleaner it’s just all over and that was the whole main reason for having these two sites merged together so that way they can interact better and I can see who’s doing what so please fix that part of it as as soon as possible first and priority
@@ -185,7 +185,7 @@ Project: Guesthub | key: f3-015616b99d | created: 2026-11-03
 
 **Client's words:** Also, I’m currently hosting a guest that is not appearing on either list as well
 
-## 33. Allow selecting mandatory videos and fix iPhone playback failure  [SHIPPED] (Training video MIME handling changes are included; mandatory-video selection and iPhone playback still require verification)
+## 33. Allow selecting mandatory videos and fix iPhone playback failure  [SHIPPED] (Training video MIME handling changes are included; mandatory-video selection and iPhone playback still require verification) Not added to update yet until confirmed
 
 Project: Guesthub | key: f3-1b3211da53 | created: 2026-11-03
 
