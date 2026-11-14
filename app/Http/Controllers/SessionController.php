@@ -559,37 +559,17 @@ class SessionController extends Controller
         $isViewOnly = false;
         $isTooEarly = false;
 
-        if (auth()->check() && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
+        if (auth()->check() && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
             $propertyTz = $session->property->timezone ?? config('app.timezone');
-            
-            // Time-based early access check
-            if ($session->scheduled_date && $session->status === 'pending') {
-                $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
-                if ($session->scheduled_time) {
-                    // The model casts scheduled_time as a datetime, so the raw database
-                    // value may include a date (Y-m-d H:i:s), not just H:i:s.
-                    // Parse either representation and copy only its clock time.
-                    $rawScheduledTime = (string) $session->getRawOriginal('scheduled_time');
-                    $time = \Carbon\Carbon::parse($rawScheduledTime, $propertyTz);
-                    $scheduledDateTime->setTime($time->hour, $time->minute, $time->second);
-                } else {
-                    $scheduledDateTime->startOfDay();
-                }
-                
-                if (now($propertyTz)->lt($scheduledDateTime)) {
-                    $isTooEarly = true;
-                    $canEdit = false;
-                    $isViewOnly = true;
-                }
+            $window = app(\\App\\Services\\CleaningStartWindow::class);
+            $isTooEarly = $session->status === 'pending' && $window->isTooEarly($session);
+            if ($isTooEarly) {
+                $canEdit = false;
+                $isViewOnly = true;
             }
-            
-            // Legacy date check just in case
-            $isCurrentDate = \Carbon\Carbon::parse($session->scheduled_date)->format('Y-m-d') === now($propertyTz)->format('Y-m-d');
-            $isInProgressOrCompleted = in_array($session->status, ['in_progress', 'completed']);
 
-            // Can edit if: it's the current date AND (session is pending OR already in progress/completed)
-            // OR if session is already in progress/completed (they can continue working)
-            if (!$isCurrentDate && $session->status === 'pending' && !$isTooEarly) {
+            $isCurrentDate = \\Carbon\\Carbon::parse($session->scheduled_date)->format('Y-m-d') === now($propertyTz)->format('Y-m-d');
+            if (! $isCurrentDate && $session->status === 'pending' && ! $isTooEarly) {
                 $canEdit = false;
                 $isViewOnly = true;
             }
@@ -1079,19 +1059,14 @@ class SessionController extends Controller
     {
         $this->assertSessionAccess($session);
 
-        // Start window: 2 hours either side of the scheduled time, in the property's local time.
-        if ($session->scheduled_date && $session->scheduled_time
-            && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
-            $tz = $session->property?->timezone ?: config('app.display_timezone');
-            $scheduled = \Carbon\Carbon::parse(
-                $session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5),
-                $tz
-            );
-            $nowLocal = now($tz);
-            if ($nowLocal->lt($scheduled->copy()->subHours(2)) || $nowLocal->gt($scheduled->copy()->addHours(2))) {
-                return back()->withErrors(['gps' => 'You can start this cleaning between '
-                    .$scheduled->copy()->subHours(2)->format('g:i A').' and '
-                    .$scheduled->copy()->addHours(2)->format('g:i A').' (property time).']);
+        if (\\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)
+            && $session->status === 'pending') {
+            $window = app(\\App\\Services\\CleaningStartWindow::class);
+            if (! $window->canStart($session)) {
+                $opensAt = $window->opensAt($session);
+                $closesAt = $window->closesAt($session);
+                return back()->withErrors(['gps' => 'This cleaning can be started between '
+                    .$opensAt?->format('g:i A').' and '.$closesAt?->format('g:i A').' (property time).']);
             }
         }
 
