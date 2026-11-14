@@ -848,9 +848,11 @@ class SessionController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function show(CleaningSession $session)
+    public function show(Request $request, CleaningSession $session)
     {
         $this->assertSessionAccess($session);
+        $viewAsCleaner = $request->boolean('view_as_cleaner')
+            && auth()->user()?->hasAnyRole(['admin', 'owner', 'company', 'manager']);
         // Ensure report token exists for shareable report URLs (safe if method is missing)
         if (method_exists($session, 'ensureReportToken')) {
             $session->ensureReportToken();
@@ -912,6 +914,7 @@ class SessionController extends Controller
         $photosByRoom = $session->photos()->latest()->get()->groupBy('room_id');
 
         $viewData = [
+            'viewAsCleaner' => $viewAsCleaner,
             'session' => $session,
             'rooms' => $rooms,
             'stage' => $data['stage'],
