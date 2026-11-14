@@ -66,8 +66,9 @@ class UnifiedNavigationTest extends TestCase
         $this->assertArrayHasKey('Jobs', $items);
         $this->assertArrayHasKey('Media', $items);
         $this->assertArrayHasKey('Administration', $items);
-        $this->assertArrayNotHasKey('Settings', $items);
-        $this->assertArrayNotHasKey('Users', $items);
+        $this->assertArrayHasKey('Settings', $items);
+        $this->assertNull($items['Settings']['href']);
+        $this->assertContains('Inventory', collect($items['Settings']['children'])->pluck('label')->all());
     }
 
     public function test_owner_navigation_includes_property_operations_and_plan(): void
