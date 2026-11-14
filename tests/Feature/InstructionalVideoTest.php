@@ -9,6 +9,7 @@ use App\Models\InstructionalVideo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -65,6 +66,7 @@ class InstructionalVideoTest extends TestCase
         ]);
 
         Storage::fake('public');
+        Queue::fake();
     }
 
     // ── Admin Video Management ──────────────────────────────────
