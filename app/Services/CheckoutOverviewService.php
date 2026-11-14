@@ -115,9 +115,11 @@ class CheckoutOverviewService
                     ? $legacyCandidates->first()
                     : null;
 
-                $session = $linked->first(fn (CleaningSession $s) => $s->scheduled_date->toDateString() === $outDate)
-                    ?? $linked->sortBy('id')->first()
-                    ?? $legacySession;
+                $session = $group->count() === 1
+                    ? ($linked->first(fn (CleaningSession $s) => $s->scheduled_date->toDateString() === $outDate)
+                        ?? $linked->sortBy('id')->first()
+                        ?? $legacySession)
+                    : null;
 
                 $sameDay = $next && $next->check_in_date->toDateString() === $outDate;
 
