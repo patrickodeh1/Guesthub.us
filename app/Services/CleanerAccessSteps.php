@@ -171,6 +171,7 @@ class CleanerAccessSteps
                 'action'    => 'content',
                 'task_url'  => route('checklist.property-task.toggle', [$session, $t]),
                 'task_done' => in_array((int) $t->id, $doneIds, true),
+                'auto_complete' => $t->type === 'instructions',
                 'lockbox_url' => $t->type === 'lockbox' ? route('sessions.lockbox', $session) : null,
                 'lockbox_key' => 'lockbox_saved_' . $session->id,
             ];
