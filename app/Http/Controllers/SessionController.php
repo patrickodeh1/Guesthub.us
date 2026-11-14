@@ -93,7 +93,7 @@ class SessionController extends Controller
         if (! $u) {
             return false;
         }
-        if ($u->hasAnyRole(['admin', 'owner', 'company'])) {
+        if ($u->hasAnyRole(['admin', 'owner', 'company', 'manager'])) {
             return true;
         }
         return (int) $session->housekeeper_id === (int) $u->id && $this->editWindowOpen($session);
@@ -105,7 +105,7 @@ class SessionController extends Controller
         $ok = $u && (
             $u->hasRole('admin')
             || (int) $session->housekeeper_id === (int) $u->id
-            || ($u->hasAnyRole(['owner', 'company']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
+            || ($u->hasAnyRole(['owner', 'company', 'manager']) && \App\Models\Property::visibleTo($u)->whereKey($session->property_id)->exists())
         );
         abort_unless($ok, 403, 'You do not have access to this cleaning session.');
     }
