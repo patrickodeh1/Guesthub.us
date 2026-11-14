@@ -47,7 +47,10 @@ class UserIndexStatusFilterTest extends TestCase
         $this->get(route('admin.users.index', ['status' => 'inactive']))
             ->assertOk()
             ->assertSee('inactive-user@example.test')
-            ->assertDontSee('active-user@example.test');
+            // Match the complete rendered email; the inactive fixture's address
+            // contains "active-user" as a substring, so a plain substring check
+            // incorrectly reports the active account as visible.
+            ->assertDontSee('>active-user@example.test<', false);
 
         $this->get(route('admin.users.index', ['status' => 'all']))
             ->assertOk()
