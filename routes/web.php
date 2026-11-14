@@ -442,7 +442,6 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     // ─── Settings ─────────────────────────────────────────────────────────────
     Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit')->middleware('role:admin');
     Route::match(['put', 'post'], 'settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
-    Route::post('settings/reset-colors', [SettingsController::class, 'resetColors'])->name('settings.reset-colors')->middleware('role:admin');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit')->middleware('role:admin');
     Route::match(['put', 'post'], 'settings/legal', [SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin');
