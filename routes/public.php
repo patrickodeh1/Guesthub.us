@@ -34,6 +34,8 @@ Route::middleware('web')->group(function (): void {
         ->middleware('throttle:30,1')->name('public.checkout.receipt');
     Route::get('/stay/checkout/{booking_id}/{token}', [DirectBookingController::class, 'pay'])
         ->name('public.checkout.pay');
+    Route::post('/stay/checkout/{booking_id}/{token}/cancel', [DirectBookingController::class, 'cancel'])
+        ->middleware('throttle:5,1')->name('public.checkout.cancel');
     Route::post('/stay/checkout/{booking_id}/{token}/confirm', [DirectBookingController::class, 'confirm'])
         ->middleware('throttle:20,1')
         ->name('public.checkout.confirm');
