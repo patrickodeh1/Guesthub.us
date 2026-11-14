@@ -44,7 +44,7 @@ class QuickAssignController extends Controller
 
         // A new assignment from this checkout row must inherit the exact booking,
         // otherwise it becomes an unrelated, unlinked cleaning session.
-        $data['booking_id'] = $row['session']?->booking_id ?? $row['booking']->getKey();
+        $data['booking_id'] = $row['session']?->booking_id ?? (! $row['overlap'] ? $row['booking']->getKey() : null);
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
         $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $row['session']) : [];
