@@ -274,7 +274,16 @@ class ManageSessionController extends Controller
             ->map(fn ($h) => ['id' => $h->id, 'name' => $h->name])->values();
         $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps'));
+        $cleaningWindowHosts = User::query()
+            ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', ['owner', 'company']))
+            ->when(! $u->hasRole('admin'), fn ($query) => $query->whereKey($u->id))
+            ->orderBy('name')->get(['id', 'name', 'preferences']);
+        $selectedCleaningWindowHost = $u->hasRole('admin')
+            ? $cleaningWindowHosts->firstWhere('id', (int) $request->query('host_id')) ?? $cleaningWindowHosts->first()
+            : $u;
+        $selectedCleaningWindowMinutes = (int) data_get($selectedCleaningWindowHost?->preferences, 'cleaner_start_window_minutes', \\App\\Services\\CleaningStartWindow::DEFAULT_MINUTES);
+
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowHosts', 'selectedCleaningWindowHost', 'selectedCleaningWindowMinutes'));
     }
 
     public function create(Request $request)
@@ -524,6 +533,30 @@ class ManageSessionController extends Controller
         return redirect()->to(
             $request->input('_return_to', route('manage.sessions.index'))
         )->with('ok', 'Assignment deleted.');
+    }
+
+    public function updateCleaningStartWindow(Request $request)
+    {
+        $auth = $request->user();
+        abort_unless($auth->hasAnyRole(['admin', 'owner', 'company']), 403);
+        $data = $request->validate([
+            'host_id' => ['nullable', 'integer', 'exists:users,id'],
+            'minutes' => ['required', 'integer', 'min:0', 'max:240', 'multiple_of:15'],
+        ]);
+
+        if ($auth->hasRole('admin')) {
+            $host = User::query()->whereKey($data['host_id'] ?? 0)
+                ->whereHas('roles', fn ($q) => $q->whereIn('name', ['owner', 'company']))->firstOrFail();
+        } else {
+            $host = $auth;
+            abort_unless($host->hasAnyRole(['owner', 'company']), 403);
+        }
+
+        $preferences = $host->preferences ?? [];
+        $preferences['cleaner_start_window_minutes'] = (int) $data['minutes'];
+        $host->forceFill(['preferences' => $preferences])->save();
+
+        return back()->with('ok', 'Cleaner start window saved for '.$host->name.'.');
     }
 
     public function getSporadicTasks(Request $request, Property $property)
