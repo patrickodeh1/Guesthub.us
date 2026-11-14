@@ -384,6 +384,12 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         $service = app(\App\Services\Payments\PaymentService::class);
 
+        // Card collection is an explicit per-booking opt-in. Enforce it at
+        // the endpoint before checking Stripe or creating/retrieving intents.
+        if (! $booking->pay_by_cc) {
+            return response()->json(['ok' => false, 'error' => 'Card payment is not enabled for this booking.'], 403);
+        }
+
         if ($booking->isDepositCaptured() || $booking->deposit_verified_at) {
             return response()->json(['ok' => false, 'error' => 'Deposit already paid.'], 422);
         }
