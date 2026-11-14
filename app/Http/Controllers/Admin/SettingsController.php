@@ -34,6 +34,9 @@ class SettingsController extends Controller
             'favicon' => ['nullable', 'image', 'mimes:ico,png,jpg,jpeg,svg', 'max:512'],
             'existing_favicon' => ['nullable', 'string'],
             'site_name' => ['nullable', 'string', 'max:255'],
+            'theme_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'brand_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'button_primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'application_logo' => ['nullable', 'image', 'max:2048'],
             'application_icon' => ['nullable', 'image', 'max:2048'],
             'date_format' => ['nullable', 'string'],
@@ -176,6 +179,15 @@ class SettingsController extends Controller
         ActivityLog::record('settings_updated', 'Brand and system settings were updated.', 'settings');
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    public function resetColors()
+    {
+        Setting::putValue('theme_color', '#842eb8');
+        Setting::putValue('brand_color', '#842eb8');
+        Setting::putValue('button_primary_color', '#842eb8');
+
+        return redirect()->back()->with('success', 'Brand colors reset to defaults.');
     }
 
     public function legalUpdate(Request $request)
