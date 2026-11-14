@@ -308,7 +308,7 @@
         @endif
 
         {{-- gh-first-screen: cleaning details, shown first to the assigned cleaner before anything else --}}
-        @if (! $ghStartBlocked && $session->status === 'pending' && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
+        @if (! $ghStartBlocked && $session->status === 'pending' && \App\Services\\CleanerAccessSteps::isCleanerForSession($session)
             && ! \App\Services\CleanerAccessSteps::locationVerified($session))
             @php
                 $fsProp = $session->property;
@@ -417,7 +417,7 @@
                         <div class="mb-6">
                             {{-- gh-ready-gate --}}
                             <h1 class="guest-status-title">Ready to start</h1>
-                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id())
+                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) )
                                 <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
                             @endif
                         </div>
@@ -429,7 +429,7 @@
                             </div>
                         @endif
 
-                        @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) || (int) $session->housekeeper_id !== (int) auth()->id(); @endphp
+                        @php $locationVerified = \App\Services\CleanerAccessSteps::locationVerified($session) ; @endphp
                         @php
                             $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
@@ -540,7 +540,7 @@
             @endif
 
             {{-- GPS capture and location verification --}}
-            @if ((!isset($isViewOnly) || !$isViewOnly) && ($viewAsCleaner || (int) $session->housekeeper_id !== (int) auth()->id())) {{-- gh-no-gps-for-cleaner --}}
+            @if ((!isset($isViewOnly) || !$isViewOnly) && ($viewAsCleaner )) {{-- gh-no-gps-for-cleaner --}}
                 @include('sessions.partials.gps-script', [
                     'propertyLat' => $session->property->latitude,
                     'propertyLng' => $session->property->longitude,
