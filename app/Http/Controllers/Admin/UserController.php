@@ -25,7 +25,7 @@ class UserController extends Controller
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
             ->where('approval_status', 'approved')
             ->when($status !== 'all', function ($q) use ($status) {
-                $q->where('is_active', $status !== 'inactive');
+                $q->where('status', $status);
             })
             ->orderByDesc('created_at')
             ->paginate(15)
