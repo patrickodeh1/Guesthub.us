@@ -13,11 +13,17 @@ class RoomPhoto extends Model
     protected $fillable = [
         'session_id',
         'room_id',
+        'uploaded_by',
         'path',
         'captured_at',
         'has_timestamp_overlay'
     ];
     protected $casts = ['captured_at' => 'datetime', 'has_timestamp_overlay' => 'bool'];
+
+    public function uploadedBy()
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
 
     public function getUrlAttribute()
     {
