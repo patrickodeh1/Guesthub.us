@@ -29,7 +29,7 @@ class PhotoController extends Controller
         if (! $user || $session->status !== 'completed' || ! $session->ended_at) {
             return;
         }
-        if ($user->hasAnyRole(['admin', 'owner', 'company']) || (int) $session->housekeeper_id !== (int) $user->id) {
+        if ($user->hasAnyRole(['admin', 'owner', 'company', 'manager']) || (int) $session->housekeeper_id !== (int) $user->id) {
             return;
         }
         if ($session->ended_at->copy()->addMinutes(30)->isPast()) {
