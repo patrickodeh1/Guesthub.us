@@ -251,10 +251,10 @@ class ManageSessionController extends Controller
                 // An explicit link remains authoritative, even if its booking is now cancelled.
                 // For an unlinked job, only show a guest when the property/date match is unique.
                 $b = $s->booking_id
-                    ? \\App\\Models\\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
-                    : \\App\\Services\\CleaningFlowService::bookingForPropertyDate(
+                    ? \App\Models\Booking::query()->whereKey($s->booking_id)->whereNull('cancelled_at')->first()
+                    : \App\Services\CleaningFlowService::bookingForPropertyDate(
                         (int) $s->property_id,
-                        \\Carbon\\Carbon::parse($s->scheduled_date)->toDateString()
+                        \Carbon\Carbon::parse($s->scheduled_date)->toDateString()
                     );
                 if ($b) {
                     $bookingByJob[$s->id] = ['id' => $b->getKey(), 'guest' => $b->guest_name ?: 'Guest'];
