@@ -208,7 +208,7 @@ class CleanerTerminationTest extends TestCase
         $deactivatedCleaner = $this->createUser(['name' => 'Terminated Cleaner', 'is_active' => false, 'status' => 'inactive']);
         $deactivatedCleaner->assignRole('housekeeper');
 
-        \\Illuminate\\Support\\Facades\\DB::table('property_user')->insert([
+        \Illuminate\Support\Facades\DB::table('property_user')->insert([
             ['property_id' => $property->id, 'user_id' => $activeCleaner->id],
             ['property_id' => $property->id, 'user_id' => $deactivatedCleaner->id],
         ]);
