@@ -410,9 +410,11 @@ class SessionController extends Controller
         }
 
         // Separate property-level tasks by phase
-        $preCleaningTasks = $propertyTasks->where('phase', 'pre_cleaning');
+        // Lockbox is rendered once in the final exit wizard, regardless of its
+        // legacy phase assignment; never duplicate it in an earlier checklist stage.
+        $preCleaningTasks = $propertyTasks->where('phase', 'pre_cleaning')->reject(fn ($t) => $t->type === 'lockbox');
         $duringCleaningTasks = $propertyTasks->where('phase', 'during_cleaning')->reject(fn ($t) => $t->type === 'lockbox');
-        $postCleaningTasks = $propertyTasks->where('phase', 'post_cleaning');
+        $postCleaningTasks = $propertyTasks->where('phase', 'post_cleaning')->reject(fn ($t) => $t->type === 'lockbox');
 
         // Count property-level tasks (exclude type='instructions' — those are informational-only,
         // have no checkbox, and should not inflate the progress denominator)
