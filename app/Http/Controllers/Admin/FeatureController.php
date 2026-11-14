@@ -24,11 +24,9 @@ class FeatureController extends Controller
 
     public function update(Request $request, Feature $feature)
     {
-        $request->merge([
-            'price_cents' => $request->filled('price')
-                ? (int) round(((float) $request->input('price')) * 100)
-                : null,
-        ]);
+        if ($request->filled('price')) {
+            $request->merge(['price_cents' => (int) round(((float) $request->input('price')) * 100)]);
+        }
 
         $data = $request->validate([
             'is_free' => ['required', 'boolean'],
