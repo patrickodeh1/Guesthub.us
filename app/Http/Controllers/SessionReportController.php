@@ -172,7 +172,13 @@ class SessionReportController extends Controller
             ->values();
 
         $propertyRoomNames = $session->property->rooms->pluck('name', 'id');
-        $completionRoomIds = $allRoomPhotos
+        // The completion gallery must include both general room photos and task/checklist photos.
+        // Keep property-level task photos in their own section below.
+        $completionGalleryPhotos = $allRoomPhotos
+            ->merge($allTaskPhotos->whereNotNull('room_id'))
+            ->values();
+
+        $completionRoomIds = $completionGalleryPhotos
             ->pluck('room_id')
             ->filter()
             ->unique()
@@ -180,7 +186,7 @@ class SessionReportController extends Controller
             ->values();
 
         $completionGalleryByRoom = $completionRoomIds->map(function ($roomId) use ($allRoomPhotos, $propertyRoomNames, $session) {
-            $photos = $allRoomPhotos
+            $photos = $completionGalleryPhotos
                 ->where('room_id', $roomId)
                 ->sortBy(fn($photo) => $photo['captured_at']?->timestamp ?? PHP_INT_MAX)
                 ->values();
@@ -231,7 +237,8 @@ class SessionReportController extends Controller
         $statusText = $overallStatusText;
 
         $completionPhotosCount = $allCompletionPhotos->count();
-        $totalPhotos = $completionPhotosCount + (int) $exceptionRows->sum('photo_count');
+        // Count each stored photo once; issue photos are already included in task photos.
+        $totalPhotos = $allRoomPhotos->count() + $allTaskPhotos->count();
         $roomPhotosCount = $completionPhotosCount;
         $taskPhotosCount = $allTaskPhotos->count();
         $issuePhotoCount = (int) $exceptionRows->sum('photo_count');
