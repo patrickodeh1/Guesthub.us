@@ -28,7 +28,7 @@
         <div class="wizard-scroll">
             @foreach($steps as $i => $step)
             @php $allImages = array_values(array_filter(array_merge([$step['image'] ?? null], $step['images'] ?? []))); @endphp
-            <div class="wizard-step" id="wizard-{{ $type }}-step-{{ $i }}" @if($i > 0) style="display:none" @endif>
+            <div class="wizard-step" id="wizard-{{ $type }}-step-{{ $i }}" data-auto-complete="{{ !empty($step['auto_complete']) ? '1' : '0' }}" data-auto-url="{{ $step['task_url'] ?? '' }}" data-task-done="{{ !empty($step['task_done']) ? '1' : '0' }}" @if($i > 0) style="display:none" @endif>
                 @if(count($allImages))
                     <div class="wizard-image-card mb-4">
                         <img id="wizard-main-img-{{ $type }}-{{ $i }}" src="{{ $allImages[0] }}" alt="{{ $step['title'] }}" class="w-full rounded-xl shadow-sm">
@@ -57,7 +57,9 @@
                             <p class="mt-2 text-sm font-semibold {{ !empty($step['photo_done']) ? 'text-emerald-700' : 'text-slate-500' }}" data-photo-status="{{ $i }}">{{ !empty($step['photo_done']) ? 'Photo saved' : 'A photo is required before you can continue.' }}</p>
                         </div>
                     @endif
-                    @if(!empty($step['task_url']))
+                    @if(!empty($step['auto_complete']) && !empty($step['task_url']))
+                        <p class="mt-5 text-center text-sm font-semibold text-slate-500" data-auto-status="{{ $i }}">Read this instruction, then continue. It will be marked complete automatically.</p>
+                    @elseif(!empty($step['task_url']))
                         <div class="mt-5 text-center">
                             @if(!empty($step['lockbox_url']) && empty($step['task_done']))
                                 <input type="text" id="task-code-{{ $i }}" maxlength="255" autocomplete="off" inputmode="numeric" placeholder="New code" class="mb-3 block w-full rounded-lg border border-gray-300 px-3 py-2 text-center text-base">
@@ -126,7 +128,26 @@
         });
     });
 
-    var photoNeeded = {!! json_encode(array_map(fn ($s) => (!empty($s['photo_url']) && empty($s['photo_done'])) || (!empty($s['task_url']) && empty($s['task_done'])), array_values($steps))) !!};
+    var photoNeeded = {!! json_encode(array_map(fn ($s) => (!empty($s['photo_url']) && empty($s['photo_done'])) || (empty($s['auto_complete']) && !empty($s['task_url']) && empty($s['task_done'])), array_values($steps))) !!};
+    var autoCompleteNeeded = {!! json_encode(array_map(fn ($s) => !empty($s['auto_complete']) && !empty($s['task_url']) && empty($s['task_done']), array_values($steps))) !!};
+
+    function markAutoComplete(idx) {
+        if (!autoCompleteNeeded[idx]) return Promise.resolve();
+        var step = document.getElementById("wizard-" + type + "-step-" + idx);
+        var url = step ? step.dataset.autoUrl : "";
+        if (!url) return Promise.reject(new Error("Could not mark the instruction complete."));
+        var fd = new FormData(); fd.append("force_checked", "1");
+        var status = step.querySelector("[data-auto-status]");
+        if (status) status.textContent = "Saving...";
+        return fetch(url, { method: "POST", body: fd, headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" } })
+            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok || d.success === false) throw new Error(d.message || "Could not save this instruction.");
+                autoCompleteNeeded[idx] = false;
+                step.dataset.taskDone = "1";
+                if (status) { status.textContent = "Instruction marked complete."; status.className = "mt-5 text-center text-sm font-semibold text-emerald-700"; }
+            }); });
+    }
+
     function applyPhotoGate() {
         var last = current === total - 1;
         var btn = document.getElementById((last ? "wizard-done-" : "wizard-next-") + type);
@@ -168,7 +189,15 @@
             if (st) st.textContent = "Uploading...";
             var fd = new FormData(); fd.append("photo", inp.files[0]);
             fetch(inp.dataset.url, { method: "POST", body: fd, headers: { "X-CSRF-TOKEN": "{{ csrf_token() }}", "Accept": "application/json" } })
-                .then(function (r) { if (!r.ok) throw new Error(); photoNeeded[idx] = false; if (st) { st.textContent = "Photo saved"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; } applyPhotoGate(); })
+                .then(function (r) {
+                    if (!r.ok) throw new Error();
+                    photoNeeded[idx] = false;
+                    if (st) { st.textContent = "Photo saved"; st.className = "mt-2 text-sm font-semibold text-emerald-700"; }
+                    var label = inp.parentElement ? inp.parentElement.querySelector("span") : null;
+                    if (label) label.textContent = inp.accept === "video/*" ? "Replace video" : "Retake photo";
+                    if (current === idx && current < total - 1) goTo(current + 1);
+                    else applyPhotoGate();
+                })
                 .catch(function () { if (st) st.textContent = "Upload failed. Try again."; });
         });
     });
@@ -190,7 +219,36 @@
         applyPhotoGate();
     }
 
-    document.getElementById("wizard-next-" + type).addEventListener("click", function() { if (current < total - 1) goTo(current + 1); });
+    document.getElementById("wizard-next-" + type).addEventListener("click", function() {
+        if (current >= total - 1) return;
+        var btn = this;
+        if (!autoCompleteNeeded[current]) { goTo(current + 1); return; }
+        btn.disabled = true;
+        markAutoComplete(current).then(function () { goTo(current + 1); })
+            .catch(function (e) {
+                var step = document.getElementById("wizard-" + type + "-step-" + current);
+                var status = step ? step.querySelector("[data-auto-status]") : null;
+                if (status) { status.textContent = e.message || "Could not save this instruction."; status.className = "mt-5 text-center text-sm font-semibold text-red-600"; }
+            })
+            .finally(function () { btn.disabled = false; });
+    });
+
+    document.getElementById("wizard-done-" + type).addEventListener("click", function (e) {
+        if (!autoCompleteNeeded[current]) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        var btn = this;
+        btn.disabled = true;
+        markAutoComplete(current).then(function () {
+            btn.disabled = false;
+            btn.click();
+        }).catch(function (err) {
+            btn.disabled = false;
+            var step = document.getElementById("wizard-" + type + "-step-" + current);
+            var status = step ? step.querySelector("[data-auto-status]") : null;
+            if (status) { status.textContent = err.message || "Could not save this instruction."; status.className = "mt-5 text-center text-sm font-semibold text-red-600"; }
+        });
+    }, true);
 
     @php
         $__wb = $type === 'checkout' ? \App\Models\Booking::where('booking_id', $bookingId)->first() : null;
