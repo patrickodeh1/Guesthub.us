@@ -8,14 +8,13 @@ use Illuminate\Support\Carbon;
 class CleaningStartWindow
 {
     public const DEFAULT_MINUTES = 120;
-    public const MAX_MINUTES = 240;
     public const LATE_GRACE_HOURS = 2;
 
     public function minutesBefore(CleaningSession $session): int
     {
         $minutes = (int) ($session->property?->cleaner_start_window_minutes ?? self::DEFAULT_MINUTES);
 
-        return max(0, min(self::MAX_MINUTES, $minutes));
+        return max(0, $minutes);
     }
 
     public function scheduledAt(CleaningSession $session): ?Carbon
