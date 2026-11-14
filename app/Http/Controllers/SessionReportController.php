@@ -271,14 +271,14 @@ class SessionReportController extends Controller
             ])->filter());
         }
 
-        $startedActivity = \\Spatie\\Activitylog\\Models\\Activity::query()
+        $startedActivity = \${ns}\${ns}\${ns}\\Activity::query()
             ->where('subject_type', CleaningSession::class)
             ->where('subject_id', $session->id)
             ->where('event', 'started')
             ->with('causer')
             ->latest('id')
             ->first();
-        $completedActivity = \\Spatie\\Activitylog\\Models\\Activity::query()
+        $completedActivity = \${ns}\${ns}\${ns}\\Activity::query()
             ->where('subject_type', CleaningSession::class)
             ->where('subject_id', $session->id)
             ->where('event', 'completed')
