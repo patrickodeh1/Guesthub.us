@@ -30,7 +30,7 @@ class PropertyInactiveTest extends TestCase
 
         $response = $this->actingAs($admin)->delete(route('properties.destroy', $property));
 
-        $response->assertRedirect(route('properties.index'));
+        $response->assertRedirect(route('admin.properties.index'));
         $response->assertSessionHas('ok', 'Property marked inactive.');
 
         $this->assertFalse($property->fresh()->is_active);
@@ -89,7 +89,7 @@ class PropertyInactiveTest extends TestCase
         $activeProperty = Property::factory()->create(['is_active' => true, 'name' => 'Active House', 'owner_id' => $this->createUser()->id]);
         $inactiveProperty = Property::factory()->create(['is_active' => false, 'name' => 'Inactive House', 'owner_id' => $this->createUser()->id]);
 
-        $response = $this->actingAs($admin)->get(route('admin.properties.index'));
+        $response = $this->actingAs($admin)->get(route('admin.properties.index', ['show_inactive' => 1]));
 
         $response->assertSee('Active House');
         $response->assertSee('Inactive House');
