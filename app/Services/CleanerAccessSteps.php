@@ -156,6 +156,7 @@ class CleanerAccessSteps
 
         $atStart = [];
         $atEnd = [];
+        $lockboxEntry = null;
         $after = [];
         $lockboxAdded = false;
         foreach ($tasks as $t) {
@@ -193,7 +194,9 @@ class CleanerAccessSteps
                 $entry['photo_video'] = $t->type === 'verify_video';
                 $entry['photo_done'] = in_array((int) $t->id, $doneIds, true);
             }
-            if ($t->type === 'lockbox' || $isExit) {
+            if ($t->type === 'lockbox') {
+                $lockboxEntry = $entry;
+            } elseif ($isExit) {
                 $atEnd[] = $entry;
             } elseif ($afterId > 0 && in_array($afterId, $visibleIds, true)) {
                 $after[$afterId][] = $entry;
@@ -211,7 +214,9 @@ class CleanerAccessSteps
                 $out[] = $e;
             }
         }
-        return array_merge($out, $atEnd);
+        // The lockbox code change must be the final exit action, regardless of
+        // the task's configured sort order or other checkout-step placement.
+        return array_merge($out, $atEnd, $lockboxEntry ? [$lockboxEntry] : []);
     }
 
     /** The assigned cleaner sees only "show before GPS" steps until the session is started at the property. */
