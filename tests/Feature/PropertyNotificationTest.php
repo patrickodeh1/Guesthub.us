@@ -10,7 +10,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Services\CleaningSmsNotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -131,14 +131,20 @@ class PropertyNotificationTest extends TestCase
             'property_id' => $this->property->id,
         ]);
 
-        // Spy on Log
-        Log::shouldReceive('channel')->with('stack')->andReturnSelf();
-        Log::shouldReceive('info')->once()->withArgs(function($msg) {
-            return str_contains($msg, 'Cleaning has started');
-        });
+        config([
+            'services.sms.enabled' => true,
+            'services.telnyx.api_key' => 'test-api-key',
+            'services.telnyx.from_number' => '+15555550100',
+        ]);
+        Http::fake([
+            'https://api.telnyx.com/v2/messages' => Http::response(['data' => ['id' => 'test-message']], 200),
+        ]);
 
         CleaningSmsNotificationService::sendCleaningStarted($session);
 
+        Http::assertSent(fn ($request) => $request['text'] !== ''
+            && str_contains($request['text'], 'Cleaning has started')
+            && $request['to'] === '+11234567890');
         $this->assertDatabaseHas('notification_logs', [
             'property_id' => $this->property->id,
             'cleaning_session_id' => $session->id,

@@ -561,7 +561,11 @@ class SessionController extends Controller
             if ($session->scheduled_date && $session->status === 'pending') {
                 $scheduledDateTime = \Carbon\Carbon::parse($session->scheduled_date->toDateString(), $propertyTz);
                 if ($session->scheduled_time) {
-                    $time = \Carbon\Carbon::parse($session->scheduled_time, $propertyTz);
+                    // The model casts scheduled_time as a datetime, so the raw database
+                    // value may include a date (Y-m-d H:i:s), not just H:i:s.
+                    // Parse either representation and copy only its clock time.
+                    $rawScheduledTime = (string) $session->getRawOriginal('scheduled_time');
+                    $time = \Carbon\Carbon::parse($rawScheduledTime, $propertyTz);
                     $scheduledDateTime->setTime($time->hour, $time->minute, $time->second);
                 } else {
                     $scheduledDateTime->startOfDay();
@@ -1071,7 +1075,7 @@ class SessionController extends Controller
             && ! auth()->user()->hasRole('admin')) {
             $tz = $session->property?->timezone ?: config('app.display_timezone');
             $scheduled = \Carbon\Carbon::parse(
-                $session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'),
+                $session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5),
                 $tz
             );
             $nowLocal = now($tz);

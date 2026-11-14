@@ -9,7 +9,7 @@
         $isRequest = $listing->booking_mode === 'request';
         $photo = $listing->photos->first();
         $photoUrl = $photo?->url ?? ($photo?->path ? asset('storage/'.$photo->path) : null);
-        $defaultPaymentMethod = old('payment_method', $canCard ? 'card' : 'manual');
+        $defaultPaymentMethod = old('payment_method', request('payment_method', $canCard ? 'card' : 'manual'));
         $policyText = filled($listing->cancellation_policy_text)
             ? $listing->cancellation_policy_text
             : null;
@@ -155,7 +155,9 @@
                     <div class="co-rows">
                         <div class="co-row"><span>Dates</span><strong id="sum-dates">Select your dates</strong></div>
                         <div class="co-row"><span>Guests</span><strong id="sum-guests">1 guest</strong></div>
-                        <div class="co-row"><span>Total</span><strong>Shown on the next step</strong></div>
+                        <div class="co-row"><span>Total</span><strong id="sum-total">Enter dates for a total</strong></div>
+                        <div id="quote-lines" class="grid gap-2 border-t border-slate-200 pt-3 text-sm" aria-live="polite"></div>
+                        <p id="quote-status" class="text-xs text-slate-500" role="status">Your stay total will update when you choose dates.</p>
                     </div>
 
                     <div class="co-policy">
@@ -175,7 +177,15 @@
             const guests = document.getElementById('guests');
             const err = document.getElementById('date-error');
             const hostId = document.getElementById('host-payment-method-id');
+            const quoteLines = document.getElementById('quote-lines');
+            const quoteTotal = document.getElementById('sum-total');
+            const quoteStatus = document.getElementById('quote-status');
+            const submitButton = document.getElementById('co-submit');
+            let quoteController = null;
+            let quoteSequence = 0;
+            let quoteValid = false;
             const fmt = (v) => v ? new Date(v + 'T00:00:00').toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : null;
+            const money = new Intl.NumberFormat(undefined, {style: 'currency', currency: 'USD'});
 
             function setHostMethod() {
                 const sel = document.querySelector('input[name="payment_method"]:checked');
@@ -199,11 +209,73 @@
                 const n = parseInt(guests.value || '1', 10);
                 document.getElementById('sum-guests').textContent = n + (n === 1 ? ' guest' : ' guests');
                 err.textContent = '';
+                updateQuote();
+            }
+            async function updateQuote() {
+                const sequence = ++quoteSequence;
+                quoteValid = false;
+                submitButton.disabled = true;
+                if (quoteController) quoteController.abort();
+                quoteController = null;
+                quoteLines.replaceChildren();
+                if (!ci.value || !co.value || co.value <= ci.value) {
+                    quoteTotal.textContent = 'Select valid dates';
+                    quoteStatus.textContent = 'Your stay total will update when you choose dates.';
+                    return;
+                }
+                const payment = document.querySelector('input[name="payment_method"]:checked')?.value || 'card';
+                const query = new URLSearchParams({
+                    check_in: ci.value,
+                    check_out: co.value,
+                    guests: guests.value || '1',
+                    payment_method: payment
+                });
+                quoteController = new AbortController();
+                quoteStatus.textContent = 'Calculating your stay…';
+                try {
+                    const response = await fetch(@json($quoteUrl) + '?' + query.toString(), {
+                        headers: {'Accept': 'application/json'},
+                        signal: quoteController.signal
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (sequence !== quoteSequence) return;
+                    if (!response.ok) {
+                        quoteTotal.textContent = 'Not available';
+                        quoteStatus.textContent = data.message || Object.values(data.errors || {}).flat()[0] || 'These dates do not meet the booking requirements.';
+                        return;
+                    }
+                    data.line_items.forEach((item) => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-start justify-between gap-3 text-slate-600';
+                        const label = document.createElement('span');
+                        label.textContent = item.label;
+                        const amount = document.createElement('strong');
+                        amount.className = 'shrink-0 font-medium text-slate-900';
+                        amount.textContent = money.format(item.amount_cents / 100);
+                        row.append(label, amount);
+                        quoteLines.append(row);
+                    });
+                    quoteTotal.textContent = money.format(data.total_cents / 100);
+                    quoteStatus.textContent = data.nights + (data.nights === 1 ? ' night' : ' nights') + ' · Final availability is checked again when you submit.';
+                    quoteValid = true;
+                    submitButton.disabled = false;
+                } catch (error) {
+                    if (error.name !== 'AbortError' && sequence === quoteSequence) {
+                        quoteTotal.textContent = 'Unable to calculate';
+                        quoteStatus.textContent = 'Please try again in a moment.';
+                    }
+                }
             }
             [ci, co, guests].forEach((el) => el.addEventListener('input', refresh));
+            document.querySelectorAll('input[name="payment_method"]').forEach((el) => el.addEventListener('change', updateQuote));
             refresh();
 
             form.addEventListener('submit', (e) => {
+                if (!quoteValid) {
+                    e.preventDefault();
+                    err.textContent = 'Wait for the stay total to finish calculating before continuing.';
+                    return;
+                }
                 if (ci.value && co.value && co.value <= ci.value) {
                     e.preventDefault();
                     err.textContent = 'Check-out must be after check-in.';

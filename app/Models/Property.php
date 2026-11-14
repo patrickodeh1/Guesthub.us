@@ -224,6 +224,16 @@ class Property extends Model
         return $this->hasMany(Booking::class);
     }
 
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(InventoryItem::class);
+    }
+
+    public function inventoryLocations(): HasMany
+    {
+        return $this->hasMany(InventoryLocation::class);
+    }
+
     public function availabilities(): HasMany
     {
         return $this->hasMany(PropertyAvailability::class);

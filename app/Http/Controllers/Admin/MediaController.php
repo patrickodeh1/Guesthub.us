@@ -76,7 +76,7 @@ class MediaController extends Controller
             abort_unless($this->folders()->whereKey($data['parent_id'])->exists(), 403, 'You do not have access to that folder.');
         }
 
-        MediaFolder::create($data);
+        MediaFolder::create($data + ['created_by' => auth()->id()]);
 
         return back()->with('success', 'Folder created.');
     }
@@ -105,6 +105,7 @@ class MediaController extends Controller
         $path = $request->file('image')->store('media-library', 'public');
 
         $file = MediaFile::create([
+            'created_by' => auth()->id(),
             'media_folder_id' => $data['media_folder_id'] ?? null,
             'path' => $path,
             'original_name' => $request->file('image')->getClientOriginalName(),

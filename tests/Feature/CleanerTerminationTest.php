@@ -202,16 +202,24 @@ class CleanerTerminationTest extends TestCase
         $admin = $this->createUser();
         $admin->assignRole('admin');
 
+        $property = Property::factory()->create(['owner_id' => $admin->id]);
         $activeCleaner = $this->createUser(['name' => 'Active Cleaner', 'is_active' => true]);
         $activeCleaner->assignRole('housekeeper');
-
-        $deactivatedCleaner = $this->createUser(['name' => 'Terminated Cleaner', 'is_active' => false]);
+        $deactivatedCleaner = $this->createUser(['name' => 'Terminated Cleaner', 'is_active' => false, 'status' => 'inactive']);
         $deactivatedCleaner->assignRole('housekeeper');
 
-        $response = $this->actingAs($admin)->get(route('manage.sessions.create'));
+        \Illuminate\Support\Facades\DB::table('property_user')->insert([
+            ['property_id' => $property->id, 'user_id' => $activeCleaner->id],
+            ['property_id' => $property->id, 'user_id' => $deactivatedCleaner->id],
+        ]);
 
-        $response->assertSee('Active Cleaner');
-        $response->assertDontSee('Terminated Cleaner');
+        $response = $this->actingAs($admin)->get(route('admin.cleaning-jobs.assign-options', [
+            'property_id' => $property->id,
+        ]));
+
+        $response->assertOk()
+            ->assertJsonFragment(['name' => 'Active Cleaner'])
+            ->assertJsonMissing(['name' => 'Terminated Cleaner']);
     }
 
     public function test_historical_sessions_and_reports_preserved_when_cleaner_deactivated()

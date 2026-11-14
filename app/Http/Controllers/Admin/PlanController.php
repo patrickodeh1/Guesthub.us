@@ -7,11 +7,55 @@ use App\Models\Feature;
 use App\Models\HostPackage;
 use App\Models\Package;
 use App\Services\Billing\BillingService;
+use App\Services\Billing\BillingQuantityResolver;
+use App\Models\User;
 use App\Services\Billing\PlanPricing;
 use Illuminate\Http\Request;
 
 class PlanController extends Controller
 {
+
+    /**
+     * Accept selected feature keys only. Billable quantities are calculated
+     * server-side from active properties and registered smart-lock devices.
+     *
+     * @param array<int,string> $excluded
+     * @return array<string,int>
+     */
+    private function ensureRecurringLine(Package $package, array $quote): array
+    {
+        if ($quote['lines'] === [] && (int) $package->price_cents <= 0) {
+            $quote['lines'][] = [
+                'type' => 'package',
+                'key' => $package->key,
+                'name' => $package->name,
+                'unit_cents' => 0,
+                'quantity' => 1,
+            ];
+        }
+
+        return $quote;
+    }
+
+    private function selectedAddons(Request $request, User $user, array $excluded = []): array
+    {
+        $request->validate([
+            'addons' => ['nullable', 'array'],
+            'addons.*' => ['array'],
+            'addons.*.enabled' => ['nullable', 'boolean'],
+            'addons.*.quantity' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        ]);
+
+        $selected = [];
+        foreach ((array) $request->input('addons', []) as $key => $row) {
+            if (! empty($row['enabled']) && ! in_array($key, $excluded, true)) {
+                $selected[$key] = 1;
+            }
+        }
+
+        return app(BillingQuantityResolver::class)->resolve($user, $selected);
+    }
+
     public function checkout(Request $request, BillingService $billing)
     {
         $user = $request->user();
@@ -28,12 +72,7 @@ class PlanController extends Controller
             return back()->withErrors(['package' => 'You already have a subscription. Use Manage billing to change or cancel it.']);
         }
 
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user());
         $quote = PlanPricing::quote($package, $addons);
 
         if ($quote['total_cents'] <= 0) {
@@ -78,12 +117,7 @@ class PlanController extends Controller
         if ($existing && $existing->stripe_subscription_id && in_array($existing->status, ['active', 'trialing', 'past_due'], true)) {
             return ['error' => 'You already have a subscription. Use Manage billing to change or cancel it.'];
         }
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
+        $addons = $this->selectedAddons($request, $request->user());
         $quote = PlanPricing::quote($package, $addons);
         if ($quote['total_cents'] <= 0) {
             return ['error' => 'Nothing to charge for this selection.'];
@@ -133,19 +167,14 @@ class PlanController extends Controller
             return back()->withErrors(['package' => 'There is no active subscription to change.']);
         }
 
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
-        $quote = PlanPricing::quote($hp->package, $addons);
-        if ($quote['total_cents'] <= 0) {
+        $addons = $this->selectedAddons($request, $request->user(), $hp->package->allFeatureKeys());
+        $quote = $this->ensureRecurringLine($hp->package, PlanPricing::quote($hp->package, $addons));
+        if ($quote['lines'] === []) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
         }
 
         try {
-            $sub = $billing->changeAddons($hp, $quote);
+            $sub = $billing->changeAddons($hp, $quote, $hp->package, $addons);
             if (! empty($sub->pending_update)) {
                 return back()->withErrors(['package' => 'Your payment did not go through, so your add-ons were not changed. Update your card under Manage billing and try again.']);
             }
@@ -175,19 +204,14 @@ class PlanController extends Controller
         }
 
         $included = $package->allFeatureKeys();
-        $addons = [];
-        foreach ((array) $request->input('addons', []) as $key => $row) {
-            if (! empty($row['enabled']) && ! in_array($key, $included, true)) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
-            }
-        }
-        $quote = PlanPricing::quote($package, $addons);
-        if ($quote['total_cents'] <= 0) {
+        $addons = $this->selectedAddons($request, $request->user(), $included);
+        $quote = $this->ensureRecurringLine($package, PlanPricing::quote($package, $addons));
+        if ($quote['lines'] === []) {
             return back()->withErrors(['package' => 'Nothing to bill for this selection. Use Manage billing to cancel.']);
         }
 
         try {
-            $sub = $billing->changeAddons($hp, $quote, $package);
+            $sub = $billing->changeAddons($hp, $quote, $package, $addons);
             if (! empty($sub->pending_update)) {
                 return back()->withErrors(['package' => 'Your payment did not go through, so your plan was not changed. Update your card under Manage billing and try again.']);
             }
@@ -230,13 +254,16 @@ class PlanController extends Controller
         $addons = ($request->has('package') || ! $current || $current->billing_source !== 'stripe')
             ? []
             : \Illuminate\Support\Facades\DB::table('host_features')
-                ->where('user_id', $request->user()->id)->where('source', 'stripe_addon')->where('enabled', 1)
+                ->where('user_id', $request->user()->id)->where('source', 'stripe_addon')
                 ->pluck('quantity', 'feature_key')->map(fn ($q) => (int) $q)->all();
         foreach ((array) $request->query('addons', []) as $key => $row) {
             if (! empty($row['enabled'])) {
-                $addons[$key] = max(1, (int) ($row['quantity'] ?? 1));
+                $addons[$key] = 1;
             }
         }
+        $quantityResolver = app(BillingQuantityResolver::class);
+        $billingQuantities = $quantityResolver->counts($request->user());
+        $addons = $quantityResolver->resolve($request->user(), $addons);
 
         return view('admin.plan.index', [
             'current' => $current,
@@ -244,6 +271,7 @@ class PlanController extends Controller
             'addonFeatures' => $addonFeatures,
             'selected' => $selected,
             'addons' => $addons,
+            'billingQuantities' => $billingQuantities,
             'quote' => PlanPricing::quote($selected, $addons),
             'keysByPackage' => $packages->mapWithKeys(fn ($p) => [$p->id => $p->allFeatureKeys()]),
             'compareFeatures' => Feature::query()->whereIn('key', $packages->flatMap(fn ($p) => $p->allFeatureKeys())->unique()->values()->all())->orderBy('name')->get(),

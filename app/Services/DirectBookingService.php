@@ -393,7 +393,9 @@ class DirectBookingService
     {
         $owner = $booking->property?->owner;
         $hostMsg = \App\Services\DirectBookingMessages::render($requestBooking ? 'host_new_request' : 'host_new_booking', $booking);
-        if ($owner?->email && $hostMsg) {
+        // Instant card bookings notify the host after payment succeeds, not
+        // once for the unpaid hold and again for the completed payment.
+        if (($requestBooking || $booking->payment_method === 'manual') && $owner?->email && $hostMsg) {
             EmailNotificationService::sendDirectBooking(
                 $booking,
                 $owner->email,

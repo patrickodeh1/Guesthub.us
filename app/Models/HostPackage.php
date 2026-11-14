@@ -32,6 +32,11 @@ class HostPackage extends Model
         return $this->belongsTo(Package::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     /** Active, in a running trial, or past due but still inside the grace period. */
     public function isGranting(): bool
     {

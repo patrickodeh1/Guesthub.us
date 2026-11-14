@@ -303,6 +303,7 @@ class LeaseApplicationTest extends TestCase
             'screening_consent' => '1',
             'signature' => 'Jordan Applicant',
             'payment_method' => 'card',
+            'fee_policy_ack' => '1',
         ])->assertRedirect(route('public.lease-application.fee', [$application->id, $application->token]));
 
         $application->refresh();

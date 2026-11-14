@@ -93,7 +93,7 @@
             <div class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24">
                 <h1 class="guest-status-title">Session not available yet</h1>
                 <p class="max-w-md text-sm leading-6 text-slate-600">
-                    This cleaning is not yet available. Access will be granted at the scheduled start time
+                    You cannot start yet. Access will be granted at the scheduled start time
                     ({{ $session->scheduled_date->format('F j, Y') }}@if($session->scheduled_time) at {{ \Carbon\Carbon::parse($session->scheduled_time)->format('g:i A') }}@endif).
                 </p>
                 @php
@@ -103,6 +103,18 @@
             </div>
         </div>
     @else
+
+@if($session->status === 'in_progress' && ! request()->has('edit_report'))
+    <div class="mx-4 mt-4 rounded-xl border border-gray-200 bg-white p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h3 class="font-semibold text-gray-900">Guest supplies</h3>
+                <p class="mt-1 text-sm text-gray-500">Record what is already in each guest area and what you replenish from the supply closet.</p>
+            </div>
+            <a href="{{ route('sessions.inventory', $session) }}" class="btn-secondary">Record inventory</a>
+        </div>
+    </div>
+@endif
 
 @php
     $queryParams = [];
@@ -260,8 +272,9 @@
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
                 && auth()->check() && (int) $session->housekeeper_id === (int) auth()->id()
                 && ! auth()->user()->hasRole('admin')) {
-                $ghTz = $session->property?->timezone ?: config('app.display_timezone');
-                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $ghTz);
+                // Match the controller's schedule gate timezone fallback.
+                $ghTz = $session->property?->timezone ?: config('app.timezone');
+                $ghAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.substr((string) $session->getRawOriginal('scheduled_time'), 0, 5), $ghTz);
                 $ghNow = now($ghTz);
                 $ghOpens = $ghAt->copy()->subHours(2);
                 $ghCloses = $ghAt->copy()->addHours(2);

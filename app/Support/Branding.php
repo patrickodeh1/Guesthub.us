@@ -13,7 +13,7 @@ class Branding
 
     public static function themeColor(): string
     {
-        return self::DEFAULT_THEME_COLOR;
+        return self::validHex(Setting::getValue('theme_color', Setting::getValue('brand_color', self::DEFAULT_THEME_COLOR)), self::DEFAULT_THEME_COLOR);
     }
 
     public static function buttonColor(string $variant = 'primary'): string
@@ -27,7 +27,7 @@ class Branding
             default => self::themeColor(),
         };
 
-        return $fallback;
+        return self::validHex(Setting::getValue('button_'.$variant.'_color', $fallback), $fallback);
     }
 
     public static function contrastText(string $hex): string

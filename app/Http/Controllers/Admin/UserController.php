@@ -25,7 +25,9 @@ class UserController extends Controller
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
             ->where('approval_status', 'approved')
             ->when($status !== 'all', function ($q) use ($status) {
-                $q->where('is_active', $status !== 'inactive');
+                // is_active is the canonical account-state flag used by the
+                // model, access checks, and user list status badges.
+                $q->where('is_active', $status === 'active');
             })
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -61,11 +63,12 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email', '')))]);
         $this->normalizePhoneInput($request);
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'host_name' => ['nullable', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email'    => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role'     => ['required', Rule::in(User::ROLES)],
             'phone_number' => ['nullable', 'string', 'regex:/^\+[1-9]\d{7,14}$/'],
@@ -89,7 +92,7 @@ class UserController extends Controller
             if ($terminatedDupe) {
                 $field = ($dupEmail !== '' && $terminatedDupe->email === $dupEmail) ? 'email' : 'phone_number';
                 $msg = ! $terminatedDupe->is_active
-                    ? 'This person already exists but has been terminated. Reactivate the existing account instead of creating a new one.'
+                    ? ($terminatedDupe->hasRole('housekeeper') ? 'This cleaner already exists but has been terminated. Reactivate the existing account instead of creating a new one.' : 'This person already exists but has been terminated. Reactivate the existing account instead of creating a new one.')
                     : ($field === 'email' ? 'The email has already been taken.' : 'The phone number has already been taken.');
                 return back()->withInput()->withErrors([$field => $msg]);
             }
@@ -347,6 +350,33 @@ class UserController extends Controller
         return array_values(array_intersect(array_map('intval', $ids), $this->visiblePropertyIds()));
     }
 
+    public function deactivateCleaner(Request $request, User $user)
+    {
+        abort_unless($request->user()->hasRole('admin'), 403);
+        abort_if($user->isAdmin(), 403, 'Administrator accounts cannot be deactivated.');
+        abort_unless($user->hasRole('housekeeper'), 404);
+        abort_if(! $user->is_active, 422, 'This cleaner is already inactive.');
+
+        $reason = trim((string) $request->input('termination_reason', ''));
+        $user->deactivate($request->user(), $reason ?: 'Deactivated by an administrator.');
+        $user->forceFill(['status' => 'inactive'])->save();
+
+        return back()->with('success', 'Cleaner account deactivated successfully.');
+    }
+
+    public function reactivateCleaner(Request $request, User $user)
+    {
+        abort_unless($request->user()->hasRole('admin'), 403);
+        abort_if($user->isAdmin(), 403, 'Administrator accounts cannot be reactivated through cleaner controls.');
+        abort_unless($user->hasRole('housekeeper'), 404);
+        abort_if($user->is_active, 422, 'This cleaner is already active.');
+
+        $user->reactivate();
+        $user->forceFill(['status' => 'active'])->save();
+
+        return back()->with('success', 'Cleaner account reactivated successfully.');
+    }
+
     public function toggleStatus(User $user)
     {
         /** @var User $authUser */
@@ -356,8 +386,8 @@ class UserController extends Controller
             return back()->with('error', 'You cannot change your own account status.');
         }
 
-        if ($user->isAdmin() && ! $authUser->isAdmin()) {
-            abort(403, 'Only an admin can change another admin account status.');
+        if ($user->isAdmin()) {
+            abort(403, 'Administrator accounts cannot be deactivated from the team list.');
         }
 
         $this->authorizeTarget($user);

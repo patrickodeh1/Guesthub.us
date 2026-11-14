@@ -16,6 +16,7 @@ Route::middleware('web')->group(function (): void {
     Route::get('/stays/{city}', [PublicListingController::class, 'city'])
         ->where('city', '[A-Za-z0-9-]+')
         ->name('public.stays.city');
+    Route::get('/embed/stay/{listing_slug}', [PublicListingController::class, 'embed'])->middleware('throttle:60,1')->name('public.listing.embed');
     Route::get('/stay/{listing_slug}/quote', [PublicListingController::class, 'quote'])
         ->middleware('throttle:30,1')
         ->name('public.listing.quote');
@@ -33,6 +34,8 @@ Route::middleware('web')->group(function (): void {
         ->middleware('throttle:30,1')->name('public.checkout.receipt');
     Route::get('/stay/checkout/{booking_id}/{token}', [DirectBookingController::class, 'pay'])
         ->name('public.checkout.pay');
+    Route::post('/stay/checkout/{booking_id}/{token}/cancel', [DirectBookingController::class, 'cancel'])
+        ->middleware('throttle:5,1')->name('public.checkout.cancel');
     Route::post('/stay/checkout/{booking_id}/{token}/confirm', [DirectBookingController::class, 'confirm'])
         ->middleware('throttle:20,1')
         ->name('public.checkout.confirm');

@@ -22,8 +22,8 @@ Statuses: todo, doing, done (please verify), needs_fix, accepted. Only James set
 
 | Tracker id | Task | Status | Notes |
 |---|---|---|---|
-| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | James: packages "should be next", inventory "now if not too much" |
-| 56 | Inventory categories and fields | todo | Not started. Categories: high value (serial, photo), cleaning supply, guest supply, other. Cleaner records closet take and room count, partial amounts. Usage report per stay and per cleaner |
+| 58 | Tiered packages, API key linking, inventory, reorder alerts | doing | Package/Stripe foundation and host Plan page exist; property/device quantities are server-derived on subscription changes and automatically reconciled hourly. Inventory catalogue, cleaner session workflow and scheduled low-stock alerts are built on the feature branch. Published listings also expose an embeddable booking widget for a host's own website. PriceLabs/Wheelhouse already support host API keys; Channex currently uses the platform key; its booking importer preserves OTA names such as Booking.com and VRBO. Remaining: Stripe E2E, credential ownership decision, channel-account certification in Channex, and local inventory/billing verification |
+| 56 | Inventory categories and fields | doing | Built on `feature/complete-client-scope`: property-scoped catalogue, item editing/photos, dedicated Tool category, locations, supplier and purchase history, stock balances, receiving/transfers, fractional cleaner counts in active sessions, guest-use estimates, waste/theft, low-stock view, per-stay/per-cleaner report, scheduled owner email alerts with recovery/re-alert logic, purchase orders and partial receiving. Admin UI redesigned into separate Overview, Items, Add item, Stock, Purchase orders and Reports sections; cleaner inventory is a mobile-first per-item restock checklist with plain-language guidance. Item forms support camera scanning of existing product barcodes on browsers implementing BarcodeDetector; barcode values remain text. No generated/printable internal asset barcode labels yet. Automated tests are added; local migration/test run, PHP/view compilation and UI verification remain |
 | 7 | Guest-cleaning link on date change, nav redesign | todo | May already be done. Verify in the app |
 | 21 | Package room pickup shows for Chicago when unchecked | todo | Verify. Same bug in 71 |
 | 71 | Lockbox photo steps, auto-advance, step order bugs | todo | Verify |
@@ -38,24 +38,27 @@ Done, in order:
 4. Admin Host billing `/admin/host-packages`: pick package, status, trial end, add-on features with quantity, monthly total preview. Admin only.
 5. Billing columns on `host_packages` (migration `..._180000_add_billing_to_host_packages`): billing_source (admin or stripe), stripe ids, period end, cancel flag, past_due_since. Grace period for past due: 7 days (`HostPackage::PAST_DUE_GRACE_DAYS`).
 
-Next, in order:
-1. Read `app/Http/Controllers/StripeWebhookController.php` and `app/Models/User.php` before touching billing. Do not break guest payments on that webhook.
-2. Host Plan page (owner and company roles only, not manager): choose package, start free trial, add-ons with quantity. Stripe Checkout in subscription mode with inline recurring prices built from the admin prices. Features turn on only after the webhook confirms trialing or active.
-3. Webhook sync for subscription events on the platform webhook (trial will end, invoice paid, payment failed). Rows with billing_source = admin are never changed by webhooks.
-4. Stripe billing portal for card update and cancel. Past due handling uses the 7-day grace.
-5. Test in Stripe test mode with the Stripe CLI forwarding webhooks. Keys are `sk_test_` now.
-6. Mark 80 and 58 done only after one trial start and one automatic charge work end to end.
+Implemented since the original package foundation:
+- Host Plan page for owner/company roles: package comparison, trial selection, add-on quantities, monthly quote, subscription management and billing portal.
+- `BillingService`: Stripe Checkout subscription flow, SetupIntent/subscription flow, add-on/plan updates and billing portal.
+- `SubscriptionSync`: subscription-created/updated/deleted handling, Stripe-managed package/add-on sync, and protection for admin-managed package rows.
+- Platform Stripe webhook dispatches subscription events while retaining existing guest PaymentIntent finalization.
+- Past-due grace period remains 7 days.
 
-Known issue: the `down()` in the billing migration only drops two indexes and leaves the columns. Fix before any production rollback.
+Still to verify:
+1. Run the plan and inventory tests locally.
+2. Verify Stripe test-mode trial start, webhook activation, automatic trial-end charge, failed-payment grace, card update and cancellation with Stripe CLI/test clock.
+3. Verify resource-based add-on quantities in Stripe test mode. Host selections derive per-property quantity from active visible properties and per-device quantity from registered connected smart locks (`BillingQuantityResolver`). The scheduled `billing:sync-resource-quantities` command reconciles existing Stripe subscriptions hourly with no mid-cycle proration; zero-quantity selections are retained for later reactivation.
+4. Mark 80 and 58 done only after the end-to-end billing checks and James's acceptance.
 
 ## Other open items (small)
 
 - Cleaning session status rejects `cancelled` (needs the column type: `show columns from cleaning_sessions where Field='status'`).
-- `pms:sync` fails in the Channex provider (need the top of the error).
+- `pms:sync` still needs a live-config verification run. Added `ChannexProviderTest` for booking revision normalization, OTA labels and availability push; tests do not replace a real Channex credential/account check.
 - Application fee refund button for hosts is not built.
 - Declined lease ID: applicant is not emailed and cannot re-upload.
 - Lease next step after approval: waiting on James (rental contract vs convert to booking).
-- PriceLabs, Wheelhouse, iCal import untested. Test rate precedence by writing a rate row in tinker.
+- PriceLabs, Wheelhouse and iCal import still need live provider/configuration verification. Host PriceLabs and Wheelhouse API keys are encrypted on the user model; Channex continues to use the platform credential pending James's ownership decision. Test rate precedence by writing a rate row in tinker.
 - Refund email and host-paid email: confirm real values appear (not literal braces).
 - Full test suite had 48 unattributed failures before this work. Run `php artisan test`.
 - Remove dead code (old lease `storeId`/`retryId`, `updateDirect`, screening route, unused `PhotoIdDeclinedMail`, dead `cancel()` in `DirectBookingController`) and the six `-copy-` test listings.
@@ -63,7 +66,25 @@ Known issue: the `down()` in the billing migration only drops two indexes and le
 
 ## Log
 
+- 2026-11-13: Built the inventory foundation on `feature/complete-client-scope`: property-scoped item catalogue, locations and balances, receiving, transfers, usage, adjustments, waste/theft, photos, supplier/purchase history, cleaner session counts, fractional quantities, guest-use estimates and reporting. Added scheduled low-stock owner email alerts that send once per low-stock episode and re-arm after recovery. Added stock-service, cleaner session, low-stock alert and purchase-order tests; local migrations, tests and UI checks remain outstanding.
+- 2026-11-13: Redesigned inventory admin into separate task-focused sections (Overview, Items, Add item, Stock, Purchase orders, Reports), with searchable item cards and clearer stock actions. Reworked cleaner inventory into mobile-first item cards with step-by-step count/replenishment explanations. Added a dedicated Tool category and progressive camera barcode scanning for existing product codes where the browser supports BarcodeDetector. Added a cleaner screen rendering test. Still requires local Blade/PHP lint, test run and visual verification; generated/printable internal asset barcode labels are not implemented.
+- 2026-11-13: Added a public embeddable direct-booking widget with live quotes and a copyable iframe snippet in host listing settings; guests continue to GuestHub's top-level checkout for their details and payment. Channex import tests cover OTA names and availability push payloads.
+- 2026-11-13: Verified the host Plan, Stripe BillingService, SubscriptionSync and billing portal implementation exist in the feature branch. Stripe test-mode end-to-end trial and automatic charge remain unverified.
+
 - 2026-11-11: direct booking, lease, refund split, SEO fixes, notification templates (guest_refund_issued, host_card_paid), robots fix, packages data model and gate, admin Packages and Host billing pages, billing columns.
+
+## Current feature-branch handoff (2026-11-13)
+
+Work is being committed directly to remote branch `feature/complete-client-scope`; the user is continuing independent fixes on `main`. This branch is 0 commits behind main at the last comparison. Do not merge it into main until the user asks.
+
+- Inventory: property-scoped catalogue, item editing/photos, stock locations/balances, receiving/transfers/consumption/adjustments/waste/theft, supplier and purchase history, purchase orders with partial receiving, one-click reorder from low-stock rows, cleaner fractional counts in active cleaning sessions, estimated guest usage and reporting. Scheduled owner low-stock emails suppress duplicates and re-arm after stock recovery.
+- Billing: server-derived property and connected-lock quantities, with hourly Stripe subscription reconciliation and zero-quantity add-on selection retention.
+- Booking: direct checkout shows live quote breakdown; published listings expose an embeddable booking widget for external websites; Channex OTA import preserves Booking.com/VRBO source labels.
+- Tests added: `InventoryStockServiceTest`, `InventorySessionWorkflowTest`, `InventoryLowStockAlertTest`, `InventoryPurchaseOrderTest`, `BillingQuantityResolverTest`, `SyncBillingResourceQuantitiesTest`, `SubscriptionSyncTest`, `ChannexProviderTest`, and expanded `DirectBookingCheckoutTest`.
+- No Docker migrations, PHP lint, PHPUnit run, Stripe test-mode run, or live OTA/provider verification has been observed. Do not mark related tracker tasks done yet.
+- Remaining code/design work: confirm James's credential ownership preference before changing Channex from GuestHub-managed to host-managed; live supplier ordering/payment automation beyond purchase-order tracking; live Channex/PriceLabs/Wheelhouse certification; full Stripe E2E verification.
+
+The following 2026-11-11 notes are historical and superseded where they conflict with the current branch handoff.
 
 ## Session handoff (2026-11-11, end of session)
 

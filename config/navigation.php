@@ -255,6 +255,7 @@ return [
                         ['label' => 'Packages', 'routes' => [['name' => 'admin.packages.index', 'roles' => ['admin']]], 'active' => ['admin.packages.*']],
                         ['label' => 'Direct booking settings', 'routes' => [['name' => 'admin.features.index', 'roles' => ['admin']]], 'active' => ['admin.features.*']],
                         ['label' => 'Host billing', 'routes' => [['name' => 'admin.host-packages.index', 'roles' => ['admin']]], 'active' => ['admin.host-packages.*']],
+                        ['label' => 'Inventory', 'routes' => [['name' => 'admin.inventory.index', 'roles' => $staff]], 'active' => ['admin.inventory.*']],
                         ['label' => 'Guest Notices', 'routes' => [['name' => 'admin.notices.index', 'roles' => ['admin', 'manager']]], 'active' => ['admin.notices.*']],
                         ['label' => 'Cleaning Rooms', 'routes' => [['name' => 'rooms.index', 'roles' => $staff]], 'active' => ['rooms.*']],
                         ['label' => 'Cleaning Tasks', 'routes' => [['name' => 'tasks.index', 'roles' => $staff]], 'active' => ['tasks.*']],

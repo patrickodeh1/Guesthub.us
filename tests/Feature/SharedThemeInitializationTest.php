@@ -15,20 +15,20 @@ class SharedThemeInitializationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_login_renders_the_shared_theme_initializer(): void
+    public function test_login_uses_the_shared_light_theme_initializer(): void
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('data-theme-init', false)
-            ->assertSee('root.style.colorScheme', false);
+            ->assertSee('color-scheme', false)
+            ->assertSee("root.classList.remove('dark')", false);
     }
 
-    public function test_admin_shell_includes_a_theme_toggle(): void
+    public function test_admin_shell_keeps_the_product_light_only_without_a_theme_toggle(): void
     {
-        $this->assertStringContainsString(
-            'id="theme-toggle"',
-            File::get(resource_path('views/layouts/unified.blade.php')),
-        );
+        $layout = File::get(resource_path('views/layouts/unified.blade.php'));
+
+        $this->assertStringContainsString("layouts.partials.theme-init", $layout);
+        $this->assertStringNotContainsString('id="theme-toggle"', $layout);
     }
 
     public function test_layout_views_do_not_use_os_preference_for_the_theme(): void

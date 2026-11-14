@@ -72,7 +72,9 @@ class PayByCcGatingTest extends TestCase
         $this->configureStripe();
         $booking = Booking::factory()->create([
             'pay_by_cc' => true,
-            // no parking, no incidentals, no early check-in, no cap.
+            'additional_deposit_mode' => false,
+            'incidentals_charge' => 0,
+            // Explicitly no parking, no incidentals, no early check-in, no hold.
         ]);
 
         $response = $this->postJson(route('guest.deposit.intent', [$booking->booking_id, $booking->token]));

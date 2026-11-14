@@ -122,6 +122,36 @@ class PublicListingController extends Controller
         ]);
     }
 
+    /**
+     * Compact booking form for embedding a host's GuestHub booking flow in
+     * their own website. Payment and booking still complete on GuestHub.
+     */
+    public function embed(string $listingSlug)
+    {
+        $listing = $this->findPublicListing($listingSlug);
+        if (($listing->listing_type ?? 'both') === 'long_term') {
+            abort_unless($listing->lease_enabled, 404);
+            return redirect()->route('public.lease-application.apply', $listingSlug);
+        }
+
+        $owner = $listing->property->owner;
+        $canCard = $this->paymentMethodAvailable($listing, 'card')
+            && app(\App\Services\Payments\PaymentService::class)->isConfigured();
+        $manualMethods = FeatureGate::enabled($owner, 'manual_payments')
+            ? $owner->hostPaymentMethods->where('enabled', true)->values()
+            : collect();
+
+        abort_unless($canCard || $manualMethods->isNotEmpty(), 404);
+
+        return response()->view('public.embed', [
+            'listing' => $listing,
+            'quoteUrl' => route('public.listing.quote', $listing->listing_slug),
+            'canCard' => $canCard,
+            'manualMethods' => $manualMethods,
+            'minimumDate' => now($this->timezone($listing->property->timezone))->toDateString(),
+        ])->header('Content-Security-Policy', 'frame-ancestors *;');
+    }
+
     public function quote(Request $request, string $listingSlug, QuoteService $quotes)
     {
         $data = $request->validate([

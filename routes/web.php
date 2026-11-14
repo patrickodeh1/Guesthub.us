@@ -257,6 +257,21 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('plan/addons', [\App\Http\Controllers\Admin\PlanController::class, 'changeAddons'])->middleware('role:owner,company')->name('plan.addons');
     Route::post('plan/switch', [\App\Http\Controllers\Admin\PlanController::class, 'switchPlan'])->middleware('role:owner,company')->name('plan.switch');
 
+    // ─── Property inventory ──────────────────────────────────────────────────
+    Route::middleware('role:admin,owner,company,manager')->prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('index');
+        Route::post('items', [\App\Http\Controllers\Admin\InventoryController::class, 'storeItem'])->name('items.store');
+        Route::put('items/{item}', [\App\Http\Controllers\Admin\InventoryController::class, 'updateItem'])->name('items.update');
+        Route::post('locations', [\App\Http\Controllers\Admin\InventoryController::class, 'storeLocation'])->name('locations.store');
+        Route::post('purchase-orders', [\App\Http\Controllers\Admin\InventoryController::class, 'storePurchaseOrder'])->name('purchase-orders.store');
+        Route::post('purchase-orders/{order}/receive', [\App\Http\Controllers\Admin\InventoryController::class, 'receivePurchaseOrder'])->name('purchase-orders.receive');
+        Route::post('receive', [\App\Http\Controllers\Admin\InventoryController::class, 'receive'])->name('receive');
+        Route::post('transfer', [\App\Http\Controllers\Admin\InventoryController::class, 'transfer'])->name('transfer');
+        Route::post('consume', [\App\Http\Controllers\Admin\InventoryController::class, 'consume'])->name('consume');
+        Route::post('loss', [\App\Http\Controllers\Admin\InventoryController::class, 'loss'])->name('loss');
+        Route::post('adjust', [\App\Http\Controllers\Admin\InventoryController::class, 'adjust'])->middleware('role:admin,owner,company')->name('adjust');
+    });
+
     // ─── Guest Guide (per-property categories) ──────────────────────────────
     Route::get('guest-guide', [PropertyController::class, 'guideIndex'])->name('guest-guide.index')->middleware('role:admin,owner,company,manager');
     Route::get('properties/{property}/categories', [PropertyController::class, 'guide'])->name('guest-guide.show')->middleware(['role:admin,owner,company,manager', 'property.access']);
@@ -427,6 +442,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     // ─── Settings ─────────────────────────────────────────────────────────────
     Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit')->middleware('role:admin');
     Route::match(['put', 'post'], 'settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
+    Route::post('settings/reset-colors', [SettingsController::class, 'resetColors'])->name('settings.reset-colors')->middleware('role:admin');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit')->middleware('role:admin');
     Route::match(['put', 'post'], 'settings/legal', [SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
     Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin');
@@ -735,6 +751,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
     Route::get('/sessions', [CleaningSessionController::class, 'index'])->name('sessions.index');
     Route::get('/sessions/{session}', [CleaningSessionController::class, 'show'])->name('sessions.show');
+    Route::get('/sessions/{session}/inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'sessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory');
+    Route::post('/sessions/{session}/inventory', [\App\Http\Controllers\Admin\InventoryController::class, 'recordSessionInventory'])->middleware('role:admin,owner,company,manager,housekeeper')->name('sessions.inventory.record');
     Route::get('/sessions/{session}/training-required', [CleaningSessionController::class, 'trainingRequired'])->name('sessions.training_required');
     Route::post('/sessions/{session}/start', [CleaningSessionController::class, 'start'])->name('sessions.start');
     Route::post('/sessions/{session}/cancel-assignment', [SessionController::class, 'cancelAssignment'])->name('sessions.cancel-assignment');
@@ -800,6 +818,9 @@ Route::middleware('auth')->group(function () {
     // User Management Routes
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->middleware('role:admin,owner,company')->name('users.index');
     Route::get('/users/create', fn () => redirect()->route('admin.users.create'))->middleware('role:admin,owner,company')->name('users.create');
+    Route::post('/users/{user}/deactivate', [UserController::class, 'deactivateCleaner'])->middleware('role:admin')->name('users.deactivate');
+    Route::post('/users/{user}/reactivate', [UserController::class, 'reactivateCleaner'])->middleware('role:admin')->name('users.reactivate');
+    Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
     Route::get('/users/{user}/edit', fn ($user) => redirect()->route('admin.users.edit', $user))->middleware('role:admin,owner,company')->name('users.edit');
 
     Route::post('/users/{user}/familiarity/reset', [UserFamiliarityController::class, 'resetAll'])->middleware('role:admin,owner,company')->name('users.familiarity.reset_all');

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MediaFolder extends Model
 {
-    protected $fillable = ['property_id', 'parent_id', 'name'];
+    protected $fillable = ['property_id', 'parent_id', 'created_by', 'name'];
 
     public function property(): BelongsTo
     {

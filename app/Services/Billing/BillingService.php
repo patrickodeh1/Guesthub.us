@@ -140,7 +140,7 @@ class BillingService
     }
 
     /** @param array{lines: array, total_cents: int} $quote */
-    public function changeAddons(HostPackage $hp, array $quote, ?\App\Models\Package $package = null): \Stripe\Subscription
+    public function changeAddons(HostPackage $hp, array $quote, ?\App\Models\Package $package = null, array $addons = []): \Stripe\Subscription
     {
         $sub = $this->client()->subscriptions->retrieve($hp->stripe_subscription_id);
 
@@ -165,6 +165,13 @@ class BillingService
             if ($l['type'] === 'addon') {
                 $addonMeta[$l['key']] = (int) $l['quantity'];
             }
+        }
+
+        // Keep zero-quantity resource add-ons in metadata. If the host later
+        // adds a property or device, the scheduled reconciler can restore the
+        // paid line without asking the host to select the add-on again.
+        foreach ($addons as $key => $quantity) {
+            $addonMeta[$key] = max(0, (int) $quantity);
         }
 
         $params = [

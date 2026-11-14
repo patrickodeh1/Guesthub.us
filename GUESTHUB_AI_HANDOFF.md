@@ -1,5 +1,23 @@
 # GuestHub: AI pickup note
 
+## Current branch state (2026-11-13) — supersedes older notes below where they conflict
+
+- Active implementation branch: `feature/complete-client-scope`. Do not commit this work to `main`; the user is making independent fixes on `main`. Merge latest `main` into this branch later, resolve conflicts, test, then wait for the user's approval before merging.
+- Inventory has been added on this branch. New migrations:
+  - `2026_11_13_100000_create_property_inventory_tables.php`
+  - `2026_11_13_110000_create_inventory_session_records.php`
+  - `2026_11_13_120000_add_supplier_to_inventory_movements.php`
+  - `2026_11_13_130000_add_inventory_low_stock_alert_state.php`
+  - `2026_11_13_140000_create_inventory_purchase_orders.php`
+- Inventory includes property-scoped items, locations, balances, receiving, transfers, fractional quantities, supplier/purchase history, item photos/editing, waste/theft movements, low-stock display, cleaner session stock counts and a usage report by stay/cleaner. `inventory:send-low-stock-alerts` emails property owners once per low-stock episode and re-arms after recovery. Purchase orders support supplier/reference/date, one inventory line, partial receiving into a selected location, and low-stock one-click reorder preselection; migrations, scheduler and tests are committed.
+- Inventory tests: `tests/Feature/InventoryStockServiceTest.php`, `InventorySessionWorkflowTest.php`, `InventoryLowStockAlertTest.php`, and `InventoryPurchaseOrderTest.php`. No local migration, lint, test or UI result has yet been confirmed. Do not mark tracker 56 done. External supplier ordering/payment integration and full UI verification remain open.
+- Host Plan and Stripe billing code now exists: `app/Http/Controllers/Admin/PlanController.php`, `app/Services/Billing/BillingService.php`, `PlanPricing.php`, `SubscriptionSync.php`, and `resources/views/admin/plan/index.blade.php`. The platform webhook dispatches subscription events while retaining guest PaymentIntent finalization. Do not follow older statements below saying the Plan page or billing code is not written. Stripe test-mode trial, automatic charge, failed-payment and portal flows still need end-to-end verification.
+- Host Plan add-on quantities are resolved server-side: `per_property` uses the host's active visible properties; `per_device` uses registered `PropertyLock` records with a connected Seam device ID (current device scope = smart locks). `billing:sync-resource-quantities` runs hourly and updates Stripe subscription line quantities with `proration_behavior=none`, applying count changes to the next billing cycle. Tests: `tests/Feature/BillingQuantityResolverTest.php`, `SyncBillingResourceQuantitiesTest.php`, and `SubscriptionSyncTest.php`; verify with Stripe test mode locally.
+- Direct-booking checkout now calls the existing public quote endpoint and shows a live line-item and total breakdown as dates, guest count or payment method change. The public listing page already has the photo lightbox/gallery and availability quote experience.
+- Hosts can now copy an iframe snippet from the published listing editor to embed a compact booking widget on their own website. The widget shows live availability/pricing and redirects the guest to top-level GuestHub checkout before collecting personal details or payment, avoiding third-party iframe cookie/CSRF issues. The normal GuestHub public listing remains available separately. Channex provider tests cover booking revision/OTA normalization and availability push payloads (`tests/Feature/ChannexProviderTest.php`).
+- Client API credential ownership is still an open design choice pending James's reply. Preserve support for both GuestHub-managed credentials and host-managed credentials; do not force one model.
+
+
 Read this first. It replaces the full chat history. Keep work in small steps.
 
 ## Setup
@@ -107,3 +125,28 @@ cd ~/soarer-blog
 docker compose exec -T web python manage.py shell -c "from tracker.models import Task; t=Task.objects.get(id=ID); print(t.title); print(t.source_message); [print('COMMENT', c.body) for c in t.comments.all()]"
 ```
 Use his wording, not a summary, when deciding what "done" means.
+
+
+## Local verification checklist (after pulling this branch)
+
+Run these from the project root after switching to `feature/complete-client-scope`:
+
+```bash
+docker compose exec app php artisan migrate
+docker compose exec app sh -lc 'test -L public/storage || php artisan storage:link'
+docker compose exec app php artisan view:clear
+docker compose exec app php artisan schedule:list
+
+docker compose exec app php artisan test --filter=InventoryStockServiceTest
+docker compose exec app php artisan test --filter=InventorySessionWorkflowTest
+docker compose exec app php artisan test --filter=InventoryLowStockAlertTest
+docker compose exec app php artisan test --filter=InventoryPurchaseOrderTest
+
+docker compose exec app php artisan test --filter=BillingQuantityResolverTest
+docker compose exec app php artisan test --filter=SyncBillingResourceQuantitiesTest
+docker compose exec app php artisan test --filter=SubscriptionSyncTest
+docker compose exec app php artisan test --filter=ChannexProviderTest
+docker compose exec app php artisan test --filter=DirectBookingCheckoutTest
+```
+
+Also verify the inventory page and cleaner session flow in the browser, run Stripe test-mode trial/automatic-charge/card-update/cancel checks, and test a real Channex property/channel mapping. These environment-dependent checks cannot be certified from the remote repository alone.

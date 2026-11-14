@@ -101,12 +101,12 @@ class SubscriptionSync
             if ($row && $row->source !== 'stripe_addon') {
                 continue;
             }
-            $qty = max(1, (int) $wanted[$key]);
+            $qty = max(0, (int) $wanted[$key]);
             if ($row) {
-                DB::table('host_features')->where('id', $row->id)->update(['enabled' => 1, 'quantity' => $qty, 'updated_at' => now()]);
+                DB::table('host_features')->where('id', $row->id)->update(['enabled' => $qty > 0 ? 1 : 0, 'quantity' => $qty, 'updated_at' => now()]);
             } else {
                 DB::table('host_features')->insert([
-                    'user_id' => $userId, 'feature_key' => $key, 'enabled' => 1, 'quantity' => $qty,
+                    'user_id' => $userId, 'feature_key' => $key, 'enabled' => $qty > 0 ? 1 : 0, 'quantity' => $qty,
                     'source' => 'stripe_addon', 'created_at' => now(), 'updated_at' => now(),
                 ]);
             }

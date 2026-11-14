@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MediaFile extends Model
 {
-    protected $fillable = ['media_folder_id', 'property_id', 'path', 'original_name', 'size'];
+    protected $fillable = ['media_folder_id', 'property_id', 'created_by', 'path', 'original_name', 'size'];
 
     public function folder(): BelongsTo
     {

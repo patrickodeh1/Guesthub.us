@@ -105,10 +105,10 @@ class DirectBookingCheckoutTest extends TestCase
         $booking = Booking::query()->where('email', 'taylor@example.test')->firstOrFail();
         $response->assertRedirect(route('public.checkout.pay', [$booking->booking_id, $booking->token]));
         $this->assertSame(24000, $booking->accommodation_cents);
-        $this->assertSame(2500, $booking->cleaning_fee_cents);
-        $this->assertSame(2650, $booking->tax_cents);
+        $this->assertSame(0, $booking->cleaning_fee_cents);
+        $this->assertSame(2400, $booking->tax_cents);
         $this->assertSame(0, $booking->processing_fee_cents);
-        $this->assertSame(29150, $booking->total_cents);
+        $this->assertSame(26400, $booking->total_cents);
         $this->assertSame('+2348012345678', $booking->phone);
         $this->assertSame(Booking::STATUS_PENDING_PAYMENT, $booking->status);
         $this->assertSame('manual', $booking->payment_method);
@@ -126,9 +126,33 @@ class DirectBookingCheckoutTest extends TestCase
             ->assertSee('@coastal-host')
             ->assertSee('Send payment and use your booking reference.')
             ->assertSee($booking->booking_id)
-            ->assertSee("I've sent the payment")
+            ->assertSee('I sent my payment')
             ->assertSee('name="receipt"', false);
         Mail::assertSent(DirectBookingMail::class, 2);
+    }
+
+    public function test_host_can_embed_a_direct_booking_form_on_an_external_website(): void
+    {
+        $this->get(route('public.listing.embed', $this->listing->listing_slug))
+            ->assertOk()
+            ->assertSee('id="embed-booking-form"', false)
+            ->assertHeader('Content-Security-Policy', 'frame-ancestors *;');
+    }
+
+    public function test_checkout_page_shows_a_live_quote_summary_for_selected_dates(): void
+    {
+        $checkIn = now('America/Los_Angeles')->addDays(9)->toDateString();
+        $checkOut = now('America/Los_Angeles')->addDays(11)->toDateString();
+
+        $this->get(route('public.checkout.show', [
+            'listing_slug' => $this->listing->listing_slug,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'guests' => 2,
+        ]))->assertOk()
+            ->assertSee('id="sum-total"', false)
+            ->assertSee('id="quote-lines"', false)
+            ->assertSee('Calculating your stay', false);
     }
 
     public function test_checkout_phone_uses_the_selected_country_code(): void
@@ -226,7 +250,7 @@ class DirectBookingCheckoutTest extends TestCase
         );
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
-            ->assertSee('Manual payment instructions');
+            ->assertSee('Amount to pay');
     }
 
     public function test_request_decline_releases_the_dates(): void
@@ -272,7 +296,7 @@ class DirectBookingCheckoutTest extends TestCase
         $this->assertSame('pending', $booking->status);
         $this->assertNotNull($booking->payment_confirmed_at);
         $this->assertNull($booking->hold_expires_at);
-        Mail::assertSent(DirectBookingMail::class, 3);
+        Mail::assertSent(DirectBookingMail::class, 4);
     }
 
     public function test_card_payment_returns_to_success_page_instead_of_opening_guest_portal(): void
@@ -350,7 +374,7 @@ class DirectBookingCheckoutTest extends TestCase
         $this->get(route('public.checkout.pay', [$booking->booking_id, $booking->token]))
             ->assertOk()
             ->assertSee('Payment confirmation in progress.')
-            ->assertSee("We'll let you know when your payment is confirmed.")
+            ->assertSee("We'll let you know when your payment is confirmed.", false)
             ->assertSee('max-height:84vh')
             ->assertDontSee('name="receipt"', false);
 
