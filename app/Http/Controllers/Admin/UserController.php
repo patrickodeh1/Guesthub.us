@@ -25,7 +25,9 @@ class UserController extends Controller
             ->when(! auth()->user()->hasRole('admin'), fn ($q) => $this->scopeVisibleUsers($q, auth()->user()))
             ->where('approval_status', 'approved')
             ->when($status !== 'all', function ($q) use ($status) {
-                $q->where('status', $status);
+                // is_active is the canonical account-state flag used by the
+                // model, access checks, and user list status badges.
+                $q->where('is_active', $status === 'active');
             })
             ->orderByDesc('created_at')
             ->paginate(15)
