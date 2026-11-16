@@ -1060,8 +1060,14 @@ class SessionController extends Controller
             if (! $window->canStart($session)) {
                 $opensAt = $window->opensAt($session);
                 $closesAt = $window->closesAt($session);
-                return back()->withErrors(['gps' => 'This cleaning can be started between '
-                    .$opensAt?->format('g:i A').' and '.$closesAt?->format('g:i A').' (property time).']);
+                $parts = [];
+                if ($window->minutesBefore($session) > 0) {
+                    $parts[] = 'from '.$opensAt?->format('g:i A');
+                }
+                if ($window->minutesAfter($session) > 0) {
+                    $parts[] = 'until '.$closesAt?->format('g:i A');
+                }
+                return back()->withErrors(['gps' => 'You may begin this cleaning '.implode(' ', $parts).' (property time).']);
             }
         }
 
