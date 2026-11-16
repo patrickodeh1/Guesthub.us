@@ -432,18 +432,25 @@
                         @php
                             $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
-                                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
-                                $startTz = $session->property?->timezone ?: config('app.display_timezone');
-                                $startAt = \Carbon\Carbon::parse($session->scheduled_date->toDateString().' '.$session->scheduled_time->format('H:i'), $startTz);
+                                && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+                                $startWindow = app(\\App\\Services\\CleaningStartWindow::class);
+                                $startTz = $session->property?->timezone ?: config('app.timezone');
+                                $startAt = $startWindow->scheduledAt($session);
                                 $startNow = now($startTz);
-                                $startLocked = $startNow->lt($startAt->copy()->subHours(2)) || $startNow->gt($startAt->copy()->addHours(2));
-                                if ($startLocked) {
-                                    $opensAt = $startAt->copy()->subHours(2);
-                                    $closesAt = $startAt->copy()->addHours(2);
-                                    $fmtWhen = fn ($c) => ($c->isSameDay($startNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
-                                    $startMsg = $startNow->lt($opensAt)
-                                        ? 'Begin is locked until 2 hours before your scheduled start ('.$startAt->format('g:i A').'). You can begin '.$fmtWhen($opensAt).'.'
-                                        : 'You can no longer begin this cleaning. The start window ended '.$fmtWhen($closesAt).' (2 hours after the scheduled start). Please contact your manager.';
+                                $opensAt = $startWindow->opensAt($session);
+                                $closesAt = $startWindow->closesAt($session);
+                                $beforeMinutes = $startWindow->minutesBefore($session);
+                                $afterMinutes = $startWindow->minutesAfter($session);
+                                $tooEarly = $beforeMinutes > 0 && $opensAt && $startNow->lt($opensAt);
+                                $tooLate = $afterMinutes > 0 && $closesAt && $startNow->gt($closesAt);
+                                $fmtWhen = fn ($c) => ($c->isSameDay($startNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
+
+                                if ($tooEarly) {
+                                    $startLocked = true;
+                                    $startMsg = 'You cannot begin yet. Your scheduled cleaning time is '.$startAt->format('g:i A').'. You may begin from '.$fmtWhen($opensAt).'.';
+                                } elseif ($tooLate) {
+                                    $startLocked = true;
+                                    $startMsg = 'The allowed time to begin this cleaning ended '.$fmtWhen($closesAt).'. Please contact your manager.';
                                 }
                             }
                         @endphp
