@@ -34,11 +34,11 @@ class CleaningStartWindowTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => User::factory()->create()->id,
             'scheduled_date' => '2026-11-14',
-            'scheduled_time' => '2026-11-14 10:00:00',
+            'scheduled_time' => '10:00:00',
             'status' => 'pending',
         ]);
 
-        Carbon::setTestNow('2026-11-14 09:25:00');
+        Carbon::setTestNow(Carbon::parse('2026-11-14 09:25:00', 'UTC'));
 
         $window = app(CleaningStartWindow::class);
 
@@ -59,11 +59,11 @@ class CleaningStartWindowTest extends TestCase
             'owner_id' => User::factory()->create()->id,
             'housekeeper_id' => User::factory()->create()->id,
             'scheduled_date' => '2026-11-14',
-            'scheduled_time' => '2026-11-14 10:00:00',
+            'scheduled_time' => '10:00:00',
             'status' => 'pending',
         ]);
 
-        Carbon::setTestNow('2026-11-14 09:39:00');
+        Carbon::setTestNow(Carbon::parse('2026-11-14 09:39:00', 'UTC'));
 
         $window = app(CleaningStartWindow::class);
 
