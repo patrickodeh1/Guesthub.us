@@ -10,6 +10,44 @@
         <x-card class="mb-4">
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaning start allowances</h3>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Set how early and how late a cleaner may begin for this property. Set either value to 0:00 to remove that side's restriction.</p>
+                </div>
+                <form method="post" action="{{ route('manage.sessions.cleaning-window.update') }}" class="flex flex-wrap items-end gap-3">
+                    @csrf
+                    <div>
+                        <x-form.label value="Property" />
+                        <select name="property_id" class="rounded border-gray-300 text-sm" onchange="window.location='{{ route('manage.sessions.index') }}?cleaning_window_property_id='+this.value">
+                            @foreach($cleaningWindowProperties as $cleaningProperty)
+                                <option value="{{ $cleaningProperty->id }}" @selected((string) $selectedCleaningWindowProperty?->id === (string) $cleaningProperty->id)>{{ $cleaningProperty->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <x-form.label value="Allowed before" />
+                        <div class="flex items-center gap-1">
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-60)">−</button>
+                            <input type="text" inputmode="numeric" name="before_duration" pattern="\d+:[0-5][0-9]" required value="{{ old('before_duration', $selectedCleaningWindowBeforeDuration) }}" placeholder="2:00" class="w-24 rounded border-gray-300 text-center text-sm" />
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),60)">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <x-form.label value="Allowed after" />
+                        <div class="flex items-center gap-1">
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-60)">−</button>
+                            <input type="text" inputmode="numeric" name="after_duration" pattern="\d+:[0-5][0-9]" required value="{{ old('after_duration', $selectedCleaningWindowAfterDuration) }}" placeholder="1:00" class="w-24 rounded border-gray-300 text-center text-sm" />
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),60)">+</button>
+                        </div>
+                    </div>
+                    <x-button>Save allowances</x-button>
+                </form>
+            </div>
+        </x-card>
+    @endif
+
+    <x-card class="mb-4">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaner start window</h3>
                     <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Set how many minutes before the scheduled time a cleaner can begin at each property.</p>
                 </div>
@@ -411,7 +449,7 @@
 @push('scripts')
 <script>
     function adjustCleaningWindow(input, change) {
-        const match = /^(\d{1,2}):(\d{2})$/.exec(input.value || '0:00');
+        const match = /^(\d+):(\d{2})$/.exec(input.value || '0:00');
         let total = match ? (Number(match[1]) * 60) + Number(match[2]) : 0;
         total = Math.max(0, total + change);
         input.value = Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
