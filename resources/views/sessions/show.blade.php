@@ -432,8 +432,8 @@
                         @php
                             $startLocked = false; $startMsg = '';
                             if ($session->scheduled_date && $session->scheduled_time
-                                && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
-                                $startWindow = app(\\App\\Services\\CleaningStartWindow::class);
+                                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
+                                $startWindow = app(\App\Services\CleaningStartWindow::class);
                                 $startTz = $session->property?->timezone ?: config('app.timezone');
                                 $startAt = $startWindow->scheduledAt($session);
                                 $startNow = now($startTz);
