@@ -735,6 +735,8 @@
                         }
                         if (saved.parking_choice_confirmed !== true) {
                             saved.step = "1";
+                            // Ignore any older cached answer; ask the guest again.
+                            saved.parking_needed = undefined;
                         }
                         if (String(saved.step) === "0") {
                             saved.step = "1";
