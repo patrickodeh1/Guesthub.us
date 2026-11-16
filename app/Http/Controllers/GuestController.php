@@ -203,11 +203,6 @@ class GuestController extends Controller
                 }
                 $updates['license_plate_photo_path'] = $storedPlatePhoto;
             }
-        } else {
-            $updates['vehicle_make_model'] = null;
-            $updates['license_plate'] = null;
-            $updates['license_plate_state'] = null;
-            $updates['license_plate_photo_path'] = null;
         }
 
         if ($requiresTermsAcceptance) {
