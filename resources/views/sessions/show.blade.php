@@ -79,6 +79,7 @@
         @php
             $ghLogo = \App\Support\Branding::logoUrl();
             $ghSite = \App\Support\Branding::siteName();
+            $ghOpenAt = app(\\App\\Services\\CleaningStartWindow::class)->opensAt($session);
         @endphp
         <div class="guest-portal-card">
             <div class="guest-status-bar">
