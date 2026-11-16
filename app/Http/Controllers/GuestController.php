@@ -151,6 +151,13 @@ class GuestController extends Controller
             'parking_needed' => ['required', 'boolean'],
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
+            'vehicle_make_model' => ['nullable', 'string', 'max:255'],
+            'license_plate' => [$request->boolean('parking_needed') ? 'required' : 'nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
+            'license_plate_state' => ['nullable', 'string', 'max:2'],
+            'license_plate_photo' => [
+                $request->boolean('parking_needed') && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : 'nullable',
+                'image', 'max:20480',
+            ],
             'terms_accepted' => [$requiresTermsAcceptance ? 'accepted' : 'nullable'],
             'sms_consent' => ['nullable', 'boolean'],
         ]);
@@ -183,6 +190,24 @@ class GuestController extends Controller
             $updates['checkout_time_status'] = $booking->requiresCheckoutTimeApproval($newCheckoutPreference)
                 ? 'pending'
                 : (filled($newCheckoutPreference) ? 'approved' : null);
+        }
+
+        if ($request->boolean('parking_needed')) {
+            $updates['vehicle_make_model'] = $data['vehicle_make_model'] ?? $booking->vehicle_make_model;
+            $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['license_plate'] ?? $booking->license_plate))) ?: null;
+            $updates['license_plate_state'] = strtoupper((string) ($data['license_plate_state'] ?? $booking->license_plate_state)) ?: null;
+            if ($request->hasFile('license_plate_photo')) {
+                $storedPlatePhoto = $request->file('license_plate_photo')->store('license-plates');
+                if ($storedPlatePhoto === false) {
+                    throw ValidationException::withMessages(['license_plate_photo' => 'The number plate photo could not be saved. Please try again.']);
+                }
+                $updates['license_plate_photo_path'] = $storedPlatePhoto;
+            }
+        } else {
+            $updates['vehicle_make_model'] = null;
+            $updates['license_plate'] = null;
+            $updates['license_plate_state'] = null;
+            $updates['license_plate_photo_path'] = null;
         }
 
         if ($requiresTermsAcceptance) {
