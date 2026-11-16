@@ -275,14 +275,16 @@ class ManageSessionController extends Controller
         $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
 
         // Cleaner start windows are property-specific, not tied to the property's owner account.
-        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes']);
+        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes', 'cleaner_end_window_minutes']);
         $selectedCleaningWindowProperty = $cleaningWindowProperties->firstWhere('id', (int) $request->query('cleaning_window_property_id'))
             ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
             ?? $cleaningWindowProperties->first();
-        $selectedCleaningWindowMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES);
-        $selectedCleaningWindowDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowMinutes, 60), $selectedCleaningWindowMinutes % 60);
+        $selectedCleaningWindowBeforeMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_BEFORE);
+        $selectedCleaningWindowAfterMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_end_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_AFTER);
+        $selectedCleaningWindowBeforeDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowBeforeMinutes, 60), $selectedCleaningWindowBeforeMinutes % 60);
+        $selectedCleaningWindowAfterDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowAfterMinutes, 60), $selectedCleaningWindowAfterMinutes % 60);
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowMinutes', 'selectedCleaningWindowDuration'));
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowBeforeMinutes', 'selectedCleaningWindowAfterMinutes', 'selectedCleaningWindowBeforeDuration', 'selectedCleaningWindowAfterDuration'));
     }
 
     public function create(Request $request)
@@ -541,17 +543,24 @@ class ManageSessionController extends Controller
 
         $data = $request->validate([
             'property_id' => ['required', 'integer', 'exists:properties,id'],
-            'duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
+            'before_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
+            'after_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
         ]);
 
-        [$hours, $minutes] = array_map('intval', explode(':', $data['duration']));
-        abort_if($hours > intdiv(PHP_INT_MAX - $minutes, 60), 422, 'The cleaning window is too large.');
-        $totalMinutes = ($hours * 60) + $minutes;
+        $toMinutes = function (string $duration): int {
+            [$hours, $minutes] = array_map('intval', explode(':', $duration));
+            abort_if($hours > intdiv(PHP_INT_MAX - $minutes, 60), 422, 'The cleaning allowance is too large.');
+
+            return ($hours * 60) + $minutes;
+        };
 
         $property = Property::query()->visibleTo($user)->findOrFail($data['property_id']);
-        $property->forceFill(['cleaner_start_window_minutes' => $totalMinutes])->save();
+        $property->forceFill([
+            'cleaner_start_window_minutes' => $toMinutes($data['before_duration']),
+            'cleaner_end_window_minutes' => $toMinutes($data['after_duration']),
+        ])->save();
 
-        return back()->with('ok', 'Cleaner start window saved for '.$property->name.'.');
+        return back()->with('ok', 'Cleaning start allowances saved for '.$property->name.'.');
     }
 
     public function getSporadicTasks(Request $request, Property $property)
