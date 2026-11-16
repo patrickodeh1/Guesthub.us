@@ -96,8 +96,7 @@
             <div class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24">
                 <h1 class="guest-status-title">Session not available yet</h1>
                 <p class="max-w-md text-sm leading-6 text-slate-600">
-                    You cannot start yet. You can begin at the scheduled time
-                    ({{ $session->scheduled_date->format('F j, Y') }}@if($session->scheduled_time) at {{ \Carbon\Carbon::parse($session->scheduled_time)->format('g:i A') }}@endif).
+                    You cannot start yet. You can begin at {{ $ghOpenAt?->format('F j, Y') }} at {{ $ghOpenAt?->format('g:i A') }}.
                 </p>
                 @php
                     $ghDashUrl = \Illuminate\Support\Facades\Route::has('dashboard') ? route('dashboard') : url('/');
