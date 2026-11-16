@@ -154,7 +154,7 @@ class GuestController extends Controller
             'phone' => ['required', 'string', 'max:50'],
             'phone_country_code' => ['nullable', 'string', 'max:10'],
             'email' => ['required', 'email', 'max:255'],
-            'parking_needed' => [is_null($booking->parking_needed) ? 'required' : 'nullable'],
+            'parking_needed' => ['required', 'boolean'],
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
             'vehicle_make_model' => ['nullable', 'string', 'max:255'],
