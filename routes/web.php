@@ -174,6 +174,7 @@ Route::prefix('guest/{booking_id}/{token}')->name('guest.')->group(function () {
     Route::post('/verify-gps', [GuestController::class, 'verifyGps'])->name('gps');
     Route::post('/confirm-checkin', [GuestController::class, 'confirmCheckin'])->name('confirm-checkin');
     Route::post('/confirm-checkout', [GuestController::class, 'confirmCheckout'])->name('confirm-checkout');
+    Route::post('/deposit/card', [GuestController::class, 'selectCardPayment'])->name('deposit.card');
     Route::post('/deposit/intent', [GuestController::class, 'createDepositIntent'])->name('deposit.intent');
     Route::post('/deposit/platform', [GuestController::class, 'selectPlatformPayment'])->name('deposit.platform');
     Route::post('/deposit/confirm', [GuestController::class, 'confirmDepositPayment'])->name('deposit.confirm');

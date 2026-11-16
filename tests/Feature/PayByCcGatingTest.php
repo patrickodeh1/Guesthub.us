@@ -22,6 +22,22 @@ class PayByCcGatingTest extends TestCase
         config(['services.stripe.key' => 'pk_test_fake', 'services.stripe.secret' => 'sk_test_fake']);
     }
 
+    public function test_guest_card_selection_enables_card_payment_for_that_booking(): void
+    {
+        $booking = Booking::factory()->create([
+            'pay_by_cc' => false,
+            'platform_payment_selected_at' => now(),
+            'incidentals_charge' => 40,
+        ]);
+
+        $response = $this->postJson(route('guest.deposit.card', [$booking->booking_id, $booking->token]));
+
+        $response->assertOk()->assertJson(['ok' => true]);
+        $booking->refresh();
+        $this->assertTrue((bool) $booking->pay_by_cc);
+        $this->assertNull($booking->platform_payment_selected_at);
+    }
+
     public function test_deposit_intent_is_refused_when_pay_by_cc_is_false(): void
     {
         $this->configureStripe();

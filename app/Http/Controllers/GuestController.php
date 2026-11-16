@@ -81,10 +81,6 @@ class GuestController extends Controller
             'guestNoticePopups' => \App\Services\GuestNoticeService::popups($booking, $noticePhase),
             'checkinTimeOptions' => $this->checkinTimeOptions(),
             'checkoutTimeOptions' => $this->checkoutTimeOptions(),
-            // task: vehicle info is never required at Step 1 -- prompt for
-            // it later in-flow instead, once it's actually needed (~1 day
-            // out, or later in-flow for same-day bookings).
-            'needsVehicleInfoPrompt' => $booking->needsVehicleInfoPrompt(),
         ]);
     }
 
@@ -140,10 +136,8 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
 
-        // Effective parking answer after this request: the newly-submitted
-        // value if present, otherwise whatever's already on the booking.
-        // Vehicle info is only required once parking is confirmed "yes" —
-        // task 34.
+        // Vehicle details are collected in this same pre-check-in step when
+        // the guest confirms they need parking.
         $parkingAnswer = $request->filled('parking_needed')
             ? filter_var($request->input('parking_needed'), FILTER_VALIDATE_BOOLEAN)
             : $booking->parking_needed;
@@ -163,12 +157,14 @@ class GuestController extends Controller
             'parking_needed' => [is_null($booking->parking_needed) ? 'required' : 'nullable'],
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
-            // Never required at Step 1 -- task: don't block the initial guest
-            // flow on vehicle info. Actually prompted later, in the waiting
-            // area, via Booking::needsVehicleInfoPrompt() (~1 day before
-            // arrival, or later in-flow for same-day bookings).
             'vehicle_make_model' => ['nullable', 'string', 'max:255'],
-            'license_plate_photo' => ['nullable', 'image', 'max:8192'],
+            'license_plate' => [$parkingAnswer ? 'required' : 'nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
+            'license_plate_state' => ['nullable', 'string', 'size:2'],
+            'license_plate_photo' => [
+                $parkingAnswer && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : 'nullable',
+                'image',
+                'max:20480',
+            ],
             'terms_accepted' => [$requiresTermsAcceptance ? 'accepted' : 'nullable'],
             'sms_consent' => ['nullable', 'boolean'],
         ]);
@@ -205,10 +201,18 @@ class GuestController extends Controller
 
         if ($parkingAnswer) {
             $updates['vehicle_make_model'] = $data['vehicle_make_model'] ?? $booking->vehicle_make_model;
+            $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['license_plate'] ?? $booking->license_plate))) ?: null;
+            $updates['license_plate_state'] = strtoupper((string) ($data['license_plate_state'] ?? $booking->license_plate_state)) ?: null;
         }
 
-        if ($request->hasFile('license_plate_photo')) {
-            $updates['license_plate_photo_path'] = $request->file('license_plate_photo')->store('license-plates');
+        if ($parkingAnswer && $request->hasFile('license_plate_photo')) {
+            $storedPlatePhoto = $request->file('license_plate_photo')->store('license-plates');
+            if ($storedPlatePhoto === false) {
+                throw ValidationException::withMessages([
+                    'license_plate_photo' => 'The license plate photo could not be saved. Please try again.',
+                ]);
+            }
+            $updates['license_plate_photo_path'] = $storedPlatePhoto;
         }
 
         if ($requiresTermsAcceptance) {
@@ -474,6 +478,41 @@ class GuestController extends Controller
     }
 
     /**
+     * Record the guest's explicit choice to pay the incidentals hold by card.
+     * The booking token authorizes this guest-facing choice; the payment
+     * intent endpoint still enforces this persisted selection.
+     */
+    public function selectCardPayment(string $bookingId, string $token)
+    {
+        $booking = $this->booking($bookingId, $token);
+
+        if ($booking->isDepositCaptured() || $booking->deposit_verified_at) {
+            return response()->json(['ok' => false, 'message' => 'Deposit already paid.'], 422);
+        }
+
+        if ($booking->calculatePreCheckinChargeCents() <= 0) {
+            return response()->json(['ok' => false, 'message' => 'No deposit is configured for this stay.'], 422);
+        }
+
+        if (! $booking->pay_by_cc || $booking->platform_payment_selected_at) {
+            $booking->forceFill([
+                'pay_by_cc' => true,
+                'platform_payment_selected_at' => null,
+            ])->save();
+
+            ActivityLogService::guest('card_payment_selected', "Guest {$booking->guest_name} chose to pay the incidentals hold by card.", 'check', [
+                'booking_id' => $booking->id,
+                'property_id' => $booking->property_id,
+                'actor_name' => $booking->guest_name,
+                'actor_email' => $booking->email,
+                'severity' => 'success',
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
      * The guest chose to pay the incidentals hold on their booking platform.
      * No webhook confirms an off-platform payment, so we just record the
      * choice: the portal then shows "pending approval" (never the amount) and
@@ -488,7 +527,7 @@ class GuestController extends Controller
         }
 
         if (! $booking->platformPaymentSelected()) {
-            $booking->update(['platform_payment_selected_at' => now()]);
+            $booking->forceFill(['pay_by_cc' => false, 'platform_payment_selected_at' => now()])->save();
 
             ActivityLogService::guest('platform_payment_selected', "Guest {$booking->guest_name} chose to pay the incidentals hold on {$booking->platformLabel()}.", 'check', [
                 'booking_id'  => $booking->id,
@@ -1587,15 +1626,8 @@ class GuestController extends Controller
             return 'unit_not_ready';
         }
 
-        if (! $booking->isCheckinDay() && $booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
         if (! $booking->isCheckinDay()) {
             return 'waiting';
-        }
-
-        if ($booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
         }
 
         if (! $booking->gps_verified) {
