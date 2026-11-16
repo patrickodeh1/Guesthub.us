@@ -276,7 +276,7 @@
             $ghStartBlocked = false; $ghStartBlockMsg = '';
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
                 && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
-                // Use the same property-specific window and timezone calculation as the start endpoint.
+                // Reflect separate before/after allowances enforced by the start endpoint.
                 $ghWindow = app(\App\Services\CleaningStartWindow::class);
                 $ghAt = $ghWindow->scheduledAt($session);
                 $ghOpens = $ghWindow->opensAt($session);
@@ -284,12 +284,12 @@
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
                 $ghNow = \Illuminate\Support\Carbon::now($ghTz);
                 $ghWhen = fn ($c) => ($c->isSameDay($ghNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
-                if ($ghAt && $ghOpens && $ghCloses && $ghNow->lt($ghOpens)) {
+                if ($ghAt && $ghWindow->minutesBefore($session) > 0 && $ghNow->lt($ghOpens)) {
                     $ghStartBlocked = true;
-                    $ghStartBlockMsg = 'You cannot start yet. Your scheduled start is '.$ghAt->format('g:i A').'. You can begin '.$ghWhen($ghOpens).'.';
-                } elseif ($ghCloses && $ghNow->gt($ghCloses)) {
+                    $ghStartBlockMsg = 'You cannot begin yet. Your scheduled cleaning time is '.$ghAt->format('g:i A').'. You may begin from '.$ghWhen($ghOpens).'.';
+                } elseif ($ghAt && $ghWindow->minutesAfter($session) > 0 && $ghNow->gt($ghCloses)) {
                     $ghStartBlocked = true;
-                    $ghStartBlockMsg = 'You can no longer begin this cleaning. The start window ended '.$ghWhen($ghCloses).' (2 hours after the scheduled start). Please contact your manager.';
+                    $ghStartBlockMsg = 'The allowed time to begin this cleaning ended '.$ghWhen($ghCloses).'. Please contact your manager.';
                 }
             }
         @endphp
