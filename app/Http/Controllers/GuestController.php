@@ -81,10 +81,6 @@ class GuestController extends Controller
             'guestNoticePopups' => \App\Services\GuestNoticeService::popups($booking, $noticePhase),
             'checkinTimeOptions' => $this->checkinTimeOptions(),
             'checkoutTimeOptions' => $this->checkoutTimeOptions(),
-            // task: vehicle info is never required at Step 1 -- prompt for
-            // it later in-flow instead, once it's actually needed (~1 day
-            // out, or later in-flow for same-day bookings).
-            'needsVehicleInfoPrompt' => $booking->needsVehicleInfoPrompt(),
         ]);
     }
 
@@ -140,10 +136,8 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
 
-        // Effective parking answer after this request: the newly-submitted
-        // value if present, otherwise whatever's already on the booking.
-        // Vehicle info is only required once parking is confirmed "yes" —
-        // task 34.
+        // Vehicle details are collected in this same pre-check-in step when
+        // the guest confirms they need parking.
         $parkingAnswer = $request->filled('parking_needed')
             ? filter_var($request->input('parking_needed'), FILTER_VALIDATE_BOOLEAN)
             : $booking->parking_needed;
@@ -164,7 +158,7 @@ class GuestController extends Controller
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
             'vehicle_make_model' => ['nullable', 'string', 'max:255'],
-            'license_plate' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
+            'license_plate' => [$parkingAnswer ? 'required' : 'nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
             'license_plate_state' => ['nullable', 'string', 'size:2'],
             'license_plate_photo' => [
                 $parkingAnswer && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : 'nullable',
