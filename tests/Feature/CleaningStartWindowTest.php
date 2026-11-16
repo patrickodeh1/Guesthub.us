@@ -123,12 +123,12 @@ class CleaningStartWindowTest extends TestCase
         $this->assertFalse($window->canStart($session));
     }
 
-    public function test_turning_the_window_off_allows_starting_at_any_time(): void
+    public function test_turning_the_window_off_uses_the_scheduled_time_instead_of_saved_allowances(): void
     {
         $property = Property::factory()->create([
             'timezone' => 'UTC',
-            'cleaner_start_window_minutes' => 0,
-            'cleaner_end_window_minutes' => 0,
+            'cleaner_start_window_minutes' => 120,
+            'cleaner_end_window_minutes' => 120,
             'cleaner_start_window_enabled' => false,
         ]);
         $session = CleaningSession::factory()->create([
@@ -140,10 +140,19 @@ class CleaningStartWindowTest extends TestCase
             'status' => 'pending',
         ]);
 
-        Carbon::setTestNow(Carbon::parse('2026-11-14 06:00:00', 'UTC'));
         $window = app(CleaningStartWindow::class);
 
+        Carbon::setTestNow(Carbon::parse('2026-11-14 09:59:00', 'UTC'));
+        $this->assertSame('2026-11-14T10:00:00+00:00', $window->opensAt($session)?->toIso8601String());
+        $this->assertTrue($window->isTooEarly($session));
+        $this->assertFalse($window->isTooLate($session));
+        $this->assertFalse($window->canStart($session));
+
+        Carbon::setTestNow(Carbon::parse('2026-11-14 10:00:00', 'UTC'));
         $this->assertFalse($window->isTooEarly($session));
+        $this->assertTrue($window->canStart($session));
+
+        Carbon::setTestNow(Carbon::parse('2026-11-14 13:00:00', 'UTC'));
         $this->assertFalse($window->isTooLate($session));
         $this->assertTrue($window->canStart($session));
     }
