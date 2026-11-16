@@ -12,6 +12,8 @@
         @csrf
         @if($notice->exists) @method('put') @endif
 
+        <p class="text-sm text-slate-600">Day and time conditions use the selected property's local timezone. For a notice applying to all properties, each guest is evaluated using their own property's timezone.</p>
+
         <div class="grid gap-5 md:grid-cols-2">
             <label class="field-label md:col-span-2">Title <span class="text-red-600">*</span>
                 <input name="title" value="{{ old('title', $notice->title) }}" required class="input">
