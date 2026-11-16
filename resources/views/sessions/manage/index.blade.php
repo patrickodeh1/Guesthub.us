@@ -11,9 +11,14 @@
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaning start allowances</h3>
-                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Set how early and how late a cleaner may begin for this property. Set either value to 0:00 to remove that side's restriction.</p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">When enabled, cleaners can start only within the configured range around the scheduled time. Both values at 0:00 means the exact scheduled time. Switch the window off to remove all time restrictions.</p>
                 </div>
                 <form method="post" action="{{ route('manage.sessions.cleaning-window.update') }}" class="flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="window_enabled" value="0">
+                    <label class="flex items-center gap-2 rounded border border-gray-200 px-3 py-2 text-sm">
+                        <input type="checkbox" name="window_enabled" value="1" @checked(old('window_enabled', $selectedCleaningWindowEnabled)) class="rounded border-gray-300">
+                        <span class="font-medium">Time window on</span>
+                    </label>
                     @csrf
                     <div>
                         <x-form.label value="Property" />
@@ -26,9 +31,9 @@
                     <div>
                         <x-form.label value="Allowed before" />
                         <div class="flex items-center gap-1">
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-60)">−</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease before allowance by 30 minutes" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-30)">−</button>
                             <input type="text" inputmode="numeric" name="before_duration" pattern="\d+:[0-5][0-9]" required value="{{ old('before_duration', $selectedCleaningWindowBeforeDuration) }}" placeholder="2:00" class="w-24 rounded border-gray-300 text-center text-sm" />
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),60)">+</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),30)">+</button>
                         </div>
                     </div>
                     <div>
