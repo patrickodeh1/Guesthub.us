@@ -101,7 +101,7 @@ class Property extends Model
         'is_active', 'owner_id', 'photo_path', 'beds', 'baths', 'geo_radius_m',
         'ical_url', 'vrbo_ical_url', 'deactivated_at', 'deactivated_by',
         'notify_cleaning_started', 'notify_cleaning_finished',
-        'notify_photo_started', 'notify_task_notes',
+        'notify_photo_started', 'notify_task_notes', 'cleaner_start_window_minutes', 'cleaner_end_window_minutes', 'cleaner_start_window_enabled',
     ];
 
     protected function casts(): array
@@ -127,6 +127,8 @@ class Property extends Model
             'notify_cleaning_finished' => 'boolean',
             'notify_photo_started' => 'boolean',
             'notify_task_notes' => 'boolean',
+            'cleaner_start_window_enabled' => 'boolean',
+            'cleaner_start_window_enabled' => 'boolean',
         ];
     }
 

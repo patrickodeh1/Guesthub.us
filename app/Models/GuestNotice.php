@@ -74,7 +74,10 @@ class GuestNotice extends Model
             return false;
         }
 
-        $today = now()->setTimezone(config('app.display_timezone'))->toDateString();
+        // Notice schedules are configured in the property's local time, not
+        // the server-wide display timezone. This also applies to global notices.
+        $timezone = $this->propertyTimezone($booking);
+        $today = now($timezone)->toDateString();
 
         if ($this->day_scope === 'arrival_day' && $booking->check_in_date?->toDateString() !== $today) {
             return false;
@@ -84,7 +87,7 @@ class GuestNotice extends Model
             return false;
         }
 
-        if (! $this->matchesTimeWindow()) {
+        if (! $this->matchesTimeWindow($booking)) {
             return false;
         }
 
@@ -95,13 +98,13 @@ class GuestNotice extends Model
         return true;
     }
 
-    private function matchesTimeWindow(): bool
+    private function matchesTimeWindow(Booking $booking): bool
     {
         if (! $this->start_time && ! $this->end_time) {
             return true;
         }
 
-        $now = now()->setTimezone(config('app.display_timezone'))->format('H:i:s');
+        $now = now($this->propertyTimezone($booking))->format('H:i:s');
         $start = $this->start_time ?: '00:00:00';
         $end = $this->end_time ?: '23:59:59';
 
@@ -111,6 +114,15 @@ class GuestNotice extends Model
 
         // Window crosses midnight (e.g. 23:00 -> 04:00).
         return $now >= $start || $now <= $end;
+    }
+
+    private function propertyTimezone(Booking $booking): string
+    {
+        $timezone = $booking->property?->timezone;
+
+        return is_string($timezone) && $timezone !== ''
+            ? $timezone
+            : config('app.timezone');
     }
 
     public function scopeActive($query)

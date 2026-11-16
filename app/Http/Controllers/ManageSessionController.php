@@ -274,7 +274,18 @@ class ManageSessionController extends Controller
             ->map(fn ($h) => ['id' => $h->id, 'name' => $h->name])->values();
         $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps'));
+        // Cleaner start windows are property-specific, not tied to the property's owner account.
+        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes', 'cleaner_end_window_minutes', 'cleaner_start_window_enabled']);
+        $selectedCleaningWindowProperty = $cleaningWindowProperties->firstWhere('id', (int) $request->query('cleaning_window_property_id'))
+            ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
+            ?? $cleaningWindowProperties->first();
+        $selectedCleaningWindowEnabled = (bool) ($selectedCleaningWindowProperty?->cleaner_start_window_enabled ?? true);
+        $selectedCleaningWindowBeforeMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_BEFORE);
+        $selectedCleaningWindowAfterMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_end_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_AFTER);
+        $selectedCleaningWindowBeforeDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowBeforeMinutes, 60), $selectedCleaningWindowBeforeMinutes % 60);
+        $selectedCleaningWindowAfterDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowAfterMinutes, 60), $selectedCleaningWindowAfterMinutes % 60);
+
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowBeforeMinutes', 'selectedCleaningWindowAfterMinutes', 'selectedCleaningWindowBeforeDuration', 'selectedCleaningWindowAfterDuration', 'selectedCleaningWindowEnabled'));
     }
 
     public function create(Request $request)
@@ -524,6 +535,35 @@ class ManageSessionController extends Controller
         return redirect()->to(
             $request->input('_return_to', route('manage.sessions.index'))
         )->with('ok', 'Assignment deleted.');
+    }
+
+    public function updateCleaningStartWindow(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->hasAnyRole(['admin', 'owner', 'company', 'manager']), 403);
+
+        $data = $request->validate([
+            'property_id' => ['required', 'integer', 'exists:properties,id'],
+            'before_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
+            'after_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
+            'window_enabled' => ['required', 'boolean'],
+        ]);
+
+        $toMinutes = function (string $duration): int {
+            [$hours, $minutes] = array_map('intval', explode(':', $duration));
+            abort_if($hours > intdiv(PHP_INT_MAX - $minutes, 60), 422, 'The cleaning allowance is too large.');
+
+            return ($hours * 60) + $minutes;
+        };
+
+        $property = Property::query()->visibleTo($user)->findOrFail($data['property_id']);
+        $property->forceFill([
+            'cleaner_start_window_minutes' => $toMinutes($data['before_duration']),
+            'cleaner_end_window_minutes' => $toMinutes($data['after_duration']),
+            'cleaner_start_window_enabled' => (bool) $data['window_enabled'],
+        ])->save();
+
+        return back()->with('ok', 'Cleaning start allowances saved for '.$property->name.'.');
     }
 
     public function getSporadicTasks(Request $request, Property $property)
