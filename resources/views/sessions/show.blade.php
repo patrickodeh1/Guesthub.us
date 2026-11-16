@@ -95,7 +95,7 @@
             <div class="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center md:py-24">
                 <h1 class="guest-status-title">Session not available yet</h1>
                 <p class="max-w-md text-sm leading-6 text-slate-600">
-                    You cannot start yet. Access will be granted at the scheduled start time
+                    You cannot start yet. You can begin at the scheduled time
                     ({{ $session->scheduled_date->format('F j, Y') }}@if($session->scheduled_time) at {{ \Carbon\Carbon::parse($session->scheduled_time)->format('g:i A') }}@endif).
                 </p>
                 @php
@@ -441,8 +441,8 @@
                                 $closesAt = $startWindow->closesAt($session);
                                 $beforeMinutes = $startWindow->minutesBefore($session);
                                 $afterMinutes = $startWindow->minutesAfter($session);
-                                $tooEarly = $beforeMinutes > 0 && $opensAt && $startNow->lt($opensAt);
-                                $tooLate = $afterMinutes > 0 && $closesAt && $startNow->gt($closesAt);
+                                $tooEarly = $opensAt && $startNow->lt($opensAt);
+                                $tooLate = $closesAt && $startNow->gt($closesAt);
                                 $fmtWhen = fn ($c) => ($c->isSameDay($startNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
 
                                 if ($tooEarly) {
