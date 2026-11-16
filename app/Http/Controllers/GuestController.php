@@ -205,7 +205,7 @@ class GuestController extends Controller
             $updates['license_plate_state'] = strtoupper((string) ($data['license_plate_state'] ?? $booking->license_plate_state)) ?: null;
         }
 
-        if ($request->hasFile('license_plate_photo')) {
+        if ($parkingAnswer && $request->hasFile('license_plate_photo')) {
             $storedPlatePhoto = $request->file('license_plate_photo')->store('license-plates');
             if ($storedPlatePhoto === false) {
                 throw ValidationException::withMessages([
