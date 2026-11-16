@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 class CleaningStartWindow
 {
     public const DEFAULT_MINUTES_BEFORE = 120;
-    public const DEFAULT_MINUTES_AFTER = 60;
+    public const DEFAULT_MINUTES_AFTER = 120;
 
     public function minutesBefore(CleaningSession $session): int
     {
