@@ -11,12 +11,20 @@
     $idwNeedsContractSignature = (filled(\App\Models\Setting::getValue('legal_rental_contract_content', '')) || filled($booking->property?->rental_agreement))
         && ! $booking->property?->skip_rental_agreement
         && ! $booking->contract_accepted_at;
+    // Do not skip the pre-check-in details step while required vehicle
+    // information is still missing. The vehicle fields live inside Step 1.
+    $idwVehicleDetailsComplete = ! $booking->parking_needed
+        || (
+            filled($booking->license_plate)
+            && (! ($property->requires_vehicle_photo ?? true) || filled($booking->license_plate_photo_path))
+        );
     $idwDetailsComplete = filled($booking->email)
         && filled($booking->phone)
         && ! is_null($booking->parking_needed)
         && filled($booking->checkin_time_preference)
         && filled($booking->checkout_time_preference)
         && filled($booking->terms_accepted_at)
+        && $idwVehicleDetailsComplete
         && ! $idwNeedsContractSignature;
     // Which pre-check-in step to render server-side so a reload doesn't flash
     // the first form step before JS restores the real step.
