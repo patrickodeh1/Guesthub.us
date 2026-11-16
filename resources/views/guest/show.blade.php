@@ -419,7 +419,7 @@
                                             <p class="mt-0.5 text-xs leading-5 text-slate-500">Use your phone camera or choose a clear photo. We'll try to read the plate automatically.</p>
                                         </div>
                                     </div>
-                                    <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" class="guest-input mt-3 w-full text-sm" {{ ($property->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : '' }}>
+                                    <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" class="guest-input mt-3 w-full text-sm">
                                     <div id="plate-photo-preview-wrap" class="mt-3 hidden">
                                         <img id="plate-photo-preview" alt="Number plate preview" class="max-h-44 w-full rounded-lg border border-slate-200 bg-white object-contain">
                                         <button type="button" id="plate-photo-retake" class="mt-2 text-sm font-semibold text-slate-700 underline">Choose another photo</button>
