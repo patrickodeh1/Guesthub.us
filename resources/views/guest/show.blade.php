@@ -384,7 +384,7 @@
                             </label>
                             <label class="mt-3 block text-sm font-semibold text-slate-700">
                                 License plate number
-                                <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number" class="guest-input mt-1 uppercase tracking-wider">
+                                <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number" {{ $booking->parking_needed && ! $booking->license_plate ? 'required' : '' }} class="guest-input mt-1 uppercase tracking-wider">
                             </label>
                             <label class="mt-3 block text-sm font-semibold text-slate-700">
                                 License plate state
@@ -398,7 +398,7 @@
                             </label>
                             <div class="mt-3">
                                 <label for="license_plate_photo" class="block text-sm font-semibold text-slate-700">License plate photo</label>
-                                <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:font-semibold file:text-white">
+                                <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" {{ $booking->parking_needed && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : '' }} class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:font-semibold file:text-white">
                                 <p id="plate-scan-status" class="mt-2 hidden rounded-lg border p-3 text-xs"></p>
                                 @if(($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path)
                                     <p class="mt-1 text-xs text-slate-500">A plate photo is required to continue.</p>
@@ -895,8 +895,13 @@
                     document.querySelectorAll('input[name="parking_needed"]').forEach(function(radio) {
                         radio.addEventListener("change", function() {
                             idwSaveState({ parking_needed: radio.value });
+                            var wantsParking = radio.value === "1" && radio.checked;
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.style.display = radio.value === "1" && radio.checked ? "" : "none";
+                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            var plateField = document.getElementById("license_plate");
+                            if (plateField) plateField.required = wantsParking;
+                            var platePhoto = document.getElementById("license_plate_photo");
+                            if (platePhoto) platePhoto.required = wantsParking && {{ (($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path) ? 'true' : 'false' }};
                         });
                     });
 
