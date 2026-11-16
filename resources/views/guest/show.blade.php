@@ -406,7 +406,7 @@
                                     <div>
                                         <label for="license_plate_photo" class="guest-stay-tile-label block mb-1">License Plate Photo</label>
                                         <input type="file" name="license_plate_photo" id="license_plate_photo" form="vehicle-info-upload-form"
-                                               accept="image/*" capture="environment" class="guest-input w-full"
+                                               accept="image/*" class="guest-input w-full"
                                                {{ ($property->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : '' }}>
                                         @error('license_plate_photo')
                                             <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
