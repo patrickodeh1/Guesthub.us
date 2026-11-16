@@ -2543,7 +2543,7 @@
                         </div>
 
                         <div id="deposit-payment-choice" class="mt-5">
-                            <button type="button" id="deposit-pay-here-btn" class="guest-primary-btn w-full">Pay Here with Card</button>
+                            <button type="button" id="deposit-pay-here-btn" class="guest-primary-btn w-full" data-card-url="{{ route('guest.deposit.card', [$booking->booking_id, $booking->token]) }}">Pay Here with Card</button>
                             <button type="button" id="deposit-pay-airbnb-btn" class="guest-outline-btn w-full mt-3 js-select-platform {{ $booking->isDirectBooking() ? 'hidden' : '' }}" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">Pay on {{ $platformLabel }}</button>
                         </div>
 
@@ -2770,9 +2770,34 @@
 
                             if (payHereBtn) {
                                 payHereBtn.addEventListener("click", function() {
-                                    choiceBlock.classList.add("hidden");
-                                    cardSection.classList.remove("hidden");
-                                    initStripeCardForm();
+                                    if (payHereBtn.disabled) return;
+                                    payHereBtn.disabled = true;
+                                    payHereBtn.textContent = "Saving…";
+                                    fetch(payHereBtn.dataset.cardUrl, {
+                                        method: "POST",
+                                        headers: {
+                                            "Accept": "application/json",
+                                            "Content-Type": "application/json",
+                                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : ""
+                                        }
+                                    })
+                                        .then(function(response) { return response.json(); })
+                                        .then(function(data) {
+                                            if (!data.ok) {
+                                                showError(data.message || "Unable to select card payment. Please try again.");
+                                                payHereBtn.disabled = false;
+                                                payHereBtn.textContent = "Pay Here with Card";
+                                                return;
+                                            }
+                                            choiceBlock.classList.add("hidden");
+                                            cardSection.classList.remove("hidden");
+                                            initStripeCardForm();
+                                        })
+                                        .catch(function() {
+                                            showError("Network error saving your payment choice. Please try again.");
+                                            payHereBtn.disabled = false;
+                                            payHereBtn.textContent = "Pay Here with Card";
+                                        });
                                 });
                             }
 
