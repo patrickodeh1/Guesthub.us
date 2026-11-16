@@ -275,14 +275,14 @@
         @php
             $ghStartBlocked = false; $ghStartBlockMsg = '';
             if ($session->status === 'pending' && $session->scheduled_date && $session->scheduled_time
-                && \\App\\Services\\CleanerAccessSteps::isCleanerForSession($session)) {
+                && \App\Services\CleanerAccessSteps::isCleanerForSession($session)) {
                 // Use the same property-specific window and timezone calculation as the start endpoint.
-                $ghWindow = app(\\App\\Services\\CleaningStartWindow::class);
+                $ghWindow = app(\App\Services\CleaningStartWindow::class);
                 $ghAt = $ghWindow->scheduledAt($session);
                 $ghOpens = $ghWindow->opensAt($session);
                 $ghCloses = $ghWindow->closesAt($session);
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
-                $ghNow = \\Illuminate\\Support\\Carbon::now($ghTz);
+                $ghNow = \Illuminate\Support\Carbon::now($ghTz);
                 $ghWhen = fn ($c) => ($c->isSameDay($ghNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
                 if ($ghAt && $ghOpens && $ghCloses && $ghNow->lt($ghOpens)) {
                     $ghStartBlocked = true;
