@@ -380,7 +380,7 @@
                         </div>
 
                         {{-- Vehicle details are collected immediately when the guest confirms parking. --}}
-                        <div id="vehicle-info-block" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display:none">
+                        <div id="vehicle-info-block" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 hidden">
                             <div class="flex items-center gap-2">
                                 <x-icon name="car" class="h-5 w-5 text-slate-700" />
                                 <h3 class="text-sm font-bold text-slate-900">Vehicle Information</h3>
@@ -756,7 +756,7 @@
                             if (radio) radio.checked = true;
                             var wantsParking = saved.parking_needed === "1";
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            if (vehicleBlock) vehicleBlock.classList.toggle("hidden", !wantsParking);
                             var plateField = document.getElementById("license_plate");
                             if (plateField) plateField.required = wantsParking;
                             var platePhoto = document.getElementById("license_plate_photo");
@@ -915,7 +915,7 @@
                             idwSaveState({ parking_needed: radio.value, parking_choice_confirmed: true });
                             var wantsParking = radio.value === "1" && radio.checked;
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            if (vehicleBlock) vehicleBlock.classList.toggle("hidden", !wantsParking);
                             var plateField = document.getElementById("license_plate");
                             if (plateField) plateField.required = wantsParking;
                             var platePhoto = document.getElementById("license_plate_photo");
