@@ -732,7 +732,7 @@
                             saved.step = "1";
                         }
 
-                        var fieldNames = ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference"];
+                        var fieldNames = ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference", "vehicle_make_model", "license_plate", "license_plate_state"];
                         fieldNames.forEach(function(name) {
                             if (saved[name] === undefined) return;
                             var input = document.querySelector('[name="' + name + '"]');
@@ -882,7 +882,7 @@
                         });
                     }
 
-                    ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference"].forEach(function(name) {
+                    ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference", "vehicle_make_model", "license_plate", "license_plate_state"].forEach(function(name) {
                         var input = document.querySelector('[name="' + name + '"]');
                         if (input) {
                             input.addEventListener("input", function() {
