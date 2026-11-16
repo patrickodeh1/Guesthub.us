@@ -275,16 +275,17 @@ class ManageSessionController extends Controller
         $drawerProps = $properties->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values();
 
         // Cleaner start windows are property-specific, not tied to the property's owner account.
-        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes', 'cleaner_end_window_minutes']);
+        $cleaningWindowProperties = Property::query()->visibleTo($u)->orderBy('name')->get(['id', 'name', 'cleaner_start_window_minutes', 'cleaner_end_window_minutes', 'cleaner_start_window_enabled']);
         $selectedCleaningWindowProperty = $cleaningWindowProperties->firstWhere('id', (int) $request->query('cleaning_window_property_id'))
             ?? ($filters['property_id'] ? $cleaningWindowProperties->firstWhere('id', (int) $filters['property_id']) : null)
             ?? $cleaningWindowProperties->first();
+        $selectedCleaningWindowEnabled = (bool) ($selectedCleaningWindowProperty?->cleaner_start_window_enabled ?? true);
         $selectedCleaningWindowBeforeMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_start_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_BEFORE);
         $selectedCleaningWindowAfterMinutes = (int) ($selectedCleaningWindowProperty?->cleaner_end_window_minutes ?? \App\Services\CleaningStartWindow::DEFAULT_MINUTES_AFTER);
         $selectedCleaningWindowBeforeDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowBeforeMinutes, 60), $selectedCleaningWindowBeforeMinutes % 60);
         $selectedCleaningWindowAfterDuration = sprintf('%d:%02d', intdiv($selectedCleaningWindowAfterMinutes, 60), $selectedCleaningWindowAfterMinutes % 60);
 
-        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowBeforeMinutes', 'selectedCleaningWindowAfterMinutes', 'selectedCleaningWindowBeforeDuration', 'selectedCleaningWindowAfterDuration'));
+        return view('sessions.manage.index', compact('sessions', 'groupedSessions', 'properties', 'housekeepers', 'filters', 'acting', 'section', 'needsCleaner', 'bookingByJob', 'drawerCleaners', 'drawerHousekeepers', 'drawerProps', 'cleaningWindowProperties', 'selectedCleaningWindowProperty', 'selectedCleaningWindowBeforeMinutes', 'selectedCleaningWindowAfterMinutes', 'selectedCleaningWindowBeforeDuration', 'selectedCleaningWindowAfterDuration', 'selectedCleaningWindowEnabled'));
     }
 
     public function create(Request $request)
@@ -545,6 +546,7 @@ class ManageSessionController extends Controller
             'property_id' => ['required', 'integer', 'exists:properties,id'],
             'before_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
             'after_duration' => ['required', 'regex:/^\d+:[0-5][0-9]$/'],
+            'window_enabled' => ['required', 'boolean'],
         ]);
 
         $toMinutes = function (string $duration): int {
@@ -558,6 +560,7 @@ class ManageSessionController extends Controller
         $property->forceFill([
             'cleaner_start_window_minutes' => $toMinutes($data['before_duration']),
             'cleaner_end_window_minutes' => $toMinutes($data['after_duration']),
+            'cleaner_start_window_enabled' => (bool) $data['window_enabled'],
         ])->save();
 
         return back()->with('ok', 'Cleaning start allowances saved for '.$property->name.'.');
