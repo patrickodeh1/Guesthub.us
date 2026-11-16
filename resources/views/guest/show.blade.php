@@ -741,8 +741,13 @@
                         if (saved.parking_needed !== undefined) {
                             var radio = document.querySelector('input[name="parking_needed"][value="' + saved.parking_needed + '"]');
                             if (radio) radio.checked = true;
+                            var wantsParking = saved.parking_needed === "1";
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.style.display = saved.parking_needed === "1" ? "" : "none";
+                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            var plateField = document.getElementById("license_plate");
+                            if (plateField) plateField.required = wantsParking;
+                            var platePhoto = document.getElementById("license_plate_photo");
+                            if (platePhoto) platePhoto.required = wantsParking && {{ (($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path) ? 'true' : 'false' }};
                         }
                         var photoIdEl = document.getElementById("photo-id-data");
                         if (saved.photo_id && photoIdEl) {
