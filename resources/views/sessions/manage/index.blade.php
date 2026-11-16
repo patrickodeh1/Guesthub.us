@@ -33,15 +33,15 @@
                         <div class="flex items-center gap-1">
                             <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease before allowance by 30 minutes" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-30)">−</button>
                             <input type="text" inputmode="numeric" name="before_duration" pattern="\d+:[0-5][0-9]" required value="{{ old('before_duration', $selectedCleaningWindowBeforeDuration) }}" placeholder="2:00" class="w-24 rounded border-gray-300 text-center text-sm" />
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase before allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),30)">+</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase before allowance by 30 minutes" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),30)">+</button>
                         </div>
                     </div>
                     <div>
                         <x-form.label value="Allowed after" />
                         <div class="flex items-center gap-1">
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-60)">−</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Decrease after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),-30)">−</button>
                             <input type="text" inputmode="numeric" name="after_duration" pattern="\d+:[0-5][0-9]" required value="{{ old('after_duration', $selectedCleaningWindowAfterDuration) }}" placeholder="1:00" class="w-24 rounded border-gray-300 text-center text-sm" />
-                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),60)">+</button>
+                            <button type="button" class="rounded border border-gray-300 px-3 py-2 text-sm" aria-label="Increase after allowance by one hour" onclick="adjustCleaningWindow(this.parentElement.querySelector('input'),30)">+</button>
                         </div>
                     </div>
                     <x-button>Save allowances</x-button>
