@@ -1844,9 +1844,7 @@
                         }
                     }
 
-                    // Vehicle info is no longer collected/validated at Step 1 --
-                    // it's prompted later in-flow (waiting/arrival state) once
-                    // Booking::needsVehicleInfoPrompt() is true.
+                    // Vehicle details are collected in this step whenever parking is selected.
                     var parkingIsYes = parkingChecked2 ? parkingChecked2.value === "1" : {{ $booking->parking_needed ? 'true' : 'false' }};
                     var timeSelect = step.querySelector('#checkin_time_preference_select');
                     if (timeSelect && !timeSelect.value) {
