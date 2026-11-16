@@ -128,6 +128,7 @@ class Property extends Model
             'notify_photo_started' => 'boolean',
             'notify_task_notes' => 'boolean',
             'cleaner_start_window_enabled' => 'boolean',
+            'cleaner_start_window_enabled' => 'boolean',
         ];
     }
 
