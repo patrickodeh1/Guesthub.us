@@ -153,6 +153,11 @@ class GuestController extends Controller
         // already be uploaded and scanned so the typed name can be checked
         // against it, so it's handled later by signRentalAgreement(), once
         // ID capture (Step 2) has run.
+        $needsPlatePhoto = $parkingAnswer
+            && ($booking->property?->requires_vehicle_photo ?? true)
+            && ! $booking->vehicle_info_bypassed_at
+            && ! $booking->license_plate_photo_path;
+
         $requiresTermsAcceptance = ! $booking->terms_accepted_at;
 
         $data = $request->validate([
@@ -168,7 +173,9 @@ class GuestController extends Controller
             // area, via Booking::needsVehicleInfoPrompt() (~1 day before
             // arrival, or later in-flow for same-day bookings).
             'vehicle_make_model' => ['nullable', 'string', 'max:255'],
-            'license_plate_photo' => ['nullable', 'image', 'max:8192'],
+            'license_plate_photo' => [$needsPlatePhoto ? 'required' : 'nullable', 'image', 'max:20480'],
+            'license_plate' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \-]+$/'],
+            'license_plate_state' => ['nullable', 'string', 'size:2'],
             'terms_accepted' => [$requiresTermsAcceptance ? 'accepted' : 'nullable'],
             'sms_consent' => ['nullable', 'boolean'],
         ]);
@@ -205,6 +212,12 @@ class GuestController extends Controller
 
         if ($parkingAnswer) {
             $updates['vehicle_make_model'] = $data['vehicle_make_model'] ?? $booking->vehicle_make_model;
+            if (! empty($data['license_plate'])) {
+                $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $data['license_plate'])) ?: null;
+            }
+            if (! empty($data['license_plate_state'])) {
+                $updates['license_plate_state'] = strtoupper((string) $data['license_plate_state']);
+            }
         }
 
         if ($request->hasFile('license_plate_photo')) {
@@ -1622,16 +1635,10 @@ class GuestController extends Controller
             return 'unit_not_ready';
         }
 
-        if (! $booking->isCheckinDay() && $booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
         if (! $booking->isCheckinDay()) {
             return 'waiting';
         }
 
-        if ($booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
 
         if (! $booking->gps_verified) {
             return 'arrival';
