@@ -240,8 +240,6 @@
 
             <div class="guest-portal-card mt-4">
                 @vite('resources/js/id-barcode.js')
-                <form id="vehicle-info-upload-form" method="post" enctype="multipart/form-data" action="{{ route('guest.vehicle-info', [$booking->booking_id, $booking->token]) }}">@csrf</form>
-
                 <form id="guest-booking-form" method="post" data-skip-loading enctype="multipart/form-data" action="{{ route('guest.identity', [$booking->booking_id, $booking->token]) }}" class="guest-booking-card">
                     @csrf
 
@@ -1994,14 +1992,6 @@
                         if (vehiclePhotoForSave && vehiclePhotoForSave.files && vehiclePhotoForSave.files[0]) {
                             loginFd.append("license_plate_photo", vehiclePhotoForSave.files[0]);
                         }
-                    }
-                    ["vehicle_make_model", "license_plate", "license_plate_state"].forEach(function(name) {
-                        var field = document.getElementById(name);
-                        if (field) loginFd.append(name, field.value);
-                    });
-                    var vehiclePhoto = document.getElementById("license_plate_photo");
-                    if (vehiclePhoto && vehiclePhoto.files && vehiclePhoto.files[0]) {
-                        loginFd.append("license_plate_photo", vehiclePhoto.files[0]);
                     }
                     if (step1TermsCheckbox) {
                         loginFd.append("terms_accepted", step1TermsCheckbox.checked ? "1" : "0");
