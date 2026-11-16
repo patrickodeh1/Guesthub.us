@@ -42,19 +42,25 @@ class CleaningStartWindow
 
     public function opensAt(CleaningSession $session): ?Carbon
     {
-        return $this->scheduledAt($session)?->subMinutes($this->minutesBefore($session));
+        $scheduledAt = $this->scheduledAt($session);
+
+        // Disabled means the scheduled time is the earliest permitted start.
+        return $this->isEnabled($session)
+            ? $scheduledAt?->subMinutes($this->minutesBefore($session))
+            : $scheduledAt;
     }
 
     public function closesAt(CleaningSession $session): ?Carbon
     {
+        if (! $this->isEnabled($session)) {
+            return null;
+        }
+
         return $this->scheduledAt($session)?->addMinutes($this->minutesAfter($session));
     }
 
     public function isTooEarly(CleaningSession $session): bool
     {
-        if (! $this->isEnabled($session)) {
-            return false;
-        }
         $opensAt = $this->opensAt($session);
         if (! $opensAt) {
             return false;
@@ -86,12 +92,12 @@ class CleaningStartWindow
         }
         $now = Carbon::now($session->property?->timezone ?: config('app.timezone'));
 
-        if (! $this->isEnabled($session)) { return true; }
-
-        if ($now->lt($scheduledAt->copy()->subMinutes($this->minutesBefore($session)))) {
+        if ($now->lt($this->opensAt($session))) {
             return false;
         }
-        if ($now->gt($scheduledAt->copy()->addMinutes($this->minutesAfter($session)))) {
+
+        $closesAt = $this->closesAt($session);
+        if ($closesAt && $now->gt($closesAt)) {
             return false;
         }
 
