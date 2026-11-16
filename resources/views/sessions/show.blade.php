@@ -284,10 +284,10 @@
                 $ghTz = $session->property?->timezone ?: config('app.timezone');
                 $ghNow = \Illuminate\Support\Carbon::now($ghTz);
                 $ghWhen = fn ($c) => ($c->isSameDay($ghNow) ? 'today' : $c->format('D, M j')).' at '.$c->format('g:i A');
-                if ($ghAt && $ghWindow->minutesBefore($session) > 0 && $ghNow->lt($ghOpens)) {
+                if ($ghAt && $ghWindow->isTooEarly($session)) {
                     $ghStartBlocked = true;
                     $ghStartBlockMsg = 'You cannot begin yet. Your scheduled cleaning time is '.$ghAt->format('g:i A').'. You may begin from '.$ghWhen($ghOpens).'.';
-                } elseif ($ghAt && $ghWindow->minutesAfter($session) > 0 && $ghNow->gt($ghCloses)) {
+                } elseif ($ghAt && $ghWindow->isTooLate($session)) {
                     $ghStartBlocked = true;
                     $ghStartBlockMsg = 'The allowed time to begin this cleaning ended '.$ghWhen($ghCloses).'. Please contact your manager.';
                 }
