@@ -28,7 +28,9 @@
         && ! $idwNeedsContractSignature;
     // Which pre-check-in step to render server-side so a reload doesn't flash
     // the first form step before JS restores the real step.
-    $idwStartStep = $idwDetailsComplete ? 2 : 1;
+    // Always present the parking question in Step 1 so the guest makes the choice.
+    // The browser may resume Step 2 only after this session records a fresh choice.
+    $idwStartStep = 1;
     // If the ID isn't fully approved yet, never let the wizard sit on the final
     // "get the August app" step (3) — the guest must be shown the ID step so a
     // required re-upload is obvious.
@@ -366,11 +368,11 @@
                             <p class="text-sm font-bold">Will You Have A Vehicle?</p>
                             <div id="parking-question-block" class="mt-3 grid grid-cols-2 gap-3">
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600" @checked((string) old('parking_needed', $booking->parking_needed) === '1')>
+                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600" @checked((string) old('parking_needed', '') === '1')>
                                     Yes I Need Parking
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600" @checked((string) old('parking_needed', $booking->parking_needed) === '0')>
+                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600" @checked((string) old('parking_needed', '') === '0')>
                                     No I Will Not Need Parking
                                 </label>
                             </div>
@@ -378,7 +380,7 @@
                         </div>
 
                         {{-- Vehicle details are collected immediately when the guest confirms parking. --}}
-                        <div id="vehicle-info-block" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" style="{{ $booking->parking_needed ? '' : 'display:none' }}">
+                        <div id="vehicle-info-block" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" style="display:none">
                             <div class="flex items-center gap-2">
                                 <x-icon name="car" class="h-5 w-5 text-slate-700" />
                                 <h3 class="text-sm font-bold text-slate-900">Vehicle Information</h3>
@@ -390,7 +392,7 @@
                             </label>
                             <label class="mt-3 block text-sm font-semibold text-slate-700">
                                 License plate number
-                                <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number" {{ $booking->parking_needed && ! $booking->license_plate ? 'required' : '' }} class="guest-input mt-1 uppercase tracking-wider">
+                                <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number"  class="guest-input mt-1 uppercase tracking-wider">
                             </label>
                             <label class="mt-3 block text-sm font-semibold text-slate-700">
                                 License plate state
@@ -404,7 +406,7 @@
                             </label>
                             <div class="mt-3">
                                 <label for="license_plate_photo" class="block text-sm font-semibold text-slate-700">License plate photo</label>
-                                <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" {{ $booking->parking_needed && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : '' }} class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:font-semibold file:text-white">
+                                <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment"  class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:font-semibold file:text-white">
                                 <p id="plate-scan-status" class="mt-2 hidden rounded-lg border p-3 text-xs"></p>
                                 @if(($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path)
                                     <p class="mt-1 text-xs text-slate-500">A plate photo is required to continue.</p>
@@ -726,10 +728,13 @@
                         var saved;
                         try { saved = JSON.parse(sessionStorage.getItem(IDW_STORAGE_KEY) || "null"); } catch (_) { saved = null; }
                         if (!saved) {
-                            @if($idwDetailsComplete && ($booking->needsIdApproval() || $booking->guest_authenticated_at))
-                                goToStep(2);
-                            @endif
+                            // A saved booking value is not a guest's current choice.
+                            // Keep Step 1 visible until they choose Yes or No here.
+                            goToStep(1);
                             return false;
+                        }
+                        if (saved.parking_choice_confirmed !== true) {
+                            saved.step = "1";
                         }
                         if (String(saved.step) === "0") {
                             saved.step = "1";
@@ -905,7 +910,7 @@
                     });
                     document.querySelectorAll('input[name="parking_needed"]').forEach(function(radio) {
                         radio.addEventListener("change", function() {
-                            idwSaveState({ parking_needed: radio.value });
+                            idwSaveState({ parking_needed: radio.value, parking_choice_confirmed: true });
                             var wantsParking = radio.value === "1" && radio.checked;
                             var vehicleBlock = document.getElementById("vehicle-info-block");
                             if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
