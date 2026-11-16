@@ -354,22 +354,20 @@
                         @endif
 
                         {{-- Parking --}}
-                        @if(is_null($booking->parking_needed))
                         <div class="mt-5">
                             <p class="text-sm font-bold">Will You Have A Vehicle?</p>
                             <div id="parking-question-block" class="mt-3 grid grid-cols-2 gap-3">
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600">
+                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600" {{ (string) old('parking_needed', is_null($booking->parking_needed) ? '' : (int) $booking->parking_needed) === '1' ? 'checked' : '' }}>
                                     Yes I Need Parking
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600">
+                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600" {{ (string) old('parking_needed', is_null($booking->parking_needed) ? '' : (int) $booking->parking_needed) === '0' ? 'checked' : '' }}>
                                     No I Will Not Need Parking
                                 </label>
                             </div>
                             <span id="parking-error" class="guest-field-error" style="display:none">Please let us know if you'll be parking.</span>
                         </div>
-                        @endif
 
                         {{-- Check-in time --}}
                         <div class="mt-5">
