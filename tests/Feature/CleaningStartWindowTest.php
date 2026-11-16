@@ -111,10 +111,14 @@ class CleaningStartWindowTest extends TestCase
             'status' => 'pending',
         ]);
         $window = app(CleaningStartWindow::class);
-        Carbon::setTestNow(Carbon::parse('2026-11-14 06:00:00', 'UTC'));
+        Carbon::setTestNow(Carbon::parse('2026-11-14 09:59:00', 'UTC'));
+        $this->assertTrue($window->isTooEarly($session));
+        $this->assertFalse($window->canStart($session));
+        Carbon::setTestNow(Carbon::parse('2026-11-14 10:00:00', 'UTC'));
         $this->assertFalse($window->isTooEarly($session));
+        $this->assertFalse($window->isTooLate($session));
         $this->assertTrue($window->canStart($session));
-        Carbon::setTestNow(Carbon::parse('2026-11-14 11:01:00', 'UTC'));
+        Carbon::setTestNow(Carbon::parse('2026-11-14 10:01:00', 'UTC'));
         $this->assertTrue($window->isTooLate($session));
         $this->assertFalse($window->canStart($session));
     }
