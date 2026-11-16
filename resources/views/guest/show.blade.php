@@ -11,24 +11,16 @@
     $idwNeedsContractSignature = (filled(\App\Models\Setting::getValue('legal_rental_contract_content', '')) || filled($booking->property?->rental_agreement))
         && ! $booking->property?->skip_rental_agreement
         && ! $booking->contract_accepted_at;
-    // A guest who selects parking must submit the same license-plate photo
-    // requested by the original Vehicle Information screen.
-    $idwVehicleDetailsComplete = ! $booking->parking_needed
-        || ! ($property->requires_vehicle_photo ?? true)
-        || filled($booking->license_plate_photo_path);
     $idwDetailsComplete = filled($booking->email)
         && filled($booking->phone)
         && ! is_null($booking->parking_needed)
         && filled($booking->checkin_time_preference)
         && filled($booking->checkout_time_preference)
         && filled($booking->terms_accepted_at)
-        && $idwVehicleDetailsComplete
         && ! $idwNeedsContractSignature;
     // Which pre-check-in step to render server-side so a reload doesn't flash
     // the first form step before JS restores the real step.
-    // Always present the parking question in Step 1 so the guest makes the choice.
-    // The browser may resume Step 2 only after this session records a fresh choice.
-    $idwStartStep = 1;
+    $idwStartStep = $idwDetailsComplete ? 2 : 1;
     // If the ID isn't fully approved yet, never let the wizard sit on the final
     // "get the August app" step (3) — the guest must be shown the ID step so a
     // required re-upload is obvious.
@@ -361,74 +353,58 @@
                         </label>
                         @endif
 
-                        {{-- Parking choice must remain editable even when a value was saved previously. --}}
+                        {{-- Parking --}}
+                        @if(is_null($booking->parking_needed))
                         <div class="mt-5">
                             <p class="text-sm font-bold">Will You Have A Vehicle?</p>
                             <div id="parking-question-block" class="mt-3 grid grid-cols-2 gap-3">
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600" @checked((string) old('parking_needed', '') === '1')>
+                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600">
                                     Yes I Need Parking
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600" @checked((string) old('parking_needed', '') === '0')>
+                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600">
                                     No I Will Not Need Parking
                                 </label>
                             </div>
                             <span id="parking-error" class="guest-field-error" style="display:none">Please let us know if you'll be parking.</span>
                         </div>
+                        @endif
 
-                        {{-- Vehicle capture is part of the same pre-check-in save. --}}
-                        <section id="vehicle-info-block" class="mt-4 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                            <div class="border-b border-slate-100 px-4 py-4 sm:px-5">
-                                <div class="flex items-center gap-3">
-                                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-800"><x-icon name="car" class="h-5 w-5" /></span>
-                                    <div class="min-w-0">
-                                        <h3 class="text-base font-bold text-slate-950">Your vehicle</h3>
-                                        <p class="mt-0.5 text-xs text-slate-500">Add your vehicle details and capture its number plate.</p>
-                                    </div>
-                                </div>
+                        {{-- Vehicle details are collected immediately when the guest confirms parking. --}}
+                        <div id="vehicle-info-block" class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" style="{{ $booking->parking_needed ? '' : 'display:none' }}">
+                            <div class="flex items-center gap-2">
+                                <x-icon name="car" class="h-5 w-5 text-slate-700" />
+                                <h3 class="text-sm font-bold text-slate-900">Vehicle Information</h3>
                             </div>
-                            <div class="space-y-4 p-4 sm:p-5">
-                                <label class="block text-sm font-semibold text-slate-700">
-                                    Make and model
-                                    <input type="text" name="vehicle_make_model" id="vehicle_make_model" value="{{ old('vehicle_make_model', $booking->vehicle_make_model) }}" maxlength="255" placeholder="e.g. Toyota Camry" autocomplete="off" class="guest-input mt-1.5">
-                                </label>
-                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    <label class="block text-sm font-semibold text-slate-700">
-                                        Number plate
-                                        <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number" class="guest-input mt-1.5 uppercase tracking-wider">
-                                    </label>
-                                    <label class="block text-sm font-semibold text-slate-700">
-                                        State
-                                        <select name="license_plate_state" id="license_plate_state" class="guest-input mt-1.5">
-                                            <option value="">Select state</option>
-                                            @foreach(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] as $st)
-                                                <option value="{{ $st }}" @selected(old('license_plate_state', $booking->license_plate_state) === $st)>{{ $st }}</option>
-                                            @endforeach
-                                            <option value="OT" @selected(old('license_plate_state', $booking->license_plate_state) === 'OT')>Other / not US</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 sm:p-4">
-                                    <div class="flex items-start gap-3">
-                                        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm"><x-icon name="camera" class="h-5 w-5" /></span>
-                                        <div class="min-w-0 flex-1">
-                                            <p class="text-sm font-semibold text-slate-900">Capture number plate</p>
-                                            <p class="mt-0.5 text-xs leading-5 text-slate-500">Use your phone camera or choose a clear photo. We'll try to read the plate automatically.</p>
-                                        </div>
-                                    </div>
-                                    <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" class="guest-input mt-3 w-full text-sm">
-                                    <div id="plate-photo-preview-wrap" class="mt-3 hidden">
-                                        <img id="plate-photo-preview" alt="Number plate preview" class="max-h-44 w-full rounded-lg border border-slate-200 bg-white object-contain">
-                                        <button type="button" id="plate-photo-retake" class="mt-2 text-sm font-semibold text-slate-700 underline">Choose another photo</button>
-                                    </div>
-                                    <p id="plate-scan-status" class="mt-2 hidden rounded-lg border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
-                                    @if(($property->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path)
-                                        <p class="mt-2 text-xs text-slate-500">A number plate photo is required to continue.</p>
-                                    @endif
-                                </div>
+                            <p class="mt-1 text-xs leading-5 text-slate-600">Please provide your vehicle details and take a clear photo of the license plate.</p>
+                            <label class="mt-4 block text-sm font-semibold text-slate-700">
+                                Vehicle make and model
+                                <input type="text" name="vehicle_make_model" id="vehicle_make_model" value="{{ old('vehicle_make_model', $booking->vehicle_make_model) }}" maxlength="255" placeholder="e.g. Toyota Camry" class="guest-input mt-1">
+                            </label>
+                            <label class="mt-3 block text-sm font-semibold text-slate-700">
+                                License plate number
+                                <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" placeholder="Enter plate number" {{ $booking->parking_needed && ! $booking->license_plate ? 'required' : '' }} class="guest-input mt-1 uppercase tracking-wider">
+                            </label>
+                            <label class="mt-3 block text-sm font-semibold text-slate-700">
+                                License plate state
+                                <select name="license_plate_state" id="license_plate_state" class="guest-input mt-1">
+                                    <option value="">Select state</option>
+                                    @foreach(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] as $st)
+                                        <option value="{{ $st }}" @selected(old('license_plate_state', $booking->license_plate_state) === $st)>{{ $st }}</option>
+                                    @endforeach
+                                    <option value="OT" @selected(old('license_plate_state', $booking->license_plate_state) === 'OT')>Other / not US</option>
+                                </select>
+                            </label>
+                            <div class="mt-3">
+                                <label for="license_plate_photo" class="block text-sm font-semibold text-slate-700">License plate photo</label>
+                                <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" capture="environment" {{ $booking->parking_needed && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : '' }} class="mt-2 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-900 file:px-4 file:py-2.5 file:font-semibold file:text-white">
+                                <p id="plate-scan-status" class="mt-2 hidden rounded-lg border p-3 text-xs"></p>
+                                @if(($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path)
+                                    <p class="mt-1 text-xs text-slate-500">A plate photo is required to continue.</p>
+                                @endif
                             </div>
-                        </section>
+                        </div>
 
                         {{-- Check-in time --}}
                         <div class="mt-5">
@@ -744,15 +720,10 @@
                         var saved;
                         try { saved = JSON.parse(sessionStorage.getItem(IDW_STORAGE_KEY) || "null"); } catch (_) { saved = null; }
                         if (!saved) {
-                            // A saved booking value is not a guest's current choice.
-                            // Keep Step 1 visible until they choose Yes or No here.
-                            goToStep(1);
+                            @if($idwDetailsComplete && ($booking->needsIdApproval() || $booking->guest_authenticated_at))
+                                goToStep(2);
+                            @endif
                             return false;
-                        }
-                        if (saved.parking_choice_confirmed !== true) {
-                            saved.step = "1";
-                            // Ignore any older cached answer; ask the guest again.
-                            saved.parking_needed = undefined;
                         }
                         if (String(saved.step) === "0") {
                             saved.step = "1";
@@ -761,7 +732,7 @@
                             saved.step = "1";
                         }
 
-                        var fieldNames = ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference"];
+                        var fieldNames = ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference", "vehicle_make_model", "license_plate", "license_plate_state"];
                         fieldNames.forEach(function(name) {
                             if (saved[name] === undefined) return;
                             var input = document.querySelector('[name="' + name + '"]');
@@ -772,7 +743,11 @@
                             if (radio) radio.checked = true;
                             var wantsParking = saved.parking_needed === "1";
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.classList.toggle("hidden", !wantsParking);
+                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            var plateField = document.getElementById("license_plate");
+                            if (plateField) plateField.required = wantsParking;
+                            var platePhoto = document.getElementById("license_plate_photo");
+                            if (platePhoto) platePhoto.required = wantsParking && {{ (($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path) ? 'true' : 'false' }};
                         }
                         var photoIdEl = document.getElementById("photo-id-data");
                         if (saved.photo_id && photoIdEl) {
@@ -907,7 +882,7 @@
                         });
                     }
 
-                    ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference"].forEach(function(name) {
+                    ["guest_name", "phone", "email", "checkin_time_preference", "checkout_time_preference", "vehicle_make_model", "license_plate", "license_plate_state"].forEach(function(name) {
                         var input = document.querySelector('[name="' + name + '"]');
                         if (input) {
                             input.addEventListener("input", function() {
@@ -924,16 +899,50 @@
                     });
                     document.querySelectorAll('input[name="parking_needed"]').forEach(function(radio) {
                         radio.addEventListener("change", function() {
-                            idwSaveState({ parking_needed: radio.value, parking_choice_confirmed: true });
+                            idwSaveState({ parking_needed: radio.value });
                             var wantsParking = radio.value === "1" && radio.checked;
                             var vehicleBlock = document.getElementById("vehicle-info-block");
-                            if (vehicleBlock) vehicleBlock.classList.toggle("hidden", !wantsParking);
+                            if (vehicleBlock) vehicleBlock.style.display = wantsParking ? "" : "none";
+                            var plateField = document.getElementById("license_plate");
+                            if (plateField) plateField.required = wantsParking;
+                            var platePhoto = document.getElementById("license_plate_photo");
+                            if (platePhoto) platePhoto.required = wantsParking && {{ (($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path) ? 'true' : 'false' }};
                         });
                     });
 
                     try { idwRestoreState(); } catch (e) { console.error("idwRestoreState failed:", e); }
                 })();
 
+                (function() {
+                    var photo = document.getElementById("license_plate_photo");
+                    if (!photo) return;
+                    photo.addEventListener("change", function() {
+                        if (!photo.files || !photo.files[0]) return;
+                        var status = document.getElementById("plate-scan-status");
+                        status.classList.remove("hidden");
+                        status.className = "mt-2 rounded-lg border p-3 text-xs bg-slate-50 border-slate-200 text-slate-700";
+                        status.textContent = "Reading your plate…";
+                        var scanUrl = "{{ route('guest.scan-plate', [$booking->booking_id, $booking->token]) }}";
+                        var fd = new FormData();
+                        fd.append("frame", photo.files[0]);
+                        fetch(scanUrl, {
+                            method: "POST",
+                            body: fd,
+                            headers: { "Accept": "application/json", "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content || "" }
+                        })
+                        .then(function(response) { return response.json(); })
+                        .then(function(result) {
+                            if (result.state) document.getElementById("license_plate_state").value = result.state;
+                            if (result.plate) document.getElementById("license_plate").value = result.plate;
+                            status.textContent = result.plate
+                                ? "Plate detected. Please check the details before continuing."
+                                : "Photo selected. Please enter your plate number if it was not detected.";
+                        })
+                        .catch(function() {
+                            status.textContent = "Photo selected. Please enter your plate number manually.";
+                        });
+                    });
+                })();
 
                 var currentSide = "front";
                 var stream = null;
@@ -1796,60 +1805,6 @@
                     fn(restore);
                 }
 
-                // Number-plate OCR: use the existing PlateScanner endpoint, then let the guest confirm/edit its result.
-                (function () {
-                    var photoInput = document.getElementById("license_plate_photo");
-                    var previewWrap = document.getElementById("plate-photo-preview-wrap");
-                    var preview = document.getElementById("plate-photo-preview");
-                    var status = document.getElementById("plate-scan-status");
-                    var plate = document.getElementById("license_plate");
-                    var state = document.getElementById("license_plate_state");
-                    var retake = document.getElementById("plate-photo-retake");
-                    if (!photoInput) return;
-                    photoInput.addEventListener("change", function () {
-                        var file = photoInput.files && photoInput.files[0];
-                        if (!file) { if (previewWrap) previewWrap.classList.add("hidden"); return; }
-                        if (preview) preview.src = URL.createObjectURL(file);
-                        if (previewWrap) previewWrap.classList.remove("hidden");
-                        if (status) {
-                            status.className = "mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600";
-                            status.textContent = "Reading number plate…";
-                        }
-                        var fd = new FormData();
-                        fd.append("_token", document.querySelector('meta[name="csrf-token"]')?.content || "");
-                        fd.append("frame", file);
-                        fetch("{{ route('guest.scan-plate', [$booking->booking_id, $booking->token]) }}", {
-                            method: "POST", body: fd, headers: { "Accept": "application/json" }
-                        }).then(function (response) {
-                            if (!response.ok) throw new Error("scan_failed");
-                            return response.json();
-                        }).then(function (result) {
-                            if (result.ok && result.plate) {
-                                if (plate) plate.value = result.plate;
-                                if (state && result.state) state.value = result.state;
-                                if (status) {
-                                    status.className = "mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800";
-                                    status.textContent = "Plate detected. Please check the number and state before continuing.";
-                                }
-                            } else if (status) {
-                                status.className = "mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800";
-                                status.textContent = "We couldn't read the plate automatically. Please enter it above; your photo is ready to submit.";
-                            }
-                        }).catch(function () {
-                            if (status) {
-                                status.className = "mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800";
-                                status.textContent = "Automatic reading is unavailable. Please enter the plate number manually.";
-                            }
-                        });
-                    });
-                    if (retake) retake.addEventListener("click", function () {
-                        photoInput.value = "";
-                        if (previewWrap) previewWrap.classList.add("hidden");
-                        if (status) status.classList.add("hidden");
-                        photoInput.click();
-                    });
-                })();
-
                 // ── Step 1 "Next": validate contact fields, AJAX-save via guest.login, then advance ──
                 document.getElementById("step1-next-btn").addEventListener("click", function() {
                     var btn = this;
@@ -1889,21 +1844,8 @@
                         }
                     }
 
-                    var parkingIsYes = parkingChecked2 ? parkingChecked2.value === "1" : false;
-                    if (parkingIsYes) {
-                        var plateInput = document.getElementById("license_plate");
-                        var vehiclePhoto = document.getElementById("license_plate_photo");
-                        if (plateInput && !plateInput.value.trim()) {
-                            alert("Please enter or scan your vehicle number plate.");
-                            plateInput.focus();
-                            return;
-                        }
-                        if ({{ (($property->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path) ? 'true' : 'false' }} && (!vehiclePhoto || !vehiclePhoto.files || !vehiclePhoto.files.length)) {
-                            alert("Please take or choose a photo of your number plate.");
-                            if (vehiclePhoto) { vehiclePhoto.scrollIntoView({ behavior: "smooth", block: "center" }); vehiclePhoto.focus(); }
-                            return;
-                        }
-                    }
+                    // Vehicle details are collected in this step whenever parking is selected.
+                    var parkingIsYes = parkingChecked2 ? parkingChecked2.value === "1" : {{ $booking->parking_needed ? 'true' : 'false' }};
                     var timeSelect = step.querySelector('#checkin_time_preference_select');
                     if (timeSelect && !timeSelect.value) {
                         timeSelect.classList.add("border-red-400");
@@ -1983,15 +1925,13 @@
                     var step1PhoneCountryCode = document.getElementById("guest-phone-country-code");
                     if (step1PhoneCountryCode) loginFd.append("phone_country_code", step1PhoneCountryCode.value);
                     if (parkingChecked2) loginFd.append("parking_needed", parkingChecked2.value);
-                    if (parkingIsYes) {
-                        ["vehicle_make_model", "license_plate", "license_plate_state"].forEach(function(name) {
-                            var field = document.getElementById(name);
-                            if (field) loginFd.append(name, field.value);
-                        });
-                        var vehiclePhotoForSave = document.getElementById("license_plate_photo");
-                        if (vehiclePhotoForSave && vehiclePhotoForSave.files && vehiclePhotoForSave.files[0]) {
-                            loginFd.append("license_plate_photo", vehiclePhotoForSave.files[0]);
-                        }
+                    ["vehicle_make_model", "license_plate", "license_plate_state"].forEach(function(name) {
+                        var field = document.getElementById(name);
+                        if (field) loginFd.append(name, field.value);
+                    });
+                    var vehiclePhoto = document.getElementById("license_plate_photo");
+                    if (vehiclePhoto && vehiclePhoto.files && vehiclePhoto.files[0]) {
+                        loginFd.append("license_plate_photo", vehiclePhoto.files[0]);
                     }
                     if (step1TermsCheckbox) {
                         loginFd.append("terms_accepted", step1TermsCheckbox.checked ? "1" : "0");
