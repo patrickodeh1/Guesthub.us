@@ -81,6 +81,9 @@ class GuestController extends Controller
             'guestNoticePopups' => \App\Services\GuestNoticeService::popups($booking, $noticePhase),
             'checkinTimeOptions' => $this->checkinTimeOptions(),
             'checkoutTimeOptions' => $this->checkoutTimeOptions(),
+            // task: vehicle info is never required at Step 1 -- prompt for
+            // it later in-flow instead, once it's actually needed (~1 day
+            // out, or later in-flow for same-day bookings).
             'needsVehicleInfoPrompt' => $booking->needsVehicleInfoPrompt(),
         ]);
     }
@@ -471,41 +474,6 @@ class GuestController extends Controller
     }
 
     /**
-     * Record the guest's explicit choice to pay the incidentals hold by card.
-     * The booking token authorizes this guest-facing choice; the payment
-     * intent endpoint still enforces this persisted selection.
-     */
-    public function selectCardPayment(string $bookingId, string $token)
-    {
-        $booking = $this->booking($bookingId, $token);
-
-        if ($booking->isDepositCaptured() || $booking->deposit_verified_at) {
-            return response()->json(['ok' => false, 'message' => 'Deposit already paid.'], 422);
-        }
-
-        if ($booking->calculatePreCheckinChargeCents() <= 0) {
-            return response()->json(['ok' => false, 'message' => 'No deposit is configured for this stay.'], 422);
-        }
-
-        if (! $booking->pay_by_cc || $booking->platform_payment_selected_at) {
-            $booking->forceFill([
-                'pay_by_cc' => true,
-                'platform_payment_selected_at' => null,
-            ])->save();
-
-            ActivityLogService::guest('card_payment_selected', "Guest {$booking->guest_name} chose to pay the incidentals hold by card.", 'check', [
-                'booking_id' => $booking->id,
-                'property_id' => $booking->property_id,
-                'actor_name' => $booking->guest_name,
-                'actor_email' => $booking->email,
-                'severity' => 'success',
-            ]);
-        }
-
-        return response()->json(['ok' => true]);
-    }
-
-    /**
      * The guest chose to pay the incidentals hold on their booking platform.
      * No webhook confirms an off-platform payment, so we just record the
      * choice: the portal then shows "pending approval" (never the amount) and
@@ -520,7 +488,7 @@ class GuestController extends Controller
         }
 
         if (! $booking->platformPaymentSelected()) {
-            $booking->forceFill(['pay_by_cc' => false, 'platform_payment_selected_at' => now()])->save();
+            $booking->update(['platform_payment_selected_at' => now()]);
 
             ActivityLogService::guest('platform_payment_selected', "Guest {$booking->guest_name} chose to pay the incidentals hold on {$booking->platformLabel()}.", 'check', [
                 'booking_id'  => $booking->id,

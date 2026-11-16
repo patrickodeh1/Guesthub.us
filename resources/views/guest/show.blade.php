@@ -354,20 +354,22 @@
                         @endif
 
                         {{-- Parking --}}
+                        @if(is_null($booking->parking_needed))
                         <div class="mt-5">
                             <p class="text-sm font-bold">Will You Have A Vehicle?</p>
                             <div id="parking-question-block" class="mt-3 grid grid-cols-2 gap-3">
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600" {{ (string) old('parking_needed', is_null($booking->parking_needed) ? '' : (int) $booking->parking_needed) === '1' ? 'checked' : '' }}>
+                                    <input type="radio" name="parking_needed" value="1" class="accent-blue-600">
                                     Yes I Need Parking
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
-                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600" {{ (string) old('parking_needed', is_null($booking->parking_needed) ? '' : (int) $booking->parking_needed) === '0' ? 'checked' : '' }}>
+                                    <input type="radio" name="parking_needed" value="0" class="accent-blue-600">
                                     No I Will Not Need Parking
                                 </label>
                             </div>
                             <span id="parking-error" class="guest-field-error" style="display:none">Please let us know if you'll be parking.</span>
                         </div>
+                        @endif
 
                         {{-- Check-in time --}}
                         <div class="mt-5">
@@ -2541,7 +2543,7 @@
                         </div>
 
                         <div id="deposit-payment-choice" class="mt-5">
-                            <button type="button" id="deposit-pay-here-btn" class="guest-primary-btn w-full" data-card-url="{{ route('guest.deposit.card', [$booking->booking_id, $booking->token]) }}">Pay Here with Card</button>
+                            <button type="button" id="deposit-pay-here-btn" class="guest-primary-btn w-full">Pay Here with Card</button>
                             <button type="button" id="deposit-pay-airbnb-btn" class="guest-outline-btn w-full mt-3 js-select-platform {{ $booking->isDirectBooking() ? 'hidden' : '' }}" data-platform-url="{{ route('guest.deposit.platform', [$booking->booking_id, $booking->token]) }}">Pay on {{ $platformLabel }}</button>
                         </div>
 
@@ -2768,34 +2770,9 @@
 
                             if (payHereBtn) {
                                 payHereBtn.addEventListener("click", function() {
-                                    if (payHereBtn.disabled) return;
-                                    payHereBtn.disabled = true;
-                                    payHereBtn.textContent = "Saving…";
-                                    fetch(payHereBtn.dataset.cardUrl, {
-                                        method: "POST",
-                                        headers: {
-                                            "Accept": "application/json",
-                                            "Content-Type": "application/json",
-                                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : ""
-                                        }
-                                    })
-                                        .then(function(response) { return response.json(); })
-                                        .then(function(data) {
-                                            if (!data.ok) {
-                                                showError(data.message || "Unable to select card payment. Please try again.");
-                                                payHereBtn.disabled = false;
-                                                payHereBtn.textContent = "Pay Here with Card";
-                                                return;
-                                            }
-                                            choiceBlock.classList.add("hidden");
-                                            cardSection.classList.remove("hidden");
-                                            initStripeCardForm();
-                                        })
-                                        .catch(function() {
-                                            showError("Network error saving your payment choice. Please try again.");
-                                            payHereBtn.disabled = false;
-                                            payHereBtn.textContent = "Pay Here with Card";
-                                        });
+                                    choiceBlock.classList.add("hidden");
+                                    cardSection.classList.remove("hidden");
+                                    initStripeCardForm();
                                 });
                             }
 
