@@ -163,12 +163,14 @@ class GuestController extends Controller
             'parking_needed' => [is_null($booking->parking_needed) ? 'required' : 'nullable'],
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
-            // Never required at Step 1 -- task: don't block the initial guest
-            // flow on vehicle info. Actually prompted later, in the waiting
-            // area, via Booking::needsVehicleInfoPrompt() (~1 day before
-            // arrival, or later in-flow for same-day bookings).
             'vehicle_make_model' => ['nullable', 'string', 'max:255'],
-            'license_plate_photo' => ['nullable', 'image', 'max:8192'],
+            'license_plate' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
+            'license_plate_state' => ['nullable', 'string', 'size:2'],
+            'license_plate_photo' => [
+                $parkingAnswer && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : 'nullable',
+                'image',
+                'max:20480',
+            ],
             'terms_accepted' => [$requiresTermsAcceptance ? 'accepted' : 'nullable'],
             'sms_consent' => ['nullable', 'boolean'],
         ]);
@@ -205,10 +207,18 @@ class GuestController extends Controller
 
         if ($parkingAnswer) {
             $updates['vehicle_make_model'] = $data['vehicle_make_model'] ?? $booking->vehicle_make_model;
+            $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['license_plate'] ?? $booking->license_plate))) ?: null;
+            $updates['license_plate_state'] = strtoupper((string) ($data['license_plate_state'] ?? $booking->license_plate_state)) ?: null;
         }
 
         if ($request->hasFile('license_plate_photo')) {
-            $updates['license_plate_photo_path'] = $request->file('license_plate_photo')->store('license-plates');
+            $storedPlatePhoto = $request->file('license_plate_photo')->store('license-plates');
+            if ($storedPlatePhoto === false) {
+                throw ValidationException::withMessages([
+                    'license_plate_photo' => 'The license plate photo could not be saved. Please try again.',
+                ]);
+            }
+            $updates['license_plate_photo_path'] = $storedPlatePhoto;
         }
 
         if ($requiresTermsAcceptance) {
@@ -1622,15 +1632,8 @@ class GuestController extends Controller
             return 'unit_not_ready';
         }
 
-        if (! $booking->isCheckinDay() && $booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
         if (! $booking->isCheckinDay()) {
             return 'waiting';
-        }
-
-        if ($booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
         }
 
         if (! $booking->gps_verified) {
