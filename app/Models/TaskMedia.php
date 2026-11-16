@@ -94,7 +94,7 @@ class TaskMedia extends Model
                 }
 
                 $path = self::normalizePath($value);
-                return url('file/' . $path);
+                return url('/file/' . $path);
             },
             set: function ($value) {
                 return self::normalizePath($value);
@@ -116,7 +116,7 @@ class TaskMedia extends Model
                 }
 
                 $path = self::normalizePath($value);
-                return url('file/' . $path);
+                return url('/file/' . $path);
             },
             set: function ($value) {
                 return self::normalizePath($value);
