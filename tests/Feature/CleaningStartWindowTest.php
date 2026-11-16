@@ -123,4 +123,29 @@ class CleaningStartWindowTest extends TestCase
         $this->assertFalse($window->canStart($session));
     }
 
+    public function test_turning_the_window_off_allows_starting_at_any_time(): void
+    {
+        $property = Property::factory()->create([
+            'timezone' => 'UTC',
+            'cleaner_start_window_minutes' => 0,
+            'cleaner_end_window_minutes' => 0,
+            'cleaner_start_window_enabled' => false,
+        ]);
+        $session = CleaningSession::factory()->create([
+            'property_id' => $property->id,
+            'owner_id' => User::factory()->create()->id,
+            'housekeeper_id' => User::factory()->create()->id,
+            'scheduled_date' => '2026-11-14',
+            'scheduled_time' => '10:00:00',
+            'status' => 'pending',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-11-14 06:00:00', 'UTC'));
+        $window = app(CleaningStartWindow::class);
+
+        $this->assertFalse($window->isTooEarly($session));
+        $this->assertFalse($window->isTooLate($session));
+        $this->assertTrue($window->canStart($session));
+    }
+
 }
