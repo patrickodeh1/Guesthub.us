@@ -8,13 +8,20 @@ use Illuminate\Support\Carbon;
 class CleaningStartWindow
 {
     public const DEFAULT_MINUTES = 120;
-    public const LATE_GRACE_HOURS = 2;
-
+    /**
+     * The property setting is a symmetric allowance around the scheduled time.
+     * A value of zero disables the time restriction entirely.
+     */
     public function minutesBefore(CleaningSession $session): int
     {
         $minutes = (int) ($session->property?->cleaner_start_window_minutes ?? self::DEFAULT_MINUTES);
 
         return max(0, $minutes);
+    }
+
+    public function isEnabled(CleaningSession $session): bool
+    {
+        return $this->minutesBefore($session) > 0;
     }
 
     public function scheduledAt(CleaningSession $session): ?Carbon
@@ -46,11 +53,15 @@ class CleaningStartWindow
 
     public function closesAt(CleaningSession $session): ?Carbon
     {
-        return $this->scheduledAt($session)?->addHours(self::LATE_GRACE_HOURS);
+        return $this->scheduledAt($session)?->addMinutes($this->minutesBefore($session));
     }
 
     public function isTooEarly(CleaningSession $session): bool
     {
+        if (! $this->isEnabled($session)) {
+            return false;
+        }
+
         $opensAt = $this->opensAt($session);
         if (! $opensAt) {
             return false;
@@ -63,6 +74,10 @@ class CleaningStartWindow
 
     public function canStart(CleaningSession $session): bool
     {
+        if (! $this->isEnabled($session)) {
+            return true;
+        }
+
         $opensAt = $this->opensAt($session);
         $closesAt = $this->closesAt($session);
         if (! $opensAt || ! $closesAt) {
