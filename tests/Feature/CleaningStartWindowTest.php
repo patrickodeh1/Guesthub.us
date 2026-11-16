@@ -94,12 +94,13 @@ class CleaningStartWindowTest extends TestCase
         $this->assertSame('2026-11-14T11:00:00+00:00', $window->closesAt($session)?->toIso8601String());
     }
 
-    public function test_zero_disables_each_allowance_side_independently(): void
+    public function test_zero_allowances_require_exact_scheduled_time_when_window_is_enabled(): void
     {
         $property = Property::factory()->create([
             'timezone' => 'UTC',
             'cleaner_start_window_minutes' => 0,
-            'cleaner_end_window_minutes' => 60,
+            'cleaner_end_window_minutes' => 0,
+            'cleaner_start_window_enabled' => true,
         ]);
         $session = CleaningSession::factory()->create([
             'property_id' => $property->id,
