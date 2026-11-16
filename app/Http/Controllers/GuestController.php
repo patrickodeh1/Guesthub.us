@@ -136,12 +136,6 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
 
-        // Vehicle details are collected in this same pre-check-in step when
-        // the guest confirms they need parking.
-        $parkingAnswer = $request->filled('parking_needed')
-            ? filter_var($request->input('parking_needed'), FILTER_VALIDATE_BOOLEAN)
-            : $booking->parking_needed;
-
         // Terms/Privacy acceptance and SMS consent are collected at Step 1
         // (login). Rental contract signing is NOT — it requires the ID to
         // already be uploaded and scanned so the typed name can be checked
@@ -157,14 +151,6 @@ class GuestController extends Controller
             'parking_needed' => ['required', 'boolean'],
             'checkin_time_preference' => ['required', 'string'],
             'checkout_time_preference' => ['nullable', 'string'],
-            'vehicle_make_model' => ['nullable', 'string', 'max:255'],
-            'license_plate' => [$parkingAnswer ? 'required' : 'nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \\-]+$/'],
-            'license_plate_state' => ['nullable', 'string', 'size:2'],
-            'license_plate_photo' => [
-                $parkingAnswer && ($booking->property?->requires_vehicle_photo ?? true) && ! $booking->license_plate_photo_path ? 'required' : 'nullable',
-                'image',
-                'max:20480',
-            ],
             'terms_accepted' => [$requiresTermsAcceptance ? 'accepted' : 'nullable'],
             'sms_consent' => ['nullable', 'boolean'],
         ]);
@@ -197,22 +183,6 @@ class GuestController extends Controller
             $updates['checkout_time_status'] = $booking->requiresCheckoutTimeApproval($newCheckoutPreference)
                 ? 'pending'
                 : (filled($newCheckoutPreference) ? 'approved' : null);
-        }
-
-        if ($parkingAnswer) {
-            $updates['vehicle_make_model'] = $data['vehicle_make_model'] ?? $booking->vehicle_make_model;
-            $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['license_plate'] ?? $booking->license_plate))) ?: null;
-            $updates['license_plate_state'] = strtoupper((string) ($data['license_plate_state'] ?? $booking->license_plate_state)) ?: null;
-        }
-
-        if ($parkingAnswer && $request->hasFile('license_plate_photo')) {
-            $storedPlatePhoto = $request->file('license_plate_photo')->store('license-plates');
-            if ($storedPlatePhoto === false) {
-                throw ValidationException::withMessages([
-                    'license_plate_photo' => 'The license plate photo could not be saved. Please try again.',
-                ]);
-            }
-            $updates['license_plate_photo_path'] = $storedPlatePhoto;
         }
 
         if ($requiresTermsAcceptance) {
@@ -1109,8 +1079,12 @@ class GuestController extends Controller
             ]);
         }
         $updates['license_plate_photo_path'] = $storedPath;
-        $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate'))) ?: null;
-        $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state')) ?: null;
+        if ($request->filled('license_plate')) {
+            $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate'))) ?: null;
+        }
+        if ($request->filled('license_plate_state')) {
+            $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state')) ?: null;
+        }
 
         $booking->update($updates);
 
