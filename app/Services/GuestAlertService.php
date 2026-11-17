@@ -32,6 +32,11 @@ use Illuminate\Support\Facades\Mail;
 class GuestAlertService
 {
     public const EVENTS = [
+        'vehicle_plate_submitted' => [
+            'label' => 'Vehicle photo submitted',
+            'default_guest_message' => '',
+            'default_staff_message' => '{guest_name} submitted a vehicle photo for {property_name}. Plate: {license_plate} {license_plate_state}. Review it: {admin_link}',
+        ],
         'registration_received' => [
             'label' => 'Registration completed',
             'default_guest_message' => "Hi {guest_first_name}, thanks for registering for {property_name}. We're reviewing your details now and will let you know as soon as the next step is ready.",
@@ -219,6 +224,14 @@ class GuestAlertService
     public static function defaultToggleOverrides(): array
     {
         return [
+            'vehicle_plate_submitted' => [
+                'guest_sms' => false,
+                'guest_email' => false,
+                'contact_sms' => true,
+                'contact_email' => true,
+                'owner_sms' => false,
+                'owner_email' => false,
+            ],
             'pms_booking_received' => [
                 'guest_sms' => false,
                 'guest_email' => false,
@@ -581,6 +594,8 @@ class GuestAlertService
             '{check_out_time}' => $booking->effectiveCheckoutTimeFormatted(),
             '{parking_status}' => $parkingStatus,
             '{step_name}' => Setting::getValue('background_check_step_name', 'Background Check'),
+            '{license_plate}' => $booking->license_plate ?: 'not read',
+            '{license_plate_state}' => $booking->license_plate_state ?: '',
         ];
 
         foreach ($extraTokens as $key => $value) {

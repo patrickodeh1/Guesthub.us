@@ -49,7 +49,7 @@ class Booking extends Model
         'photo_id_back_approved_at', 'photo_id_back_declined_reason',
         'parking_charge', 'parking_charge_override', 'incidentals_charge', 'additional_deposit', 'checkin_reminder_sent_at', 'pre_arrival_viewed_at', 'checkout_reminder_sent_at', 'checkout_source', 'late_checkout_deducted_at',
         'early_checkin_charge_override', 'early_checkin_billing_mode', 'late_checkout_charge_override', 'ledger_published_at', 'damages',
-        'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at',
+        'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at', 'vehicle_info_deferred_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
         'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
         'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'processing_fee_cents', 'total_cents',
@@ -113,6 +113,7 @@ class Booking extends Model
             'id_expiry_date' => 'date',
             'id_scanned_at' => 'datetime',
             'vehicle_info_bypassed_at' => 'datetime',
+            'vehicle_info_deferred_at' => 'datetime',
             'accommodation_cents' => 'integer',
             'cleaning_fee_cents' => 'integer',
             'tax_cents' => 'integer',
@@ -1555,11 +1556,8 @@ class Booking extends Model
             return false;
         }
 
-        if ($this->vehicle_info_bypassed_at) {
-            return false;
-        }
 
-        if ($this->license_plate_photo_path) {
+if ($this->license_plate_photo_path) {
             return false;
         }
 

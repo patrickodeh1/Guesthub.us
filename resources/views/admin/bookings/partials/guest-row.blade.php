@@ -29,7 +29,7 @@
 
                 @if(! $booking->photo_id_received)
                     <form method="post" action="{{ route('admin.guests.mark-id', $booking) }}">@csrf<button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="upload" class="h-4 w-4" />Mark Photo ID Received</button></form>
-                    <form method="post" action="{{ route('admin.guests.bypass-vehicle-info', $booking) }}">@csrf<button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="car" class="h-4 w-4" />Bypass Vehicle Info</button></form>
+                    
                 @endif
                 @if(($booking->photo_id_path || $booking->photo_id_back_path) && ! $booking->isApproved())
                     <form method="post" action="{{ route('admin.guests.approve', $booking) }}">@csrf<button class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"><x-icon name="check" class="h-4 w-4" />Approve for Check-In</button></form>

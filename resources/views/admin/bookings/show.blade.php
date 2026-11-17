@@ -741,7 +741,7 @@
                                 <form method="post" action="{{ route('admin.guests.mark-id', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="upload" class="h-4 w-4" />Mark Photo ID Received</button></form>
                             @endif
                             @if($booking->parking_needed)
-                                <form method="post" action="{{ route('admin.guests.bypass-vehicle-info', $booking) }}">@csrf<button class="btn-secondary w-full gap-2"><x-icon name="car" class="h-4 w-4" />Bypass Vehicle Info</button></form>
+                                
                             @endif
 
                             @if($booking->access_blocked_at)

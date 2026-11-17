@@ -341,7 +341,6 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('guests/{booking}/archive', [BookingController::class, 'archive'])->name('guests.archive');
     Route::post('guests/{booking}/unarchive', [BookingController::class, 'unarchive'])->name('guests.unarchive');
     Route::post('guests/{booking}/mark-id', [BookingController::class, 'markIdReceived'])->name('guests.mark-id');
-    Route::post('guests/{booking}/bypass-vehicle-info', [BookingController::class, 'bypassVehicleInfo'])->name('guests.bypass-vehicle-info');
     Route::post('guests/{booking}/approve', [BookingController::class, 'approveBooking'])->name('guests.approve');
     Route::post('guests/{booking}/direct-approve', [DirectBookingAdminController::class, 'approve'])->name('guests.direct-approve');
     Route::post('guests/{booking}/direct-decline', [DirectBookingAdminController::class, 'decline'])->name('guests.direct-decline');

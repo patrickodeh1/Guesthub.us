@@ -155,8 +155,9 @@ class GuestController extends Controller
         // ID capture (Step 2) has run.
         $needsPlatePhoto = $parkingAnswer
             && ($booking->property?->requires_vehicle_photo ?? true)
-            && ! $booking->vehicle_info_bypassed_at
-            && ! $booking->license_plate_photo_path;
+            && ! $booking->license_plate_photo_path
+            && ! $request->boolean('vehicle_later')
+            && $request->filled('parking_needed');
 
         $requiresTermsAcceptance = ! $booking->terms_accepted_at;
 
@@ -220,8 +221,24 @@ class GuestController extends Controller
             }
         }
 
+        if ($parkingAnswer && $request->boolean('vehicle_later') && ! $request->hasFile('license_plate_photo') && ! $booking->license_plate_photo_path) {
+            $updates['vehicle_info_deferred_at'] = now();
+        }
+
+        $sendPlateAlert = false;
         if ($request->hasFile('license_plate_photo')) {
+            $loginScan = app(\App\Services\PlateScanner::class)->scan($request->file('license_plate_photo')->get());
+            if (($loginScan['reason'] ?? null) === 'not_whole_vehicle') {
+                throw ValidationException::withMessages(['license_plate_photo' => 'Photo rejected. Please photograph the entire back of your vehicle, with the plate, make and model all visible.']);
+            }
+            if (empty($updates['license_plate']) && ! empty($loginScan['plate'])) {
+                $updates['license_plate'] = $loginScan['plate'];
+            }
+            if (empty($updates['license_plate_state']) && ! empty($loginScan['state'])) {
+                $updates['license_plate_state'] = $loginScan['state'];
+            }
             $updates['license_plate_photo_path'] = $request->file('license_plate_photo')->store('license-plates');
+            $sendPlateAlert = true;
         }
 
         if ($requiresTermsAcceptance) {
@@ -233,6 +250,10 @@ class GuestController extends Controller
             || $newCheckoutPreference !== $booking->checkout_time_preference;
 
         $booking->update($updates);
+
+        if ($sendPlateAlert) {
+            \App\Services\GuestAlertService::send('vehicle_plate_submitted', $booking->fresh());
+        }
 
         if ($timesChanged) {
             $booking->syncFeesFromApprovedTimes();
@@ -1091,7 +1112,7 @@ class GuestController extends Controller
     {
         $booking = $this->booking($bookingId, $token);
 
-        $upload = $request->file('license_plate_photo');
+$upload = $request->file('license_plate_photo');
         if (! $upload || ! $upload->isValid()) {
             throw ValidationException::withMessages([
                 'license_plate_photo' => match ($upload?->getError()) {
@@ -1111,6 +1132,11 @@ class GuestController extends Controller
 
         $updates = [];
 
+        $scan = app(\App\Services\PlateScanner::class)->scan($upload->get());
+        if (($scan['reason'] ?? null) === 'not_whole_vehicle') {
+            throw ValidationException::withMessages(['license_plate_photo' => 'Photo rejected. Please photograph the entire back of your vehicle, with the plate, make and model all visible.']);
+        }
+
         $storedPath = $upload->store('license-plates');
         if ($storedPath === false) {
             throw ValidationException::withMessages([
@@ -1120,6 +1146,12 @@ class GuestController extends Controller
         $updates['license_plate_photo_path'] = $storedPath;
         $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate'))) ?: null;
         $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state')) ?: null;
+        if (empty($updates['license_plate']) && ! empty($scan['plate'])) {
+            $updates['license_plate'] = $scan['plate'];
+        }
+        if (empty($updates['license_plate_state']) && ! empty($scan['state'])) {
+            $updates['license_plate_state'] = $scan['state'];
+        }
 
         $booking->update($updates);
 
@@ -1131,6 +1163,8 @@ class GuestController extends Controller
             'severity'    => 'success',
             'metadata'    => ['email' => $booking->email, 'booking_ref' => $booking->booking_id],
         ]);
+
+        \App\Services\GuestAlertService::send('vehicle_plate_submitted', $booking->fresh());
 
         return back()->with('success', 'Thanks — your vehicle information has been received.');
     }
@@ -1297,7 +1331,6 @@ class GuestController extends Controller
             'background_check_complete' => $booking->isBackgroundCheckComplete(),
             'deposit_verified' => $booking->isDepositVerified(),
             'checkin_approved' => $booking->isCheckinApproved(),
-            'vehicle_info_bypassed' => (bool) $booking->vehicle_info_bypassed_at,
             'checked_out' => (bool) $booking->checked_out_at,
         ]);
     }
@@ -1627,6 +1660,11 @@ class GuestController extends Controller
             return 'post_checkout';
         }
 
+        // Vehicle screen first: not hidden behind unit-ready.
+        if ($booking->needsVehicleInfoPrompt() && ! $booking->isMarkedCheckedIn() && ! $booking->isCheckedIn()) {
+            return 'vehicle_info';
+        }
+
         // Blocked by default: hold the guest on a "unit isn't quite ready yet"
         // screen until the host marks the unit ready and approves check-in.
         // Guests already let in (manual check-in or a successful GPS verify)
@@ -1635,16 +1673,10 @@ class GuestController extends Controller
             return 'unit_not_ready';
         }
 
-        if (! $booking->isCheckinDay() && $booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
         if (! $booking->isCheckinDay()) {
             return 'waiting';
         }
 
-        if ($booking->needsVehicleInfoPrompt()) {
-            return 'vehicle_info';
-        }
 
 
         if (! $booking->gps_verified) {

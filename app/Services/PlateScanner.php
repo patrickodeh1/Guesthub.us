@@ -37,7 +37,7 @@ class PlateScanner
             $res = Http::timeout(15)->post('https://vision.googleapis.com/v1/images:annotate?key='.$key, [
                 'requests' => [[
                     'image' => ['content' => base64_encode($imageBytes)],
-                    'features' => [['type' => 'DOCUMENT_TEXT_DETECTION']],
+                    'features' => [['type' => 'DOCUMENT_TEXT_DETECTION'], ['type' => 'OBJECT_LOCALIZATION', 'maxResults' => 20]],
                 ]],
             ]);
         } catch (\Throwable $e) {
@@ -55,6 +55,10 @@ class PlateScanner
         $resp = $res->json('responses.0') ?? [];
         $fullText = strtoupper((string) data_get($resp, 'fullTextAnnotation.text', ''));
         $state = $this->detectState($fullText);
+
+        if (! $this->wholeVehicle($resp)) {
+            return ['ok' => false, 'reason' => 'not_whole_vehicle', 'state' => $state];
+        }
 
         $best = null;
         foreach ($this->lines($resp) as $line) {
@@ -113,6 +117,34 @@ class PlateScanner
         }
 
         return $out;
+    }
+
+    private const VEHICLE_OBJECTS = ['CAR', 'VAN', 'TRUCK', 'BUS', 'VEHICLE', 'SUV', 'TAXI', 'LAND VEHICLE'];
+
+    /** True when a whole vehicle is in frame: big enough and not cut off at the edges. */
+    private function wholeVehicle(array $resp): bool
+    {
+        foreach (data_get($resp, 'localizedObjectAnnotations', []) as $o) {
+            if (! in_array(strtoupper($o['name'] ?? ''), self::VEHICLE_OBJECTS, true)) {
+                continue;
+            }
+            $v = $o['boundingPoly']['normalizedVertices'] ?? [];
+            if (count($v) < 3) {
+                continue;
+            }
+            $xs = array_map(fn ($pt) => (float) ($pt['x'] ?? 0), $v);
+            $ys = array_map(fn ($pt) => (float) ($pt['y'] ?? 0), $v);
+            if ((max($xs) - min($xs)) * (max($ys) - min($ys)) < 0.2) {
+                continue;
+            }
+            if (min($xs) < 0.01 || max($xs) > 0.99 || min($ys) < 0.01 || max($ys) > 0.99) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private function detectState(string $text): ?string

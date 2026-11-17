@@ -1,7 +1,8 @@
 <div class="rounded-xl border border-slate-200 p-4">
     <p class="text-sm font-bold">Vehicle Information <span class="text-red-600">*</span></p>
-    <p class="mt-1 text-sm text-slate-600">Please take a clear photo of your vehicle's license plate with your camera.</p>
+    <p class="mt-1 text-sm text-slate-600">Please take a photo of the <strong>entire back of your vehicle</strong>, with the license plate, make and model all visible. Photos that don't show the whole back of the vehicle will be rejected.</p>
 
+    <div id="vehicle-capture">
     <div id="plate-scan-fields" class="my-3 space-y-3">
 <style>#plate-scan-fields > :not(#plate-scan-status){display:none}</style>
         <div id="plate-scan-status" class="hidden rounded-lg border p-3 text-sm"></div>
@@ -36,7 +37,7 @@
             var img = new Image();
             var url = URL.createObjectURL(file);
             img.onload = function () {
-                var max = 1600, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+                var max = 2200, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
                 var c = document.createElement("canvas");
                 c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
                 c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
@@ -57,7 +58,14 @@
                 fetch(scanUrl, { method: "POST", body: fd, headers: { "Accept": "application/json" } })
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
-                        if (res && res.state) { document.getElementById("license_plate_state").value = res.state; }
+                        if (res && res.reason === "not_whole_vehicle") {
+                                        var pi = document.getElementById("license_plate_photo"); pi.value = "";
+                                        var pl = document.getElementById("license_plate"); if (pl) pl.value = "";
+                                        var st = document.getElementById("plate-scan-status");
+                                        if (st) { st.className = "rounded-lg border p-3 text-sm bg-red-50 border-red-200 text-red-800"; st.textContent = "Photo rejected. Please stand back and photograph the entire back of your vehicle, with the plate, make and model all visible."; }
+                                        return;
+                                    }
+                                    if (res && res.state) { document.getElementById("license_plate_state").value = res.state; }
                         if (res && res.ok && res.plate) {
                             document.getElementById("license_plate").value = res.plate;
                             window.plateStatus((res.confidence || 0) >= 0.8 ? "Plate read ✓" : "Plate photo captured ✓", (res.confidence || 0) >= 0.8 ? "ok" : "warn");
@@ -71,12 +79,12 @@
     })();
     </script>
 
-    <button type="button" id="plate-cam-open" class="mb-3 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white">Take plate photo with camera</button>
+    <button type="button" id="plate-cam-open" class="mb-3 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white">Take photo of the back of your vehicle</button>
     <div id="plate-cam-modal" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#000;flex-direction:column;">
         <div style="position:relative;flex:1;min-height:0;overflow:hidden;">
             <video id="plate-cam-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;"></video>
-            <div style="position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);aspect-ratio:2/1;border:3px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;"></div>
-            <p style="position:absolute;left:0;right:0;top:16px;text-align:center;color:#fff;font-size:14px;padding:0 16px;">Fit the whole plate inside the frame. Avoid glare.</p>
+            <div style="position:absolute;left:4%;right:4%;top:50%;transform:translateY(-50%);aspect-ratio:4/3;border:3px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;"></div>
+            <p style="position:absolute;left:0;right:0;top:16px;text-align:center;color:#fff;font-size:14px;padding:0 16px;">Stand back so the entire back of your vehicle is in the frame: plate, make and model badges.</p>
         </div>
         <div style="position:relative;z-index:2;flex-shrink:0;display:flex;gap:12px;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#000;">
             <button type="button" id="plate-cam-cancel" style="flex:1;padding:14px;border-radius:12px;background:#374151;color:#fff;font-weight:600;">Cancel</button>
@@ -104,22 +112,17 @@
                 modal.classList.remove("hidden"); modal.style.display = "flex";
                 video.play().catch(function () {});
             }).catch(function () {
-                window.plateStatus("Camera isn't available. Please allow camera access in your browser, or tap Call Guest Services and we'll help.", "warn");
+                window.plateStatus("Camera isn't available. Please allow camera access in your browser, or tick \"I'll do this later\" below.", "warn");
             });
         });
         document.getElementById("plate-cam-cancel").addEventListener("click", stop);
         document.getElementById("plate-cam-capture").addEventListener("click", function () {
             if (!video.videoWidth) return;
-            var vw = video.videoWidth, vh = video.videoHeight, cw = video.clientWidth, ch = video.clientHeight;
-            var k = Math.max(cw / vw, ch / vh);
-            var fw = cw * 0.84, fh = fw / 2, fx = cw * 0.08, fy = (ch - fh) / 2;
-            var ox = (cw - vw * k) / 2, oy = (ch - vh * k) / 2;
-            var sx = Math.max(0, (fx - ox) / k), sy = Math.max(0, (fy - oy) / k);
-            var sw = Math.min(vw - sx, fw / k), sh = Math.min(vh - sy, fh / k);
-            var sc = Math.min(1, 1600 / sw);
+            var vw = video.videoWidth, vh = video.videoHeight;
+            var sc = Math.min(1, 2200 / Math.max(vw, vh));
             var c = document.createElement("canvas");
-            c.width = Math.round(sw * sc); c.height = Math.round(sh * sc);
-            c.getContext("2d").drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+            c.width = Math.round(vw * sc); c.height = Math.round(vh * sc);
+            c.getContext("2d").drawImage(video, 0, 0, c.width, c.height);
             c.toBlob(function (blob) {
                 stop();
                 if (!blob) return;
@@ -134,11 +137,28 @@
     </script>
     <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" class="hidden">
 
-    <div class="guest-detail-banner mt-2">
-        <span class="guest-detail-banner-icon"><x-icon name="phone" class="h-5 w-5" /></span>
-        <div>
-            <p class="guest-detail-banner-title">Can't provide this right now?</p>
-            <p class="guest-detail-banner-sub">Use the Call Guest Services button and we'll take care of it for you.</p>
-        </div>
     </div>
+
+    <input type="checkbox" id="vehicle-later" class="hidden">
+    <button type="button" id="vehicle-later-btn" class="mt-3 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Don't have this yet? Do this later</button>
+    <div id="vehicle-later-note" class="mt-3 hidden rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        No problem, we'll ask for your plate again later.
+        <button type="button" id="vehicle-later-undo" class="ml-1 font-semibold text-blue-600 underline">Add it now</button>
+    </div>
+    <script>
+    (function () {
+        var cb = document.getElementById("vehicle-later");
+        var cap = document.getElementById("vehicle-capture");
+        var btn = document.getElementById("vehicle-later-btn");
+        var note = document.getElementById("vehicle-later-note");
+        function setLater(on) {
+            cb.checked = on;
+            cap.style.display = on ? "none" : "";
+            btn.style.display = on ? "none" : "";
+            note.classList.toggle("hidden", !on);
+        }
+        btn.addEventListener("click", function () { setLater(true); });
+        document.getElementById("vehicle-later-undo").addEventListener("click", function () { setLater(false); });
+    })();
+    </script>
 </div>

@@ -667,23 +667,6 @@ class BookingController extends Controller
         return back()->with('success', 'Photo ID marked as received.');
     }
 
-    public function bypassVehicleInfo(Booking $booking)
-    {
-        $this->guardNotCancelled($booking);
-
-        $booking->update([
-            'vehicle_info_bypassed_at' => now(),
-        ]);
-        ActivityLogService::admin('vehicle_info_bypassed', auth()->user()->name." bypassed vehicle info for {$booking->guest_name}.", 'vehicle_info', [
-            'subject_type' => Booking::class,
-            'subject_id'   => $booking->id,
-            'booking_id'   => $booking->id,
-            'property_id'  => $booking->property_id,
-            'severity'     => 'success',
-        ]);
-        return back()->with('success', 'Vehicle info requirement bypassed.');
-    }
-
     public function approveBooking(Booking $booking)
     {
         $this->guardNotCancelled($booking);

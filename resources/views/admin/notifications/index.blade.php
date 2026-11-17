@@ -1,7 +1,7 @@
 <x-admin-layout title="Notifications">
 @php
     $groups = [
-        'Registration and ID' => ['registration_received','registration_reminder','photo_id_uploaded','photo_id_declined','photo_id_expired','photo_id_resubmitted','background_check_complete','fully_approved','deposit_paid'],
+        'Registration and ID' => ['registration_received','registration_reminder','photo_id_uploaded','photo_id_declined','photo_id_expired','photo_id_resubmitted','vehicle_plate_submitted','background_check_complete','fully_approved','deposit_paid'],
         'Check-in' => ['time_to_check_in','arrival_soon','checkin_ready','checkin_completed','early_checkin_granted','checkin_time_approved','checkin_time_denied','reservation_updated','cleaning_complete'],
         'Check-out' => ['checkout_reminder','checkout_soon','checkout_overdue','checkout_completed','late_checkout_granted','checkout_time_approved','checkout_time_denied','post_checkout_balance_due'],
         'Bookings (PMS)' => ['pms_booking_received','pms_booking_cancelled','pms_booking_updated'],
