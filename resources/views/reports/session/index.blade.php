@@ -2677,7 +2677,7 @@
                                                             $photoTimestamp = $photoCapturedAt ? \App\Helpers\TimezoneHelper::toLocal($photoCapturedAt, $propertyTz)?->format('m/d/Y g:i:s A (T)') ?? 'No timestamp' : 'No timestamp';
                                                             $fullMeta = "Captured: {$photoTimestamp}<br>Cleaner: {$cleanerNameStr}";
                                                             if ($gpsStr) $fullMeta .= "<br>{$gpsStr}";
-                                                            $fullTitle = $propNameStr . " &mdash; " . $location;
+                                                            $fullTitle = $propNameStr . " — " . $location;
                                                         @endphp
                                                         <button type="button" class="photo-thumb js-photo-open" data-url="{{ $photoUrl }}" data-title="{{ $fullTitle }}" data-meta="{{ $fullMeta }}">
                                                             <img src="{{ $photoUrl }}" alt="Issue photo" loading="lazy">
@@ -2918,7 +2918,7 @@
                                                     $downloadUrl = $photo['download_url'] ?? $photo['url'];
                                                     $fullMeta = "Captured: {$timestamp}<br>Cleaner: {$cleanerNameStr}";
                                                     if ($gpsStr) $fullMeta .= "<br>{$gpsStr}";
-                                                    $fullTitle = $propNameStr . " &mdash; " . $roomGallery['room_name'];
+                                                    $fullTitle = $propNameStr . " — " . $roomGallery['room_name'];
                                                 @endphp
                                                 <article class="pair-card">
                                                     <button
