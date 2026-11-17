@@ -657,3 +657,80 @@ Only the following cleaning-related changed files are in scope for the selective
 - No database migrations, seeders, or one-off data migrations are added by this selective cleaning change set.
 - No unrelated files from the inventory/billing/direct-booking feature merge.
 - Build output is not enumerated here; regenerate it from the merged source with the project's normal production build before packaging if the deployment ZIP includes compiled assets.
+
+## 95. Remove early-access spam and add invisible Cloudflare protection to forms [NOT DONE] (To do)
+
+**Client's words:** Early access at GuestHub is being spammed. Remove the junk submissions and protect signup/forms with Cloudflare running in the background, without visible CAPTCHA or other annoying user interaction.
+
+## 96. Improve ID scanning across browsers with live capture guidance [NOT DONE] (To do)
+
+**Client's words:** Android users have had to install Opera to select the correct camera. Guide guests to a supported browser when necessary and detect unreadable or poor-quality ID captures. While the camera is open, provide useful prompts for blur, glare, poor lighting, or other capture problems so guests know how to correct them before submitting.
+
+## 97. Collect vehicle information when parking is selected and prevent missing details [NOT DONE] (To do)
+
+**Client's words:** When a guest selects that they need parking, request a license-plate photo/details immediately. Allow the guest to choose that they will provide the information later, then prompt again before check-in approval. Make sure the vehicle details are saved and visible to the host so guests are not inconvenienced by avoidable follow-up messages.
+
+## 98. Open cleaning report from guest profile in a separate tab [NOT DONE] (To do)
+
+**Client's words:** The cleaning report link on the guest profile is useful, but it should open in a separate browser tab instead of replacing the guest profile.
+
+## 99. Make cleaner start-time tolerance configurable per property [NOT DONE] (To do)
+
+**Client's words:** Allow a configurable window before and after the scheduled cleaning start time. The current two-hour-before/two-hour-after allowance should be adjustable or disabled by each host/property in the property settings.
+
+## 100. Validate early check-in against turnover availability [NOT DONE] (To do)
+
+**Client's words:** Guests should only be able to select early check-in times that are actually available. The turnover gap between the previous guest checking out and the next guest checking in should be configurable per property (the client suggested two hours as a starting point).
+
+## 101. Allow admin to override cleaning schedule conflict warnings [NOT DONE] (To do)
+
+**Client's words:** Keep warnings when a cleaning is scheduled too close to a guest check-in, but allow an admin/owner/manager to click the action again to override or ignore the warning when necessary.
+
+## 102. Return deleted cleaning jobs to the assignment pool [NOT DONE] (To do)
+
+**Client's words:** If a cleaning is deleted, return it to the available pool so it can be assigned to another cleaner and restarted.
+
+## 103. Separate post-session cleaning report editing from cleaning-session editing [PARTIALLY DONE] (To do)
+
+**Client's words:** Provide distinct menu choices for the cleaning session and the cleaning report. The report must be editable after the fact so an authorized admin/owner/manager can add photos, check or uncheck items, and add notes without editing or restarting the cleaning task. The shipped 30-minute cleaner edit behavior is tracked in item 6; the broader admin/owner/manager post-session editing request still needs verification/implementation.
+
+## 104. Record additional cleaning and replacement charges on the cleaning report [NOT DONE] (To do)
+
+**Client's words:** Allow additional cleaning charges and replacement-item charges to be recorded on the cleaning report and included in the amount considered for deduction from the guest's incidentals/deposit.
+
+## 105. Keep guest payment processing with the host and automate platform subscription billing [NOT DONE] (To do)
+
+**Client's words:** Guest booking payments should go directly to the host's own payment processor (Stripe, Square, or another supported provider), so guest payment disputes and chargebacks remain the host's responsibility. GuestHub should bill the host separately for the platform subscription, packages, add-ons, or applicable platform fees, with billing automated where agreed. Do not route the host's guest booking revenue through the platform owner's payment account.
+
+## 106. Send reminders when a guest starts but does not complete check-in [NOT DONE] (To do)
+
+**Client's words:** If a guest starts the check-in process but does not complete the in-app check-in confirmation within about 15 minutes, send follow-up text reminders until they confirm check-in. The client suggested very frequent reminders (around every 30 seconds); confirm a suitable frequency and stopping rule before implementation to avoid excessive messaging.
+
+## 107. Relink Cleveland Sports bed-making instruction photos [NOT DONE] (To do)
+
+**Client's words:** The bed-making instruction pictures need to appear for Cleveland Sports before the new cleaner is trained. Relink the correct photos and verify they display in the cleaner workflow.
+
+## 108. Add application version number beneath the GuestHub logo [NOT DONE] (To do)
+
+**Client's words:** Display the current version number underneath the logo on the admin screen so the client can identify which release is being tested.
+
+## 109. Search all guest records by default, including archived guests [DONE - VERIFY] (Done - please verify)
+
+**Client's words:** Remove the Show Archived checkbox/filter and make guest search include archived records by default. The client confirmed the change was completed; verify that a search returns archived and active guests together.
+
+## 110. Verify the correct cleaner is shown for the current cleaning [DONE - VERIFY] (Done - please verify)
+
+**Client's words:** The guest/cleaning view showed a cleaner from a previous cleaning instead of the cleaner currently assigned to the active cleaning. The client was told this was corrected; verify that the current cleaning displays its assigned cleaner and historical cleanings retain their own cleaner.
+
+## 111. Make PriceLabs and Wheelhouse an either/or host choice [NOT DONE] (To do)
+
+**Client's words:** During signup, hosts should choose either PriceLabs or Wheelhouse, not both. They should be able to change that choice later through an easy setting.
+
+**Implementation note:** The client later preferred using GuestHub's API integration where safe and easy for hosts, but raised security concerns about shared API credentials. Confirm the final integration/account-isolation approach before implementation.
+
+## 112. Confirm API credential ownership and isolate host usage [NOT DONE] (To do)
+
+**Client's words:** The client ultimately said GuestHub may use its own API keys if doing so does not put the platform owner's account or credentials at risk, and if one host's misuse cannot compromise or flag the owner's account. Otherwise, hosts should use their own credentials. The user experience should remain as simple as possible.
+
+**Implementation note:** This updates the earlier request in item 83 for every host to enter their own credentials. Review each integration separately and document the security/isolation model before deciding which credentials are shared or host-owned.
+
