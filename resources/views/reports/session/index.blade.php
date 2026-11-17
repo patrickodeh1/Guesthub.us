@@ -257,6 +257,9 @@
             display: block;
         }
 
+        .photo-removed { display:flex; align-items:center; justify-content:center; text-align:center;
+            min-height:120px; padding:12px; border:1px dashed var(--line, #cbd5e1); border-radius:8px;
+            background:#f8fafc; color:#64748b; font-size:13px; font-style:italic; width:100%; }
         .report-title {
             font-family: var(--font-display);
             font-size: clamp(21px, 2.2vw, 28px);
@@ -2671,7 +2674,9 @@
                                                     @php
                                                         $photoUrl = $photo['url'] ?? '';
                                                     @endphp
-                                                    @if($photoUrl)
+                                                    @if(!empty($photo['purged']))
+<div class="photo-removed">Photos removed from server</div>
+@elseif($photoUrl)
                                                         @php
                                                             $photoCapturedAt = $photo['captured_at'] ?? null;
                                                             $photoTimestamp = $photoCapturedAt ? \App\Helpers\TimezoneHelper::toLocal($photoCapturedAt, $propertyTz)?->format('m/d/Y g:i:s A (T)') ?? 'No timestamp' : 'No timestamp';
@@ -2743,7 +2748,15 @@
                                                 $fullTitle = "";
                                                 $fullMeta = ""; // Verify photos should display nothing underneath
                                             @endphp
-                                            @if($photoUrl)
+                                            @if(!empty($photo->purged_at))
+<article class="pair-card">
+    <div class="pair-slot photo-removed">Photos removed from server</div>
+    <div class="pair-footer">
+        <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
+        <div class="pair-time"><span>Required Verification</span></div>
+    </div>
+</article>
+@elseif($photoUrl)
                                                 <article class="pair-card">
                                                     <button type="button" class="pair-slot js-photo-open" data-url="{{ $photoUrl }}" data-title="{{ $fullTitle }}" data-meta="{{ $fullMeta }}" data-download="{{ $downloadUrl }}">
                                                         @if(preg_match('/\.(mp4|mov|webm|3gp|m4v)$/i', (string) ($photo->path ?? '')))
@@ -2844,11 +2857,15 @@
                                                 <tr>
                                                     <td>{{ $roomGallery['room_name'] }}</td>
                                                     <td>
-                                                        <img class="table-thumb" src="{{ $photo['url'] }}" alt="Completion photo">
+                                                        @if(!empty($photo['purged']))
+                                                            <span class="photo-removed">Photos removed from server</span>
+                                                        @else
+                                                            <img class="table-thumb" src="{{ $photo['url'] }}" alt="Completion photo">
+                                                        @endif
                                                     </td>
                                                     <td>{!! $meta !!}</td>
                                                     <td>{{ $photo['uploader'] ?? $preparedBy }}</td>
-                                                    <td class="table-note">{{ $downloadUrl }}</td>
+                                                    <td class="table-note">{{ !empty($photo['purged']) ? '' : $downloadUrl }}</td>
                                                 </tr>
                                             @endforeach
                                         @endforeach
@@ -2904,7 +2921,7 @@
                                                 <span>{{ $roomGallery['room_name'] }} ({{ $roomGallery['photo_count'] }})</span>
                                             </div>
                                             <div class="actions no-pdf">
-                                                @if($roomGallery['photo_count'] > 0)
+                                                @if(collect($roomGallery['photos'])->where('purged', false)->isNotEmpty())
                                                     <a class="btn" href="{{ $roomGallery['download_url'] }}">Download Room Photos</a>
                                                 @endif
                                             </div>
@@ -2921,7 +2938,10 @@
                                                     $fullTitle = $propNameStr . " — " . $roomGallery['room_name'];
                                                 @endphp
                                                 <article class="pair-card">
-                                                    <button
+                                                    @if(!empty($photo['purged']))
+<div class="pair-slot photo-removed">Photos removed from server</div>
+@else
+<button
                                                         type="button"
                                                         class="pair-slot js-photo-open"
                                                         data-url="{{ $photo['url'] }}"
@@ -2932,12 +2952,14 @@
                                                         <img src="{{ $photo['url'] }}" alt="Completion photo" loading="lazy">
                                                         <span class="timestamp">{{ $timestamp }}</span>
                                                     </button>
+@endif
                                                     <div class="pair-footer">
                                                         <div class="pair-room">{{ $fullTitle }}</div>
                                                         <div class="pair-time">
                                                             <span>{{ $photo['uploader'] ?? $preparedBy }}</span>
                                                         </div>
-                                                        <div class="pair-actions no-pdf">
+                                                        @unless(!empty($photo['purged']))
+<div class="pair-actions no-pdf">
                                                             <button
                                                                 type="button"
                                                                 class="js-photo-open"
@@ -2950,6 +2972,7 @@
                                                             </button>
                                                             <a href="{{ $downloadUrl }}" download>Download</a>
                                                         </div>
+@endunless
                                                     </div>
                                                 </article>
                                             @endforeach

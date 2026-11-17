@@ -18,7 +18,12 @@ class RoomPhoto extends Model
         'captured_at',
         'has_timestamp_overlay'
     ];
-    protected $casts = ['captured_at' => 'datetime', 'has_timestamp_overlay' => 'bool'];
+    protected $casts = ['captured_at' => 'datetime', 'has_timestamp_overlay' => 'bool', 'purged_at' => 'datetime'];
+
+    public function isPurged(): bool
+    {
+        return $this->purged_at !== null;
+    }
 
     public function uploadedBy()
     {

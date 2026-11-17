@@ -141,6 +141,7 @@ class SessionReportController extends Controller
                 'note' => null,
                 'uploader' => $photo->uploadedBy?->name ?? $defaultUploader,
                 'source' => 'summary',
+                'purged' => $photo->purged_at !== null,
             ];
         })->filter()->values();
 
@@ -165,6 +166,7 @@ class SessionReportController extends Controller
                         'note' => $photo->note,
                         'uploader' => $item->user?->name ?? $defaultUploader,
                         'source' => 'task',
+                        'purged' => $photo->purged_at !== null,
                     ];
                 });
             })
@@ -333,7 +335,7 @@ class SessionReportController extends Controller
         $checkoutAt = $this->resolveCheckoutAt($session);
         $readyByAt = $endedAtForDisplay ?? $this->resolveReadyByAt($session);
 
-        $hasPhotoZip = $completionPhotosCount > 0;
+        $hasPhotoZip = $allCompletionPhotos->where('purged', false)->isNotEmpty();
 
         // Override the raw checklistItems with our deduplicated array so that the filter doesn't return duplicate items
         $session->setRelation('checklistItems', $checklistItems);
@@ -423,7 +425,10 @@ class SessionReportController extends Controller
         abort_if($normalizedPath === null, 404);
         abort_unless($this->sessionHasPhotoPath($session, $normalizedPath), 404);
         $blob = PersistentPhotoStorage::read($normalizedPath);
-        abort_if($blob === null, 404);
+        if ($blob === null) {
+            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photos removed from server');
+            abort(404);
+        }
 
         $content = $blob['content'];
         if (str_starts_with($blob['mime_type'] ?? '', 'image/')) {
@@ -481,7 +486,10 @@ class SessionReportController extends Controller
         abort_if($normalizedPath === null, 404);
         abort_unless($this->sessionHasPhotoPath($session, $normalizedPath), 404);
         $blob = PersistentPhotoStorage::read($normalizedPath);
-        abort_if($blob === null, 404);
+        if ($blob === null) {
+            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photos removed from server');
+            abort(404);
+        }
 
         $meta = $this->classifyPhotoForWatermark($session, $normalizedPath);
 
@@ -516,6 +524,15 @@ class SessionReportController extends Controller
         ]);
     }
 
+    private function isPurgedPath(CleaningSession $session, string $normalizedPath): bool
+    {
+        $rows = $session->photos->concat($session->checklistItems->flatMap(fn($i) => $i->photos));
+
+        return $rows->contains(
+            fn($p) => $p->purged_at !== null && $this->normalizeStoragePath($p->path) === $normalizedPath
+        );
+    }
+
     public function photosZip(string $token, Request $request): BinaryFileResponse
     {
         $roomId = $request->integer('room_id');
@@ -523,14 +540,14 @@ class SessionReportController extends Controller
         $session = CleaningSession::query()
             ->where('report_token', $token)
             ->with([
-                'photos:id,session_id,room_id,path,captured_at',
+                'photos:id,session_id,room_id,path,captured_at,purged_at',
                 'property.rooms:id,name',
                 'housekeeper:id,name'
             ])
             ->firstOrFail();
 
         $roomNameById = $session->property->rooms->pluck('name', 'id');
-        $roomPhotos = $session->photos;
+        $roomPhotos = $session->photos->whereNull('purged_at');
         if (!empty($roomId)) {
             $roomPhotos = $roomPhotos->where('room_id', $roomId)->values();
         }
@@ -813,6 +830,7 @@ class SessionReportController extends Controller
                             'captured_at' => $photo->captured_at,
                             'note' => trim((string) $photo->note),
                             'uploader' => $defaultUploader,
+                            'purged' => $photo->purged_at !== null,
                         ];
                     })
                     ->filter()

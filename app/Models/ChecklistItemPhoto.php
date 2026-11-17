@@ -23,9 +23,15 @@ class ChecklistItemPhoto extends Model
 
     protected $casts = [
         'captured_at' => 'datetime',
+        'purged_at' => 'datetime',
     ];
 
     protected $appends = ['url'];
+
+    public function isPurged(): bool
+    {
+        return $this->purged_at !== null;
+    }
 
     /**
      * Get the checklist item this photo belongs to.

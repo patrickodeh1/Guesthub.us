@@ -38,7 +38,7 @@ Schedule::command('pms:sync')->everyMinute()->when(
     fn () => now()->minute % max(1, (int) config('pms.poll_interval_minutes')) === 0
 );
 
-Schedule::command('photos:prune-old --days=15')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('photos:prune-old')->dailyAt('02:00')->withoutOverlapping();
 Schedule::command('training:send-reminders')->hourly();
 Schedule::command('directbookings:release-expired-holds')->everyFiveMinutes()->withoutOverlapping(4);
 Schedule::command('lease-applications:purge')->dailyAt('02:00')->withoutOverlapping();
