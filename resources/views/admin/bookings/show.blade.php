@@ -240,7 +240,7 @@
                     <label class="field-label flex items-center gap-2">
                         <input type="hidden" name="parking_needed" value="0">
                         <input type="checkbox" name="parking_needed" value="1" @checked(old('parking_needed', $booking->parking_needed))>
-                        <span>Guest needs parking</span>
+                        <x-parking-sign class="h-5 w-5" /><span>Guest needs parking</span>
                     </label>
                     <label class="field-label flex items-center gap-2 md:col-span-2">
                         <input type="checkbox" name="photo_id_received" value="1" @checked(old('photo_id_received', $booking->photo_id_received))>
@@ -269,7 +269,7 @@
                 @endphp
                 <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div class="flex items-center rounded-lg border border-slate-200 p-3">
-                        <p class="flex items-center gap-1.5 text-base font-bold text-slate-900">Parking
+                        <p class="flex items-center gap-1.5 text-base font-bold text-slate-900"><x-parking-sign class="h-5 w-5" />Parking
                             @if($booking->parking_needed === true)<x-icon name="check" class="h-5 w-5 text-emerald-600" />@else<x-icon name="x" class="h-5 w-5 text-red-600" />@endif
                         </p>
                     </div>
@@ -360,7 +360,7 @@
                             @endif
                             <div class="flex items-center justify-between gap-3 border-b border-slate-100 py-3">
                                 <span class="flex items-center gap-2 text-slate-500">
-                                    <x-icon :name="$ln['icon']" class="h-4 w-4 shrink-0 text-slate-400" />{{ $ln['label'] }}
+                                    @if($ln['label'] === 'Parking')<x-parking-sign class="h-5 w-5 shrink-0" />@else<x-icon :name="$ln['icon']" class="h-4 w-4 shrink-0 text-slate-400" />@endif{{ $ln['label'] }}
                                     @if(! empty($ln['flag']))<x-icon name="check" class="h-4 w-4 text-emerald-600" />@endif
                                 </span>
                                 <span class="flex items-center gap-1 font-semibold text-slate-950">

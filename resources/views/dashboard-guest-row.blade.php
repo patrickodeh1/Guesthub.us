@@ -54,7 +54,7 @@
 </div>
 <div class="pl-11 sm:pl-[3.25rem]">
         @if($detail)
-            <p class="flex items-center gap-1.5 text-sm text-slate-500">{{ $detail }}@if($kind === 'arrival' && ! empty($row['parking']))<span title="Parking needed" aria-label="Parking needed" class="inline-flex"><x-icon name="parking" class="h-4 w-4 text-indigo-600" /></span>@endif</p>
+            <p class="flex items-center gap-1.5 text-sm text-slate-500">{{ $detail }}@if($kind === 'arrival' && ! empty($row['parking']))<span title="Parking needed" aria-label="Parking needed" class="inline-flex"><x-parking-sign class="h-5 w-5" /></span>@endif</p>
         @endif
         @if(! empty($row['hint']))
             <p class="text-sm font-semibold text-blue-700">{{ $row['hint'] }}</p>

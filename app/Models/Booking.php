@@ -1563,11 +1563,8 @@ class Booking extends Model
             return false;
         }
 
-        if ($this->isSameDayBooking()) {
-            return true;
-        }
 
-        return $this->daysUntilCheckIn() <= 1;
+        return true;
     }
 
     /**

@@ -1635,8 +1635,15 @@ class GuestController extends Controller
             return 'unit_not_ready';
         }
 
+        if (! $booking->isCheckinDay() && $booking->needsVehicleInfoPrompt()) {
+            return 'vehicle_info';
+        }
         if (! $booking->isCheckinDay()) {
             return 'waiting';
+        }
+
+        if ($booking->needsVehicleInfoPrompt()) {
+            return 'vehicle_info';
         }
 
 

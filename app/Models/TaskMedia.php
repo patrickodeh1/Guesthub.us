@@ -90,6 +90,17 @@ class TaskMedia extends Model
                 if (!$value) return $value;
 
                 if (Str::startsWith($value, ['http://', 'https://'])) {
+                    $host = parse_url($value, PHP_URL_HOST);
+                    $path = parse_url($value, PHP_URL_PATH) ?? '';
+
+                    if (
+                        $host &&
+                        preg_match('/(^|\\.)flipstatus\\.com$/i', $host) &&
+                        preg_match('#/file/(task-media/[^/]+)$#', $path, $matches)
+                    ) {
+                        return url('/file/' . $matches[1]);
+                    }
+
                     return $value;
                 }
 
@@ -112,6 +123,17 @@ class TaskMedia extends Model
                 if (!$value) return $value;
 
                 if (Str::startsWith($value, ['http://', 'https://'])) {
+                    $host = parse_url($value, PHP_URL_HOST);
+                    $path = parse_url($value, PHP_URL_PATH) ?? '';
+
+                    if (
+                        $host &&
+                        preg_match('/(^|\\.)flipstatus\\.com$/i', $host) &&
+                        preg_match('#/file/(task-media/[^/]+)$#', $path, $matches)
+                    ) {
+                        return url('/file/' . $matches[1]);
+                    }
+
                     return $value;
                 }
 

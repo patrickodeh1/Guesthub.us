@@ -360,7 +360,7 @@
                             <div id="parking-question-block" class="mt-3 grid grid-cols-2 gap-3">
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
                                     <input type="radio" name="parking_needed" value="1" class="accent-blue-600">
-                                    Yes I Need Parking
+                                    <x-parking-sign class="h-6 w-6 shrink-0" />Yes I Need Parking
                                 </label>
                                 <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-4 text-sm font-semibold hover:bg-slate-50">
                                     <input type="radio" name="parking_needed" value="0" class="accent-blue-600">
@@ -2190,6 +2190,184 @@
                 </div>
             </div>
             @include('guest.partials.pre-gps')
+        @elseif($state === 'vehicle_info')
+            <div class="guest-portal-card">
+                <div data-poll-id-status="{{ route('guest.id-status', [$booking->booking_id, $booking->token]) }}" data-poll-fields="vehicle_info_bypassed" data-id-state-key="idw_form_state_{{ $booking->booking_id }}" data-id-rejection-key="idw_id_rejection_seen_{{ $booking->booking_id }}"></div>
+                <div class="guest-status-bar">
+                    <div>
+                        @if($siteLogo)
+                            <img src="{{ url('/img/'.$siteLogo) }}" alt="" class="h-8 max-w-[140px] w-auto object-contain">
+                        @endif
+                    </div>
+                    <span class="guest-status-pill is-ready">
+                        <x-icon name="calendar" class="h-4 w-4" />
+                        Almost there
+                    </span>
+                </div>
+                <img src="{{ $heroImg }}" alt="{{ $property->name }}" class="guest-hero-img w-full mt-4">
+                <div class="px-6 pt-8 pb-2 text-center">
+                    <div class="guest-big-check">
+                        <x-parking-sign class="h-8 w-8" />
+                    </div>
+                    <h2 class="mt-4 text-xl font-extrabold text-slate-950">Vehicle Information</h2>
+                    <p class="mt-2 text-sm text-slate-600">Please take a clear photo of your vehicle's license plate with your camera before check-in.</p>
+                </div>
+                <div class="px-6 pb-6">
+                    <form method="post" enctype="multipart/form-data" action="{{ route('guest.vehicle-info', [$booking->booking_id, $booking->token]) }}" class="space-y-4">
+                        @csrf
+                        <div>
+                            <div id="plate-scan-fields" class="mb-4 space-y-3">
+<style>#plate-scan-fields > :not(#plate-scan-status){display:none}</style>
+                                
+                                <div id="plate-scan-status" class="hidden rounded-lg border p-3 text-sm"></div>
+                                <div>
+                                    <label for="license_plate" class="guest-stay-tile-label block mb-1">Plate number</label>
+                                    <input type="text" name="license_plate" id="license_plate" value="{{ old('license_plate', $booking->license_plate) }}" maxlength="12" autocapitalize="characters" autocomplete="off" required class="w-full rounded-lg border border-slate-300 px-3 py-2 uppercase tracking-wider">
+                                    @error('license_plate')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="license_plate_state" class="guest-stay-tile-label block mb-1">State</label>
+                                    <select name="license_plate_state" id="license_plate_state" class="w-full rounded-lg border border-slate-300 px-3 py-2">
+                                        <option value="">Select state</option>
+                                        @foreach(['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'] as $st)
+                                            <option value="{{ $st }}" @selected(old('license_plate_state', $booking->license_plate_state) === $st)>{{ $st }}</option>
+                                        @endforeach
+                                        <option value="OT" @selected(old('license_plate_state', $booking->license_plate_state) === 'OT')>Other / not US</option>
+                                    </select>
+                                    @error('license_plate_state')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                            </div>
+                            <script>
+                            (function () {
+                                var scanUrl = "{{ route('guest.scan-plate', [$booking->booking_id, $booking->token]) }}";
+                                var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                                var csrf = csrfMeta ? csrfMeta.content : "";
+                                function status(msg, tone) {
+                                    var el = document.getElementById("plate-scan-status");
+                                    if (!el) return;
+                                    el.className = "rounded-lg border p-3 text-sm " + (tone === "warn" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-slate-50 border-slate-200 text-slate-700");
+                                    el.textContent = msg;
+                                }
+                                function downscale(file, cb) {
+                                    var img = new Image();
+                                    var url = URL.createObjectURL(file);
+                                    img.onload = function () {
+                                        var max = 1600, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+                                        var c = document.createElement("canvas");
+                                        c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+                                        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+                                        URL.revokeObjectURL(url);
+                                        c.toBlob(function (b) { cb(b || file); }, "image/jpeg", 0.88);
+                                    };
+                                    img.onerror = function () { URL.revokeObjectURL(url); cb(file); };
+                                    img.src = url;
+                                }
+                                document.addEventListener("change", function (e) {
+                                    var el = e.target;
+                                    if (!el || el.id !== "license_plate_photo" || !el.files || !el.files[0]) return;
+                                    status("Reading your plate…");
+                                    downscale(el.files[0], function (blob) {
+                                        var fd = new FormData();
+                                        fd.append("frame", blob, "plate.jpg");
+                                        fd.append("_token", csrf);
+                                        fetch(scanUrl, { method: "POST", body: fd, headers: { "Accept": "application/json" } })
+                                            .then(function (r) { return r.json(); })
+                                            .then(function (res) {
+                                                if (res && res.state) { document.getElementById("license_plate_state").value = res.state; }
+                                                if (res && res.ok && res.plate) {
+                                                    document.getElementById("license_plate").value = res.plate;
+                                                    if ((res.confidence || 0) >= 0.8) { status("Plate read. Submitting...", "ok"); setTimeout(function () { var f = document.getElementById("license_plate_photo").form; if (f.dataset.submitting) return; f.dataset.submitting = "1"; var b = f.querySelector('button[type="submit"]'); if (b) b.disabled = true; if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); } }, 900); } else { plateShowSubmit(); status("Plate photo captured. Tap Submit to continue.", "warn"); }
+                                                } else {
+                                                    plateShowSubmit(); status("Photo captured. Tap Submit to continue.", "ok");
+                                                }
+                                            })
+                                            .catch(function () { plateShowSubmit(); status("Photo captured. Tap Submit to continue.", "ok"); });
+                                    });
+                                });
+                            })();
+                            </script>
+                            <button type="button" id="plate-cam-open" class="mb-3 w-full rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white">Take plate photo with camera</button>
+                            <div id="plate-cam-modal" class="hidden" style="position:fixed;inset:0;z-index:99998;background:#000;flex-direction:column;">
+                                <div style="position:relative;flex:1;min-height:0;overflow:hidden;">
+                                    <video id="plate-cam-video" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover;"></video>
+                                    <div style="position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);aspect-ratio:2/1;border:3px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;"></div>
+                                    <p style="position:absolute;left:0;right:0;top:16px;text-align:center;color:#fff;font-size:14px;padding:0 16px;">Fit the whole plate inside the frame. Avoid glare.</p>
+                                </div>
+                                <div style="position:relative;z-index:2;flex-shrink:0;display:flex;gap:12px;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));background:#000;">
+                                    <button type="button" id="plate-cam-cancel" style="flex:1;padding:14px;border-radius:12px;background:#374151;color:#fff;font-weight:600;">Cancel</button>
+                                    <button type="button" id="plate-cam-capture" style="flex:2;padding:14px;border-radius:12px;background:#fff;color:#111;font-weight:700;">Capture</button>
+                                </div>
+                            </div>
+                            <script>
+                            (function () {
+                                var modal = document.getElementById("plate-cam-modal");
+                                var video = document.getElementById("plate-cam-video");
+                                var openBtn = document.getElementById("plate-cam-open");
+                                var stream = null;
+                                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { openBtn.style.display = "none"; return; }
+                                function stop() {
+                                    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+                                    video.srcObject = null;
+                                    modal.classList.add("hidden"); modal.style.display = "";
+                                }
+                                openBtn.addEventListener("click", function () {
+                                    navigator.mediaDevices.getUserMedia({
+                                        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+                                        audio: false
+                                    }).then(function (st) {
+                                        stream = st; video.srcObject = st;
+                                        modal.classList.remove("hidden"); modal.style.display = "flex";
+                                        video.play().catch(function () {});
+                                    }).catch(function () {
+                                        var el = document.getElementById("plate-scan-status");
+                                        if (el) { el.className = "rounded-lg border p-3 text-sm bg-amber-50 border-amber-200 text-amber-800"; el.textContent = "Camera isn't available. Please allow camera access in your browser, or tap Call Guest Services and we'll help."; }
+                                    });
+                                });
+                                document.getElementById("plate-cam-cancel").addEventListener("click", stop);
+                                document.getElementById("plate-cam-capture").addEventListener("click", function () {
+                                    if (!video.videoWidth) return;
+                                    var vw = video.videoWidth, vh = video.videoHeight, cw = video.clientWidth, ch = video.clientHeight;
+                                    var k = Math.max(cw / vw, ch / vh);
+                                    var fw = cw * 0.84, fh = fw / 2, fx = cw * 0.08, fy = (ch - fh) / 2;
+                                    var ox = (cw - vw * k) / 2, oy = (ch - vh * k) / 2;
+                                    var sx = Math.max(0, (fx - ox) / k), sy = Math.max(0, (fy - oy) / k);
+                                    var sw = Math.min(vw - sx, fw / k), sh = Math.min(vh - sy, fh / k);
+                                    var sc = Math.min(1, 1600 / sw);
+                                    var c = document.createElement("canvas");
+                                    c.width = Math.round(sw * sc); c.height = Math.round(sh * sc);
+                                    c.getContext("2d").drawImage(video, sx, sy, sw, sh, 0, 0, c.width, c.height);
+                                    c.toBlob(function (blob) {
+                                        stop();
+                                        if (!blob) return;
+                                        var file = new File([blob], "plate.jpg", { type: "image/jpeg" });
+                                        var input = document.getElementById("license_plate_photo");
+                                        var dt = new DataTransfer(); dt.items.add(file);
+                                        input.files = dt.files;
+                                        input.dispatchEvent(new Event("change", { bubbles: true }));
+                                    }, "image/jpeg", 0.9);
+                                });
+                            })();
+                            </script>
+                            <input type="file" name="license_plate_photo" id="license_plate_photo" accept="image/*" class="hidden">
+<script>window.plateShowSubmit=function(){var b=document.getElementById("plate-submit-btn");if(b)b.style.display="";var o=document.getElementById("plate-cam-open");if(o)o.style.display="none";};</script>
+<script>(function(){var i=document.getElementById("license_plate_photo");i.form.noValidate=true;i.form.addEventListener("submit",function(e){if(!i.files||!i.files[0]){e.preventDefault();var s=document.getElementById("plate-scan-status");if(s){s.className="rounded-lg border p-3 text-sm bg-amber-50 border-amber-200 text-amber-800";s.textContent="Please take a photo of your plate with the camera first.";}}});})();</script>
+                            @error('license_plate_photo')
+                                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <button type="submit" id="plate-submit-btn" class="guest-primary-btn mt-2 w-full" style="display:none">Submit</button>
+                    </form>
+                    <div class="guest-detail-banner mt-4">
+                        <span class="guest-detail-banner-icon">
+                            <x-icon name="phone" class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <p class="guest-detail-banner-title">Can't provide this right now?</p>
+                            <p class="guest-detail-banner-sub">Use the Call Guest Services button and we'll take care of it for you.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @elseif($state === 'arrival')
             <div data-poll-gps-status="{{ route('guest.gps-status', [$booking->booking_id, $booking->token]) }}"></div>
             <div class="guest-portal-card" id="arrival-main-card">
