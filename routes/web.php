@@ -406,6 +406,10 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('media/files', [MediaController::class, 'storeFile'])->name('media.files.store')->middleware('role:admin,owner,company,manager');
     Route::delete('media/files/{file}', [MediaController::class, 'destroyFile'])->name('media.files.destroy')->middleware('role:admin,owner,company,manager');
     Route::post('properties/{property}/duplicate', [PropertyController::class, 'duplicate'])->name('properties.duplicate');
+    Route::post('properties/{property}/locks/connect', [SeamConnectionController::class, 'connect'])->name('locks.connect')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('properties/{property}/locks/connect/return', [SeamConnectionController::class, 'returned'])->name('locks.connect.return')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('properties/{property}/locks/connect/failed', [SeamConnectionController::class, 'failed'])->name('locks.connect.failed')->middleware(['role:admin,owner,company', 'property.access']);
+
     Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store')->middleware(['role:admin,owner,company', 'property.access']);
     Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy')->middleware(['role:admin,owner,company', 'property.access']);
