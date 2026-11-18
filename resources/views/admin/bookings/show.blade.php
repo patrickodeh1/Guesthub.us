@@ -700,6 +700,9 @@
                 <div class="mt-4 grid gap-2.5">
                     @if($nsOut)
                         <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. Guest checked out {{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
+                        @if($booking->checked_in_at)
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Guest checked in {{ $booking->localTimestamp($booking->checked_in_at)->format('M j, Y g:i A') }}</div>
+                        @endif
                     @elseif($nsIn)
                         <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Currently hosting. Waiting on the guest to check out.</div>
                     @elseif($booking->isCheckinApproved())
