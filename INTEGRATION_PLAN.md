@@ -221,12 +221,12 @@ Acceptance: tests for the cases above pass. Not verified (human): a live test-mo
 
 Todo items: 14, 66, 83, 111, 112.
 
-Blocked by the human for the final steps: the owner must apply at https://survey.zohopublic.com/zs/P6BUXk to receive `X-INTEGRATION-NAME` and `X-INTEGRATION-TOKEN`. Build everything else behind config so it stays off until credentials exist.
+Blocked by the human for live activation only: the owner must apply at https://survey.zohopublic.com/zs/P6BUXk to receive `X-INTEGRATION-NAME` and `X-INTEGRATION-TOKEN`. The v2 Swagger schema and base URL have been supplied, so implementation is no longer blocked on schema access. Build behind config so it stays off until credentials exist.
 
-Docs to read first (all details below come from these; read them for exact field names):
+Docs supplied/read for this phase:
 - https://help.pricelabs.co/portal/en/kb/articles/building-an-integration-with-pricelabs
 - https://help.pricelabs.co/portal/en/kb/articles/how-to-integrate-pricelabs-as-a-pms-via-iapi
-- https://developers.pricelabs.co/home/overview (Swagger: base URLs and payloads)
+- PriceLabs API Integration v2.0.0 Swagger (OAS 2.0), supplied by the project owner. Base URL: `https://api.pricelabs.co/v2/integration/api`.
 
 How it works:
 - The PMS calls PriceLabs with two headers: `X-INTEGRATION-NAME` (constant) and `X-INTEGRATION-TOKEN`.
@@ -239,14 +239,14 @@ How it works:
 - PriceLabs signs its requests to GuestHub. Verify before parsing:
   - `header_components = "v1:" + X-SOURCE + ":" + X-PL-TIMESTAMP + ":" + X-PL-REQUESTID`
   - `signed_headers = "v1." + HMAC_SHA256(header_components, token)`
-  - `signed_body = HMAC_SHA256(signed_headers + raw_body, token)`
-  - Compare with `hash_equals` to the `X-PL-SIGNED-HEADERS` and `X-PL-SIGNED-BODY` headers.
+  - The published v2 test vector signs the body using `signed_headers` followed by the JSON body with quotes escaped once; preserve the exact documented byte representation and compare with `hash_equals` to `X-PL-SIGNED-HEADERS` and `X-PL-SIGNED-BODY`.
+  - Reject missing headers, unsupported signature versions, altered bodies, and altered headers.
   - Test vector from PriceLabs: token `26eea40c-f297-4b68-aeb8-bb626fe4b5e5`, `X-SOURCE=request_source`, `X-PL-TIMESTAMP=request_timestamp`, `X-PL-REQUESTID=request_id`, body `{"test":"body"}`. Expected signed headers `v1.567425e5a91b576652d591cabea78e9e1fe017d1c67e2d812ae2859c355965ff`; expected signed body `5011b348ff6691bb9cbe93f85ffb836ef0e3fec45a4ce924f5940cb1aa4071b8`. This must be a unit test.
 
 Do:
-1. Config in `config/services.php` under `pricelabs`: `integration_name`, `integration_token`, `iapi_base_url` (from the Swagger docs). The IAPI features are enabled only when all three are set. Add to `.env.example`.
+1. Config in `config/services.php` under `pricelabs`: `integration_name`, `integration_token`, `iapi_base_url` (v2 base URL above). The IAPI features are enabled only when all three are set. Add to `.env.example`. The base URL is now known; the integration name/token remain external credentials.
 2. Migration: `users.pricelabs_account_email` (host's PriceLabs registered email), `properties.pricelabs_iapi_listing_id` (unique, nullable), `properties.pricelabs_mode` (`key` or `pms`, default `key`).
-3. New classes under `app/Services/Pms/PriceLabs/`: `PriceLabsIapiClient` (calls to `/integration`, `/listings`, `/calendar`, `/reservations`; optional `/get_prices`, `/status`), `PriceLabsSignature` (signing and verification), `PriceLabsIapiSync` (builds listing, calendar and reservation payloads from `Property`, `AvailabilityLedger` and bookings).
+3. New classes under `app/Services/Pms/PriceLabs/`: complete `PriceLabsIapiClient` for the Swagger operations `/integration`, `/listings`, `/sync_status`, `/calendar`, `/get_prices`, `/rate_plans`, `/reservations`, `/status`, and the integration callback-URL configuration operations. Set the HTTP timeout to 300 seconds, respect 429 `Retry-After`, and keep within 300 requests/minute per partner token. Complete `PriceLabsSignature` verification and `PriceLabsIapiSync` payload builders from `Property`, availability ledger and bookings.
 4. Listing ID: `gh-{environment}-{property_id}`. It must map back to exactly one property.
 5. Inbound controller `PriceLabsIapiController` with three actions, CSRF-exempt, throttled: `sync`, `calendarTrigger`, `hook`. Routes named `webhooks.pricelabs.sync`, `webhooks.pricelabs.calendar-trigger`, `webhooks.pricelabs.hook`. Verify the signature first and return 401 on failure. `sync` converts the pushed prices into the same `[date, rate, min_stay]` shape the existing `RateSource` uses and passes it to `PriceLabsSync::apply`, so prices reach the ledger and the Channex outbox exactly as today. `calendarTrigger` queues a full calendar push for the listed IDs. `hook` stores the notification (new table or `activity_logs`) and shows host-facing errors.
 6. Artisan command `pricelabs:register-integration` that calls `/integration` with the URLs from `route()` and saves the returned token to a config-backed store (do not print it). Run by a human.
