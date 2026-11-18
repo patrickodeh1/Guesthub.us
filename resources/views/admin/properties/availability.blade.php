@@ -33,6 +33,9 @@
         {{-- Sync status --}}
         <section id="sync-status" class="card card-pad">
             <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
+                @if(auth()->user()->hasRole('admin'))
+                    <span class="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold">Channex: {{ strtoupper($channexEnvironment) }} · {{ $channexConfigured ? 'API key set' : 'API key missing' }}</span>
+                @endif
                 <span><strong>{{ $pendingCount }}</strong> change(s) waiting to send to Channex</span>
                 <span class="{{ $failedCount ? 'font-semibold text-red-700' : '' }}"><strong>{{ $failedCount }}</strong> failed</span>
                 @if($property->pricing_provider === 'wheelhouse')
@@ -242,6 +245,26 @@
                             <p class="mt-1"><span class="font-medium">Held here, open on Airbnb:</span> {{ $cmp['guesthub_only'] ? implode(', ', $cmp['guesthub_only']) : 'none' }}</p>
                         </div>
                     @endif
+                </div>
+
+                {{-- Channex connection and mapping --}}
+                <div>
+                    <h3 class="font-semibold text-slate-900">Channex connection</h3>
+                    <p class="section-copy">Create the Channex property, its single room type, and a default rate plan from this GuestHub property. You can then connect Airbnb, Vrbo, Booking.com, and other supported channels in the embedded Channex screen.</p>
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        @if(! $property->channex_property_id || ! $property->channex_room_type_id || ! $property->channex_rate_plan_id)
+                            <form method="post" action="{{ route('admin.properties.channex.create', $property) }}">
+                                @csrf
+                                <button type="submit" class="btn-secondary">{{ $property->channex_property_id ? 'Continue Channex setup' : 'Create in Channex' }}</button>
+                            </form>
+                        @else
+                            <span class="text-sm font-medium text-emerald-700">Property, room type, and rate plan created</span>
+                            <a href="{{ route('admin.properties.channex.channels', $property) }}" class="btn-primary">Connect OTA channels</a>
+                        @endif
+                        @if($property->channex_property_id)
+                            <span class="field-help">Channex property ID saved</span>
+                        @endif
+                    </div>
                 </div>
 
                 {{-- Channex room type --}}
