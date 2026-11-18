@@ -199,10 +199,10 @@ class PriceLabsIapiTest extends TestCase
                 && ($reservation['start_date'] ?? null) === $booking->check_in_date->toDateString()
                 && ($reservation['end_date'] ?? null) === $booking->check_out_date->toDateString()
                 && ($reservation['total_days'] ?? null) === 3
-                && ($reservation['total_cost'] ?? null) === 450
-                && ($reservation['total_fees'] ?? null) === 30
-                && ($reservation['total_taxes'] ?? null) === 20
-                && ($reservation['rental_revenue'] ?? null) === 400
+                && ($reservation['total_cost'] ?? null) == 450
+                && ($reservation['total_fees'] ?? null) == 30
+                && ($reservation['total_taxes'] ?? null) == 20
+                && ($reservation['rental_revenue'] ?? null) == 400
                 && ($reservation['status'] ?? null) === 'unconfirmed'
                 && ($reservation['booking_source'] ?? null) === 'airbnb';
         });
