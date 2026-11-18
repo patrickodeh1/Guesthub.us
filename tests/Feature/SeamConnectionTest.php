@@ -152,4 +152,88 @@ class SeamConnectionTest extends TestCase
             'label' => 'Front Door',
         ]);
     }
+
+    private function postSignedSeamWebhook(array $event)
+    {
+        $secret = 'test-seam-webhook-secret';
+        $secretHeader = 'whsec_'.base64_encode($secret);
+        config(['services.seam.webhook_secret' => $secretHeader]);
+
+        $body = json_encode($event, JSON_UNESCAPED_SLASHES);
+        $messageId = 'msg_'.bin2hex(random_bytes(8));
+        $timestamp = (string) time();
+        $signedContent = $messageId.'.'.$timestamp.'.'.$body;
+        $signature = base64_encode(hash_hmac('sha256', $signedContent, $secret, true));
+
+        return $this->call('POST', route('webhooks.seam'), [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_SVIX_ID' => $messageId,
+            'HTTP_SVIX_TIMESTAMP' => $timestamp,
+            'HTTP_SVIX_SIGNATURE' => 'v1,'.$signature,
+        ], $body);
+    }
+
+    public function test_reauthorization_webhook_marks_only_the_matching_account_as_needing_reconnect(): void
+    {
+        $hostA = $this->owner();
+        $hostB = $this->owner();
+
+        $accountA = SeamConnectedAccount::create([
+            'user_id' => $hostA->id,
+            'seam_connected_account_id' => 'ca_reauth_host_a',
+            'provider' => 'yale',
+            'status' => 'connected',
+        ]);
+        $accountB = SeamConnectedAccount::create([
+            'user_id' => $hostB->id,
+            'seam_connected_account_id' => 'ca_reauth_host_b',
+            'provider' => 'august',
+            'status' => 'connected',
+        ]);
+
+        $this->postSignedSeamWebhook([
+            'event_type' => 'connected_account.reauthorization_requested',
+            'connected_account_id' => 'ca_reauth_host_a',
+            'customer_key' => 'gh-'.$hostA->id,
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertSame('needs_reconnect', $accountA->fresh()->status);
+        $this->assertNotNull($accountA->fresh()->last_synced_at);
+        $this->assertSame('connected', $accountB->fresh()->status);
+        $this->assertNull($accountB->fresh()->last_synced_at);
+    }
+
+    public function test_reconnect_webhook_restores_connected_status(): void
+    {
+        $host = $this->owner();
+        $account = SeamConnectedAccount::create([
+            'user_id' => $host->id,
+            'seam_connected_account_id' => 'ca_reconnected',
+            'provider' => 'august',
+            'status' => 'needs_reconnect',
+        ]);
+
+        $this->postSignedSeamWebhook([
+            'event_type' => 'connected_account.connected',
+            'connected_account_id' => 'ca_reconnected',
+            'customer_key' => 'gh-'.$host->id,
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertSame('connected', $account->fresh()->status);
+        $this->assertNotNull($account->fresh()->last_synced_at);
+    }
+
+    public function test_signed_webhook_for_unknown_connected_account_is_ignored(): void
+    {
+        $this->postSignedSeamWebhook([
+            'event_type' => 'connected_account.reauthorization_requested',
+            'connected_account_id' => 'ca_not_in_guesthub',
+            'customer_key' => 'gh-unknown',
+        ])->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertDatabaseMissing('seam_connected_accounts', [
+            'seam_connected_account_id' => 'ca_not_in_guesthub',
+        ]);
+    }
+
 }
