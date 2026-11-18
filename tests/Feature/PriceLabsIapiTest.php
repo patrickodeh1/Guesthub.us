@@ -225,6 +225,29 @@ class PriceLabsIapiTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_manual_block_create_and_reopen_queue_reservation_updates(): void
+    {
+        Queue::fake();
+        $property = Property::factory()->create([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_block_sync',
+        ]);
+        $date = now()->addDays(75)->toDateString();
+        $ledger = app(\App\Services\Pms\\AvailabilityLedger::class);
+
+        $ledger->setDates($property, [$date], ['status' => 'blocked'], 'manual');
+
+        Queue::assertPushed(\App\Jobs\\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
+            && $job->cancelledBlockDates === []);
+
+        Queue::fake();
+        $ledger->setDates($property, [$date], ['status' => 'available'], 'manual');
+
+        Queue::assertPushed(\App\Jobs\\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
+            && $job->cancelledBlockDates === [$date]);
+    }
+
     public function test_key_based_pricelabs_polling_is_skipped_for_pms_mode(): void
     {
         $property = Property::factory()->create([
