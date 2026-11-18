@@ -105,6 +105,60 @@ class PayByCcGatingTest extends TestCase
             ->assertJson(['ok' => true, 'client_secret' => 'pi_connected_secret']);
     }
 
+    public function test_guest_itemized_charge_uses_the_hosts_connected_stripe_account(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $owner->forceFill([
+            'stripe_account_id' => 'acct_host_connected',
+            'stripe_charges_enabled' => true,
+        ])->save();
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $payments = \\Mockery::mock(PaymentService::class);
+        $payments->shouldReceive('isConfigured')->once()->andReturn(true);
+        $payments->shouldReceive('createPendingIntent')
+            ->once()
+            ->withArgs(fn (Booking $record, string $account, string $type, int $amount, string $moment) =>
+                $record->id === $booking->id
+                && $account === 'acct_host_connected'
+                && $type === Charge::TYPE_INCIDENTALS
+                && $amount > 0
+                && $moment === 'guest_initiated'
+            )
+            ->andReturn(['client_secret' => 'pi_itemized_connected_secret']);
+        $this->app->instance(PaymentService::class, $payments);
+
+        $this->postJson(route('guest.charge.intent', [$booking->booking_id, $booking->token]), [
+            'type' => 'incidentals',
+        ])->assertOk()->assertJson([
+            'ok' => true,
+            'client_secret' => 'pi_itemized_connected_secret',
+        ]);
+    }
+
+    public function test_guest_itemized_charge_is_blocked_when_host_cannot_accept_card_payments(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $this->postJson(route('guest.charge.intent', [$booking->booking_id, $booking->token]), [
+            'type' => 'incidentals',
+        ])->assertStatus(422)->assertJson(['ok' => false]);
+        $this->assertDatabaseCount('charges', 0);
+    }
+
     public function test_deposit_intent_is_refused_when_pay_by_cc_is_false(): void
     {
         $this->configureStripe();
