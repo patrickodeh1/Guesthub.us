@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Services\\Pms;
+namespace App\Services\Pms;
 
-use Illuminate\\Http\\Client\\ConnectionException;
-use Illuminate\\Support\\Facades\\Http;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 
 class WheelhouseApiClient
 {
@@ -39,7 +39,7 @@ class WheelhouseApiClient
     public function recommendations(string $listingId, string $key, string $channel): array
     {
         if ($channel === '') {
-            throw new \\InvalidArgumentException('A Wheelhouse listing channel is required.');
+            throw new \InvalidArgumentException('A Wheelhouse listing channel is required.');
         }
 
         return $this->request(
