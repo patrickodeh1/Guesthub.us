@@ -310,6 +310,26 @@ class PricingProviderTest extends TestCase
 
         Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
         Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'second-host-key'));
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-listing', $this->property), [
+                'wheelhouse_selection' => 'second-listing|vrbo',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Choose a listing returned by Wheelhouse for this host.');
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-listing', $this->property), [
+                'wheelhouse_selection' => 'first-listing|airbnb',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertSame('first-listing', $this->property->fresh()->wheelhouse_listing_id);
+        $this->assertSame('airbnb', $this->property->fresh()->wheelhouse_channel);
+
+        $all = app(\\App\\Services\\Pms\\WheelhouseApiClient::class)->listings('first-host-key', 1);
+        $this->assertCount(1, $all);
+        Http::assertSent(fn (ClientRequest $request) => str_contains($request->url(), 'page=2')
+            && $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
         $this->assertSame('first-host-key', $this->owner->fresh()->wheelhouse_user_api_key);
         $this->assertSame('second-host-key', $otherOwner->fresh()->wheelhouse_user_api_key);
     }
