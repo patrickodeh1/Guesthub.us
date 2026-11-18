@@ -249,9 +249,10 @@ class PropertyController extends Controller
             ->all();
         $seamDevices = [];
 
-        if ($property->owner) {
+        $connectedSeamAccounts = $seamAccounts->where('status', 'connected');
+        if ($property->owner && $connectedSeamAccounts->isNotEmpty() && filled(config('services.seam.api_key'))) {
             $seam = app(SeamService::class);
-            foreach ($seamAccounts->where('status', 'connected') as $account) {
+            foreach ($connectedSeamAccounts as $account) {
                 try {
                     foreach ($seam->listDevices($account->seam_connected_account_id) as $device) {
                         $deviceId = $device['device_id'] ?? null;
