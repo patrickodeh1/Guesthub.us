@@ -1,14 +1,14 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Property;
-use App\\Services\\Pms\\PriceLabs\\PriceLabsIapiSync;
-use App\\Services\\Pms\\PriceLabs\\PriceLabsSignature;
-use Illuminate\\Http\\JsonResponse;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\Log;
+use App\Http\Controllers\Controller;
+use App\Models\Property;
+use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
+use App\Services\Pms\PriceLabs\PriceLabsSignature;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class PriceLabsIapiController extends Controller
