@@ -265,7 +265,7 @@ class PropertyController extends Controller
                             'battery_level' => data_get($device, 'properties.battery.level'),
                         ];
                     }
-                } catch (\\Throwable $exception) {
+                } catch (\Throwable $exception) {
                     report($exception);
                 }
             }
