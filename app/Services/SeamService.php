@@ -89,7 +89,7 @@ class SeamService
 
     public function getDevice(string $deviceId): array
     {
-        return (array) $this->client->devices->get(device_id: $deviceId);
+        return $this->toArray($this->client->devices->get(device_id: $deviceId));
     }
 
     public function getLockStatus(string $deviceId): ?bool
