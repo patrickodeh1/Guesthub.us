@@ -16,7 +16,7 @@ class WheelhouseRateSource implements RateSource
     public function fetch(Property $property, bool $force = false): array
     {
         $userApiKey = $property->owner?->wheelhouse_user_api_key;
-        if (! $userApiKey || ! $property->wheelhouse_listing_id) {
+        if (! $userApiKey || ! $property->wheelhouse_listing_id || ! $property->wheelhouse_channel) {
             return $this->out('skipped', 'Connect a Wheelhouse account and listing first.', []);
         }
 
