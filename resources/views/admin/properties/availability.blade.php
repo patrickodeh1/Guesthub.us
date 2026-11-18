@@ -341,12 +341,10 @@
                     </form>
 
                     <h4 class="mt-6 font-semibold text-slate-900">PriceLabs</h4>
-                    <p class="section-copy mt-1">Host API keys take precedence over the platform key. Keys are encrypted at rest; they are never shown again after saving.</p>
+                    <p class="section-copy mt-1">Each host must use their own PriceLabs API key. Keys are encrypted at rest and never shown again after saving.</p>
                     <p class="field-help mt-1">
                         @if($priceLabsHostKeySet)
                             A host key is saved.
-                        @elseif($priceLabsPlatformKeySet)
-                            Using the configured platform key.
                         @else
                             No PriceLabs key is configured.
                         @endif
@@ -354,7 +352,7 @@
                     <form method="post" action="{{ route('admin.properties.availability.verify-pricelabs', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                         @csrf
                         <label class="field-label min-w-[260px] flex-1">PriceLabs API key
-                            <input type="password" name="pricelabs_api_key" autocomplete="new-password" class="input" placeholder="{{ $priceLabsKeySet ? 'Leave blank to use the saved key' : 'Paste API key' }}">
+                            <input type="password" name="pricelabs_api_key" autocomplete="new-password" class="input" placeholder="{{ $priceLabsKeySet ? 'Leave blank to use your saved key' : 'Paste API key' }}">
                         </label>
                         <button type="submit" class="btn-secondary">Verify and load listings</button>
                     </form>
