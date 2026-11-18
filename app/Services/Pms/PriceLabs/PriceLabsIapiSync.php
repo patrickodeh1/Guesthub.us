@@ -66,6 +66,11 @@ class PriceLabsIapiSync
             'pricelabs_iapi_listing_id' => $listingId,
             'pricelabs_mode' => 'pms',
             'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => null,
+            'pricelabs_pms' => null,
+            'wheelhouse_listing_id' => null,
+            'wheelhouse_channel' => null,
+            'rate_source' => $property->channex_rate_plan_id ? 'guesthub' : $property->rate_source,
             'pricelabs_iapi_listing_pushed_at' => now(),
             'pricelabs_iapi_last_error' => null,
         ])->save();
