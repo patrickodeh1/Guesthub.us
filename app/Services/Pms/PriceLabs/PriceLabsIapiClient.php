@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Services\\Pms\\PriceLabs;
+namespace App\Services\Pms\PriceLabs;
 
-use Illuminate\\Http\\Client\\ConnectionException;
-use Illuminate\\Support\\Facades\\Http;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
 class PriceLabsIapiClient
@@ -43,12 +43,12 @@ class PriceLabsIapiClient
 
         $endpoint = trim($endpoint, '/');
         if (! in_array($endpoint, self::ENDPOINTS, true)) {
-            throw new \\InvalidArgumentException('Unsupported PriceLabs IAPI endpoint.');
+            throw new \InvalidArgumentException('Unsupported PriceLabs IAPI endpoint.');
         }
 
         $method = strtoupper($method);
         if (! in_array($method, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], true)) {
-            throw new \\InvalidArgumentException('Unsupported PriceLabs IAPI HTTP method.');
+            throw new \InvalidArgumentException('Unsupported PriceLabs IAPI HTTP method.');
         }
 
         $url = rtrim((string) config('services.pricelabs.iapi_base_url'), '/').'/'.$endpoint;
