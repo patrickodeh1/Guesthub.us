@@ -62,10 +62,15 @@ class SeamConnectionController extends Controller
             $webview = $seam->getConnectWebview($pending['connect_webview_id']);
             if (($webview['status'] ?? null) !== 'authorized'
                 || ! ($webview['login_successful'] ?? false)
+                || ($webview['customer_key'] ?? null) !== 'gh-'.$host->id
+                || ! in_array($webview['selected_provider'] ?? null, ['yale', 'august'], true)
                 || empty($webview['connected_account_id'])) {
                 return redirect()->route('admin.properties.edit', $property)
                     ->with('error', 'The lock account was not authorized. Please try connecting again.');
             }
+
+            $existingAccount = \\App\\Models\\SeamConnectedAccount::where('seam_connected_account_id', $webview['connected_account_id'])->first();
+            abort_if($existingAccount && (int) $existingAccount->user_id !== (int) $host->id, 403, 'This lock account is already linked to another host.');
 
             $account = $host->seamConnectedAccounts()->updateOrCreate(
                 ['seam_connected_account_id' => $webview['connected_account_id']],
