@@ -65,7 +65,7 @@ class PriceLabsIapiSync
             throw new RuntimeException((string) $message);
         }
 
-        $property->forceFill([
+        $updates = [
             'pricelabs_iapi_listing_id' => $listingId,
             'pricelabs_mode' => 'pms',
             'pricing_provider' => 'pricelabs',
@@ -73,10 +73,14 @@ class PriceLabsIapiSync
             'pricelabs_pms' => null,
             'wheelhouse_listing_id' => null,
             'wheelhouse_channel' => null,
-            'rate_source' => $property->channex_rate_plan_id ? 'guesthub' : $property->rate_source,
             'pricelabs_iapi_listing_pushed_at' => now(),
             'pricelabs_iapi_last_error' => null,
-        ])->save();
+        ];
+        if ($property->channex_rate_plan_id) {
+            $updates['rate_source'] = 'guesthub';
+        }
+
+        $property->forceFill($updates)->save();
 
         return $response;
     }
