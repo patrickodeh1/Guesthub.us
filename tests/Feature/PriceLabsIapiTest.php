@@ -10,6 +10,7 @@ use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
 use App\Services\Pms\PriceLabsSync;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PriceLabsIapiTest extends TestCase
@@ -202,19 +203,19 @@ class PriceLabsIapiTest extends TestCase
         ]);
         $date = now()->addDays(61)->toDateString();
 
-        app(\\App\\Services\\Pms\\AvailabilityLedger::class)->setDates(
+        app(\App\Services\Pms\\AvailabilityLedger::class)->setDates(
             $property,
             [$date],
             ['rate' => 199],
             'manual',
         );
 
-        Queue::assertPushed(\\App\\Jobs\\PushPriceLabsCalendarToIapi::class, fn ($job) => $job->propertyId === $property->id
+        Queue::assertPushed(\App\Jobs\\PushPriceLabsCalendarToIapi::class, fn ($job) => $job->propertyId === $property->id
             && $job->startDate === $date
             && $job->endDate === $date);
 
         Queue::fake();
-        app(\\App\\Services\\Pms\\AvailabilityLedger::class)->setDates(
+        app(\App\Services\Pms\\AvailabilityLedger::class)->setDates(
             $property,
             [$date],
             ['rate' => 205],
