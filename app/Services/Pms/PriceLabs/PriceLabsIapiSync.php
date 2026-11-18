@@ -90,7 +90,7 @@ class PriceLabsIapiSync
 
         $start = $startDate ? Carbon::parse($startDate)->startOfDay() : now()->startOfDay();
         $end = $endDate ? Carbon::parse($endDate)->startOfDay() : $start->copy()->addDays(729);
-        if ($end->lt($start) || $start->diffInDays($end) > 1095) {
+        if ($end->lt($start)) {
             throw new InvalidArgumentException('The PriceLabs calendar date range is invalid or too large.');
         }
 
