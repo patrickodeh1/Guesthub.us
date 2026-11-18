@@ -129,9 +129,9 @@ class PriceLabsIapiSync
         ?string $to = null,
     ): array {
         $property->loadMissing('listing');
-        $start = $from ? \\Carbon\\Carbon::parse($from)->startOfDay() : now()->startOfDay();
+        $start = $from ? \Carbon\Carbon::parse($from)->startOfDay() : now()->startOfDay();
         $end = $to
-            ? \\Carbon\\Carbon::parse($to)->startOfDay()
+            ? \Carbon\Carbon::parse($to)->startOfDay()
             : $start->copy()->addDays(729);
 
         if ($end->lt($start) || $start->diffInDays($end) > 1095) {
@@ -196,7 +196,7 @@ class PriceLabsIapiSync
      * Publish a booking create/update/cancellation for PriceLabs Portfolio
      * Analytics, then refresh the affected calendar range.
      */
-    public function pushReservation(\\App\\Models\\Booking $booking, PriceLabsIapiClient $client): array
+    public function pushReservation(\App\Models\Booking $booking, PriceLabsIapiClient $client): array
     {
         $property = $booking->property()->with(['listing'])->first();
         if (! $property || $property->pricelabs_mode !== 'pms'
