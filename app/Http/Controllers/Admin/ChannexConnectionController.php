@@ -34,6 +34,7 @@ class ChannexConnectionController extends Controller
                     'city' => $property->city,
                     'state' => $property->state,
                     'zip_code' => $property->zip,
+                    'country' => strtoupper((string) $property->country),
                     'latitude' => $property->latitude !== null ? (string) $property->latitude : null,
                     'longitude' => $property->longitude !== null ? (string) $property->longitude : null,
                     'timezone' => $property->timezone ?: config('app.timezone', 'UTC'),
@@ -114,6 +115,10 @@ class ChannexConnectionController extends Controller
     {
         abort_unless($request->user()?->hasRole('admin') || (int) $property->owner_id === (int) $request->user()?->id, 403);
         abort_unless($property->channex_property_id, 422, 'Create the Channex property before connecting channels.');
+        if (! filled($property->country) || ! filled($property->contact_email) || ! filled($property->contact_phone)) {
+            return redirect()->route('admin.properties.availability.index', $property)
+                ->with('error', 'Add the property country code, contact email, and contact phone before connecting OTA channels.');
+        }
 
         try {
             $token = $channex->createOneTimeToken($property->channex_property_id, (string) $request->user()->name);
