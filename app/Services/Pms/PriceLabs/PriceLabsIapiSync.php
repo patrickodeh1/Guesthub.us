@@ -157,7 +157,7 @@ class PriceLabsIapiSync
                 'currency' => 'USD',
                 'data' => $data,
             ]]]);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
             throw $exception;
         }
@@ -266,7 +266,7 @@ class PriceLabsIapiSync
                 'listing_id' => $listingId,
                 'data' => $reservations,
             ]]]);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
             throw $exception;
         }
