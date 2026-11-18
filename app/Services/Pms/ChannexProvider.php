@@ -50,6 +50,11 @@ class ChannexProvider implements PmsProviderInterface
         return str_contains(strtolower($host), 'staging') ? 'staging' : 'production';
     }
 
+    public function baseApiUrl(): string
+    {
+        return $this->baseUrl;
+    }
+
     public function baseServerUrl(): string
     {
         $scheme = parse_url($this->baseUrl, PHP_URL_SCHEME) ?: 'https';
