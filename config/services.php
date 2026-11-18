@@ -77,9 +77,7 @@ return [
     ],
 
     'wheelhouse' => [
-        'partner_api_key' => env('WHEELHOUSE_PARTNER_API_KEY'),
         'base_url' => env('WHEELHOUSE_BASE_URL', 'https://api.usewheelhouse.com/ss_api/v1'),
-        'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
     ],
 
     'channex' => [
