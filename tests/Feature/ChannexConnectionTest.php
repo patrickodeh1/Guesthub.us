@@ -84,6 +84,9 @@ class ChannexConnectionTest extends TestCase
         $property = Property::factory()->create([
             'owner_id' => $host->id,
             'channex_property_id' => 'ch-property-1',
+            'country' => 'US',
+            'contact_email' => 'host@example.test',
+            'contact_phone' => '+12165550100',
         ]);
 
         $channex = Mockery::mock(ChannexProvider::class);
