@@ -388,25 +388,21 @@
                     </form>
 
                     <h4 class="mt-6 font-semibold text-slate-900">Wheelhouse</h4>
-                    @if($wheelhousePartnerKeySet)
-                        <p class="section-copy mt-1">Connect an existing Wheelhouse account with its User API Key, or create/update a GuestHub-managed Wheelhouse listing.</p>
-                    @else
-                        <p class="field-help mt-1">GuestHub’s Wheelhouse partner key is not configured. Existing account access and integrator registration are unavailable until credentials are added.</p>
-                    @endif
+                    <p class="section-copy mt-1">Connect your own Wheelhouse account using a read-only RM API key. In Wheelhouse, open API & MCP → API Keys and create a read-only key. GuestHub only reads your listings and price recommendations; it never changes Wheelhouse data.</p>
                     @if($wheelhouseUserKeySet)
-                        <p class="field-help mt-2">A Wheelhouse User API Key is saved for this host.</p>
+                        <p class="field-help mt-2">A Wheelhouse key is saved securely for this host. The full key is never displayed.</p>
                     @endif
                     <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-key', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                         @csrf
-                        <label class="field-label min-w-[260px] flex-1">Wheelhouse User API Key
-                            <input type="password" name="wheelhouse_user_api_key" autocomplete="new-password" class="input" placeholder="Paste an existing-account key" required>
+                        <label class="field-label min-w-[260px] flex-1">Wheelhouse read-only RM API key
+                            <input type="password" name="wheelhouse_user_api_key" autocomplete="new-password" class="input" placeholder="Paste your read-only RM API key" required>
                         </label>
-                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Verify existing account</button>
+                        <button type="submit" class="btn-secondary">Verify and load listings</button>
                     </form>
                     @if(session('wheelhouseListings'))
                         <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-listing', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                             @csrf
-                            <label class="field-label min-w-[280px] flex-1">Existing Wheelhouse listing
+                            <label class="field-label min-w-[280px] flex-1">Your active Wheelhouse listing
                                 <select name="wheelhouse_selection" class="input" required>
                                     <option value="">— Select listing —</option>
                                     @foreach(session('wheelhouseListings') as $option)
@@ -417,12 +413,8 @@
                             <button type="submit" class="btn-secondary">Save listing</button>
                         </form>
                     @elseif($property->wheelhouse_listing_id)
-                        <p class="field-help mt-2">Linked listing: {{ $property->wheelhouse_listing_id }}{{ $property->wheelhouse_channel ? ' ('.$property->wheelhouse_channel.')' : ' (GuestHub-managed)' }}</p>
+                        <p class="field-help mt-2">Linked listing: {{ $property->wheelhouse_listing_id }} ({{ $property->wheelhouse_channel }})</p>
                     @endif
-                    <form method="post" action="{{ route('admin.properties.availability.connect-wheelhouse', $property) }}" class="mt-3">
-                        @csrf
-                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Create/update GuestHub-managed Wheelhouse listing</button>
-                    </form>
                 </div>
 
                 {{-- Sync tools --}}
