@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Property;
 use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
 use App\Services\Pms\PriceLabs\PriceLabsSignature;
