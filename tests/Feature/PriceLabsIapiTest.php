@@ -127,7 +127,7 @@ class PriceLabsIapiTest extends TestCase
                 'min_stay' => 3,
             ]],
         ], JSON_THROW_ON_ERROR);
-        $signature = app(\\App\\Services\\Pms\\PriceLabs\\PriceLabsSignature::class);
+        $signature = app(\App\Services\Pms\PriceLabs\PriceLabsSignature::class);
         $signedHeaders = $signature->signHeaders('pricelabs', 'test-time', 'request-123', 'callback-test-token');
         $signedBody = $signature->signBody($signedHeaders, $body, 'callback-test-token');
 
