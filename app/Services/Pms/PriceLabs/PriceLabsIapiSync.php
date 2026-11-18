@@ -77,6 +77,157 @@ class PriceLabsIapiSync
         return $result;
     }
 
+    /**
+     * Register/update one GuestHub property in PriceLabs.
+     * The PriceLabs account email belongs to the property's owner, never to
+     * GuestHub's shared integration account.
+     */
+    public function pushListing(Property $property, PriceLabsIapiClient $client): array
+    {
+        $property->loadMissing(['owner', 'listing']);
+        $email = trim((string) $property->owner?->pricelabs_account_email);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Add the host email registered with PriceLabs before sending this listing.');
+        }
+
+        $listingId = $property->pricelabs_iapi_listing_id ?: $this->listingId($property);
+        $property->forceFill(['pricelabs_iapi_listing_id' => $listingId])->save();
+
+        $payload = [
+            'listing_id' => $listingId,
+            'user_token' => $email,
+            'listing_name' => (string) $property->name,
+        ];
+
+        if ($property->fullAddress() !== '') {
+            $payload['address'] = $property->fullAddress();
+        }
+        if ($property->listing?->bedrooms !== null) {
+            $payload['bedrooms'] = (int) $property->listing->bedrooms;
+        }
+        if ($property->listing?->max_guests !== null) {
+            $payload['max_guests'] = (int) $property->listing->max_guests;
+        }
+
+        $response = $client->listings('POST', $payload);
+        $property->forceFill([
+            'pricelabs_iapi_listing_pushed_at' => now(),
+            'pricelabs_iapi_last_error' => null,
+        ])->save();
+
+        return $response;
+    }
+
+    /**
+     * Send one listing's daily rates and availability. Initial registration
+     * always sends 730 dates; subsequent calls may send a narrower range.
+     */
+    public function pushCalendar(
+        Property $property,
+        PriceLabsIapiClient $client,
+        ?string $from = null,
+        ?string $to = null,
+    ): array {
+        $property->loadMissing('listing');
+        $start = $from ? \\Carbon\\Carbon::parse($from)->startOfDay() : now()->startOfDay();
+        $end = $to
+            ? \\Carbon\\Carbon::parse($to)->startOfDay()
+            : $start->copy()->addDays(729);
+
+        if ($end->lt($start) || $start->diffInDays($end) > 1095) {
+            throw new InvalidArgumentException('PriceLabs calendar range must be between 1 and 1096 days.');
+        }
+
+        $rows = $property->availabilities()
+            ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
+            ->get()->keyBy(fn ($row) => $row->date->format('Y-m-d'));
+
+        $bookings = $property->bookings()
+            ->holdingNights()
+            ->whereDate('check_in_date', '<=', $end->toDateString())
+            ->whereDate('check_out_date', '>', $start->toDateString())
+            ->get(['check_in_date', 'check_out_date']);
+
+        $bookingDates = [];
+        foreach ($bookings as $booking) {
+            $night = $booking->check_in_date->copy()->startOfDay()->max($start)->copy();
+            $last = $booking->check_out_date->copy()->startOfDay()->min($end->copy()->addDay());
+            for (; $night->lt($last); $night->addDay()) {
+                $bookingDates[$night->toDateString()] = true;
+            }
+        }
+
+        $baseRate = $property->listing?->base_rate_cents !== null
+            ? round(((int) $property->listing->base_rate_cents) / 100, 2)
+            : null;
+        $calendarData = [];
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            $key = $date->toDateString();
+            $row = $rows->get($key);
+            $price = $row?->rate !== null ? (float) $row->rate : $baseRate;
+
+            if ($price === null || $price <= 0) {
+                throw new InvalidArgumentException('A nightly rate is missing for '.$key.'. Add a base listing rate or fill the availability calendar before enabling PriceLabs.');
+            }
+
+            $calendarData[] = [
+                'date' => $key,
+                'price' => round($price, 2),
+                'availability' => (bool) ($row?->is_available ?? ! isset($bookingDates[$key])),
+                'min_stay' => (int) ($row?->min_stay_arrival ?: $property->listing?->min_nights ?: 1),
+            ];
+        }
+
+        $response = $client->calendar('POST', [
+            'listing_id' => $property->pricelabs_iapi_listing_id ?: $this->listingId($property),
+            'calendar_data' => $calendarData,
+        ]);
+
+        $property->forceFill([
+            'pricelabs_iapi_calendar_pushed_at' => now(),
+            'pricelabs_iapi_last_error' => null,
+        ])->save();
+
+        return $response;
+    }
+
+    /**
+     * Publish a booking create/update/cancellation for PriceLabs Portfolio
+     * Analytics, then refresh the affected calendar range.
+     */
+    public function pushReservation(\\App\\Models\\Booking $booking, PriceLabsIapiClient $client): array
+    {
+        $property = $booking->property()->with(['listing'])->first();
+        if (! $property || $property->pricelabs_mode !== 'pms'
+            || $property->pricing_provider !== 'pricelabs'
+            || ! $property->pricelabs_iapi_listing_id) {
+            return ['skipped' => true];
+        }
+
+        $cancelled = in_array(strtolower((string) $booking->status), ['cancelled', 'canceled', 'declined', 'rejected'], true)
+            || $booking->cancelled_at !== null;
+        $payload = [
+            'listing_id' => $property->pricelabs_iapi_listing_id,
+            'reservation_id' => (string) ($booking->booking_id ?: $booking->id),
+            'check_in' => $booking->check_in_date?->toDateString(),
+            'check_out' => $booking->check_out_date?->toDateString(),
+            'status' => $cancelled ? 'CANCELLED' : 'BOOKED',
+            'total_cost' => round(((int) ($booking->total_cents ?? 0)) / 100, 2),
+            'rental_revenue' => round(((int) ($booking->accommodation_cents ?? 0)) / 100, 2),
+            'currency' => strtoupper((string) config('app.currency', 'USD')),
+        ];
+
+        $response = $client->reservations('POST', ['reservations' => [$payload]]);
+        $from = $booking->check_in_date?->toDateString();
+        $to = $booking->check_out_date?->copy()->subDay()->toDateString();
+        if ($from && $to && $to >= $from) {
+            $this->pushCalendar($property, $client, $from, $to);
+        }
+
+        return $response;
+    }
+
     private function validDate(string $date): bool
     {
         if (! preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/', $date, $matches)) {
