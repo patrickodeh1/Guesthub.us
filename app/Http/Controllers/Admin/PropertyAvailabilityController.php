@@ -64,7 +64,7 @@ class PropertyAvailabilityController extends Controller
             'wheelhouseApiAvailable' => true,
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
-                ->where('channex_property_id', (string) $property->channex_property_id)
+                ->whereIn('channex_property_id', array_filter([(string) $property->channex_property_id, 'guesthub:'.$property->id]))
                 ->latest('id')->limit(30)->get(),
             'calendarExportEnabled' => $property->owner && FeatureGate::enabled($property->owner, 'calendar_export'),
             'calendarExportUrl' => $property->ical_export_token
