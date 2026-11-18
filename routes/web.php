@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\ChannexConnectionController;
 use App\Http\Controllers\Admin\CalendarAssignController;
 use App\Http\Controllers\Admin\CalendarStatusController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Admin\PropertyListingController;
 use App\Http\Controllers\Admin\PropertyLockboxController;
 use App\Http\Controllers\Admin\PropertyLockController;
 use App\Http\Controllers\Admin\QuickAssignController;
+use App\Http\Controllers\Admin\SeamConnectionController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TrainingLogController;
 use App\Http\Controllers\Admin\UserController;
