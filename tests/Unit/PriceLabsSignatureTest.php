@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\\Unit;
+namespace Tests\Unit;
 
-use App\\Services\\Pms\\PriceLabs\\PriceLabsSignature;
-use Illuminate\\Http\\Request;
-use PHPUnit\\Framework\\TestCase;
+use App\Services\Pms\PriceLabs\PriceLabsSignature;
+use Illuminate\Http\Request;
+use PHPUnit\Framework\TestCase;
 
 class PriceLabsSignatureTest extends TestCase
 {
