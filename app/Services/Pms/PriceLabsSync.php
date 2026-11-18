@@ -41,6 +41,10 @@ class PriceLabsSync
             return $this->out('skipped', 0, 'No pricing provider is selected.');
         }
 
+        if ($property->pricing_provider === 'pricelabs' && ! $this->priceLabs->apiKeyFor($property)) {
+            return $this->out('skipped', 0, 'Add your PriceLabs API key.');
+        }
+
         $usesChannexOutbox = $property->channex_property_id
             || $property->channex_room_type_id
             || $property->channex_rate_plan_id;
