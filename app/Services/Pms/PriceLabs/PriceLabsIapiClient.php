@@ -20,7 +20,7 @@ class PriceLabsIapiClient
     ];
 
     private const TIMEOUT_SECONDS = 300;
-    private const MAX_ATTEMPTS = 4;
+    private const MAX_ATTEMPTS = 4;\n    private const REQUESTS_PER_MINUTE = 300;
 
     public function enabled(): bool
     {
