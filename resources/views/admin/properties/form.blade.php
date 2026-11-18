@@ -416,63 +416,112 @@
          add/edit/remove action, not a "settings" field to be saved together. --}}
     <div class="mt-10">
         <h2 class="mb-4 text-lg font-semibold text-slate-950">Smart locks</h2>
-        <div class="card card-pad">
-            <div class="mb-1 flex items-center justify-between">
-                <h3 class="section-title">Devices</h3>
-                <span class="text-sm text-slate-500">{{ $property->locks->count() }} lock{{ $property->locks->count() === 1 ? '' : 's' }}</span>
-            </div>
-            @if($property->locks->count())
-                <div class="mb-5 mt-4 grid gap-3">
-                    @foreach($property->locks as $lock)
-                        <div class="rounded-xl border border-slate-200 p-4" id="lock-row-{{ $lock->id }}">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" id="lock-view-{{ $lock->id }}">
-                                <div class="min-w-0">
-                                    <p class="font-bold text-slate-950">{{ $lock->label }}</p>
-                                    <p class="break-all text-sm text-slate-500">
-                                        Device ID: {{ $lock->seam_device_id }}
-                                        @if($lock->manufacturer) &middot; {{ ucfirst($lock->manufacturer) }} @endif
-                                    </p>
-                                </div>
-                                <div class="flex gap-2 sm:shrink-0">
-                                    <button type="button" class="btn-secondary flex-1 sm:flex-none" onclick="toggleLockEdit({{ $lock->id }})">Edit</button>
-                                    <form method="post" action="{{ route('admin.properties.locks.destroy', [$property, $lock]) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Remove this lock?');">
-                                        @csrf @method('delete')
-                                        <button class="btn-secondary w-full text-red-600 sm:w-auto">Remove</button>
-                                    </form>
-                                </div>
+        <div class="card card-pad space-y-5">
+            <div>
+                <h3 class="section-title">Lock accounts</h3>
+                <p class="mt-1 text-sm text-slate-500">Connect your Yale or August account securely through Seam. Your lock login details are entered directly with the provider and are never shared with GuestHub.</p>
+                @if(($seamAccounts ?? collect())->isNotEmpty())
+                    <div class="mt-3 space-y-2">
+                        @foreach($seamAccounts as $account)
+                            <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+                                <span class="font-medium text-slate-800">{{ ucfirst($account->provider ?: 'Lock account') }}</span>
+                                @if($account->status === 'connected')
+                                    <span class="text-sm font-medium text-emerald-700">Connected</span>
+                                @elseif($account->status === 'needs_reconnect')
+                                    <span class="text-sm font-medium text-amber-700">Reconnect required</span>
+                                @else
+                                    <span class="text-sm text-slate-500">Disconnected</span>
+                                @endif
                             </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mt-3 text-sm text-slate-500">No lock accounts connected yet.</p>
+                @endif
+                <form method="post" action="{{ route('admin.locks.connect', $property) }}" class="mt-3">
+                    @csrf
+                    <button class="btn-secondary">Connect Yale or August account</button>
+                </form>
+            </div>
 
-                            <form method="post" action="{{ route('admin.properties.locks.update', [$property, $lock]) }}" class="mt-4 hidden grid gap-4 md:grid-cols-3" id="lock-edit-{{ $lock->id }}">
-                                @csrf @method('put')
-                                <label class="field-label md:col-span-1">Label<input name="label" value="{{ $lock->label }}" placeholder="Front Door" class="input"></label>
-                                <label class="field-label md:col-span-1">Seam Device ID <span class="text-red-600">*</span><input name="seam_device_id" value="{{ $lock->seam_device_id }}" required placeholder="device_xxxxxxxx" class="input"></label>
-                                <label class="field-label md:col-span-1">Manufacturer<input name="manufacturer" value="{{ $lock->manufacturer }}" placeholder="august, yale" class="input"></label>
-                                <div class="md:col-span-3 flex gap-2">
-                                    <button class="btn-primary">Save</button>
-                                    <button type="button" class="btn-secondary" onclick="toggleLockEdit({{ $lock->id }})">Cancel</button>
+            <div class="border-t border-slate-200 pt-5">
+                <div class="mb-1 flex items-center justify-between">
+                    <h3 class="section-title">Assigned locks</h3>
+                    <span class="text-sm text-slate-500">{{ $property->locks->count() }} lock{{ $property->locks->count() === 1 ? '' : 's' }}</span>
+                </div>
+                @if($property->locks->count())
+                    <div class="mt-4 grid gap-3">
+                        @foreach($property->locks as $lock)
+                            <div class="rounded-xl border border-slate-200 p-4" id="lock-row-{{ $lock->id }}">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" id="lock-view-{{ $lock->id }}">
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-slate-950">{{ $lock->label }}</p>
+                                        <p class="text-sm text-slate-500">
+                                            {{ $lock->manufacturer ? ucfirst($lock->manufacturer) : 'Smart lock' }}
+                                            @if($lock->battery_level !== null) · Battery {{ $lock->battery_level }}% @endif
+                                        </p>
+                                    </div>
+                                    <div class="flex gap-2 sm:shrink-0">
+                                        <button type="button" class="btn-secondary flex-1 sm:flex-none" onclick="toggleLockEdit({{ $lock->id }})">Edit</button>
+                                        <form method="post" action="{{ route('admin.properties.locks.destroy', [$property, $lock]) }}" class="flex-1 sm:flex-none" onsubmit="return confirm('Remove this lock?');">
+                                            @csrf @method('delete')
+                                            <button class="btn-secondary w-full text-red-600 sm:w-auto">Remove</button>
+                                        </form>
+                                    </div>
                                 </div>
-                            </form>
-                        </div>
-                    @endforeach
-                </div>
-                <script>
-                    function toggleLockEdit(id) {
-                        document.getElementById('lock-view-' + id).classList.toggle('hidden');
-                        document.getElementById('lock-edit-' + id).classList.toggle('hidden');
-                    }
-                </script>
-            @else
-                <p class="mb-5 mt-4 text-slate-500">No locks configured yet for {{ $property->name }}.</p>
-            @endif
-            <form method="post" action="{{ route('admin.properties.locks.store', $property) }}" class="grid gap-4 border-t border-slate-200 pt-5 md:grid-cols-3">
-                @csrf
-                <label class="field-label md:col-span-1">Label<input name="label" placeholder="Front Door" class="input"></label>
-                <label class="field-label md:col-span-1">Seam Device ID <span class="text-red-600">*</span><input name="seam_device_id" required placeholder="device_xxxxxxxx" class="input"></label>
-                <label class="field-label md:col-span-1">Manufacturer<input name="manufacturer" placeholder="august, yale" class="input"></label>
-                <div class="md:col-span-3">
-                    <button class="btn-primary">Add Lock</button>
-                </div>
-            </form>
+
+                                <form method="post" action="{{ route('admin.properties.locks.update', [$property, $lock]) }}" class="mt-4 hidden grid gap-4 md:grid-cols-2" id="lock-edit-{{ $lock->id }}">
+                                    @csrf @method('put')
+                                    <label class="field-label">Lock device
+                                        @if(auth()->user()->hasRole('admin'))
+                                            <input name="seam_device_id" value="{{ $lock->seam_device_id }}" required class="input">
+                                        @else
+                                            <select name="seam_device_id" required class="input">
+                                                @foreach(($seamDevices ?? collect()) as $device)
+                                                    <option value="{{ $device['device_id'] }}" @selected($device['device_id'] === $lock->seam_device_id)>{{ $device['display_name'] }} · {{ ucfirst($device['provider']) }}</option>
+                                                @endforeach
+                                            </select>
+                                        @endif
+                                    </label>
+                                    <label class="field-label">Label<input name="label" value="{{ $lock->label }}" placeholder="Front Door" class="input"></label>
+                                    <div class="md:col-span-2 flex gap-2">
+                                        <button class="btn-primary">Save</button>
+                                        <button type="button" class="btn-secondary" onclick="toggleLockEdit({{ $lock->id }})">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                    <script>
+                        function toggleLockEdit(id) {
+                            document.getElementById('lock-view-' + id).classList.toggle('hidden');
+                            document.getElementById('lock-edit-' + id).classList.toggle('hidden');
+                        }
+                    </script>
+                @else
+                    <p class="mb-5 mt-4 text-sm text-slate-500">No locks assigned to this property yet.</p>
+                @endif
+
+                <form method="post" action="{{ route('admin.properties.locks.store', $property) }}" class="mt-4 grid gap-4 border-t border-slate-200 pt-5 md:grid-cols-2">
+                    @csrf
+                    <label class="field-label">Choose a connected lock
+                        @if(auth()->user()->hasRole('admin'))
+                            <input name="seam_device_id" required placeholder="Seam device ID (admin fallback)" class="input">
+                        @else
+                            <select name="seam_device_id" required class="input">
+                                <option value="">Select a Yale or August lock</option>
+                                @foreach(($seamDevices ?? collect()) as $device)
+                                    <option value="{{ $device['device_id'] }}">{{ $device['display_name'] }} · {{ ucfirst($device['provider']) }}@if($device['battery_level'] !== null) · {{ round($device['battery_level'] <= 1 ? $device['battery_level'] * 100 : $device['battery_level']) }}% battery @endif</option>
+                                @endforeach
+                            </select>
+                        @endif
+                    </label>
+                    <label class="field-label">Label<input name="label" placeholder="Front Door" class="input"></label>
+                    <div class="md:col-span-2">
+                        <button class="btn-primary" @disabled(!auth()->user()->hasRole('admin') && ($seamDevices ?? collect())->isEmpty())>Assign lock to property</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
     @endif
