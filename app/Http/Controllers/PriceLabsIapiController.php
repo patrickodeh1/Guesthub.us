@@ -110,13 +110,23 @@ class PriceLabsIapiController extends Controller
             ?? 'PriceLabs sent a notification.';
 
         if ($listingId) {
-            Property::query()
+            $property = Property::query()
                 ->where('pricelabs_iapi_listing_id', (string) $listingId)
                 ->where('pricelabs_mode', 'pms')
-                ->update([
+                ->first();
+
+            if ($property) {
+                $property->forceFill([
                     'pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000),
-                    'updated_at' => now(),
-                ]);
+                ])->save();
+
+                ActivityLog::record(
+                    'pricelabs_iapi_notification',
+                    $property->name.': '.mb_substr((string) $message, 0, 500),
+                    'properties',
+                    $property
+                );
+            }
         }
 
         Log::notice('PriceLabs IAPI notification received.', [
