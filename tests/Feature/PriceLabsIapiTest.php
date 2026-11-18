@@ -192,6 +192,38 @@ class PriceLabsIapiTest extends TestCase
         $this->assertSame('manual', $manual->fresh()->rates_source);
     }
 
+    public function test_non_pricelabs_ledger_changes_queue_calendar_delta_without_echoing_inbound_prices(): void
+    {
+        Queue::fake();
+        $property = Property::factory()->create([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_calendar_delta',
+        ]);
+        $date = now()->addDays(61)->toDateString();
+
+        app(\\App\\Services\\Pms\\AvailabilityLedger::class)->setDates(
+            $property,
+            [$date],
+            ['rate' => 199],
+            'manual',
+        );
+
+        Queue::assertPushed(\\App\\Jobs\\PushPriceLabsCalendarToIapi::class, fn ($job) => $job->propertyId === $property->id
+            && $job->startDate === $date
+            && $job->endDate === $date);
+
+        Queue::fake();
+        app(\\App\\Services\\Pms\\AvailabilityLedger::class)->setDates(
+            $property,
+            [$date],
+            ['rate' => 205],
+            'pricelabs',
+        );
+
+        Queue::assertNothingPushed();
+    }
+
     public function test_key_based_pricelabs_polling_is_skipped_for_pms_mode(): void
     {
         $property = Property::factory()->create([
