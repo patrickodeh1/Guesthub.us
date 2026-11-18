@@ -440,7 +440,7 @@
                 @endif
                 <form method="post" action="{{ route('admin.locks.connect', $property) }}" class="mt-3">
                     @csrf
-                    <button class="btn-secondary">Connect Yale or August account</button>
+                    <button class="btn-secondary">{{ ($seamAccounts ?? collect())->contains(fn ($account) => $account->status === 'needs_reconnect') ? 'Reconnect lock account' : 'Connect Yale or August account' }}</button>
                 </form>
             </div>
 
