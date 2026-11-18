@@ -1,12 +1,12 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\User;
-use App\\Services\\Payments\\PaymentService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use App\Models\User;
+use App\Services\Payments\PaymentService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class StripeConnectTest extends TestCase
 {
