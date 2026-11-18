@@ -51,9 +51,10 @@ class PriceLabsIapiSync
             'location' => $location,
             'name' => (string) ($listing?->public_title ?: $property->name),
             'status' => $property->active ? 'available' : 'unavailable',
-            'number_of_bedrooms' => (float) ($listing?->bedrooms ?? $property->beds ?? 0),
-            'property_type' => 'short_term_rental',
         ];
+        if ($listing?->bedrooms !== null) {
+            $details['number_of_bedrooms'] = (float) $listing->bedrooms;
+        }
 
         $response = $this->client->listings('POST', ['listings' => [$details]]);
         $successes = $response['successes'] ?? [];
