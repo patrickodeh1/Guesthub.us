@@ -112,7 +112,7 @@ class PriceLabsIapiTest extends TestCase
                 && ($listing['user_token'] ?? null) === 'host-pricelabs@example.test'
                 && ($listing['name'] ?? null) === 'PriceLabs Listing'
                 && ($listing['status'] ?? null) === 'available'
-                && ($listing['number_of_bedrooms'] ?? null) === 2.0
+                && ($listing['number_of_bedrooms'] ?? null) == 2
                 && ! array_key_exists('property_type', $listing);
         });
 
