@@ -94,7 +94,7 @@ class AvailabilityLedger
             && $property->pricelabs_mode === 'pms'
             && $property->pricelabs_iapi_listing_id) {
             sort($dates);
-            \\App\\Jobs\\PushPriceLabsCalendarToIapi::dispatch(
+            \App\Jobs\PushPriceLabsCalendarToIapi::dispatch(
                 (int) $property->id,
                 $dates[0],
                 $dates[count($dates) - 1],
