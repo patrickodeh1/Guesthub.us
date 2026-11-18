@@ -221,7 +221,7 @@ class PropertyAvailabilityController extends Controller
         try {
             $iapi->registerListing($property);
             $iapi->pushCalendar($property);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             report($exception);
 
             return back()->with('error', 'PriceLabs listing setup started, but a push failed: '.$exception->getMessage());
@@ -236,7 +236,7 @@ class PropertyAvailabilityController extends Controller
     {
         try {
             $result = $iapi->pushReservations($property);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             report($exception);
 
             return back()->with('error', 'PriceLabs reservations could not be sent: '.$exception->getMessage());
