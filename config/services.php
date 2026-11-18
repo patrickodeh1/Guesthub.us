@@ -77,7 +77,6 @@ return [
     ],
 
     'pricelabs' => [
-        'api_key' => env('PRICELABS_API_KEY'),
         'integration_name' => env('PRICELABS_INTEGRATION_NAME'),
         'integration_token' => env('PRICELABS_INTEGRATION_TOKEN'),
         'iapi_base_url' => env('PRICELABS_IAPI_BASE_URL'),
