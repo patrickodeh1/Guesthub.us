@@ -438,6 +438,47 @@ class PricingProviderTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_switching_back_from_wheelhouse_clears_wheelhouse_linkage(): void
+    {
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'wheelhouse',
+            'wheelhouse_listing_id' => 'wheelhouse-listing',
+            'wheelhouse_channel' => 'airbnb',
+            'pricelabs_listing_id' => 'pricelabs-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-pricing-provider', $this->property), [
+                'pricing_provider' => 'pricelabs',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $fresh = $this->property->fresh();
+        $this->assertSame('pricelabs', $fresh->pricing_provider);
+        $this->assertNull($fresh->wheelhouse_listing_id);
+        $this->assertNull($fresh->wheelhouse_channel);
+        $this->assertSame('pricelabs-listing', $fresh->pricelabs_listing_id);
+    }
+
+    public function test_shared_key_usage_report_lists_missing_host_keys_without_changing_data(): void
+    {
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'legacy-shared-key-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        $this->artisan('integrations:report-shared-key-usage')
+            ->expectsOutputToContain('legacy-shared-key-listing')
+            ->assertExitCode(0);
+
+        $this->assertSame('legacy-shared-key-listing', $this->property->fresh()->pricelabs_listing_id);
+        $this->assertSame('pricelabs', $this->property->fresh()->pricing_provider);
+    }
+
     private function quote(string $checkIn): array
     {
         return app(QuoteService::class)->quote(
