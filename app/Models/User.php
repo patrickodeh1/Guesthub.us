@@ -97,6 +97,7 @@ class User extends Authenticatable
             'stripe_payouts_enabled' => 'boolean',
             'pricelabs_api_key' => 'encrypted',
             'wheelhouse_user_api_key' => 'encrypted',
+            // Deprecated legacy Wheelhouse Integrators API field; retained for old database rows only.
         ];
     }
 
