@@ -33,10 +33,13 @@ class PriceLabsIapiSync
 
         $listing = $property->listing;
         $listingId = $property->pricelabs_iapi_listing_id ?: $this->listingId($property);
-        $location = [
-            'city' => (string) ($property->city ?: ''),
-            'country' => strtoupper((string) ($property->country ?: 'USA')),
-        ];
+        $location = [];
+        if (filled($property->city)) {
+            $location['city'] = (string) $property->city;
+        }
+        if (filled($property->country)) {
+            $location['country'] = strtoupper((string) $property->country);
+        }
         if ($property->latitude !== null && $property->longitude !== null) {
             $location['latitude'] = (float) $property->latitude;
             $location['longitude'] = (float) $property->longitude;
