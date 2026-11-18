@@ -14,6 +14,8 @@ use App\Services\Pms\ChannexOutboxSender;
 use App\Services\Pms\ChannexProvider;
 use App\Services\Pms\PmsProviderInterface;
 use App\Services\Pms\PriceLabsRateSource;
+use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
+use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
 use App\Services\Pms\PriceLabsSync;
 use App\Services\Pms\WheelhouseApiClient;
 use App\Services\Pms\WheelhouseApiException;
