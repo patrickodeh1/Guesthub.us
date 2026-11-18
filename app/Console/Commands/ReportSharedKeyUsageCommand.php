@@ -28,10 +28,11 @@ class ReportSharedKeyUsageCommand extends Command
 
         $this->warn('These properties need their host to add a PriceLabs API key. No data was changed.');
         $this->table(
-            ['Property ID', 'Property', 'Owner ID', 'Owner'],
+            ['Property ID', 'Property', 'PriceLabs Listing ID', 'Owner ID', 'Owner'],
             $properties->map(fn (Property $property) => [
                 $property->id,
                 $property->name,
+                $property->pricelabs_listing_id,
                 $property->owner_id,
                 $property->owner?->name ?? 'Unassigned',
             ])->all(),
