@@ -1,8 +1,8 @@
 <?php
 
-namespace App\\Services\\Pms\\PriceLabs;
+namespace App\Services\Pms\PriceLabs;
 
-use Illuminate\\Http\\Request;
+use Illuminate\Http\Request;
 
 class PriceLabsSignature
 {
