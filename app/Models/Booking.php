@@ -138,11 +138,49 @@ class Booking extends Model
 
         static::saved(function (self $booking): void {
             app(IcalExportService::class)->invalidate((int) $booking->property_id);
+
+            if ($booking->wasRecentlyCreated || $booking->wasChanged([
+                'property_id', 'check_in_date', 'check_out_date', 'status',
+                'cancelled_at', 'total_cents', 'accommodation_cents',
+                'cleaning_fee_cents', 'tax_cents',
+            ])) {
+                $booking->queuePriceLabsIapiSync((int) $booking->property_id);
+
+                if ($booking->wasChanged('property_id')) {
+                    $booking->queuePriceLabsIapiSync((int) $booking->getOriginal('property_id'));
+                }
+            }
         });
 
         static::deleted(function (self $booking): void {
             app(IcalExportService::class)->invalidate((int) $booking->property_id);
+            $booking->queuePriceLabsIapiSync((int) $booking->property_id);
         });
+    }
+
+    private function queuePriceLabsIapiSync(int $propertyId): void
+    {
+        if (! $propertyId) {
+            return;
+        }
+
+        $property = Property::query()
+            ->whereKey($propertyId)
+            ->where('pricing_provider', 'pricelabs')
+            ->where('pricelabs_mode', 'pms')
+            ->whereNotNull('pricelabs_iapi_listing_id')
+            ->first();
+
+        if (! $property) {
+            return;
+        }
+
+        $start = $this->check_in_date ? $this->check_in_date->toDateString() : null;
+        $end = $this->check_out_date
+            ? $this->check_out_date->copy()->subDay()->toDateString()
+            : null;
+
+        \\App\\Jobs\\PushPriceLabsBookingToIapi::dispatch((int) $property->id, $start, $end)->afterCommit();
     }
 
     public function leaseOffer(): BelongsTo
