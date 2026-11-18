@@ -250,9 +250,12 @@ class PriceLabsIapiSync
             throw (new ModelNotFoundException())->setModel(Property::class, [$listingId]);
         }
 
-        $groups = [];
+        $normalized = [];
         foreach ($rates as $day) {
-            if (! is_array($day) || ! isset($day['date'], $day['rate']) || ! is_numeric($day['rate']) || ! $this->validDate((string) $day['date'])) {
+            if (! is_array($day)
+                || ! isset($day['date'], $day['rate'])
+                || ! is_numeric($day['rate'])
+                || ! $this->validDate((string) $day['date'])) {
                 throw new InvalidArgumentException('PriceLabs IAPI rate rows must contain a valid date and numeric rate.');
             }
 
@@ -264,8 +267,29 @@ class PriceLabsIapiSync
             if ($minimumStay !== null && (! is_numeric($minimumStay) || (int) $minimumStay < 1)) {
                 throw new InvalidArgumentException('PriceLabs IAPI min_stay must be a positive integer or null.');
             }
-            $minimumStay = $minimumStay === null ? null : (int) $minimumStay;
-            $groups[$rate.'|'.($minimumStay ?? '')][] = (string) $day['date'];
+
+            $normalized[] = [
+                'date' => (string) $day['date'],
+                'rate' => $rate,
+                'min_stay' => $minimumStay === null ? null : (int) $minimumStay,
+            ];
+        }
+
+        // A host's manually entered nightly values remain protected from provider updates.
+        $dates = array_values(array_unique(array_column($normalized, 'date')));
+        $manualDates = $property->availabilities()
+            ->whereIn('date', $dates)
+            ->where('rates_source', 'manual')
+            ->pluck('date')
+            ->map(fn ($date) => substr((string) $date, 0, 10))
+            ->all();
+
+        $groups = [];
+        foreach ($normalized as $day) {
+            if (in_array($day['date'], $manualDates, true)) {
+                continue;
+            }
+            $groups[$day['rate'].'|'.($day['min_stay'] ?? '')][] = $day['date'];
         }
 
         $result = $this->sync->apply($property, [
