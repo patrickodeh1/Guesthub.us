@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Property;
 use App\Models\PropertyAvailability;
+use App\Models\PropertyListing;
 use App\Models\User;
 use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
 use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
@@ -71,6 +72,46 @@ class PriceLabsIapiTest extends TestCase
     {
         $property = Property::factory()->create();
         $this->assertSame('gh_test_'.$property->id, app(PriceLabsIapiSync::class)->listingId($property));
+    }
+
+    public function test_initial_calendar_push_sends_730_days_for_one_listing(): void
+    {
+        config([
+            'services.pricelabs.integration_name' => 'GuestHub-Test',
+            'services.pricelabs.integration_token' => 'calendar-push-token',
+            'services.pricelabs.iapi_base_url' => 'https://pricelabs.test/iapi',
+        ]);
+        $property = Property::factory()->create([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_calendar_payload',
+        ]);
+        $property->listing()->create([
+            'listing_slug' => 'pricelabs-calendar-test',
+            'public_title' => 'Calendar Test',
+            'base_rate_cents' => 12550,
+        ]);
+        Http::fake([
+            'pricelabs.test/iapi/calendar' => Http::response([
+                'success' => ['gh_test_calendar_payload'],
+                'failure' => [],
+            ], 200),
+        ]);
+
+        app(PriceLabsIapiSync::class)->pushCalendar($property);
+
+        Http::assertSent(function ($request): bool {
+            $calendar = $request['calendars'][0] ?? [];
+
+            return str_ends_with($request->url(), '/calendar')
+                && count($request['calendars'] ?? []) === 1
+                && count($calendar['data'] ?? []) === 730
+                && ($calendar['currency'] ?? null) === 'USD'
+                && ($calendar['data'][0]['price'] ?? null) === 126
+                && array_key_exists('available_units', $calendar['data'][0] ?? [])
+                && array_key_exists('booked_units', $calendar['data'][0] ?? [])
+                && array_key_exists('blocked_units', $calendar['data'][0] ?? []);
+        });
     }
 
     public function test_inbound_normalized_prices_only_update_the_matching_hosts_property(): void
