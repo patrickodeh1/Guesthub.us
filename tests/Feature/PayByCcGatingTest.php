@@ -207,7 +207,10 @@ class PayByCcGatingTest extends TestCase
     public function test_deposit_intent_is_refused_when_nothing_is_due(): void
     {
         $this->configureStripe();
+        $owner = User::factory()->create(['stripe_account_id' => 'acct_test', 'stripe_charges_enabled' => true]);
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
         $booking = Booking::factory()->create([
+            'property_id' => $property->id,
             'pay_by_cc' => true,
             'additional_deposit_mode' => false,
             'incidentals_charge' => 0,
@@ -222,7 +225,12 @@ class PayByCcGatingTest extends TestCase
     public function test_charge_intent_rejects_unknown_type(): void
     {
         $this->configureStripe();
-        $booking = Booking::factory()->create(['pay_by_cc' => true]);
+        $owner = User::factory()->create(['stripe_account_id' => 'acct_test', 'stripe_charges_enabled' => true]);
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'pay_by_cc' => true,
+        ]);
 
         $response = $this->postJson(
             route('guest.charge.intent', [$booking->booking_id, $booking->token]),
