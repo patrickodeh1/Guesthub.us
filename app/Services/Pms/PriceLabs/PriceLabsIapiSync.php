@@ -286,6 +286,57 @@ class PriceLabsIapiSync
         return $response;
     }
 
+    public function cancelBlockedReservations(Property $property, array $dates): array
+    {
+        $listingId = (string) $property->pricelabs_iapi_listing_id;
+        if ($listingId === '') {
+            throw new RuntimeException('Register the listing with PriceLabs before cancelling blocked reservations.');
+        }
+
+        $cancelled = [];
+        foreach (array_values(array_unique($dates)) as $date) {
+            if (! $this->validDate((string) $date)) {
+                continue;
+            }
+            $cancelled[] = [
+                'reservation_id' => 'gh_'.$property->id.'_block_'.$date,
+                'start_date' => (string) $date,
+                'end_date' => Carbon::parse($date)->addDay()->toDateString(),
+                'booked_time' => now()->format('Y-m-d H:i:s'),
+                'cancel_time' => now()->toDateString(),
+                'total_days' => 1,
+                'total_cost' => 0,
+                'total_fees' => 0,
+                'total_taxes' => 0,
+                'rental_revenue' => 0,
+                'currency' => 'USD',
+                'status' => 'canceled',
+            ];
+        }
+
+        if ($cancelled === []) {
+            return ['success' => [], 'failure' => []];
+        }
+
+        try {
+            $response = $this->client->reservations('POST', ['reservations' => [[
+                'listing_id' => $listingId,
+                'data' => $cancelled,
+            ]]]);
+        } catch (\\Throwable $exception) {
+            $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
+            throw $exception;
+        }
+
+        if (! empty($response['failure'])) {
+            $message = $response['failure'][0]['error'] ?? 'PriceLabs rejected a blocked-reservation cancellation.';
+            $property->forceFill(['pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000)])->save();
+            throw new RuntimeException((string) $message);
+        }
+
+        return $response;
+    }
+
     public function applyForListingId(string $listingId, array $rates): array
     {
         $property = Property::query()
