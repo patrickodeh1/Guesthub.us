@@ -83,6 +83,7 @@ return [
     'channex' => [
         'api_key' => env('CHANNEX_API_KEY'),
         'base_url' => env('CHANNEX_BASE_URL', 'https://staging.channex.io/api/v1'),
+        'default_currency' => env('CHANNEX_DEFAULT_CURRENCY', 'USD'),
         'webhook_secret' => env('CHANNEX_WEBHOOK_SECRET'),
     ],
 
