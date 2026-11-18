@@ -435,7 +435,6 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/sync-pricing', [PropertyAvailabilityController::class, 'syncPriceLabs'])->name('properties.availability.sync-pricing')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-wheelhouse-key', [PropertyAvailabilityController::class, 'saveWheelhouseKey'])->name('properties.availability.save-wheelhouse-key')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-wheelhouse-listing', [PropertyAvailabilityController::class, 'saveWheelhouseListing'])->name('properties.availability.save-wheelhouse-listing')->middleware(['role:admin,owner,company', 'property.access']);
-    Route::post('properties/{property}/availability/connect-wheelhouse', [PropertyAvailabilityController::class, 'connectWheelhouse'])->name('properties.availability.connect-wheelhouse')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company,manager');
     Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company,manager');
 
