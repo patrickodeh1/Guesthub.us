@@ -279,7 +279,6 @@ class PricingProviderTest extends TestCase
 
         Http::fake(function (ClientRequest $request) {
             $key = $request->header('X-Integration-Api-Key')[0] ?? '';
-            $page = (int) (parse_url($request->url(), PHP_URL_QUERY) ? parse_str(parse_url($request->url(), PHP_URL_QUERY), $query) : 1);
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
             $page = (int) ($query['page'] ?? 1);
             if ($key === 'first-host-key') {
@@ -335,7 +334,6 @@ class PricingProviderTest extends TestCase
     {
         $providerDate = now()->addDays(26)->toDateString();
         $manualDate = now()->addDays(27)->toDateString();
-        config(['services.wheelhouse.partner_api_key' => 'partner-key']);
         $this->owner->forceFill(['wheelhouse_user_api_key' => 'wheelhouse-user-key'])->save();
         $this->property->forceFill(['pricing_provider' => 'pricelabs'])->save();
         $this->property->forceFill(['wheelhouse_listing_id' => 'existing-wheelhouse-listing'])->save();
