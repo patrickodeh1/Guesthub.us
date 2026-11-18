@@ -383,6 +383,10 @@ class PriceLabsIapiSync
             ->get(['date', 'rates_source', 'min_stay_arrival'])
             ->keyBy(fn ($row) => $row->date->format('Y-m-d'));
 
+        if ($property->channex_rate_plan_id && $property->rate_source !== 'guesthub') {
+            $property->forceFill(['rate_source' => 'guesthub'])->save();
+        }
+
         $groups = [];
         foreach ($normalized as $day) {
             $existingRow = $existing->get($day['date']);
