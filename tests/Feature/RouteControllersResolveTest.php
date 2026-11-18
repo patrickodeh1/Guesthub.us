@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use Illuminate\\Support\\Facades\\Route;
+use Illuminate\Support\Facades\Route;
 use ReflectionMethod;
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class RouteControllersResolveTest extends TestCase
 {
