@@ -323,7 +323,7 @@ class PriceLabsIapiSync
                 'listing_id' => $listingId,
                 'data' => $cancelled,
             ]]]);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
             throw $exception;
         }
