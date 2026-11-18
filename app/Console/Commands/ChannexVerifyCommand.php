@@ -14,6 +14,7 @@ class ChannexVerifyCommand extends Command
     public function handle(ChannexProvider $channex): int
     {
         $environment = $channex->environment();
+        $this->line('Channex API base URL: '.$channex->baseApiUrl());
         $this->line('Channex environment: '.$environment);
 
         if (! config('services.channex.api_key')) {
