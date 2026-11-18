@@ -32,6 +32,12 @@ class PriceLabsIapiController extends Controller
             return response()->json(['error' => 'Invalid PriceLabs sync payload.'], 422);
         }
 
+        $mappedProperty = Property::query()->where('pricelabs_iapi_listing_id', $listingId)->first();
+        if ($mappedProperty
+            && ($mappedProperty->pricelabs_mode !== 'pms' || $mappedProperty->pricing_provider !== 'pricelabs')) {
+            return response()->json(['ok' => true, 'ignored' => true]);
+        }
+
         try {
             $rates = [];
             foreach ($rows as $row) {
@@ -81,6 +87,12 @@ class PriceLabsIapiController extends Controller
         $listingId = (string) ($payload['listing_id'] ?? '');
         if ($listingId === '') {
             return response()->json(['error' => 'A listing_id is required.'], 422);
+        }
+
+        $mappedProperty = Property::query()->where('pricelabs_iapi_listing_id', $listingId)->first();
+        if ($mappedProperty
+            && ($mappedProperty->pricelabs_mode !== 'pms' || $mappedProperty->pricing_provider !== 'pricelabs')) {
+            return response()->json(['ok' => true, 'ignored' => true]);
         }
 
         try {
