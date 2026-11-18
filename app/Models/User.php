@@ -68,6 +68,7 @@ class User extends Authenticatable
         'stripe_account_id',
         'stripe_charges_enabled',
         'stripe_payouts_enabled',
+        'pricelabs_account_email',
     ];
 
     protected $hidden = [
