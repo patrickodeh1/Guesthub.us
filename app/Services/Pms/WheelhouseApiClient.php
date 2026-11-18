@@ -56,31 +56,46 @@ class WheelhouseApiClient
         }
 
         $url = rtrim((string) config('services.wheelhouse.base_url'), '/').'/'.ltrim($path, '/');
-        $response = Http::acceptJson()
-            ->withHeaders(['X-Integration-Api-Key' => $key])
-            ->timeout(30)
-            ->retry(
-                [1000, 3000],
-                throw: false,
-                when: function ($exception, $request) {
-                    $status = $exception->response?->status();
+        $response = null;
 
-                    return $exception instanceof ConnectionException
-                        || $status === 429
-                        || in_array($status, [500, 502, 503, 504], true);
-                },
-            )
-            ->get($url, $query);
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            try {
+                $response = Http::acceptJson()
+                    ->withHeaders(['X-Integration-Api-Key' => $key])
+                    ->timeout(30)
+                    ->get($url, $query);
+            } catch (ConnectionException $exception) {
+                if ($attempt === 3) {
+                    throw new WheelhouseApiException('Wheelhouse could not be reached after several attempts.');
+                }
 
-        if (! $response->successful()) {
+                usleep((int) (1000000 * (2 ** ($attempt - 1))));
+                continue;
+            }
+
             $status = $response->status();
-            $message = match ($status) {
-                401, 403 => 'That Wheelhouse key was not accepted. Check that it is active and try again.',
-                429 => 'Wheelhouse is rate-limiting requests. Please try again shortly.',
-                default => 'Wheelhouse returned HTTP '.$status.'. Please try again later.',
-            };
+            if ($response->successful()) {
+                break;
+            }
 
-            throw new WheelhouseApiException($message, $status);
+            $retryable = $status === 429 || in_array($status, [500, 502, 503, 504], true);
+            if (! $retryable || $attempt === 3) {
+                $message = match ($status) {
+                    401, 403 => 'That Wheelhouse key was not accepted. Check that it is active and try again.',
+                    429 => 'Wheelhouse is rate-limiting requests. Please try again shortly.',
+                    default => 'Wheelhouse returned HTTP '.$status.'. Please try again later.',
+                };
+
+                throw new WheelhouseApiException($message, $status);
+            }
+
+            $retryAfter = (int) $response->header('Retry-After', 0);
+            $delaySeconds = $retryAfter > 0 ? min(60, $retryAfter) : (2 ** ($attempt - 1));
+            usleep($delaySeconds * 1000000);
+        }
+
+        if (! $response || ! $response->successful()) {
+            throw new WheelhouseApiException('Wheelhouse request failed after retries.', $response?->status() ?? 0);
         }
 
         $body = $response->json();
