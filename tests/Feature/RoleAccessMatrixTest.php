@@ -354,7 +354,7 @@ class RoleAccessMatrixTest extends TestCase
             ['id' => 'X1i', 'actor' => $ownerA, 'request' => ['method' => 'delete', 'route' => 'admin.properties.destroy', 'params' => [$propertyA1]], 'expected' => 403, 'unchanged' => fn () => Property::whereKey($propertyA1->id)->exists()],
             ['id' => 'X1j', 'actor' => $managerM, 'request' => ['method' => 'post', 'route' => 'properties.activate', 'params' => [$propertyA1]], 'expected' => 403, 'unchanged' => fn () => Property::whereKey($propertyA1->id)->value('active')],
             ['id' => 'X1e', 'actor' => $managerM, 'request' => ['method' => 'get', 'route' => 'users.index'], 'expected' => 403],
-            ['id' => 'X1f', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'users.index'], 'expected' => 302],
+            ['id' => 'X1f', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'users.index'], 'expected' => 403],
             ['id' => 'X1l', 'actor' => $companyC, 'request' => ['method' => 'get', 'route' => 'users.index'], 'expected' => 302],
             ['id' => 'X3a', 'actor' => $managerM, 'request' => ['method' => 'get', 'route' => 'admin.settings.edit'], 'expected' => 403],
             ['id' => 'X3b', 'actor' => $ownerA, 'request' => ['method' => 'get', 'route' => 'admin.settings.edit'], 'expected' => 403],
@@ -515,7 +515,7 @@ class RoleAccessMatrixTest extends TestCase
         };
         $navigationChecks = [
             [$admin, 'Users', true, 'admin'],
-            [$ownerA, 'Users', true, 'owner'],
+            [$ownerA, 'Users', false, 'owner'],
             [$companyC, 'Users', true, 'company'],
             [$managerM, 'Users', false, 'manager'],
             [$housekeeperA, 'Users', false, 'housekeeper'],
