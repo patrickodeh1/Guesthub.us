@@ -64,7 +64,10 @@ class ChannexWebhookIsolationTest extends TestCase
         $this->app->instance(PmsProviderInterface::class, $provider);
         $this->app->instance(BookingImportService::class, new BookingImportService($provider, 'channex'));
 
-        $this->postJson(route('webhooks.channex'), [
+        config(['services.channex.webhook_secret' => 'test-channex-webhook-secret']);
+
+        $this->withHeader('X-Channex-Webhook-Secret', 'test-channex-webhook-secret')
+            ->postJson(route('webhooks.channex'), [
             'event' => 'booking_new',
             'payload' => [
                 'booking_id' => 'channex-booking-a',
