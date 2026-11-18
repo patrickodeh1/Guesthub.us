@@ -43,6 +43,125 @@ class ChannexProvider implements PmsProviderInterface
             ->acceptJson();
     }
 
+    public function environment(): string
+    {
+        $host = (string) parse_url($this->baseUrl, PHP_URL_HOST);
+
+        return str_contains(strtolower($host), 'staging') ? 'staging' : 'production';
+    }
+
+    public function baseServerUrl(): string
+    {
+        $scheme = parse_url($this->baseUrl, PHP_URL_SCHEME) ?: 'https';
+        $host = parse_url($this->baseUrl, PHP_URL_HOST) ?: '';
+
+        return $scheme.'://'.$host;
+    }
+
+    /**
+     * Channex API-key probe. Never returns or logs the API key.
+     */
+    public function verifyConnection(): array
+    {
+        if (! $this->apiKey) {
+            return ['ok' => false, 'status' => null, 'environment' => $this->environment()];
+        }
+
+        $response = $this->client()->timeout(15)->get('/properties', [
+            'pagination[page]' => 1,
+            'pagination[limit]' => 1,
+        ]);
+
+        return [
+            'ok' => $response->successful(),
+            'status' => $response->status(),
+            'environment' => $this->environment(),
+        ];
+    }
+
+    public function createProperty(array $attributes, string $logPropertyId): array
+    {
+        return $this->inventoryRequest('POST', '/properties', ['property' => $attributes], $logPropertyId);
+    }
+
+    public function updateProperty(string $propertyId, array $attributes): array
+    {
+        return $this->inventoryRequest('PUT', '/properties/'.rawurlencode($propertyId), ['property' => $attributes], $propertyId);
+    }
+
+    public function deleteProperty(string $propertyId): array
+    {
+        return $this->inventoryRequest('DELETE', '/properties/'.rawurlencode($propertyId), [], $propertyId);
+    }
+
+    public function createRoomType(array $attributes, string $propertyId): array
+    {
+        return $this->inventoryRequest('POST', '/room_types', ['room_type' => $attributes], $propertyId);
+    }
+
+    public function updateRoomType(string $roomTypeId, array $attributes, string $propertyId): array
+    {
+        return $this->inventoryRequest('PUT', '/room_types/'.rawurlencode($roomTypeId), ['room_type' => $attributes], $propertyId);
+    }
+
+    public function deleteRoomType(string $roomTypeId, string $propertyId): array
+    {
+        return $this->inventoryRequest('DELETE', '/room_types/'.rawurlencode($roomTypeId), [], $propertyId);
+    }
+
+    public function createRatePlan(array $attributes, string $propertyId): array
+    {
+        return $this->inventoryRequest('POST', '/rate_plans', ['rate_plan' => $attributes], $propertyId);
+    }
+
+    public function updateRatePlan(string $ratePlanId, array $attributes, string $propertyId): array
+    {
+        return $this->inventoryRequest('PUT', '/rate_plans/'.rawurlencode($ratePlanId), ['rate_plan' => $attributes], $propertyId);
+    }
+
+    public function deleteRatePlan(string $ratePlanId, string $propertyId): array
+    {
+        return $this->inventoryRequest('DELETE', '/rate_plans/'.rawurlencode($ratePlanId), [], $propertyId);
+    }
+
+    /**
+     * Request a single-use Channex channel-iframe token. Do not log or persist it.
+     */
+    public function createOneTimeToken(string $propertyId, string $username): string
+    {
+        $response = $this->client()->timeout(20)->post('/auth/one_time_token', [
+            'one_time_token' => [
+                'property_id' => $propertyId,
+                'username' => $username,
+            ],
+        ]);
+
+        if (! $response->successful() || ! is_string($response->json('data.token'))) {
+            throw new \\RuntimeException('Channex could not create a channel connection token (HTTP '.$response->status().').');
+        }
+
+        return $response->json('data.token');
+    }
+
+    private function inventoryRequest(string $method, string $path, array $payload, string $logPropertyId): array
+    {
+        $client = $this->client()->timeout(30);
+        $response = match ($method) {
+            'POST' => $client->post($path, $payload),
+            'PUT' => $client->put($path, $payload),
+            'DELETE' => $client->delete($path),
+            default => throw new \\InvalidArgumentException('Unsupported Channex inventory method.'),
+        };
+
+        $this->recordPush($path, $payload ? [reset($payload)] : [], $logPropertyId, $response);
+
+        if (! $response->successful()) {
+            throw new \\RuntimeException('Channex '.$method.' '.$path.' failed with HTTP '.$response->status().'.');
+        }
+
+        return (array) $response->json();
+    }
+
     /**
      * Pulls unacknowledged Booking Revisions. This is Channex's documented
      * primary way to fetch bookings — the feed only ever contains revisions
