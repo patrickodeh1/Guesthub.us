@@ -166,6 +166,7 @@ class PropertyAvailabilityController extends Controller
         $property->forceFill([
             'pricelabs_listing_id' => $listingId,
             'pricelabs_pms' => $pms,
+            'pricelabs_mode' => 'key',
             'pricelabs_last_refreshed_at' => null, // so the next pull is not skipped as "unchanged"
         ])->save();
 
