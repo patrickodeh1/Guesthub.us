@@ -94,6 +94,7 @@ class Property extends Model
         'channex_rate_plan_id',
         'rate_source',
         'pricelabs_listing_id', 'pricelabs_pms', 'pricelabs_last_refreshed_at', 'pricelabs_synced_at',
+        'pricelabs_iapi_listing_id', 'pricelabs_mode', 'pricelabs_iapi_listing_pushed_at', 'pricelabs_iapi_calendar_pushed_at', 'pricelabs_iapi_last_price_received_at', 'pricelabs_iapi_last_error',
         'pricing_provider', 'wheelhouse_listing_id', 'wheelhouse_channel', 'wheelhouse_synced_at',
         'airbnb_ical_url',
         'deposit_cap_cents',
