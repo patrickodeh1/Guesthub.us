@@ -338,19 +338,19 @@ class PriceLabsIapiTest extends TestCase
         ]);
         $date = now()->addDays(61)->toDateString();
 
-        app(\App\Services\Pms\\AvailabilityLedger::class)->setDates(
+        app(\App\Services\Pms\AvailabilityLedger::class)->setDates(
             $property,
             [$date],
             ['rate' => 199],
             'manual',
         );
 
-        Queue::assertPushed(\App\Jobs\\PushPriceLabsCalendarToIapi::class, fn ($job) => $job->propertyId === $property->id
+        Queue::assertPushed(\App\Jobs\PushPriceLabsCalendarToIapi::class, fn ($job) => $job->propertyId === $property->id
             && $job->startDate === $date
             && $job->endDate === $date);
 
         Queue::fake();
-        app(\App\Services\Pms\\AvailabilityLedger::class)->setDates(
+        app(\App\Services\Pms\AvailabilityLedger::class)->setDates(
             $property,
             [$date],
             ['rate' => 205],
@@ -369,17 +369,17 @@ class PriceLabsIapiTest extends TestCase
             'pricelabs_iapi_listing_id' => 'gh_test_block_sync',
         ]);
         $date = now()->addDays(75)->toDateString();
-        $ledger = app(\App\Services\Pms\\AvailabilityLedger::class);
+        $ledger = app(\App\Services\Pms\AvailabilityLedger::class);
 
         $ledger->setDates($property, [$date], ['status' => 'blocked'], 'manual');
 
-        Queue::assertPushed(\App\Jobs\\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
+        Queue::assertPushed(\App\Jobs\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
             && $job->cancelledBlockDates === []);
 
         Queue::fake();
         $ledger->setDates($property, [$date], ['status' => 'available'], 'manual');
 
-        Queue::assertPushed(\App\Jobs\\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
+        Queue::assertPushed(\App\Jobs\PushPriceLabsBookingToIapi::class, fn ($job) => $job->propertyId === $property->id
             && $job->cancelledBlockDates === [$date]);
     }
 
