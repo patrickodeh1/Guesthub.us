@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\Pms\ChannexProvider;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
