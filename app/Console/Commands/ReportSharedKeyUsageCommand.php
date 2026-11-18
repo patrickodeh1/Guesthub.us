@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Models\\Property;
-use Illuminate\\Console\\Command;
+use App\Models\Property;
+use Illuminate\Console\Command;
 
 class ReportSharedKeyUsageCommand extends Command
 {
