@@ -197,12 +197,12 @@ class PriceLabsIapiSync
         foreach ($bookings as $booking) {
             $start = $booking->check_in_date->toDateString();
             $end = $booking->check_out_date->toDateString();
-            $nights = max(1, $booking->check_in_date->diffInDays($booking->check_out_date));
+            $nights = max(1, (int) $booking->check_in_date->diffInDays($booking->check_out_date));
             $cancelled = ! is_null($booking->cancelled_at) || in_array(strtolower((string) $booking->status), ['cancelled', 'canceled'], true);
             $totalCents = (int) ($booking->total_cents ?? 0);
             $rentalCents = (int) ($booking->accommodation_cents ?? 0);
-            $feesCents = (int) ($booking->cleaning_fee_cents ?? 0);
             $taxCents = (int) ($booking->tax_cents ?? 0);
+            $feesCents = max(0, $totalCents - $rentalCents - $taxCents);
             $reservationId = 'gh_'.$property->id.'_booking_'.$booking->id;
 
             $reservations[] = [
@@ -220,6 +220,9 @@ class PriceLabsIapiSync
             ];
             if ($cancelled) {
                 $reservations[array_key_last($reservations)]['cancel_time'] = ($booking->cancelled_at ?: now())->toDateString();
+            }
+            if (filled($booking->booking_platform)) {
+                $reservations[array_key_last($reservations)]['booking_source'] = strtolower((string) $booking->booking_platform);
             }
         }
 
