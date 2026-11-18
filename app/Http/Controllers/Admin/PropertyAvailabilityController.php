@@ -58,7 +58,7 @@ class PropertyAvailabilityController extends Controller
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
             'priceLabsKeySet' => (bool) $property->owner?->pricelabs_api_key,
             'priceLabsHostKeySet' => (bool) $property->owner?->pricelabs_api_key,
-            'wheelhousePartnerKeySet' => true,
+            'wheelhouseApiAvailable' => true,
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
                 ->where('channex_property_id', (string) $property->channex_property_id)
