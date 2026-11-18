@@ -61,7 +61,7 @@ class PricingProviderTest extends TestCase
     public function test_direct_only_pricelabs_rates_are_applied_and_used_in_quotes(): void
     {
         $date = now()->addDays(20)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-101',
@@ -90,7 +90,7 @@ class PricingProviderTest extends TestCase
     public function test_manual_rates_are_not_overwritten_by_provider_sync(): void
     {
         $date = now()->addDays(21)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-102',
@@ -120,7 +120,7 @@ class PricingProviderTest extends TestCase
     public function test_channex_rate_plan_gate_and_outbox_behavior_are_preserved(): void
     {
         $date = now()->addDays(22)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-103',
@@ -185,7 +185,7 @@ class PricingProviderTest extends TestCase
 
     public function test_price_labs_key_verification_encrypts_and_hides_the_host_key(): void
     {
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         Http::fake([
             'https://api.pricelabs.co/v1/listings_minimal' => Http::response([[
                 'id' => 'pl-201',
@@ -355,6 +355,8 @@ class PricingProviderTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertSame('wheelhouse', $this->property->fresh()->pricing_provider);
+        $this->assertNull($this->property->fresh()->pricelabs_listing_id);
+        $this->assertNull($this->property->fresh()->pricelabs_pms);
         $this->assertDatabaseHas('property_availabilities', [
             'property_id' => $this->property->id,
             'date' => $providerDate,
@@ -369,6 +371,71 @@ class PricingProviderTest extends TestCase
         ]);
         $this->assertSame(10000, $this->quote($providerDate)['subtotal_cents']);
         $this->assertSame(8800, $this->quote($manualDate)['subtotal_cents']);
+    }
+
+    public function test_hosts_only_use_their_own_pricelabs_keys_and_cannot_cross_access_listings(): void
+    {
+        $otherOwner = User::factory()->create(['name' => 'Other Host', 'host_name' => 'Other Host']);
+        $otherOwner->forceFill(['pricelabs_api_key' => 'other-host-key'])->save();
+        $otherProperty = Property::factory()->create([
+            'owner_id' => $otherOwner->id,
+            'active' => true,
+            'address' => '22 Other Street',
+            'city' => 'San Diego',
+            'state' => 'CA',
+            'zip' => '92101',
+            'beds' => 2,
+            'baths' => '1.5',
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'other-listing',
+            'pricelabs_pms' => 'hostaway',
+        ]);
+        $date = now()->addDays(28)->toDateString();
+        $this->owner->forceFill(['pricelabs_api_key' => 'first-host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'first-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        Http::fake(function (ClientRequest $request) use ($date) {
+            $key = $request->header('X-API-Key')[0] ?? '';
+            return Http::response([[
+                'last_refreshed_at' => '2026-11-18T00:00:00Z',
+                'data' => [['date' => $date, 'price' => $key === 'first-host-key' ? 111 : 222, 'min_stay' => 1]],
+            ]]);
+        });
+
+        $firstResult = app(PriceLabsSync::class)->sync($this->property);
+        $otherResult = app(PriceLabsSync::class)->sync($otherProperty);
+
+        $this->assertSame('ok', $firstResult['status']);
+        $this->assertSame('ok', $otherResult['status']);
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $this->property->id, 'date' => $date, 'rate' => 111, 'rates_source' => 'pricelabs',
+        ]);
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $otherProperty->id, 'date' => $date, 'rate' => 222, 'rates_source' => 'pricelabs',
+        ]);
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-API-Key', 'first-host-key'));
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-API-Key', 'other-host-key'));
+    }
+
+    public function test_missing_host_pricelabs_key_skips_without_making_a_provider_request(): void
+    {
+        config(['services.pricelabs.api_key' => 'must-not-be-used']);
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'no-key-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+        Http::fake();
+
+        $result = app(PriceLabsSync::class)->sync($this->property);
+
+        $this->assertSame('skipped', $result['status']);
+        $this->assertSame('Add your PriceLabs API key.', $result['message']);
+        Http::assertNothingSent();
     }
 
     private function quote(string $checkIn): array
