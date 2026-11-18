@@ -16,6 +16,10 @@ class SeamConnectionController extends Controller
         $host = $property->owner;
         abort_unless($host, 422, 'Assign an owner to this property before connecting a lock account.');
 
+        if ($host->seamConnectedAccounts()->whereIn('status', ['needs_reconnect', 'disconnected'])->exists()) {
+            return back()->with('error', 'This host has a disconnected Seam account. Contact GuestHub support before reconnecting; do not delete the account from Seam.');
+        }
+
         try {
             $webview = $seam->createConnectWebview(
                 $host,
