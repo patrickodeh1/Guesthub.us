@@ -1,16 +1,16 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\Property;
-use App\\Models\\PropertyLock;
-use App\\Models\\SeamConnectedAccount;
-use App\\Models\\User;
-use App\\Services\\SeamService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use App\Models\Property;
+use App\Models\PropertyLock;
+use App\Models\SeamConnectedAccount;
+use App\Models\User;
+use App\Services\SeamService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Spatie\\Permission\\Models\\Role;
-use Tests\\TestCase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class SeamConnectionTest extends TestCase
 {
