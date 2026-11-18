@@ -1,67 +1,86 @@
 <?php
 
-namespace App\Services\Pms;
+namespace App\\Services\\Pms;
 
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
+use Illuminate\\Http\\Client\\ConnectionException;
+use Illuminate\\Support\\Facades\\Http;
 
 class WheelhouseApiClient
 {
-    public function listings(string $userApiKey): array
+    private const PER_PAGE = 100;
+
+    /**
+     * Return every listing visible to this host's Wheelhouse account.
+     * The RM API returns a top-level array and uses page/per_page pagination.
+     */
+    public function listings(string $key, int $perPage = self::PER_PAGE): array
     {
-        return $this->request('GET', '/listings', $userApiKey, ['per_page' => 100]);
+        $perPage = max(1, min(self::PER_PAGE, $perPage));
+        $all = [];
+        $page = 1;
+
+        do {
+            $items = $this->request('/listings', $key, [
+                'per_page' => $perPage,
+                'page' => $page,
+            ]);
+            if (! array_is_list($items)) {
+                throw new WheelhouseApiException('Wheelhouse returned an invalid listings response.');
+            }
+
+            $all = array_merge($all, array_values(array_filter($items, 'is_array')));
+            $count = count($items);
+            $page++;
+        } while ($count === $perPage);
+
+        return $all;
     }
 
-    public function registerUser(array $user, ?string $userApiKey = null): array
+    public function recommendations(string $listingId, string $key, string $channel): array
     {
-        return $this->request('POST', '/user_registration', $userApiKey, [], $user);
-    }
+        if ($channel === '') {
+            throw new \\InvalidArgumentException('A Wheelhouse listing channel is required.');
+        }
 
-    public function upsertListing(string $listingId, array $listing, string $userApiKey): array
-    {
-        return $this->request('PUT', '/listings/'.rawurlencode($listingId), $userApiKey, [], $listing);
-    }
-
-    public function recommendations(string $listingId, string $userApiKey, ?string $channel = null): array
-    {
         return $this->request(
-            'GET',
             '/listings/'.rawurlencode($listingId).'/price_recommendations',
-            $userApiKey,
-            array_filter(['channel' => $channel, 'currency' => 'USD']),
+            $key,
+            ['channel' => $channel, 'attribution' => 'false'],
         );
     }
 
-    private function request(string $method, string $path, ?string $userApiKey = null, array $query = [], ?array $payload = null): array
+    private function request(string $path, string $key, array $query = []): array
     {
-        $integrationKey = config('services.wheelhouse.partner_api_key');
-        if (! $integrationKey) {
-            throw new WheelhouseApiException('Wheelhouse partner API key is not configured.');
+        if (trim($key) === '') {
+            throw new WheelhouseApiException('Add your Wheelhouse API key.', 401);
         }
 
-        $headers = ['X-Integration-Api-Key' => $integrationKey];
-        if ($userApiKey) {
-            $headers['X-User-API-Key'] = $userApiKey;
-        }
-
-        $request = Http::acceptJson()
-            ->withHeaders($headers)
-            ->timeout(30)
-            ->retry([1000, 3000], throw: false, when: function ($exception) {
-                return $exception instanceof ConnectionException
-                    || in_array(optional($exception->response ?? null)->status(), [429, 500, 502, 503, 504], true);
-            });
         $url = rtrim((string) config('services.wheelhouse.base_url'), '/').'/'.ltrim($path, '/');
+        $response = Http::acceptJson()
+            ->withHeaders(['X-Integration-Api-Key' => $key])
+            ->timeout(30)
+            ->retry(
+                [1000, 3000],
+                throw: false,
+                when: function ($exception, $request) {
+                    $status = $exception->response?->status();
 
-        $response = match (strtoupper($method)) {
-            'GET' => $request->get($url, $query),
-            'POST' => $request->post($url, $payload ?? []),
-            'PUT' => $request->put($url, $payload ?? []),
-            default => throw new \InvalidArgumentException('Unsupported Wheelhouse HTTP method.'),
-        };
+                    return $exception instanceof ConnectionException
+                        || $status === 429
+                        || in_array($status, [500, 502, 503, 504], true);
+                },
+            )
+            ->get($url, $query);
 
         if (! $response->successful()) {
-            throw new WheelhouseApiException('Wheelhouse returned HTTP '.$response->status().'.', $response->status());
+            $status = $response->status();
+            $message = match ($status) {
+                401, 403 => 'That Wheelhouse key was not accepted. Check that it is active and try again.',
+                429 => 'Wheelhouse is rate-limiting requests. Please try again shortly.',
+                default => 'Wheelhouse returned HTTP '.$status.'. Please try again later.',
+            };
+
+            throw new WheelhouseApiException($message, $status);
         }
 
         $body = $response->json();
