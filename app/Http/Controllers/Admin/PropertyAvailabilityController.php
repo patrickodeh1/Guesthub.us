@@ -221,6 +221,7 @@ class PropertyAvailabilityController extends Controller
         try {
             $iapi->registerListing($property);
             $iapi->pushCalendar($property);
+            $iapi->pushReservations($property);
         } catch (\Throwable $exception) {
             report($exception);
 
