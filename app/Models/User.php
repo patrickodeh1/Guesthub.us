@@ -183,6 +183,11 @@ class User extends Authenticatable
 
     // ─── Status helpers ───────────────────────────────────────────────────────
 
+    public function seamConnectedAccounts(): HasMany
+    {
+        return $this->hasMany(SeamConnectedAccount::class);
+    }
+
     public function properties(): BelongsToMany
     {
         return $this->belongsToMany(Property::class, 'property_user', 'user_id', 'property_id');
