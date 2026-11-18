@@ -13,6 +13,64 @@ class SeamService
         $this->client = new SeamClient(api_key: config('services.seam.api_key'));
     }
 
+    /**
+     * Create a host-scoped Seam Connect Webview for the supported lock brands.
+     * The returned URL is the only Seam value sent to the browser.
+     */
+    public function createConnectWebview(User $host, string $successUrl, string $failureUrl): array
+    {
+        $webview = $this->client->connect_webviews->create(
+            accepted_providers: ['yale', 'august'],
+            customer_key: 'gh-'.$host->id,
+            custom_redirect_url: $successUrl,
+            custom_redirect_failure_url: $failureUrl,
+            wait_for_device_creation: true,
+        );
+
+        return $this->toArray($webview);
+    }
+
+    public function getConnectWebview(string $connectWebviewId): array
+    {
+        return $this->toArray($this->client->connect_webviews->get(
+            connect_webview_id: $connectWebviewId,
+        ));
+    }
+
+    /**
+     * Devices are always fetched with a connected_account_id, never workspace-wide.
+     */
+    public function listDevices(string $connectedAccountId): array
+    {
+        $devices = $this->client->devices->list(
+            connected_account_id: $connectedAccountId,
+        );
+
+        return array_map(fn ($device) => $this->toArray($device), is_array($devices) ? $devices : iterator_to_array($devices));
+    }
+
+    public function findDeviceForHost(User $host, string $deviceId): ?array
+    {
+        foreach ($host->seamConnectedAccounts()->where('status', 'connected')->get() as $account) {
+            foreach ($this->listDevices($account->seam_connected_account_id) as $device) {
+                if (($device['device_id'] ?? null) === $deviceId) {
+                    return $device;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function toArray(mixed $resource): array
+    {
+        if (is_array($resource)) {
+            return $resource;
+        }
+
+        return json_decode(json_encode($resource, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+    }
+
     public function unlock(string $deviceId): array
     {
         $attempt = $this->client->locks->unlock_door(device_id: $deviceId, wait_for_action_attempt: false);
