@@ -150,6 +150,10 @@ Route::middleware('auth')->group(function () {
         ->name('password.force-change.store');
 });
 Route::post('/webhooks/seam', [SeamWebhookController::class, 'handle'])->name('webhooks.seam');
+Route::post('/webhooks/wheelhouse/{secret}', [\\App\\Http\\Controllers\\WheelhouseWebhookController::class, 'handle'])
+    ->withoutMiddleware([\\App\\Http\\Middleware\\EnforceResourceAccess::class])
+    ->name('webhooks.wheelhouse');
+
 Route::post('/webhooks/channex', [ChannexWebhookController::class, 'handle'])->name('webhooks.channex');
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
 Route::post('/webhooks/telnyx/sms', [TelnyxWebhookController::class, 'handle'])->name('webhooks.telnyx.sms');
