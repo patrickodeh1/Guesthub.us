@@ -4,6 +4,7 @@ namespace App\Services\Pms\PriceLabs;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\RateLimiter;
 use RuntimeException;
 
 class PriceLabsIapiClient
@@ -20,7 +21,8 @@ class PriceLabsIapiClient
     ];
 
     private const TIMEOUT_SECONDS = 300;
-    private const MAX_ATTEMPTS = 4;\n    private const REQUESTS_PER_MINUTE = 300;
+    private const MAX_ATTEMPTS = 4;
+    private const REQUESTS_PER_MINUTE = 300;
 
     public function enabled(): bool
     {
@@ -59,8 +61,15 @@ class PriceLabsIapiClient
                 'X-INTEGRATION-TOKEN' => (string) config('services.pricelabs.integration_token'),
             ])
             ->timeout(self::TIMEOUT_SECONDS);
+        $rateLimitKey = 'pricelabs-iapi:'.hash('sha256', (string) config('services.pricelabs.integration_token'));
 
         for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            // Shared cache-backed throttle across all GuestHub workers/servers.
+            while (RateLimiter::tooManyAttempts($rateLimitKey, self::REQUESTS_PER_MINUTE)) {
+                sleep(max(1, RateLimiter::availableIn($rateLimitKey)));
+            }
+            RateLimiter::hit($rateLimitKey, 60);
+
             try {
                 $response = $request->send(
                     $method,
@@ -84,7 +93,9 @@ class PriceLabsIapiClient
 
             if ($response->status() === 429 && $attempt < self::MAX_ATTEMPTS) {
                 $retryAfter = $response->header('Retry-After');
-                $delay = is_numeric($retryAfter) ? max(1, (int) $retryAfter) : $attempt;
+                $delay = is_numeric($retryAfter)
+                    ? max(1, (int) $retryAfter)
+                    : ($retryAfter ? max(1, strtotime($retryAfter) - time()) : $attempt);
                 sleep($delay);
                 continue;
             }
