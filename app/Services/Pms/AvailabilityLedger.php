@@ -46,6 +46,17 @@ class AvailabilityLedger
             $values['status'] = $values['is_available'] ? 'available' : 'blocked';
         }
 
+        $previouslyBlocked = [];
+        if ($source === 'manual' && ($values['status'] ?? null) === 'available') {
+            $previouslyBlocked = $property->availabilities()
+                ->whereIn('date', $dates)
+                ->where('status', 'blocked')
+                ->where('source', 'manual')
+                ->pluck('date')
+                ->map(fn ($date) => substr((string) $date, 0, 10))
+                ->all();
+        }
+
         $now = now();
 
         // Rate/restriction writes record which provider or editor owns them.
@@ -94,11 +105,24 @@ class AvailabilityLedger
             && $property->pricelabs_mode === 'pms'
             && $property->pricelabs_iapi_listing_id) {
             sort($dates);
-            \App\Jobs\PushPriceLabsCalendarToIapi::dispatch(
-                (int) $property->id,
-                $dates[0],
-                $dates[count($dates) - 1],
-            )->afterCommit();
+            $startDate = $dates[0];
+            $endDate = $dates[count($dates) - 1];
+
+            if ($source === 'manual'
+                && (($values['status'] ?? null) === 'blocked' || $previouslyBlocked !== [])) {
+                \App\Jobs\PushPriceLabsBookingToIapi::dispatch(
+                    (int) $property->id,
+                    $startDate,
+                    $endDate,
+                    $previouslyBlocked,
+                )->afterCommit();
+            } else {
+                \App\Jobs\PushPriceLabsCalendarToIapi::dispatch(
+                    (int) $property->id,
+                    $startDate,
+                    $endDate,
+                )->afterCommit();
+            }
         }
     }
 
