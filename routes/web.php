@@ -153,9 +153,6 @@ Route::post('/webhooks/seam', [SeamWebhookController::class, 'handle'])->name('w
 Route::post('/webhooks/channex', [ChannexWebhookController::class, 'handle'])->name('webhooks.channex');
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
 Route::post('/webhooks/telnyx/sms', [TelnyxWebhookController::class, 'handle'])->name('webhooks.telnyx.sms');
-Route::post('/webhooks/wheelhouse/{secret}', [\App\Http\Controllers\WheelhouseWebhookController::class, 'handle'])
-    ->middleware('throttle:60,1')
-    ->name('webhooks.wheelhouse');
 
 Route::get('/checkin', [GuestController::class, 'checkinByReservation'])->middleware('throttle:60,1')->name('checkin.rid');
 Route::post('/checkin/verify', [GuestController::class, 'verifyReservationLogin'])->middleware('throttle:10,1')->name('checkin.verify');
