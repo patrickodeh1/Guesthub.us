@@ -51,7 +51,7 @@ class PaymentService
     public function retrieveClientSecret(string $paymentIntentId, string $connectedAccountId): ?string
     {
         if (blank($connectedAccountId)) {
-            throw new \\LogicException('A connected Stripe account is required to retrieve a guest payment.');
+            throw new \LogicException('A connected Stripe account is required to retrieve a guest payment.');
         }
 
         return $this->client()->paymentIntents->retrieve($paymentIntentId, [], [
@@ -323,7 +323,7 @@ class PaymentService
     public function createPendingIntent(Booking $booking, string $connectedAccountId, string $type, int $amountCents, string $billingMoment, ?string $description = null): array
     {
         if (blank($connectedAccountId)) {
-            throw new \\LogicException('A connected Stripe account is required to create a guest payment.');
+            throw new \LogicException('A connected Stripe account is required to create a guest payment.');
         }
 
         $intent = $this->client()->paymentIntents->create([
@@ -549,7 +549,7 @@ class PaymentService
     public function charge(Booking $booking, string $connectedAccountId, string $type, int $amountCents, string $paymentMethodId, string $billingMoment, ?string $description = null): Charge
     {
         if (blank($connectedAccountId)) {
-            throw new \\LogicException('A connected Stripe account is required to create a guest payment.');
+            throw new \LogicException('A connected Stripe account is required to create a guest payment.');
         }
 
         $intent = $this->client()->paymentIntents->create([
