@@ -18,7 +18,7 @@ class ReportSharedKeyUsageCommand extends Command
             ->where('pricing_provider', 'pricelabs')
             ->whereDoesntHave('owner', fn ($query) => $query->whereNotNull('pricelabs_api_key')->where('pricelabs_api_key', '!=', ''))
             ->orderBy('id')
-            ->get(['id', 'name', 'owner_id']);
+            ->get(['id', 'name', 'owner_id', 'pricelabs_listing_id']);
 
         if ($properties->isEmpty()) {
             $this->info('No PriceLabs properties are missing a host API key.');
