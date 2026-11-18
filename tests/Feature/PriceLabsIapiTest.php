@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
 use App\Models\Property;
 use App\Models\PropertyAvailability;
 use App\Models\PropertyListing;
@@ -111,6 +112,54 @@ class PriceLabsIapiTest extends TestCase
                 && array_key_exists('available_units', $calendar['data'][0] ?? [])
                 && array_key_exists('booked_units', $calendar['data'][0] ?? [])
                 && array_key_exists('blocked_units', $calendar['data'][0] ?? []);
+        });
+    }
+
+    public function test_reservation_push_maps_required_cost_dates_and_status_fields(): void
+    {
+        config([
+            'services.pricelabs.integration_name' => 'GuestHub-Test',
+            'services.pricelabs.integration_token' => 'reservation-push-token',
+            'services.pricelabs.iapi_base_url' => 'https://pricelabs.test/iapi',
+        ]);
+        Queue::fake();
+        $property = Property::factory()->create([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_reservation_payload',
+        ]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'check_in_date' => now()->addDays(5)->toDateString(),
+            'check_out_date' => now()->addDays(8)->toDateString(),
+            'status' => 'pending',
+            'booking_platform' => 'Airbnb',
+            'total_cents' => 45000,
+            'accommodation_cents' => 40000,
+            'cleaning_fee_cents' => 3000,
+            'tax_cents' => 2000,
+        ]);
+        Http::fake([
+            'pricelabs.test/iapi/reservations' => Http::response(['success' => [], 'failure' => []], 200),
+        ]);
+
+        app(PriceLabsIapiSync::class)->pushReservations($property);
+
+        Http::assertSent(function ($request) use ($booking): bool {
+            $reservation = $request['reservations'][0]['data'][0] ?? [];
+
+            return str_ends_with($request->url(), '/reservations')
+                && count($request['reservations'] ?? []) === 1
+                && ($reservation['reservation_id'] ?? null) === 'gh_'.$booking->property_id.'_booking_'.$booking->id
+                && ($reservation['start_date'] ?? null) === $booking->check_in_date->toDateString()
+                && ($reservation['end_date'] ?? null) === $booking->check_out_date->toDateString()
+                && ($reservation['total_days'] ?? null) === 3
+                && ($reservation['total_cost'] ?? null) === 450
+                && ($reservation['total_fees'] ?? null) === 30
+                && ($reservation['total_taxes'] ?? null) === 20
+                && ($reservation['rental_revenue'] ?? null) === 400
+                && ($reservation['status'] ?? null) === 'unconfirmed'
+                && ($reservation['booking_source'] ?? null) === 'airbnb';
         });
     }
 
