@@ -74,6 +74,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'pricelabs_api_key',
+        'pricelabs_account_email',
         'wheelhouse_user_api_key',
         'wheelhouse_integrators_user_id', // Deprecated legacy partner-API identifier; retained for old rows only.
     ];
