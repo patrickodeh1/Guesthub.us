@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Property;
+use App\Models\PropertyLock;
 use App\Models\Category;
 use App\Models\CategoryPage;
 use App\Models\InstructionStep;
@@ -13,6 +14,7 @@ use App\Models\PropertyNotificationRecipient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\MediaService;
+use App\Services\SeamService;
 use Illuminate\Support\Str;
 
 class PropertyController extends Controller
