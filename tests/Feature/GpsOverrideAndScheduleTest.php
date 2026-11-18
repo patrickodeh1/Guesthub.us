@@ -169,7 +169,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id
         ]);
         
-        $propertyTz = config('app.timezone');
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $futureTime = now($propertyTz)->addHours(4);
 
         $session = CleaningSession::factory()->create([
@@ -184,7 +184,7 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
-        $response->assertSee('You cannot start yet.');
+        $response->assertSee('You cannot begin yet.');
         $response->assertDontSee('Ready to start');
         
         // Assert we do not see the View Only mode (which shows they can view it)
@@ -203,7 +203,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id
         ]);
         
-        $propertyTz = config('app.timezone');
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $pastTime = now($propertyTz)->subHours(1);
 
         $session = CleaningSession::factory()->create([
@@ -365,7 +365,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $admin->id
         ]);
         
-        $propertyTz = config('app.timezone');
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $futureTime = now($propertyTz)->addHours(2);
 
         $session = CleaningSession::factory()->create([
