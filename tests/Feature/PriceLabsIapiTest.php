@@ -1,15 +1,15 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\Property;
-use App\\Models\\User;
-use App\\Services\\Pms\\PriceLabs\\PriceLabsIapiClient;
-use App\\Services\\Pms\\PriceLabs\\PriceLabsIapiSync;
-use App\\Services\\Pms\\PriceLabsSync;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Illuminate\\Support\\Facades\\Http;
-use Tests\\TestCase;
+use App\Models\Property;
+use App\Models\User;
+use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
+use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
+use App\Services\Pms\PriceLabsSync;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
 class PriceLabsIapiTest extends TestCase
 {
