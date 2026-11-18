@@ -77,6 +77,7 @@
                 <label class="field-label">City <span class="text-red-600">*</span><x-help-tip text="The city where the property is located. Filled in automatically when you pick an address." /><input name="city" id="city_input" value="{{ old('city', $property->city) }}" required placeholder="City" class="input"></label>
                 <label class="field-label">State<x-help-tip text="The state or region abbreviation. Filled in automatically when you pick an address." /><input name="state" id="state_input" value="{{ old('state', $property->state) }}" placeholder="ST" class="input"></label>
                 <label class="field-label">ZIP<x-help-tip text="The postal code. Filled in automatically when you pick an address." /><input name="zip" id="zip_input" value="{{ old('zip', $property->zip) }}" placeholder="ZIP Code" class="input"></label>
+                <label class="field-label">Country code <span class="text-slate-400">(ISO 2-letter)</span><x-help-tip text="The two-letter country code used by OTA channels, for example US, CA or GB. Filled automatically when you choose an address suggestion." /><input name="country" id="country_input" value="{{ old('country', $property->country) }}" maxlength="2" pattern="[A-Za-z]{2}" placeholder="US" class="input uppercase"></label>
                 <label class="field-label">Phone<x-help-tip text="A phone number guests can use to reach the host or property manager about this property." /><input name="contact_phone" value="{{ old('contact_phone', $property->contact_phone) }}" placeholder="+1 555 123 4567" class="input"></label>
                 <label class="field-label">Contact email<x-help-tip text="An email address guests can use to reach the host or property manager about this property." /><input type="email" name="contact_email" value="{{ old('contact_email', $property->contact_email) }}" placeholder="host@example.com" class="input"></label>
                 <label class="field-label">Property owner
@@ -607,16 +608,18 @@ async function initAutocomplete() {
         document.getElementById('map_directions_url_input').value =
             'https://www.google.com/maps/dir/?api=1&destination=' + lat + ',' + lng;
 
-        let city = '', state = '', zip = '';
+        let city = '', state = '', zip = '', country = '';
         for (const component of (place.addressComponents || [])) {
             const types = component.types;
             if (types.includes('locality')) city = component.longText;
             if (types.includes('administrative_area_level_1')) state = component.shortText;
             if (types.includes('postal_code')) zip = component.longText;
+            if (types.includes('country')) country = component.shortText;
         }
         if (city) document.getElementById('city_input').value = city;
         if (state) document.getElementById('state_input').value = state;
         if (zip) document.getElementById('zip_input').value = zip;
+        if (country) document.getElementById('country_input').value = country;
 
         // Auto-detect timezone from coordinates
         const tzUrl = 'https://maps.googleapis.com/maps/api/timezone/json?location=' + lat + ',' + lng + '&timestamp=' + Math.floor(Date.now()/1000) + '&key={{ config("services.google_maps.key") }}';
