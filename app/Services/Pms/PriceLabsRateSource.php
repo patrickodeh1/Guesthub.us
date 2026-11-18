@@ -16,7 +16,7 @@ class PriceLabsRateSource implements RateSource
 
     public function apiKeyFor(Property $property): ?string
     {
-        return $property->owner?->pricelabs_api_key ?: config('services.pricelabs.api_key');
+        return $property->owner?->pricelabs_api_key;
     }
 
     /**
