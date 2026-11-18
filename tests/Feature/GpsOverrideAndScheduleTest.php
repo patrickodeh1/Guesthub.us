@@ -166,9 +166,12 @@ class GpsOverrideAndScheduleTest extends TestCase
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
-            'owner_id' => $owner->id
+            'owner_id' => $owner->id,
+            'cleaner_start_window_minutes' => 120,
+            'cleaner_end_window_minutes' => 120,
+            'cleaner_start_window_enabled' => true,
         ]);
-        
+
         $propertyTz = $property->timezone ?: config('app.timezone');
         $futureTime = now($propertyTz)->addHours(4);
 
@@ -184,14 +187,12 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
-        $response->assertSee('You cannot begin yet.');
+        $response->assertSee('Session Not Yet Available');
+        $response->assertSee('View Only Mode');
         $response->assertDontSee('Ready to start');
-        
-        // Assert we do not see the View Only mode (which shows they can view it)
-        $response->assertDontSee('You can view the checklist, but you can only start working');
     }
 
-    public function test_cleaner_can_access_checklist_after_scheduled_time()
+    public function test_cleaner_can_reach_location_verification_after_scheduled_time()
     {
         $owner = $this->createUser();
         $owner->assignRole('owner');
@@ -200,9 +201,12 @@ class GpsOverrideAndScheduleTest extends TestCase
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
-            'owner_id' => $owner->id
+            'owner_id' => $owner->id,
+            'cleaner_start_window_minutes' => 120,
+            'cleaner_end_window_minutes' => 120,
+            'cleaner_start_window_enabled' => true,
         ]);
-        
+
         $propertyTz = $property->timezone ?: config('app.timezone');
         $pastTime = now($propertyTz)->subHours(1);
 
@@ -218,8 +222,9 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
+        $response->assertSee('Verify my location');
         $response->assertDontSee('Session Not Yet Available');
-        $response->assertSee('Ready to start');
+        $response->assertDontSee('Ready to start');
     }
 
     public function test_owner_can_open_cleaner_workflow_without_changing_assigned_cleaner(): void
