@@ -377,7 +377,7 @@
                         @csrf
                         @php
                             $activeProviderReady = ($property->pricing_provider === 'pricelabs' && $priceLabsKeySet && $property->pricelabs_listing_id)
-                                || ($property->pricing_provider === 'wheelhouse' && $wheelhousePartnerKeySet && $wheelhouseUserKeySet && $property->wheelhouse_listing_id);
+                                || ($property->pricing_provider === 'wheelhouse' && $wheelhouseApiAvailable && $wheelhouseUserKeySet && $property->wheelhouse_listing_id && $property->wheelhouse_channel);
                         @endphp
                         <button type="submit" class="btn-primary" {{ $activeProviderReady ? '' : 'disabled' }}>Pull active provider rates now</button>
                         @if($property->pricing_provider === 'pricelabs' && $property->pricelabs_synced_at)
