@@ -2766,6 +2766,12 @@
                                                             <img src="{{ $photoUrl }}" alt="Required Photo" loading="lazy">
                                                         @endif
                                                     </button>
+                                                    @auth
+                                                    <form method="POST" action="{{ route('photos.retain', [$session->id, 'task', $photo->id]) }}" class="no-pdf" style="margin-top:6px;">
+                                                        @csrf
+                                                        <button type="submit" title="{{ $photo->retained ? 'Saved permanently. Click to unsave' : 'Save this photo permanently' }}">{{ $photo->retained ? '★ Saved' : '☆ Save' }}</button>
+                                                    </form>
+                                                    @endauth
                                                     <div class="pair-footer">
                                                         <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
                                                         <div class="pair-time">
