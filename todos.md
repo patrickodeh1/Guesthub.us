@@ -68,14 +68,6 @@ Project: Guesthub | key: f3-d5abe5b74a | created: 2026-11-03
 **Client's words:** Also pick up packages from the package room showed up on Chicago even though the box wasn’t checked so please look at that glitch as well
 
 
-## 26. Reconnect channel to enable deposits and ID screening for Airbnb  [NOT DONE] (To do)
-
-Project: Guesthub | key: f3-e9a1e2465c | created: 2026-11-03
-
-**Client's words:** i got this email from channex and it needs addressed, i have to have my connection in order to be able to charge customers deposits and accept their id for screening per airbnb policies, this needs addressed: email: Dear Partner, The channel listed below was disconnected and has now been removed automatically. If you want to restore the connection, please create and connect the channel again.
-all the properties are then listed.
-this email was dated 0ct 25
-
 
 ## 27. Fix time zone alerts to show correct local and property times  [NOT DONE] (To do)
 
@@ -319,12 +311,6 @@ Project: Guesthub | key: m-d01fb5e68c0f | created: 2026-11-04
 **Client's words:** In the near future I would like to have ai built in so guests can ask questions about the property instead of having to find the menu selection so put that on the list also
 
 
-## 83. Provide each host with their own API credentials for paid services  [NOT DONE] (To do)
-
-Project: Guesthub | key: m-85547b859843 | created: 2026-11-05
-
-**Client's words:** And any of these API’s that cost money to use each host will need to get their own API credentials so that way they can input them in the backend where applicable so that way I’m not charging the host for anything other than using the features of this site all or most of all the API’s I would like the host to have their own credentials
-
 
 ## 89. Fix checklist, cleaner linking, and scheduling bugs within two days  [SHIPPED] (Cleaning association, rescheduling, checklist filtering/order, and workflow changes are included; full regression/live verification remains)
 
@@ -454,15 +440,4 @@ Only the following cleaning-related changed files are in scope for the selective
 **Client's words:** Display the current version number underneath the logo on the admin screen so the client can identify which release is being tested.
 
 
-## 111. Make PriceLabs and Wheelhouse an either/or host choice [NOT DONE] (To do)
 
-**Client's words:** During signup, hosts should choose either PriceLabs or Wheelhouse, not both. They should be able to change that choice later through an easy setting.
-
-**Implementation note:** The client later preferred using GuestHub's API integration where safe and easy for hosts, but raised security concerns about shared API credentials. Confirm the final integration/account-isolation approach before implementation.
-
-
-## 112. Confirm API credential ownership and isolate host usage [NOT DONE] (To do)
-
-**Client's words:** The client ultimately said GuestHub may use its own API keys if doing so does not put the platform owner's account or credentials at risk, and if one host's misuse cannot compromise or flag the owner's account. Otherwise, hosts should use their own credentials. The user experience should remain as simple as possible.
-
-**Implementation note:** This updates the earlier request in item 83 for every host to enter their own credentials. Review each integration separately and document the security/isolation model before deciding which credentials are shared or host-owned.
