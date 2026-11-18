@@ -439,10 +439,14 @@
                 @else
                     <p class="mt-3 text-sm text-slate-500">No lock accounts connected yet.</p>
                 @endif
-                <form method="post" action="{{ route('admin.locks.connect', $property) }}" class="mt-3">
-                    @csrf
-                    <button class="btn-secondary">{{ ($seamAccounts ?? collect())->contains(fn ($account) => $account->status === 'needs_reconnect') ? 'Reconnect lock account' : 'Connect Yale or August account' }}</button>
-                </form>
+                @if(($seamAccounts ?? collect())->contains(fn ($account) => in_array($account->status, ['needs_reconnect', 'disconnected'], true)))
+                    <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">This connected account needs attention. Contact GuestHub support to restore it. Do not delete it from Seam; deletion removes its devices and related access data.</p>
+                @else
+                    <form method="post" action="{{ route('admin.locks.connect', $property) }}" class="mt-3">
+                        @csrf
+                        <button class="btn-secondary">{{ $seamAccounts->isNotEmpty() ? 'Connect another Yale or August account' : 'Connect Yale or August account' }}</button>
+                    </form>
+                @endif
             </div>
 
             <div class="border-t border-slate-200 pt-5">
