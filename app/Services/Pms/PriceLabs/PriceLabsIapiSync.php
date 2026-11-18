@@ -217,6 +217,7 @@ class PriceLabsIapiSync
             $totalCents = (int) ($booking->total_cents ?? 0);
             $rentalCents = (int) ($booking->accommodation_cents ?? 0);
             $taxCents = (int) ($booking->tax_cents ?? 0);
+            $cleaningCents = (int) ($booking->cleaning_fee_cents ?? 0);
             $feesCents = max(0, $totalCents - $rentalCents - $taxCents);
             $reservationId = 'gh_'.$property->id.'_booking_'.$booking->id;
 
@@ -228,6 +229,7 @@ class PriceLabsIapiSync
                 'total_days' => $nights,
                 'total_cost' => round($totalCents / 100, 2),
                 'total_fees' => round($feesCents / 100, 2),
+                'cleaning_fees' => round($cleaningCents / 100, 2),
                 'total_taxes' => round($taxCents / 100, 2),
                 'rental_revenue' => round($rentalCents / 100, 2),
                 'currency' => 'USD',
