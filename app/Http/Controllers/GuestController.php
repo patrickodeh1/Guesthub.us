@@ -448,8 +448,12 @@ class GuestController extends Controller
         // client_secret from Stripe so the guest can still complete payment.
         $existing = $booking->charges()->where('type', \App\Models\Charge::TYPE_DEPOSIT)->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
         if ($existing && $existing->stripe_account_id !== $owner->stripe_account_id) {
-            if (! $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id)) {
+            $retired = $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id);
+            if ($retired === false) {
                 return response()->json(['ok' => false, 'error' => 'Deposit has already been paid.'], 422);
+            }
+            if ($retired === null) {
+                return response()->json(['ok' => false, 'error' => 'A previous payment is still processing. Please wait before trying again.'], 409);
             }
             $existing = null;
         }
@@ -638,8 +642,12 @@ class GuestController extends Controller
         // reuse the existing pending one if there is one already.
         $existing = $booking->charges()->where('type', $type)->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
         if ($existing && $existing->stripe_account_id !== $owner->stripe_account_id) {
-            if (! $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id)) {
+            $retired = $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id);
+            if ($retired === false) {
                 return response()->json(['ok' => false, 'error' => 'This charge has already been paid.'], 422);
+            }
+            if ($retired === null) {
+                return response()->json(['ok' => false, 'error' => 'A previous payment is still processing. Please wait before trying again.'], 409);
             }
             $existing = null;
         }
