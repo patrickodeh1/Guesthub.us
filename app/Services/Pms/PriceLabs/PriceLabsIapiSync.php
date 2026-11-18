@@ -378,19 +378,24 @@ class PriceLabsIapiSync
 
         // A host's manually entered nightly values remain protected from provider updates.
         $dates = array_values(array_unique(array_column($normalized, 'date')));
-        $manualDates = $property->availabilities()
+        $existing = $property->availabilities()
             ->whereIn('date', $dates)
-            ->where('rates_source', 'manual')
-            ->pluck('date')
-            ->map(fn ($date) => substr((string) $date, 0, 10))
-            ->all();
+            ->get(['date', 'rates_source', 'min_stay_arrival'])
+            ->keyBy(fn ($row) => $row->date->format('Y-m-d'));
 
         $groups = [];
         foreach ($normalized as $day) {
-            if (in_array($day['date'], $manualDates, true)) {
+            $existingRow = $existing->get($day['date']);
+            if ($existingRow?->rates_source === 'manual') {
                 continue;
             }
-            $groups[$day['rate'].'|'.($day['min_stay'] ?? '')][] = $day['date'];
+
+            $minimumStay = $day['min_stay'];
+            if ($minimumStay === null && $existingRow && (int) $existingRow->min_stay_arrival > 1) {
+                $minimumStay = 1;
+            }
+
+            $groups[$day['rate'].'|'.($minimumStay ?? '')][] = $day['date'];
         }
 
         $result = $this->sync->apply($property, [
