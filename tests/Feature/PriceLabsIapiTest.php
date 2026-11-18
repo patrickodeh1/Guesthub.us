@@ -46,6 +46,25 @@ class PriceLabsIapiTest extends TestCase
             && $request['probe'] === true);
     }
 
+    public function test_iapi_client_supports_sync_status_and_rate_plans_endpoints(): void
+    {
+        config([
+            'services.pricelabs.integration_name' => 'GuestHub-Test',
+            'services.pricelabs.integration_token' => 'test-integration-token',
+            'services.pricelabs.iapi_base_url' => 'https://pricelabs.test/iapi',
+        ]);
+        Http::fake([
+            'pricelabs.test/iapi/sync_status*' => Http::response(['status' => 'ready'], 200),
+            'pricelabs.test/iapi/rate_plans*' => Http::response(['rate_plans' => []], 200),
+        ]);
+
+        $this->assertSame(['status' => 'ready'], app(PriceLabsIapiClient::class)->syncStatus());
+        $this->assertSame(['rate_plans' => []], app(PriceLabsIapiClient::class)->ratePlans('GET'));
+
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/sync_status'));
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/rate_plans'));
+    }
+
     public function test_iapi_listing_ids_are_unique_and_environment_scoped(): void
     {
         $property = Property::factory()->create();
