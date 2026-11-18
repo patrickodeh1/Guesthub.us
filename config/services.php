@@ -76,6 +76,13 @@ return [
         'seconds' => (int) env('BARCODE_SECONDS', 6),
     ],
 
+    'pricelabs' => [
+        'api_key' => env('PRICELABS_API_KEY'),
+        'integration_name' => env('PRICELABS_INTEGRATION_NAME'),
+        'integration_token' => env('PRICELABS_INTEGRATION_TOKEN'),
+        'iapi_base_url' => env('PRICELABS_IAPI_BASE_URL'),
+    ],
+
     'wheelhouse' => [
         'base_url' => env('WHEELHOUSE_BASE_URL', 'https://api.usewheelhouse.com/ss_api/v1'),
         'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
