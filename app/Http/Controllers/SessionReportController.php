@@ -141,7 +141,7 @@ class SessionReportController extends Controller
                 'note' => null,
                 'uploader' => $photo->uploadedBy?->name ?? $defaultUploader,
                 'source' => 'summary',
-                'purged' => $photo->purged_at !== null,
+                'purged' => $photo->purged_at !== null, 'photo_id' => $photo->id, 'photo_type' => 'room', 'retained' => (bool) $photo->retained,
             ];
         })->filter()->values();
 
@@ -166,7 +166,7 @@ class SessionReportController extends Controller
                         'note' => $photo->note,
                         'uploader' => $item->user?->name ?? $defaultUploader,
                         'source' => 'task',
-                        'purged' => $photo->purged_at !== null,
+                        'purged' => $photo->purged_at !== null, 'photo_id' => $photo->id, 'photo_type' => 'task', 'retained' => (bool) $photo->retained,
                     ];
                 });
             })
@@ -426,7 +426,7 @@ class SessionReportController extends Controller
         abort_unless($this->sessionHasPhotoPath($session, $normalizedPath), 404);
         $blob = PersistentPhotoStorage::read($normalizedPath);
         if ($blob === null) {
-            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photos removed from server');
+            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photo deleted automatically after the retention period');
             abort(404);
         }
 
@@ -487,7 +487,7 @@ class SessionReportController extends Controller
         abort_unless($this->sessionHasPhotoPath($session, $normalizedPath), 404);
         $blob = PersistentPhotoStorage::read($normalizedPath);
         if ($blob === null) {
-            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photos removed from server');
+            abort_if($this->isPurgedPath($session, $normalizedPath), 410, 'Photo deleted automatically after the retention period');
             abort(404);
         }
 
