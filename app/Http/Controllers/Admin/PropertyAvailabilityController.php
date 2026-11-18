@@ -11,6 +11,7 @@ use App\Services\FeatureGate;
 use App\Services\Pms\AirbnbIcalImporter;
 use App\Services\Pms\AvailabilityLedger;
 use App\Services\Pms\ChannexOutboxSender;
+use App\Services\Pms\ChannexProvider;
 use App\Services\Pms\PmsProviderInterface;
 use App\Services\Pms\PriceLabsRateSource;
 use App\Services\Pms\PriceLabsSync;
@@ -53,6 +54,8 @@ class PropertyAvailabilityController extends Controller
             'availabilities' => $availabilities,
             'blockedCount' => $availabilities->where('is_available', false)->count(),
             'isMapped' => (bool) $property->channex_room_type_id,
+            'channexEnvironment' => app(ChannexProvider::class)->environment(),
+            'channexConfigured' => filled(config('services.channex.api_key')),
             'pendingCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '<', 10)->count(),
             'failedCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '>=', 10)->count(),
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
