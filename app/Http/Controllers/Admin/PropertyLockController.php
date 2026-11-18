@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\PropertyLock;
 use App\Services\ActivityLogService;
+use App\Services\SeamService;
 use Illuminate\Http\Request;
 
 class PropertyLockController extends Controller
