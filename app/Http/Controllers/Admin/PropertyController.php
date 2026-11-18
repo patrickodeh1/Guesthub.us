@@ -257,12 +257,21 @@ class PropertyController extends Controller
                             continue;
                         }
 
+                        $battery = data_get($device, 'properties.battery.level');
+                        $batteryPercent = is_numeric($battery)
+                            ? (int) max(0, min(100, round((float) $battery <= 1.001 ? (float) $battery * 100 : (float) $battery)))
+                            : null;
+
+                        if ($batteryPercent !== null) {
+                            PropertyLock::where('seam_device_id', $deviceId)->update(['battery_level' => $batteryPercent]);
+                        }
+
                         $seamDevices[] = [
                             'device_id' => $deviceId,
                             'display_name' => $device['display_name'] ?? $device['nickname'] ?? 'Smart lock',
                             'provider' => $device['device_provider']['provider_name'] ?? $device['device_provider']['provider'] ?? $account->provider ?? 'Smart lock',
                             'manufacturer' => $device['device_manufacturer']['display_name'] ?? $device['device_manufacturer']['manufacturer'] ?? $account->provider,
-                            'battery_level' => data_get($device, 'properties.battery.level'),
+                            'battery_level' => $batteryPercent,
                         ];
                     }
                 } catch (\Throwable $exception) {
