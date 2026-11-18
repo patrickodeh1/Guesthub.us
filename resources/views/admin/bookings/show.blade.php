@@ -699,12 +699,7 @@
 
                 <div class="mt-4 grid gap-2.5">
                     @if($nsOut)
-                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-700 font-semibold grid gap-1">
-                            @if($booking->checked_in_at)
-                            <div>Guest checked in {{ $booking->localTimestamp($booking->checked_in_at)->format('M j, Y g:i A') }}</div>
-                            @endif
-                            <div>Guest checked out {{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
-                        </div>
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. @if($booking->checked_in_at)Guest checked in {{ $booking->localTimestamp($booking->checked_in_at)->format('M j, Y g:i A') }}, checked out @else Guest checked out @endif{{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
                     @elseif($nsIn)
                         <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold grid gap-1">
                             @if($booking->checked_in_at)
