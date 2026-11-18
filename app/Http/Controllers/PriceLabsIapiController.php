@@ -110,25 +110,25 @@ class PriceLabsIapiController extends Controller
             ?? data_get($payload, '_json.API_FAILED_SYNC')
             ?? 'PriceLabs sent a notification.';
 
-        if ($listingId) {
-            $property = Property::query()
+        $property = $listingId
+            ? Property::query()
                 ->where('pricelabs_iapi_listing_id', (string) $listingId)
                 ->where('pricelabs_mode', 'pms')
-                ->first();
+                ->first()
+            : null;
 
-            if ($property) {
-                $property->forceFill([
-                    'pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000),
-                ])->save();
-
-                ActivityLog::record(
-                    'pricelabs_iapi_notification',
-                    $property->name.': '.mb_substr((string) $message, 0, 500),
-                    'properties',
-                    $property
-                );
-            }
+        if ($property) {
+            $property->forceFill([
+                'pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000),
+            ])->save();
         }
+
+        ActivityLog::record(
+            'pricelabs_iapi_notification',
+            ($property ? $property->name.': ' : 'PriceLabs: ').mb_substr((string) $message, 0, 500),
+            'properties',
+            $property
+        );
 
         Log::notice('PriceLabs IAPI notification received.', [
             'listing_id' => $listingId,
