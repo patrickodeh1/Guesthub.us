@@ -121,7 +121,9 @@ class PriceLabsIapiSync
             $row = $availability->get($date);
             $rate = $row?->rate !== null ? (float) $row->rate : $baseRate;
             if ($rate === null || $rate <= 0) {
-                throw new RuntimeException('A nightly rate is missing for '.$date.'. Set a base listing rate or a calendar rate before the initial PriceLabs calendar push.');
+                $message = 'A nightly rate is missing for '.$date.'. Set a base listing rate or a calendar rate before the initial PriceLabs calendar push.';
+                $property->forceFill(['pricelabs_iapi_last_error' => $message])->save();
+                throw new RuntimeException($message);
             }
 
             $booked = min(1, (int) ($bookingCounts[$date] ?? 0));
@@ -149,11 +151,16 @@ class PriceLabsIapiSync
             $data[] = $item;
         }
 
-        $response = $this->client->calendar('POST', ['calendars' => [[
-            'listing_id' => $listingId,
-            'currency' => 'USD',
-            'data' => $data,
-        ]]]);
+        try {
+            $response = $this->client->calendar('POST', ['calendars' => [[
+                'listing_id' => $listingId,
+                'currency' => 'USD',
+                'data' => $data,
+            ]]]);
+        } catch (\\Throwable $exception) {
+            $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
+            throw $exception;
+        }
         if (! in_array($listingId, $response['success'] ?? [], true)) {
             $message = $response['failure'][0]['error'] ?? 'PriceLabs did not confirm the calendar.';
             $property->forceFill(['pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000)])->save();
@@ -254,10 +261,15 @@ class PriceLabsIapiSync
             ];
         }
 
-        $response = $this->client->reservations('POST', ['reservations' => [[
-            'listing_id' => $listingId,
-            'data' => $reservations,
-        ]]]);
+        try {
+            $response = $this->client->reservations('POST', ['reservations' => [[
+                'listing_id' => $listingId,
+                'data' => $reservations,
+            ]]]);
+        } catch (\\Throwable $exception) {
+            $property->forceFill(['pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000)])->save();
+            throw $exception;
+        }
         if (! empty($response['failure'])) {
             $message = $response['failure'][0]['error'] ?? 'One or more reservations failed.';
             $property->forceFill(['pricelabs_iapi_last_error' => mb_substr((string) $message, 0, 5000)])->save();
