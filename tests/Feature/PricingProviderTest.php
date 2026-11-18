@@ -326,7 +326,7 @@ class PricingProviderTest extends TestCase
         $this->assertSame('first-listing', $this->property->fresh()->wheelhouse_listing_id);
         $this->assertSame('airbnb', $this->property->fresh()->wheelhouse_channel);
 
-        $all = app(\\App\\Services\\Pms\\WheelhouseApiClient::class)->listings('first-host-key', 1);
+        $all = app(\App\Services\Pms\WheelhouseApiClient::class)->listings('first-host-key', 1);
         $this->assertCount(1, $all);
         Http::assertSent(fn (ClientRequest $request) => str_contains($request->url(), 'page=2')
             && $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
