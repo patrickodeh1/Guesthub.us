@@ -421,6 +421,9 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/compare-ical', [PropertyAvailabilityController::class, 'compareIcal'])->name('properties.availability.compare-ical')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/channex/create', [ChannexConnectionController::class, 'createProperty'])->name('properties.channex.create')->middleware(['role:admin,owner', 'property.access']);
+    Route::get('properties/{property}/channex/channels', [ChannexConnectionController::class, 'channels'])->name('properties.channex.channels')->middleware(['role:admin,owner', 'property.access']);
+
     Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/fetch-rate-plans', [PropertyAvailabilityController::class, 'fetchRatePlans'])->name('properties.availability.fetch-rate-plans')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-rate-settings', [PropertyAvailabilityController::class, 'saveRateSettings'])->name('properties.availability.save-rate-settings')->middleware(['role:admin,owner,company', 'property.access']);
