@@ -65,7 +65,7 @@ class PriceLabsRateSource implements RateSource
     {
         $key = $this->apiKeyFor($property);
         if (! $key) {
-            return $this->out('skipped', 'No PriceLabs API key is configured.', null, []);
+            return $this->out('skipped', 'Add your PriceLabs API key.', null, []);
         }
         if (! $property->pricelabs_listing_id || ! $property->pricelabs_pms) {
             return $this->out('skipped', 'No PriceLabs listing is linked.', null, []);
