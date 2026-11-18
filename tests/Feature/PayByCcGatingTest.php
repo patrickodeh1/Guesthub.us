@@ -87,7 +87,7 @@ class PayByCcGatingTest extends TestCase
             'pay_by_cc' => true,
         ]);
 
-        $payments = \\Mockery::mock(PaymentService::class);
+        $payments = \Mockery::mock(PaymentService::class);
         $payments->shouldReceive('isConfigured')->once()->andReturn(true);
         $payments->shouldReceive('createPendingIntent')
             ->once()
