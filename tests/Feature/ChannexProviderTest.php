@@ -19,6 +19,88 @@ class ChannexProviderTest extends TestCase
         ]);
     }
 
+    public function test_create_property_uses_documented_property_payload_and_user_api_key(): void
+    {
+        Http::fake([
+            'https://channex.test/api/v1/properties' => Http::response([
+                'data' => ['id' => 'ch-property-1', 'attributes' => ['id' => 'ch-property-1']],
+            ], 201),
+        ]);
+
+        $result = app(ChannexProvider::class)->createProperty([
+            'title' => 'GuestHub Test Home',
+            'currency' => 'USD',
+            'timezone' => 'America/New_York',
+            'property_type' => 'apartment',
+        ], 'guesthub:1');
+
+        $this->assertSame('ch-property-1', $result['data']['id']);
+        Http::assertSent(fn (Request $request) => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/properties')
+            && $request->hasHeader('user-api-key', 'test-channex-key')
+            && $request['property']['title'] === 'GuestHub Test Home'
+            && $request['property']['currency'] === 'USD');
+    }
+
+    public function test_create_room_type_and_rate_plan_use_channex_documented_envelopes(): void
+    {
+        Http::fake([
+            'https://channex.test/api/v1/room_types' => Http::response(['data' => ['id' => 'room-1']], 201),
+            'https://channex.test/api/v1/rate_plans' => Http::response(['data' => ['id' => 'rate-1']], 201),
+        ]);
+
+        app(ChannexProvider::class)->createRoomType([
+            'property_id' => 'property-1',
+            'title' => 'GuestHub Home',
+            'count_of_rooms' => 1,
+            'occ_adults' => 2,
+            'occ_children' => 0,
+            'occ_infants' => 0,
+            'default_occupancy' => 2,
+        ], 'property-1');
+        app(ChannexProvider::class)->createRatePlan([
+            'title' => 'Best Available Rate',
+            'property_id' => 'property-1',
+            'room_type_id' => 'room-1',
+            'currency' => 'USD',
+            'sell_mode' => 'per_room',
+            'rate_mode' => 'manual',
+            'options' => [['occupancy' => 2, 'is_primary' => true, 'rate' => 0]],
+        ], 'property-1');
+
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/room_types')
+            && $request['room_type']['property_id'] === 'property-1'
+            && $request['room_type']['occ_adults'] === 2);
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/rate_plans')
+            && $request['rate_plan']['room_type_id'] === 'room-1'
+            && $request['rate_plan']['options'][0]['is_primary'] === true);
+    }
+
+    public function test_one_time_token_is_scoped_to_property_and_never_written_to_push_log(): void
+    {
+        Http::fake([
+            'https://channex.test/api/v1/auth/one_time_token' => Http::response([
+                'data' => ['token' => 'single-use-token'],
+            ], 200),
+        ]);
+
+        $token = app(ChannexProvider::class)->createOneTimeToken('property-1', 'Host User');
+
+        $this->assertSame('single-use-token', $token);
+        Http::assertSent(fn (Request $request) => str_ends_with($request->url(), '/auth/one_time_token')
+            && $request['one_time_token']['property_id'] === 'property-1'
+            && $request['one_time_token']['username'] === 'Host User');
+    }
+
+    public function test_verify_connection_reports_environment_without_exposing_key(): void
+    {
+        Http::fake(['https://channex.test/api/v1/properties*' => Http::response(['data' => []], 200)]);
+
+        $result = app(ChannexProvider::class)->verifyConnection();
+
+        $this->assertSame(['ok' => true, 'status' => 200, 'environment' => 'production'], $result);
+    }
+
     public function test_booking_revision_feed_normalizes_ota_and_keeps_revision_id_separate(): void
     {
         Http::fake([
