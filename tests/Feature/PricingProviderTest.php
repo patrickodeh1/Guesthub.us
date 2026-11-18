@@ -236,22 +236,19 @@ class PricingProviderTest extends TestCase
         $this->assertNull($this->owner->fresh()->pricelabs_api_key);
     }
 
-    public function test_wheelhouse_recommendations_use_the_shared_ledger_and_quote_path(): void
+    public function test_wheelhouse_recommendations_use_the_host_key_and_shared_ledger(): void
     {
         $date = now()->addDays(24)->toDateString();
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-        ]);
-        $this->owner->forceFill(['wheelhouse_user_api_key' => 'user-key'])->save();
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'host-read-only-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'wheelhouse',
-            'wheelhouse_listing_id' => 'test-1-2',
+            'wheelhouse_listing_id' => 'channel-listing-1',
             'wheelhouse_channel' => 'airbnb',
         ])->save();
         Http::fake([
-            'wheelhouse.test/ss_api/v1/listings/*/price_recommendations*' => Http::response([
-                'data' => [['stay_date' => $date, 'price' => 175.25, 'min_stay' => 1]],
+            'wheelhouse.test/ss_api/v1/listings/channel-listing-1/price_recommendations*' => Http::response([
+                'data' => [['stay_date' => $date, 'price' => 175.25, 'min_stay' => 2]],
             ]),
         ]);
 
@@ -262,78 +259,76 @@ class PricingProviderTest extends TestCase
             'property_id' => $this->property->id,
             'date' => $date,
             'rate' => 175.25,
+            'min_stay_arrival' => 2,
             'rates_source' => 'wheelhouse',
         ]);
         $this->assertSame(17525, $this->quote($date)['subtotal_cents']);
         Http::assertSent(fn (ClientRequest $request) => str_contains($request->url(), '/price_recommendations')
             && str_contains($request->url(), 'channel=airbnb')
-            && $request->hasHeader('X-Integration-Api-Key', 'partner-key')
-            && $request->hasHeader('X-User-API-Key', 'user-key'));
+            && $request->hasHeader('X-Integration-Api-Key', 'host-read-only-key')
+            && ! $request->hasHeader('X-User-API-Key'));
     }
 
-    public function test_guesthub_managed_wheelhouse_connection_registers_user_and_upserts_unique_listing(): void
+    public function test_wheelhouse_lists_are_paginated_and_scoped_to_each_hosts_key(): void
     {
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-        ]);
-        Http::fake([
-            'wheelhouse.test/ss_api/v1/user_registration' => Http::response(['user_api_key' => 'returned-user-key']),
-            'wheelhouse.test/ss_api/v1/listings/*' => Http::response(['id' => 'ok']),
-        ]);
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $otherOwner = User::factory()->create(['name' => 'Second Rate Host']);
+        $otherProperty = Property::factory()->create(['owner_id' => $otherOwner->id]);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'first-host-key'])->save();
+        $otherOwner->forceFill(['wheelhouse_user_api_key' => 'second-host-key'])->save();
 
-        app(WheelhouseConnectionService::class)->connectIntegratorListing($this->property);
+        Http::fake(function (ClientRequest $request) {
+            $key = $request->header('X-Integration-Api-Key')[0] ?? '';
+            $page = (int) (parse_url($request->url(), PHP_URL_QUERY) ? parse_str(parse_url($request->url(), PHP_URL_QUERY), $query) : 1);
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+            $page = (int) ($query['page'] ?? 1);
+            if ($key === 'first-host-key') {
+                return Http::response($page === 1
+                    ? [['id' => 'first-listing', 'channel' => 'airbnb', 'title' => 'First Host Home', 'is_active' => true]]
+                    : []);
+            }
 
-        $user = $this->owner->fresh();
-        $property = $this->property->fresh();
-        $this->assertSame('test-'.$user->id, $user->wheelhouse_integrators_user_id);
-        $this->assertSame('returned-user-key', $user->wheelhouse_user_api_key);
-        $this->assertSame("test-{$user->id}-{$property->id}", $property->wheelhouse_listing_id);
-        $this->assertNotSame('returned-user-key', DB::table('users')->where('id', $user->id)->value('wheelhouse_user_api_key'));
-        Http::assertSent(fn (ClientRequest $request) => $request->method() === 'POST'
-            && str_ends_with($request->url(), '/user_registration')
-            && $request['integrators_user_id'] === 'test-'.$user->id
-            && $request->hasHeader('X-Integration-Api-Key', 'partner-key'));
-        Http::assertSent(fn (ClientRequest $request) => $request->method() === 'PUT'
-            && str_ends_with($request->url(), '/listings/test-'.$user->id.'-'.$property->id)
-            && $request['source_user_id'] === 'test-'.$user->id
-            && $request->hasHeader('X-User-API-Key', 'returned-user-key'));
+            return Http::response([['id' => 'second-listing', 'channel' => 'vrbo', 'title' => 'Second Host Home', 'is_active' => true]]);
+        });
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $this->property), [
+                'wheelhouse_user_api_key' => 'first-host-key',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('wheelhouseListings', [
+                ['id' => 'first-listing', 'channel' => 'airbnb', 'title' => 'First Host Home', 'is_active' => true],
+            ]);
+
+        $this->actingAs($otherOwner)
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $otherProperty), [
+                'wheelhouse_user_api_key' => 'second-host-key',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('wheelhouseListings', [
+                ['id' => 'second-listing', 'channel' => 'vrbo', 'title' => 'Second Host Home', 'is_active' => true],
+            ]);
+
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'second-host-key'));
+        $this->assertSame('first-host-key', $this->owner->fresh()->wheelhouse_user_api_key);
+        $this->assertSame('second-host-key', $otherOwner->fresh()->wheelhouse_user_api_key);
     }
 
-    public function test_wheelhouse_recommendations_webhook_triggers_an_immediate_pull(): void
+    public function test_invalid_wheelhouse_key_is_not_saved_and_shows_clear_error(): void
     {
-        $date = now()->addDays(25)->toDateString();
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-            'services.wheelhouse.webhook_secret' => 'webhook-secret',
-        ]);
-        $this->owner->forceFill([
-            'wheelhouse_user_api_key' => 'user-key',
-            'wheelhouse_integrators_user_id' => 'test-'.$this->owner->id,
-        ])->save();
-        $this->property->forceFill([
-            'pricing_provider' => 'wheelhouse',
-            'wheelhouse_listing_id' => "test-{$this->owner->id}-{$this->property->id}",
-        ])->save();
-        Http::fake([
-            'wheelhouse.test/ss_api/v1/listings/*/price_recommendations*' => Http::response([
-                'data' => [['stay_date' => $date, 'price' => 189.00, 'min_stay' => 1]],
-            ]),
-        ]);
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        Http::fake(['wheelhouse.test/ss_api/v1/listings*' => Http::response(['error' => 'API key authorization failed.'], 401)]);
 
-        $this->post(route('webhooks.wheelhouse', ['secret' => 'webhook-secret']), [
-            'event' => 'listing_recommendations_updated',
-            'listing_id' => $this->property->wheelhouse_listing_id,
-            'external_user_id' => $this->owner->wheelhouse_integrators_user_id,
-        ])->assertNoContent();
+        $this->actingAs($this->owner)
+            ->from(route('admin.properties.availability.index', $this->property))
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $this->property), [
+                'wheelhouse_user_api_key' => 'invalid-key',
+            ])
+            ->assertRedirect(route('admin.properties.availability.index', $this->property))
+            ->assertSessionHas('error', 'That key was not accepted. Check the key and try again.');
 
-        $this->assertDatabaseHas('property_availabilities', [
-            'property_id' => $this->property->id,
-            'date' => $date,
-            'rate' => 189.00,
-            'rates_source' => 'wheelhouse',
-        ]);
+        $this->assertNull($this->owner->fresh()->wheelhouse_user_api_key);
     }
 
     public function test_switching_providers_clears_only_old_provider_rates_and_preserves_manual_rates(): void
