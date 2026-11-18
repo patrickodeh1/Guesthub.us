@@ -75,6 +75,51 @@ class PriceLabsIapiTest extends TestCase
         $this->assertSame('gh_test_'.$property->id, app(PriceLabsIapiSync::class)->listingId($property));
     }
 
+    public function test_listing_registration_uses_host_email_and_only_documented_required_fields(): void
+    {
+        config([
+            'services.pricelabs.integration_name' => 'GuestHub-Test',
+            'services.pricelabs.integration_token' => 'listing-push-token',
+            'services.pricelabs.iapi_base_url' => 'https://pricelabs.test/iapi',
+        ]);
+        $host = User::factory()->create();
+        $host->forceFill(['pricelabs_account_email' => 'host-pricelabs@example.test'])->save();
+        $property = Property::factory()->create([
+            'owner_id' => $host->id,
+            'city' => 'Cleveland',
+            'country' => 'USA',
+        ]);
+        $property->listing()->create([
+            'listing_slug' => 'pricelabs-listing-test',
+            'public_title' => 'PriceLabs Listing',
+            'bedrooms' => 2,
+        ]);
+        Http::fake([
+            'pricelabs.test/iapi/listings' => Http::response([
+                'successes' => ['gh_test_'.$property->id],
+                'errors' => [],
+            ], 200),
+        ]);
+
+        app(PriceLabsIapiSync::class)->registerListing($property);
+
+        Http::assertSent(function ($request) use ($property): bool {
+            $listing = $request['listings'][0] ?? [];
+
+            return str_ends_with($request->url(), '/listings')
+                && count($request['listings'] ?? []) === 1
+                && ($listing['listing_id'] ?? null) === 'gh_test_'.$property->id
+                && ($listing['user_token'] ?? null) === 'host-pricelabs@example.test'
+                && ($listing['name'] ?? null) === 'PriceLabs Listing'
+                && ($listing['status'] ?? null) === 'available'
+                && ($listing['number_of_bedrooms'] ?? null) === 2.0
+                && ! array_key_exists('property_type', $listing);
+        });
+
+        $this->assertSame('pms', $property->fresh()->pricelabs_mode);
+        $this->assertSame('pricelabs', $property->fresh()->pricing_provider);
+    }
+
     public function test_initial_calendar_push_sends_730_days_for_one_listing(): void
     {
         config([
