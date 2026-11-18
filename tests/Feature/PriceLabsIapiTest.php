@@ -164,6 +164,33 @@ class PriceLabsIapiTest extends TestCase
             ->assertJson(['ok' => true]);
     }
 
+    public function test_inbound_iapi_prices_do_not_overwrite_manually_owned_nights(): void
+    {
+        $property = Property::factory()->create([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_manual_protection',
+        ]);
+        $date = now()->addDays(50)->toDateString();
+
+        $manual = new PropertyAvailability([
+            'property_id' => $property->id,
+            'date' => $date,
+            'is_available' => true,
+            'status' => 'available',
+            'source' => 'manual',
+            'rate' => 99,
+        ]);
+        $manual->forceFill(['rates_source' => 'manual'])->save();
+
+        app(PriceLabsIapiSync::class)->applyForListingId('gh_test_manual_protection', [
+            ['date' => $date, 'rate' => 250, 'min_stay' => 2],
+        ]);
+
+        $this->assertSame('99.00', (string) $manual->fresh()->rate);
+        $this->assertSame('manual', $manual->fresh()->rates_source);
+    }
+
     public function test_key_based_pricelabs_polling_is_skipped_for_pms_mode(): void
     {
         $property = Property::factory()->create([
