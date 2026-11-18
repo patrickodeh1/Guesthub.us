@@ -22,6 +22,7 @@ class PushPriceLabsBookingToIapi implements ShouldQueue
         public int $propertyId,
         public ?string $startDate = null,
         public ?string $endDate = null,
+        public array $cancelledBlockDates = [],
     ) {}
 
     public function handle(PriceLabsIapiSync $sync): void
@@ -37,6 +38,9 @@ class PushPriceLabsBookingToIapi implements ShouldQueue
         }
 
         $sync->pushReservations($property);
+        if ($this->cancelledBlockDates !== []) {
+            $sync->cancelBlockedReservations($property, $this->cancelledBlockDates);
+        }
 
         if ($this->startDate && $this->endDate) {
             $sync->pushCalendar($property, $this->startDate, $this->endDate);
