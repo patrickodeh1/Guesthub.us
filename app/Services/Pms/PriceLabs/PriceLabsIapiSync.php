@@ -1,10 +1,10 @@
 <?php
 
-namespace App\\Services\\Pms\\PriceLabs;
+namespace App\Services\Pms\PriceLabs;
 
-use App\\Models\\Property;
-use App\\Services\\Pms\\PriceLabsSync;
-use Illuminate\\Database\\Eloquent\\ModelNotFoundException;
+use App\Models\Property;
+use App\Services\Pms\PriceLabsSync;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use InvalidArgumentException;
 
 class PriceLabsIapiSync
@@ -79,7 +79,7 @@ class PriceLabsIapiSync
 
     private function validDate(string $date): bool
     {
-        if (! preg_match('/\\A(\\d{4})-(\\d{2})-(\\d{2})\\z/', $date, $matches)) {
+        if (! preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/', $date, $matches)) {
             return false;
         }
 
