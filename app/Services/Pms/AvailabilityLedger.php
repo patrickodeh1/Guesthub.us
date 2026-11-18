@@ -86,6 +86,20 @@ class AvailabilityLedger
         });
 
         app(IcalExportService::class)->invalidate((int) $property->id);
+
+        // Keep PriceLabs' copy of the PMS calendar current. Incoming PriceLabs
+        // rates use source=pricelabs and must not be echoed back to the provider.
+        if ($source !== 'pricelabs'
+            && $property->pricing_provider === 'pricelabs'
+            && $property->pricelabs_mode === 'pms'
+            && $property->pricelabs_iapi_listing_id) {
+            sort($dates);
+            \\App\\Jobs\\PushPriceLabsCalendarToIapi::dispatch(
+                (int) $property->id,
+                $dates[0],
+                $dates[count($dates) - 1],
+            )->afterCommit();
+        }
     }
 
     public function clearProviderRates(Property $property, string $provider): int
