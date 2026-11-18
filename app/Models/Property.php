@@ -76,7 +76,7 @@ class Property extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'guest_name', 'internal_name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
+        'name', 'guest_name', 'internal_name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'country', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
         'map_embed_url', 'map_directions_url', 'contact_phone', 'contact_email',
         'welcome_intro', 'checkin_instructions', 'lockbox_code', 'parking_instructions',
         'requires_vehicle_photo',
