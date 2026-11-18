@@ -410,6 +410,35 @@
                         @endif
                     </form>
 
+                    @if($priceLabsIapiEnabled)
+                        <div class="mt-5 rounded-xl border border-slate-200 p-4">
+                            <h4 class="font-semibold text-slate-900">PriceLabs direct PMS integration (v2)</h4>
+                            <p class="section-copy mt-1">Connect this property to the host's PriceLabs account. Use the email address registered with PriceLabs. GuestHub sends the listing and its initial 730-day calendar.</p>
+                            <form method="post" action="{{ route('admin.properties.availability.register-pricelabs-iapi', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                                @csrf
+                                <label class="field-label min-w-[260px] flex-1">Host's PriceLabs account email
+                                    <input type="email" name="pricelabs_account_email" value="{{ old('pricelabs_account_email', $priceLabsIapiEmail) }}" class="input" maxlength="255" required>
+                                </label>
+                                <button type="submit" class="btn-secondary">Register listing and send calendar</button>
+                            </form>
+                            @if($property->pricelabs_mode === 'pms' && $property->pricelabs_iapi_listing_id)
+                                <dl class="mt-3 grid gap-1 text-sm text-slate-700">
+                                    <div>Listing ID: <strong>{{ $property->pricelabs_iapi_listing_id }}</strong></div>
+                                    <div>Listing pushed: <strong>{{ $property->pricelabs_iapi_listing_pushed_at?->diffForHumans() ?? 'not recorded' }}</strong></div>
+                                    <div>Calendar pushed: <strong>{{ $property->pricelabs_iapi_calendar_pushed_at?->diffForHumans() ?? 'not recorded' }}</strong></div>
+                                    <div>Last price received: <strong>{{ $property->pricelabs_iapi_last_price_received_at?->diffForHumans() ?? 'not received yet' }}</strong></div>
+                                </dl>
+                                @if($property->pricelabs_iapi_last_error)
+                                    <p class="field-help mt-2 text-red-700">Last PriceLabs error: {{ $property->pricelabs_iapi_last_error }}</p>
+                                @endif
+                                <form method="post" action="{{ route('admin.properties.availability.push-pricelabs-reservations', $property) }}" class="mt-3">
+                                    @csrf
+                                    <button type="submit" class="btn-secondary">Send reservations to PriceLabs</button>
+                                </form>
+                            @endif
+                        </div>
+                    @endif
+
                     <h4 class="mt-6 font-semibold text-slate-900">Wheelhouse</h4>
                     <p class="section-copy mt-1">Connect your own Wheelhouse account using a read-only RM API key. In Wheelhouse, open API & MCP → API Keys and create a read-only key. GuestHub only reads your listings and price recommendations; it never changes Wheelhouse data.</p>
                     @if($wheelhouseUserKeySet)
