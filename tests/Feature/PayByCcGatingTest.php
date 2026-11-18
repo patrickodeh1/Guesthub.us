@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Charge;
 use App\Models\Property;
+use App\Models\User;
+use App\Services\Payments\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
