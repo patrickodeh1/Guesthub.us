@@ -266,7 +266,11 @@ class PropertyAvailabilityController extends Controller
         try {
             $listings = $client->listings(trim($data['wheelhouse_user_api_key']));
         } catch (WheelhouseApiException $exception) {
-            return back()->with('error', 'Wheelhouse key verification failed: '.$exception->getMessage());
+            $message = in_array($exception->status, [401, 403], true)
+                ? 'That key was not accepted. Check the key and try again.'
+                : 'Wheelhouse key verification failed: '.$exception->getMessage();
+
+            return back()->with('error', $message);
         }
 
         $owner->forceFill([
@@ -384,9 +388,10 @@ class PropertyAvailabilityController extends Controller
             ->map(fn (array $item) => [
                 'id' => (string) ($item['id'] ?? ''),
                 'channel' => (string) ($item['channel'] ?? ''),
-                'title' => (string) ($item['title'] ?? $item['nickname'] ?? $item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? $item['id'] ?? ''),
+                'is_active' => (bool) ($item['is_active'] ?? true),
             ])
-            ->filter(fn (array $item) => $item['id'] !== '' && $item['channel'] !== '')
+            ->filter(fn (array $item) => $item['id'] !== '' && $item['channel'] !== '' && $item['is_active'])
             ->values()
             ->all();
     }
