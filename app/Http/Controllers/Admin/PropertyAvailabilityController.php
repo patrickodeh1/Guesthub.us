@@ -58,7 +58,7 @@ class PropertyAvailabilityController extends Controller
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
             'priceLabsKeySet' => (bool) $property->owner?->pricelabs_api_key,
             'priceLabsHostKeySet' => (bool) $property->owner?->pricelabs_api_key,
-            'wheelhousePartnerKeySet' => (bool) config('services.wheelhouse.partner_api_key'),
+            'wheelhousePartnerKeySet' => true,
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
                 ->where('channex_property_id', (string) $property->channex_property_id)
@@ -271,7 +271,6 @@ class PropertyAvailabilityController extends Controller
 
         $owner->forceFill([
             'wheelhouse_user_api_key' => trim($data['wheelhouse_user_api_key']),
-            'wheelhouse_integrators_user_id' => null,
         ])->save();
 
         return back()
@@ -315,17 +314,6 @@ class PropertyAvailabilityController extends Controller
         return back()->with('success', 'Wheelhouse listing saved.');
     }
 
-    public function connectWheelhouse(Property $property, WheelhouseConnectionService $connection)
-    {
-        try {
-            $connection->connectIntegratorListing($property);
-        } catch (WheelhouseApiException $exception) {
-            return back()->with('error', 'Wheelhouse connection failed: '.$exception->getMessage());
-        }
-
-        return back()->with('success', 'GuestHub registered the host and created or updated the Wheelhouse listing.');
-    }
-
     public function savePricingProvider(Request $request, Property $property, AvailabilityLedger $ledger)
     {
         $data = $request->validate([
@@ -342,8 +330,8 @@ class PropertyAvailabilityController extends Controller
         if ($provider === 'wheelhouse' && ! $property->wheelhouse_listing_id) {
             return back()->with('error', 'Connect Wheelhouse and choose or create a listing first.');
         }
-        if ($provider === 'wheelhouse' && (! $property->owner?->wheelhouse_user_api_key || ! config('services.wheelhouse.partner_api_key'))) {
-            return back()->with('error', 'Configure the Wheelhouse partner key and host API key before activating Wheelhouse.');
+        if ($provider === 'wheelhouse' && (! $property->owner?->wheelhouse_user_api_key || ! $property->wheelhouse_channel)) {
+            return back()->with('error', 'Add the host Wheelhouse API key and choose a listing with its channel before activating Wheelhouse.');
         }
 
         $previous = $property->pricing_provider;
