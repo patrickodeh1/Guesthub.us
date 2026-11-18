@@ -135,7 +135,7 @@ class SeamConnectionTest extends TestCase
             ->andReturn([
                 'device_id' => 'device_host',
                 'display_name' => 'Front Door',
-                'device_provider' => ['provider_name' => 'august'],
+                'device_provider' => ['device_provider_name' => 'august'],
             ]);
         $this->app->instance(SeamService::class, $seam);
 
