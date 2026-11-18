@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Property;
+use App\Models\PropertyAvailability;
 use App\Models\User;
 use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
 use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
