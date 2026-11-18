@@ -59,7 +59,7 @@ class ChannexProviderTest extends TestCase
 
         $this->assertDatabaseHas('channex_push_logs', [
             'channex_property_id' => 'guesthub:42',
-            'path' => '/properties',
+            'path' => 'properties',
             'value_count' => 1,
             'status' => 201,
             'success' => true,
