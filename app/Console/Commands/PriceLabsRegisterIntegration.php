@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Services\\Pms\\PriceLabs\\PriceLabsIapiClient;
-use Illuminate\\Console\\Command;
+use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
+use Illuminate\Console\Command;
 use Throwable;
 
 class PriceLabsRegisterIntegration extends Command
