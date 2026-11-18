@@ -109,6 +109,9 @@ class Property extends Model
     {
         return [
             'channex_availability_seeded_at' => 'datetime',
+            'pricelabs_iapi_listing_pushed_at' => 'datetime',
+            'pricelabs_iapi_calendar_pushed_at' => 'datetime',
+            'pricelabs_iapi_last_price_received_at' => 'datetime',
             'active' => 'boolean', 'requires_vehicle_photo' => 'boolean', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7',
             'parking_rate_sunday' => 'decimal:2', 'parking_rate_monday' => 'decimal:2',
             'parking_rate_tuesday' => 'decimal:2', 'parking_rate_wednesday' => 'decimal:2',
