@@ -9,6 +9,7 @@ use Tests\TestCase;
 
 class ChannexProviderTest extends TestCase
 {
+    use RefreshDatabase;
     protected function setUp(): void
     {
         parent::setUp();
@@ -40,6 +41,28 @@ class ChannexProviderTest extends TestCase
             && $request->hasHeader('user-api-key', 'test-channex-key')
             && $request['property']['title'] === 'GuestHub Test Home'
             && $request['property']['currency'] === 'USD');
+    }
+
+    public function test_inventory_calls_are_written_to_channex_push_logs(): void
+    {
+        Http::fake([
+            'https://channex.test/api/v1/properties' => Http::response([
+                'data' => ['id' => 'ch-property-log'],
+            ], 201),
+        ]);
+
+        app(ChannexProvider::class)->createProperty([
+            'title' => 'Log Test Home',
+            'currency' => 'USD',
+        ], 'guesthub:42');
+
+        $this->assertDatabaseHas('channex_push_logs', [
+            'channex_property_id' => 'guesthub:42',
+            'path' => '/properties',
+            'value_count' => 1,
+            'status' => 201,
+            'success' => true,
+        ]);
     }
 
     public function test_create_room_type_and_rate_plan_use_channex_documented_envelopes(): void
