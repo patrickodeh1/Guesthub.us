@@ -1,13 +1,13 @@
 <?php
 
-namespace App\\Services\\Pms\\PriceLabs;
+namespace App\Services\Pms\PriceLabs;
 
-use App\\Models\\Booking;
-use App\\Models\\Property;
-use App\\Services\\Pms\\PriceLabsSync;
-use Carbon\\Carbon;
-use Illuminate\\Database\\Eloquent\\ModelNotFoundException;
-use Illuminate\\Support\\Facades\\Log;
+use App\Models\Booking;
+use App\Models\Property;
+use App\Services\Pms\PriceLabsSync;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 
