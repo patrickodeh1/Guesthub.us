@@ -56,9 +56,8 @@ class PropertyAvailabilityController extends Controller
             'pendingCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '<', 10)->count(),
             'failedCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '>=', 10)->count(),
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
-            'priceLabsKeySet' => (bool) ($property->owner?->pricelabs_api_key ?: config('services.pricelabs.api_key')),
+            'priceLabsKeySet' => (bool) $property->owner?->pricelabs_api_key,
             'priceLabsHostKeySet' => (bool) $property->owner?->pricelabs_api_key,
-            'priceLabsPlatformKeySet' => (bool) config('services.pricelabs.api_key'),
             'wheelhousePartnerKeySet' => (bool) config('services.wheelhouse.partner_api_key'),
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
@@ -183,7 +182,7 @@ class PropertyAvailabilityController extends Controller
         $submittedKey = trim((string) ($data['pricelabs_api_key'] ?? ''));
         $key = $submittedKey ?: $source->apiKeyFor($property);
         if (! $key) {
-            return back()->with('error', 'Enter a PriceLabs API key to verify it.');
+            return back()->with('error', 'Add your PriceLabs API key.');
         }
 
         try {
@@ -353,10 +352,23 @@ class PropertyAvailabilityController extends Controller
         }
 
         DB::transaction(function () use ($property, $previous, $provider, $ledger): void {
+            $updates = ['pricing_provider' => $provider];
             if ($previous && $previous !== $provider) {
                 $ledger->clearProviderRates($property, $previous);
+                if ($previous === 'pricelabs') {
+                    $updates += [
+                        'pricelabs_listing_id' => null,
+                        'pricelabs_pms' => null,
+                        'pricelabs_last_refreshed_at' => null,
+                    ];
+                } elseif ($previous === 'wheelhouse') {
+                    $updates += [
+                        'wheelhouse_listing_id' => null,
+                        'wheelhouse_channel' => null,
+                    ];
+                }
             }
-            $property->forceFill(['pricing_provider' => $provider])->save();
+            $property->forceFill($updates)->save();
         });
 
         ActivityLog::record(
