@@ -137,7 +137,7 @@ class ChannexProvider implements PmsProviderInterface
         ]);
 
         if (! $response->successful() || ! is_string($response->json('data.token'))) {
-            throw new \\RuntimeException('Channex could not create a channel connection token (HTTP '.$response->status().').');
+            throw new \RuntimeException('Channex could not create a channel connection token (HTTP '.$response->status().').');
         }
 
         return $response->json('data.token');
@@ -150,13 +150,13 @@ class ChannexProvider implements PmsProviderInterface
             'POST' => $client->post($path, $payload),
             'PUT' => $client->put($path, $payload),
             'DELETE' => $client->delete($path),
-            default => throw new \\InvalidArgumentException('Unsupported Channex inventory method.'),
+            default => throw new \InvalidArgumentException('Unsupported Channex inventory method.'),
         };
 
         $this->recordPush($path, $payload ? [reset($payload)] : [], $logPropertyId, $response);
 
         if (! $response->successful()) {
-            throw new \\RuntimeException('Channex '.$method.' '.$path.' failed with HTTP '.$response->status().'.');
+            throw new \RuntimeException('Channex '.$method.' '.$path.' failed with HTTP '.$response->status().'.');
         }
 
         return (array) $response->json();
