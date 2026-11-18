@@ -245,6 +245,7 @@ class PriceLabsIapiSync
         // so PriceLabs Portfolio Analytics can distinguish owner/maintenance blocks.
         $blockedRows = $property->availabilities()
             ->where('status', 'blocked')
+            ->where('source', 'manual')
             ->whereDate('date', '>=', '2020-01-01')
             ->get();
 
