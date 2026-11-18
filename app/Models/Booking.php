@@ -52,7 +52,7 @@ class Booking extends Model
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at', 'vehicle_info_deferred_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
         'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
-        'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'processing_fee_cents', 'total_cents',
+        'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'booking_platform', 'processing_fee_cents', 'total_cents',
         'payment_method', 'host_payment_method_id', 'hold_expires_at', 'payment_confirmed_at', 'guests_count', 'direct_booking_reminded_at',
         'direct_booking_request', 'direct_booking_approved_at',
         'lease_application_id', 'lease_offer_id',
