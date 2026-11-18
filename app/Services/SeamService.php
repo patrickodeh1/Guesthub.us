@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use Seam\SeamClient;
 
 class SeamService
