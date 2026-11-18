@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\PropertyLock;
+use App\Models\SeamConnectedAccount;
 use App\Services\ActivityLogService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Svix\Webhook;
 use Svix\Exception\WebhookVerificationException;
 
@@ -41,6 +43,48 @@ class SeamWebhookController extends Controller
         $deviceId = $event['device_id'] ?? null;
         \Illuminate\Support\Facades\Log::info('Seam webhook received', ['event_type' => $eventType, 'action_attempt_id' => $event['action_attempt_id'] ?? null, 'device_id' => $deviceId]);
         \Illuminate\Support\Facades\Log::info('Seam webhook full payload', ['event' => $event]);
+
+        
+        // Seam documents these connected-account lifecycle events. A
+        // reauthorization request means the host must reconnect; the
+        // connected event is emitted when that authorization succeeds.
+        $connectedAccountStatuses = [
+            'connected_account.reauthorization_requested' => 'needs_reconnect',
+            'connected_account.connected' => 'connected',
+        ];
+
+        if (isset($connectedAccountStatuses[$eventType])) {
+            $connectedAccountId = $event['connected_account_id'] ?? null;
+
+            if (is_string($connectedAccountId) && $connectedAccountId !== '') {
+                $connectedAccount = SeamConnectedAccount::query()
+                    ->where('seam_connected_account_id', $connectedAccountId)
+                    ->first();
+
+                if ($connectedAccount) {
+                    $previousStatus = $connectedAccount->status;
+                    $newStatus = $connectedAccountStatuses[$eventType];
+
+                    $connectedAccount->forceFill([
+                        'status' => $newStatus,
+                        'last_synced_at' => now(),
+                    ])->save();
+
+                    Log::info('Seam connected account status updated from webhook', [
+                        'connected_account_id' => $connectedAccountId,
+                        'user_id' => $connectedAccount->user_id,
+                        'event_type' => $eventType,
+                        'previous_status' => $previousStatus,
+                        'status' => $newStatus,
+                    ]);
+                } else {
+                    Log::info('Seam connected account webhook ignored for unknown account', [
+                        'connected_account_id' => $connectedAccountId,
+                        'event_type' => $eventType,
+                    ]);
+                }
+            }
+        }
 
         if (in_array($eventType, ['lock.locked', 'lock.unlocked'], true) && $deviceId) {
             $lock = PropertyLock::where('seam_device_id', $deviceId)->first();
