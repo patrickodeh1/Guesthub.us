@@ -24,7 +24,7 @@ This document records the integration boundaries, credential ownership, setup st
   - `PRICELABS_INTEGRATION_NAME`
   - `PRICELABS_INTEGRATION_TOKEN`
   - `PRICELABS_IAPI_BASE_URL`
-- The IAPI base URL is deliberately blank in `.env.example`. PriceLabs provides the exact Swagger base URL and credentials after its integration onboarding process. Do not guess the URL.
+- The IAPI base URL is deliberately blank in `.env.example`. PriceLabs provides the exact Swagger base URL and credentials after its integration onboarding process. As checked on 2026-11-18, the public developer overview labels the Integration API "Coming Soon"; the public help article describes the flow and signature contract but does not publish the exact request methods and field schemas required to implement the payloads safely. Do not guess the URL.
 - The signature verifier implements the published HMAC-SHA256 header/body scheme and includes PriceLabs' published signature vector.
 - The IAPI transport is config-gated and supports the documented endpoint names. The exact Swagger request methods and payload schemas have not been supplied to this repository yet. Listing registration, calendar/reservation push payload builders, inbound HTTP routes, calendar-trigger handling, hook handling, and `pricelabs:register-integration` remain blocked until those schemas are available. No guessed live payloads are enabled.
 - `PriceLabsIapiSync::applyForListingId()` accepts normalized `date`, `rate`, and optional `min_stay` rows and applies them through the existing AvailabilityLedger path. The inbound Swagger adapter must map the real PriceLabs request into this internal shape before production use.
