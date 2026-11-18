@@ -60,6 +60,7 @@ class SeamConnectionTest extends TestCase
             'status' => 'authorized',
             'login_successful' => true,
             'connected_account_id' => 'ca_yale_host_a',
+            'customer_key' => 'gh-'.$host->id,
             'selected_provider' => 'yale',
         ]);
         $seam->shouldReceive('listDevices')->once()->with('ca_yale_host_a')->andReturn([
