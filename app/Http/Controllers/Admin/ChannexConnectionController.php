@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Http\\Controllers\\Admin;
+namespace App\Http\Controllers\Admin;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Property;
-use App\\Services\\Pms\\ChannexProvider;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\Log;
+use App\Http\Controllers\Controller;
+use App\Models\Property;
+use App\Services\Pms\ChannexProvider;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
 
