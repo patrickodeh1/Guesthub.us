@@ -85,7 +85,7 @@ class PriceLabsIapiClient
             if ($response->status() === 429 && $attempt < self::MAX_ATTEMPTS) {
                 $retryAfter = $response->header('Retry-After');
                 $delay = is_numeric($retryAfter) ? max(1, (int) $retryAfter) : $attempt;
-                sleep(min($delay, 60));
+                sleep($delay);
                 continue;
             }
 
