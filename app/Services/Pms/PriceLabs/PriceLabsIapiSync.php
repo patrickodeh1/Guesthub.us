@@ -7,7 +7,6 @@ use App\Models\Property;
 use App\Services\Pms\PriceLabsSync;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 
