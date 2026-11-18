@@ -75,7 +75,7 @@ class User extends Authenticatable
         'remember_token',
         'pricelabs_api_key',
         'wheelhouse_user_api_key',
-        'wheelhouse_integrators_user_id',
+        'wheelhouse_integrators_user_id', // Deprecated legacy partner-API identifier; retained for old rows only.
     ];
 
     protected function casts(): array
@@ -97,7 +97,6 @@ class User extends Authenticatable
             'stripe_payouts_enabled' => 'boolean',
             'pricelabs_api_key' => 'encrypted',
             'wheelhouse_user_api_key' => 'encrypted',
-            // Deprecated legacy Wheelhouse Integrators API field; retained for old database rows only.
         ];
     }
 
