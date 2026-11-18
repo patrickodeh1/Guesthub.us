@@ -248,7 +248,7 @@ class PricingProviderTest extends TestCase
         ])->save();
         Http::fake([
             'wheelhouse.test/ss_api/v1/listings/channel-listing-1/price_recommendations*' => Http::response([
-                'data' => [['stay_date' => $date, 'price' => 175.25, 'min_stay' => 2]],
+                'data' => [['stay_date' => $date, 'price' => 175.25, 'min_stay' => 1]],
             ]),
         ]);
 
@@ -259,7 +259,7 @@ class PricingProviderTest extends TestCase
             'property_id' => $this->property->id,
             'date' => $date,
             'rate' => 175.25,
-            'min_stay_arrival' => 2,
+            'min_stay_arrival' => 1,
             'rates_source' => 'wheelhouse',
         ]);
         $this->assertSame(17525, $this->quote($date)['subtotal_cents']);
@@ -273,6 +273,7 @@ class PricingProviderTest extends TestCase
     {
         config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
         $otherOwner = User::factory()->create(['name' => 'Second Rate Host']);
+        $otherOwner->assignRole('owner');
         $otherProperty = Property::factory()->create(['owner_id' => $otherOwner->id]);
         $this->owner->forceFill(['wheelhouse_user_api_key' => 'first-host-key'])->save();
         $otherOwner->forceFill(['wheelhouse_user_api_key' => 'second-host-key'])->save();
@@ -413,7 +414,10 @@ class PricingProviderTest extends TestCase
         $manualDate = now()->addDays(27)->toDateString();
         $this->owner->forceFill(['wheelhouse_user_api_key' => 'wheelhouse-user-key'])->save();
         $this->property->forceFill(['pricing_provider' => 'pricelabs'])->save();
-        $this->property->forceFill(['wheelhouse_listing_id' => 'existing-wheelhouse-listing'])->save();
+        $this->property->forceFill([
+            'wheelhouse_listing_id' => 'existing-wheelhouse-listing',
+            'wheelhouse_channel' => 'airbnb',
+        ])->save();
         app(AvailabilityLedger::class)->setDates($this->property, [$providerDate], ['rate' => 220.00], 'pricelabs');
         app(AvailabilityLedger::class)->setDates($this->property, [$manualDate], ['rate' => 88.00], 'manual');
 
