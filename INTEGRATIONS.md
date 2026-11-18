@@ -44,7 +44,7 @@ This document records the integration boundaries, credential ownership, setup st
 - Each property uses the owner's Seam customer key (`gh-{owner_id}`).
 - Seam redirects back to the authenticated property settings flow. The callback verifies the webview, customer key, provider, and connected-account ownership before saving it.
 - Device discovery is account-scoped. Host-facing UI displays lock labels/provider/battery, not raw Seam device IDs.
-- Disconnected and reauthorization-requested account events update connection status without deleting assigned lock records.
+- Seam's documented `connected_account.reauthorization_requested` event changes the host account to `needs_reconnect`; `connected_account.connected` restores `connected`. Both update `last_synced_at` and are logged without deleting assigned lock records. Seam's public changelog does not document a separate `connected_account.disconnected` event, so no handler for that event is assumed.
 - Server setup still requires a Seam workspace API key, webhook secret, and registered callback/webhook URLs.
 
 ### Channex
