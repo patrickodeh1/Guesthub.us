@@ -28,7 +28,7 @@ class PropertyLockController extends Controller
                 : null;
             abort_unless($device, 403, 'Choose a lock connected through your own Yale or August account.');
 
-            $data['label'] = $data['label'] ?: ($device['display_name'] ?? 'Smart lock');
+            $data['label'] = ($data['label'] ?? null) ?: ($device['display_name'] ?? 'Smart lock');
             $data['manufacturer'] = $device['device_provider']['device_provider_name']
                 ?? $device['device_provider']['display_name']
                 ?? $property->owner?->seamConnectedAccounts()->where('status', 'connected')->value('provider');
