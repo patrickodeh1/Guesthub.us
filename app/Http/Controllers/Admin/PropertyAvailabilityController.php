@@ -61,6 +61,8 @@ class PropertyAvailabilityController extends Controller
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
             'priceLabsKeySet' => (bool) $property->owner?->pricelabs_api_key,
             'priceLabsHostKeySet' => (bool) $property->owner?->pricelabs_api_key,
+            'priceLabsIapiEnabled' => app(PriceLabsIapiClient::class)->enabled(),
+            'priceLabsIapiEmail' => (string) ($property->owner?->pricelabs_account_email ?? ''),
             'wheelhouseApiAvailable' => true,
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
@@ -201,6 +203,46 @@ class PropertyAvailabilityController extends Controller
         return back()
             ->with('success', 'PriceLabs API key verified. Choose the listing for this property.')
             ->with('priceLabsListings', $listings);
+    }
+
+    public function registerPriceLabsIapi(Request $request, Property $property, PriceLabsIapiSync $iapi)
+    {
+        $data = $request->validate([
+            'pricelabs_account_email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $owner = $property->owner;
+        if (! $owner) {
+            return back()->with('error', 'Assign this property to a host before configuring PriceLabs.');
+        }
+
+        $owner->forceFill(['pricelabs_account_email' => $data['pricelabs_account_email']])->save();
+
+        try {
+            $iapi->registerListing($property);
+            $iapi->pushCalendar($property);
+        } catch (\\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'PriceLabs listing setup started, but a push failed: '.$exception->getMessage());
+        }
+
+        ActivityLog::record('property_pricelabs_iapi_registered', "{$property->name}: PriceLabs IAPI listing and initial calendar sent.", 'properties', $property);
+
+        return back()->with('success', 'PriceLabs listing registered and the initial calendar was sent.');
+    }
+
+    public function pushPriceLabsReservations(Property $property, PriceLabsIapiSync $iapi)
+    {
+        try {
+            $result = $iapi->pushReservations($property);
+        } catch (\\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'PriceLabs reservations could not be sent: '.$exception->getMessage());
+        }
+
+        return back()->with('success', 'PriceLabs reservation sync completed.');
     }
 
     public function releaseManualRates(Property $property)
