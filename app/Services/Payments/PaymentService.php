@@ -471,7 +471,7 @@ class PaymentService
      * retries against the property's currently connected Stripe account.
      * Returns false when Stripe confirms the old intent already succeeded.
      */
-    public function retirePendingIntentForAccountChange(Charge $charge, string $connectedAccountId): bool
+    public function retirePendingIntentForAccountChange(Charge $charge, string $connectedAccountId): ?bool
     {
         if ($charge->stripe_account_id === $connectedAccountId) {
             return true;
@@ -496,7 +496,7 @@ class PaymentService
 
         if (! in_array($intent->status, ['requires_payment_method', 'requires_confirmation', 'requires_action', 'requires_capture'], true)) {
             // Do not start a second charge while the old intent is processing.
-            return false;
+            return null;
         }
 
         $this->client()->paymentIntents->cancel($charge->stripe_payment_intent_id, [], $options);
