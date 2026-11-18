@@ -41,7 +41,7 @@ class PruneOldSessionPhotos extends Command
         $this->info(($dry ? '[DRY RUN] ' : '') . "Retention: issue {$issueDays}d, verification {$verifyDays}d, other {$otherDays}d");
 
         foreach ([RoomPhoto::class, ChecklistItemPhoto::class] as $model) {
-            $query = $model::whereNull('purged_at')->where('created_at', '<', $earliest);
+            $query = $model::whereNull('purged_at')->where('retained', false)->where('created_at', '<', $earliest);
             if ($model === ChecklistItemPhoto::class) {
                 $query->with('checklistItem.task');
             }
