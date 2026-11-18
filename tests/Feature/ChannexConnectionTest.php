@@ -1,18 +1,27 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\Property;
-use App\\Models\\User;
-use App\\Services\\Pms\\ChannexProvider;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use App\Models\Property;
+use App\Models\User;
+use App\Services\Pms\ChannexProvider;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Spatie\\Permission\\Models\\Role;
-use Tests\\TestCase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
 
 class ChannexConnectionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config([
+            'services.channex.api_key' => 'test-channex-key',
+            'services.channex.default_currency' => 'USD',
+        ]);
+    }
 
     private function owner(): User
     {
@@ -89,10 +98,7 @@ class ChannexConnectionTest extends TestCase
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertSee('https://staging.channex.io/auth/exchange?token=one-use-iframe-token', false);
 
-        $this->assertDatabaseMissing('properties', [
-            'id' => $property->id,
-            'channex_iframe_token' => 'one-use-iframe-token',
-        ]);
+        $this->assertArrayNotHasKey('channex_iframe_token', $property->fresh()->getAttributes());
     }
 
     public function test_owner_cannot_open_another_hosts_channex_iframe(): void
