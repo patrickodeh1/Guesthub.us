@@ -14,13 +14,7 @@ codebase and one database:
 
 These were originally two separate applications and have been merged into a
 single app: one login, one role system, one navigation, one settings page,
-one activity log, and one properties table serving both sides.
-
-## What it actually does
-
-This section is based on reading the code, not the feature list from before
-the merge — a few real, substantial pieces of functionality were undocumented
-previously.
+one activity log, and one properties table serving both sides
 
 ### Guest-facing booking flow
 - Public guest URL, gated by booking ID + secure token:
