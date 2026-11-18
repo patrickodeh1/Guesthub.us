@@ -180,7 +180,7 @@ class Booking extends Model
             ? $this->check_out_date->copy()->subDay()->toDateString()
             : null;
 
-        \App\Jobs\\PushPriceLabsBookingToIapi::dispatch((int) $property->id, $start, $end)->afterCommit();
+        \App\Jobs\PushPriceLabsBookingToIapi::dispatch((int) $property->id, $start, $end)->afterCommit();
     }
 
     public function leaseOffer(): BelongsTo
