@@ -14,6 +14,10 @@ class ChannexConnectionController extends Controller
 {
     public function createProperty(Property $property, ChannexProvider $channex)
     {
+        if (! filled($property->country)) {
+            return back()->with('error', 'Add the property country code in property settings before creating it in Channex.');
+        }
+
         if (! config('services.channex.api_key')) {
             return back()->with('error', 'Channex API key is not configured on the server.');
         }
@@ -28,8 +32,8 @@ class ChannexConnectionController extends Controller
                 $result = $channex->createProperty([
                     'title' => $property->name,
                     'currency' => config('services.channex.default_currency', 'USD'),
-                    'email' => $property->owner?->email,
-                    'phone' => $property->owner?->phone,
+                    'email' => $property->contact_email,
+                    'phone' => $property->contact_phone,
                     'address' => $property->address,
                     'city' => $property->city,
                     'state' => $property->state,
