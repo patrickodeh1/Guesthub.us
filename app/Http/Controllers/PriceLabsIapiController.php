@@ -50,6 +50,14 @@ class PriceLabsIapiController extends Controller
 
             return response()->json(['ok' => true, 'result' => $result]);
         } catch (Throwable $exception) {
+            Property::query()
+                ->where('pricelabs_iapi_listing_id', $listingId)
+                ->where('pricelabs_mode', 'pms')
+                ->update([
+                    'pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000),
+                    'updated_at' => now(),
+                ]);
+
             Log::warning('PriceLabs IAPI sync callback failed.', [
                 'listing_id' => $listingId,
                 'exception' => get_class($exception),
@@ -84,6 +92,14 @@ class PriceLabsIapiController extends Controller
 
             return response()->json(['ok' => true]);
         } catch (Throwable $exception) {
+            Property::query()
+                ->where('pricelabs_iapi_listing_id', $listingId)
+                ->where('pricelabs_mode', 'pms')
+                ->update([
+                    'pricelabs_iapi_last_error' => mb_substr($exception->getMessage(), 0, 5000),
+                    'updated_at' => now(),
+                ]);
+
             Log::warning('PriceLabs IAPI calendar trigger failed.', [
                 'listing_id' => $listingId,
                 'exception' => get_class($exception),
