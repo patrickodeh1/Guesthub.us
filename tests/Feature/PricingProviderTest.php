@@ -350,6 +350,63 @@ class PricingProviderTest extends TestCase
         $this->assertNull($this->owner->fresh()->wheelhouse_user_api_key);
     }
 
+    public function test_revoked_wheelhouse_key_returns_unauthorized_without_crashing_sync(): void
+    {
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'revoked-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'wheelhouse',
+            'wheelhouse_listing_id' => 'revoked-listing',
+            'wheelhouse_channel' => 'airbnb',
+        ])->save();
+        Http::fake([
+            'wheelhouse.test/ss_api/v1/listings/revoked-listing/price_recommendations*' => Http::response(['error' => 'API key authorization failed.'], 403),
+        ]);
+
+        $result = app(PriceLabsSync::class)->sync($this->property);
+
+        $this->assertSame('unauthorized', $result['status']);
+        $this->assertStringContainsString('key was not accepted', $result['message']);
+        $this->assertSame('revoked-key', $this->owner->fresh()->wheelhouse_user_api_key);
+    }
+
+    public function test_wheelhouse_rates_flow_to_channex_outbox(): void
+    {
+        $date = now()->addDays(25)->toDateString();
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'wheelhouse',
+            'wheelhouse_listing_id' => 'channex-linked-listing',
+            'wheelhouse_channel' => 'airbnb',
+            'channex_property_id' => 'ch-property',
+            'channex_room_type_id' => 'ch-room',
+            'channex_rate_plan_id' => 'ch-plan',
+            'rate_source' => 'external',
+        ])->save();
+        Http::fake([
+            'wheelhouse.test/ss_api/v1/listings/channex-linked-listing/price_recommendations*' => Http::response([
+                'data' => [['stay_date' => $date, 'price' => 199.50, 'min_stay' => 1]],
+            ]),
+        ]);
+
+        $result = app(PriceLabsSync::class)->sync($this->property);
+
+        $this->assertSame('ok', $result['status']);
+        $this->assertSame('guesthub', $this->property->fresh()->rate_source);
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $this->property->id,
+            'date' => $date,
+            'rate' => 199.50,
+            'rates_source' => 'wheelhouse',
+        ]);
+        $this->assertDatabaseHas('channex_outbox', [
+            'property_id' => $this->property->id,
+            'kind' => 'restrictions',
+            'date' => $date,
+        ]);
+    }
+
     public function test_switching_providers_clears_only_old_provider_rates_and_preserves_manual_rates(): void
     {
         $providerDate = now()->addDays(26)->toDateString();
