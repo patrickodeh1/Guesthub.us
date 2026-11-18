@@ -1,16 +1,16 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\Booking;
-use App\\Models\\Property;
-use App\\Models\\User;
-use App\\Services\\Pms\\BookingImportService;
-use App\\Services\\Pms\\PmsBooking;
-use App\\Services\\Pms\\PmsProviderInterface;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use App\Models\Booking;
+use App\Models\Property;
+use App\Models\User;
+use App\Services\Pms\BookingImportService;
+use App\Services\Pms\PmsBooking;
+use App\Services\Pms\PmsProviderInterface;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class ChannexWebhookIsolationTest extends TestCase
 {
