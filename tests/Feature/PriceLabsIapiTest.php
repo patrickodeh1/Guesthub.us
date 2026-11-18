@@ -68,7 +68,7 @@ class PriceLabsIapiTest extends TestCase
     public function test_iapi_listing_ids_are_unique_and_environment_scoped(): void
     {
         $property = Property::factory()->create();
-        $this->assertSame('gh-test-'.$property->id, app(PriceLabsIapiSync::class)->listingId($property));
+        $this->assertSame('gh_test_'.$property->id, app(PriceLabsIapiSync::class)->listingId($property));
     }
 
     public function test_inbound_normalized_prices_only_update_the_matching_hosts_property(): void
@@ -107,6 +107,61 @@ class PriceLabsIapiTest extends TestCase
         ]);
         $this->assertNotNull($propertyA->fresh()->pricelabs_iapi_last_price_received_at);
         $this->assertNull($propertyB->fresh()->pricelabs_iapi_last_price_received_at);
+    }
+
+    public function test_signed_sync_callback_applies_only_the_matching_listing_and_rejects_bad_signatures(): void
+    {
+        config(['services.pricelabs.integration_token' => 'callback-test-token']);
+        $host = User::factory()->create();
+        $property = Property::factory()->create([
+            'owner_id' => $host->id,
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_mode' => 'pms',
+            'pricelabs_iapi_listing_id' => 'gh_test_signed_callback',
+        ]);
+        $body = json_encode([
+            'listing_id' => 'gh_test_signed_callback',
+            'data' => [[
+                'date' => now()->addDays(42)->toDateString(),
+                'price' => 212,
+                'min_stay' => 3,
+            ]],
+        ], JSON_THROW_ON_ERROR);
+        $signature = app(\\App\\Services\\Pms\\PriceLabs\\PriceLabsSignature::class);
+        $signedHeaders = $signature->signHeaders('pricelabs', 'test-time', 'request-123', 'callback-test-token');
+        $signedBody = $signature->signBody($signedHeaders, $body, 'callback-test-token');
+
+        $this->call('POST', route('webhooks.pricelabs.sync'), [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_SOURCE' => 'pricelabs',
+            'HTTP_X_PL_TIMESTAMP' => 'test-time',
+            'HTTP_X_PL_REQUESTID' => 'request-123',
+            'HTTP_X_PL_SIGNED_HEADERS' => $signedHeaders,
+            'HTTP_X_PL_SIGNED_BODY' => $signedBody,
+        ], $body)->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $property->id,
+            'date' => now()->addDays(42)->toDateString(),
+            'rate' => 212,
+            'min_stay_arrival' => 3,
+        ]);
+
+        $this->call('POST', route('webhooks.pricelabs.sync'), [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_SOURCE' => 'pricelabs',
+            'HTTP_X_PL_TIMESTAMP' => 'test-time',
+            'HTTP_X_PL_REQUESTID' => 'request-123',
+            'HTTP_X_PL_SIGNED_HEADERS' => $signedHeaders,
+            'HTTP_X_PL_SIGNED_BODY' => str_repeat('0', 64),
+        ], $body)->assertUnauthorized();
+    }
+
+    public function test_pricelabs_callback_verification_probe_returns_http_200_without_signature(): void
+    {
+        $this->postJson(route('webhooks.pricelabs.sync'), ['verify' => true])
+            ->assertOk()
+            ->assertJson(['ok' => true]);
     }
 
     public function test_key_based_pricelabs_polling_is_skipped_for_pms_mode(): void
