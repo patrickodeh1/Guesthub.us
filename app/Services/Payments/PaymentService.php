@@ -67,6 +67,10 @@ class PaymentService
      */
     public function createDirectBookingIntent(Booking $booking, string $connectedAccountId): array
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a direct booking payment.');
+        }
+
         if (! $booking->isDirectBooking() || $booking->status !== Booking::STATUS_PENDING_PAYMENT
             || ($booking->direct_booking_request && ! $booking->direct_booking_approved_at)
             || ($booking->hold_expires_at && $booking->hold_expires_at->isPast())) {
@@ -146,6 +150,10 @@ class PaymentService
      */
     public function createLeaseApplicationIntent(LeaseApplication $application, string $connectedAccountId): array
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a lease application payment.');
+        }
+
         if ($application->status !== 'submitted'
             || $application->payment_method !== 'card'
             || $application->fee_status !== 'pending'
@@ -469,17 +477,30 @@ class PaymentService
             return true;
         }
 
-        $this->finalize($charge->stripe_payment_intent_id);
-        $charge->refresh();
+        $options = $charge->stripe_account_id
+            ? ['stripe_account' => $charge->stripe_account_id]
+            : [];
+        $intent = $this->client()->paymentIntents->retrieve($charge->stripe_payment_intent_id, [], $options);
 
-        if (in_array($charge->status, [Charge::STATUS_SUCCESS, Charge::STATUS_REFUNDED], true)) {
+        if ($intent->status === 'succeeded') {
+            $this->finalize($charge->stripe_payment_intent_id);
+
             return false;
         }
 
-        if ($charge->status === Charge::STATUS_PENDING) {
-            $this->cancelPendingIntent($charge);
+        if ($intent->status === 'canceled') {
             $charge->update(['status' => Charge::STATUS_FAILED]);
+
+            return true;
         }
+
+        if (! in_array($intent->status, ['requires_payment_method', 'requires_confirmation', 'requires_action', 'requires_capture'], true)) {
+            // Do not start a second charge while the old intent is processing.
+            return false;
+        }
+
+        $this->client()->paymentIntents->cancel($charge->stripe_payment_intent_id, [], $options);
+        $charge->update(['status' => Charge::STATUS_FAILED]);
 
         return true;
     }
