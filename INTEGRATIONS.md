@@ -104,7 +104,7 @@ These tests have been added but were **not executed** during the remote reposito
 
 ## Outstanding external setup and decisions
 
-1. **PriceLabs IAPI:** the v2.0.0 Swagger and base URL are now available. Obtain the integration name/token from PriceLabs, then complete listing/calendar/reservation pushes, the three signed callbacks, callback registration, host email setup, rate-plan/sync-status support, and tests. Run the PriceLabs certification/pilot before enabling the feature.
+1. **PriceLabs IAPI — external onboarding and verification:** the branch contains the v2 client, listing/calendar/reservation synchronization, callback handlers, callback registration command, host email setup, and rate-plan/sync-status client operations. These are implemented but have not been runtime- or live-provider-verified in this editing session. Obtain the integration name/token from PriceLabs, configure the development account email, run the local test and route/migration checks listed above, register and verify the callback URLs, then complete the PriceLabs certification/pilot before enabling production use.
 2. **Channex:** verify staging setup with a real account, then complete Channex production access/certification before changing the production base URL.
 3. **Seam:** configure the workspace API key, webhook signing secret, and registered callback/webhook URLs; run a real Yale and August connection and device assignment.
 4. **Stripe:** configure the OAuth client and both webhook secrets; test host authorization, deauthorization, deposits, and itemized charges with two separate connected test accounts.
