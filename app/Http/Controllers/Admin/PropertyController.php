@@ -269,7 +269,7 @@ class PropertyController extends Controller
                         $seamDevices[] = [
                             'device_id' => $deviceId,
                             'display_name' => $device['display_name'] ?? $device['nickname'] ?? 'Smart lock',
-                            'provider' => $device['device_provider']['provider_name'] ?? $device['device_provider']['provider'] ?? $account->provider ?? 'Smart lock',
+                            'provider' => $device['device_provider']['device_provider_name'] ?? $device['device_provider']['display_name'] ?? $account->provider ?? 'Smart lock',
                             'manufacturer' => $device['device_manufacturer']['display_name'] ?? $device['device_manufacturer']['manufacturer'] ?? $account->provider,
                             'battery_level' => $batteryPercent,
                         ];
