@@ -60,29 +60,6 @@ class SeamConnectionController extends Controller
 
         try {
             $webview = $seam->getConnectWebview($pending['connect_webview_id']);
-            if (($webview['status'] ?? null) !== 'authorized'
-                || ! ($webview['login_successful'] ?? false)
-                || ($webview['customer_key'] ?? null) !== 'gh-'.$host->id
-                || ! in_array($webview['selected_provider'] ?? null, ['yale', 'august'], true)
-                || empty($webview['connected_account_id'])) {
-                return redirect()->route('admin.properties.edit', $property)
-                    ->with('error', 'The lock account was not authorized. Please try connecting again.');
-            }
-
-            $existingAccount = \\App\\Models\\SeamConnectedAccount::where('seam_connected_account_id', $webview['connected_account_id'])->first();
-            abort_if($existingAccount && (int) $existingAccount->user_id !== (int) $host->id, 403, 'This lock account is already linked to another host.');
-
-            $account = $host->seamConnectedAccounts()->updateOrCreate(
-                ['seam_connected_account_id' => $webview['connected_account_id']],
-                [
-                    'provider' => $webview['selected_provider'] ?? null,
-                    'status' => 'connected',
-                    'last_synced_at' => now(),
-                ],
-            );
-
-            // A successful connection is not complete until its devices can be listed.
-            $seam->listDevices($account->seam_connected_account_id);
         } catch (Throwable $exception) {
             Log::warning('Seam Connect Webview verification failed.', [
                 'property_id' => $property->id,
@@ -92,6 +69,40 @@ class SeamConnectionController extends Controller
 
             return redirect()->route('admin.properties.edit', $property)
                 ->with('error', 'The lock account could not be verified. Please reconnect and try again.');
+        }
+
+        if (($webview['status'] ?? null) !== 'authorized'
+            || ! ($webview['login_successful'] ?? false)
+            || ($webview['customer_key'] ?? null) !== 'gh-'.$host->id
+            || ! in_array($webview['selected_provider'] ?? null, ['yale', 'august'], true)
+            || empty($webview['connected_account_id'])) {
+            return redirect()->route('admin.properties.edit', $property)
+                ->with('error', 'The lock account was not authorized. Please try connecting again.');
+        }
+
+        $existingAccount = \App\Models\SeamConnectedAccount::where('seam_connected_account_id', $webview['connected_account_id'])->first();
+        abort_if($existingAccount && (int) $existingAccount->user_id !== (int) $host->id, 403, 'This lock account is already linked to another host.');
+
+        try {
+            // Confirm account-scoped device access before persisting the connection.
+            $seam->listDevices($webview['connected_account_id']);
+            $host->seamConnectedAccounts()->updateOrCreate(
+                ['seam_connected_account_id' => $webview['connected_account_id']],
+                [
+                    'provider' => $webview['selected_provider'],
+                    'status' => 'connected',
+                    'last_synced_at' => now(),
+                ],
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Seam connected account device sync failed.', [
+                'property_id' => $property->id,
+                'host_id' => $host->id,
+                'exception' => $exception::class,
+            ]);
+
+            return redirect()->route('admin.properties.edit', $property)
+                ->with('error', 'The lock account was authorized, but its devices could not be loaded. Please try again.');
         }
 
         return redirect()->route('admin.properties.edit', $property)
