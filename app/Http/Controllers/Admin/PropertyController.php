@@ -237,10 +237,46 @@ class PropertyController extends Controller
 
         $this->ensureVisible($request, $property);
 
+        $property->loadMissing('owner.seamConnectedAccounts');
+        $seamAccounts = $property->owner?->seamConnectedAccounts ?? collect();
+        $assignedElsewhere = PropertyLock::query()
+            ->whereNotNull('seam_device_id')
+            ->where('seam_device_id', '!=', '')
+            ->where('property_id', '!=', $property->id)
+            ->pluck('seam_device_id')
+            ->all();
+        $seamDevices = [];
+
+        if ($property->owner) {
+            $seam = app(SeamService::class);
+            foreach ($seamAccounts->where('status', 'connected') as $account) {
+                try {
+                    foreach ($seam->listDevices($account->seam_connected_account_id) as $device) {
+                        $deviceId = $device['device_id'] ?? null;
+                        if (! $deviceId || in_array($deviceId, $assignedElsewhere, true)) {
+                            continue;
+                        }
+
+                        $seamDevices[] = [
+                            'device_id' => $deviceId,
+                            'display_name' => $device['display_name'] ?? $device['nickname'] ?? 'Smart lock',
+                            'provider' => $device['device_provider']['provider_name'] ?? $device['device_provider']['provider'] ?? $account->provider ?? 'Smart lock',
+                            'manufacturer' => $device['device_manufacturer']['display_name'] ?? $device['device_manufacturer']['manufacturer'] ?? $account->provider,
+                            'battery_level' => data_get($device, 'properties.battery.level'),
+                        ];
+                    }
+                } catch (\\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        }
+
         return view('admin.properties.form', [
             'property' => $property,
             'owners' => $this->ownerOptions($request),
             'returnTo' => $request->headers->get('referer'),
+            'seamAccounts' => $seamAccounts,
+            'seamDevices' => collect($seamDevices)->unique('device_id')->values(),
         ]);
     }
 
