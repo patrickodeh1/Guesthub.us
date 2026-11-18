@@ -40,6 +40,7 @@ class ChannexConnectionTest extends TestCase
             'name' => 'GuestHub Test Home',
             'beds' => 2,
             'timezone' => 'America/New_York',
+            'country' => 'US',
         ]);
 
         $channex = Mockery::mock(ChannexProvider::class);
@@ -49,6 +50,7 @@ class ChannexConnectionTest extends TestCase
         $channex->shouldReceive('createProperty')->once()->with(
             Mockery::on(fn ($payload) => $payload['title'] === 'GuestHub Test Home'
                 && $payload['currency'] === 'USD'
+                && $payload['country'] === 'US'
                 && $payload['timezone'] === 'America/New_York'),
             'guesthub:'.$property->id,
         )->andReturn(['data' => ['id' => 'ch-property-1']]);
