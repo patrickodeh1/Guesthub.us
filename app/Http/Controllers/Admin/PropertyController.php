@@ -461,6 +461,7 @@ class PropertyController extends Controller
             'city' => ['required', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'zip' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'size:2', 'alpha'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
             'map_embed_url' => ['nullable', 'url'],
