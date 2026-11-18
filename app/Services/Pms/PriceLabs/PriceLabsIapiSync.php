@@ -223,6 +223,30 @@ class PriceLabsIapiSync
             }
         }
 
+        // Explicit calendar blocks are represented as zero-cost blocked reservations
+        // so PriceLabs Portfolio Analytics can distinguish owner/maintenance blocks.
+        $blockedRows = $property->availabilities()
+            ->where('status', 'blocked')
+            ->whereDate('date', '>=', '2020-01-01')
+            ->get();
+
+        foreach ($blockedRows as $blocked) {
+            $date = $blocked->date->toDateString();
+            $reservations[] = [
+                'reservation_id' => 'gh_'.$property->id.'_block_'.$date,
+                'start_date' => $date,
+                'end_date' => Carbon::parse($date)->addDay()->toDateString(),
+                'booked_time' => ($blocked->created_at ?: now())->format('Y-m-d H:i:s'),
+                'total_days' => 1,
+                'total_cost' => 0,
+                'total_fees' => 0,
+                'total_taxes' => 0,
+                'rental_revenue' => 0,
+                'currency' => 'USD',
+                'status' => 'blocked',
+            ];
+        }
+
         $response = $this->client->reservations('POST', ['reservations' => [[
             'listing_id' => $listingId,
             'data' => $reservations,
