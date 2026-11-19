@@ -46,7 +46,7 @@ class ReportItemFilterTest extends TestCase
         $defaults = ['session_id' => $session->id, 'task_id' => $task->id, 'room_id' => $room->id, 'user_id' => $session->housekeeper_id];
 
         // 1. Unchecked + no image -> Should NOT be in results
-        $item1 = ChecklistItem::factory()->create(array_merge($defaults, ['checked' => false]));
+        $item1 = ChecklistItem::factory()->create(array_merge($defaults, ['checked' => false, 'note' => null]));
         
         // 2. Unchecked + has image -> Should be IN results
         $item2 = ChecklistItem::factory()->create(array_merge($defaults, ['checked' => false]));

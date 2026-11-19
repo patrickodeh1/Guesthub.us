@@ -366,3 +366,38 @@ Keep in mind that this rental application is prompted when a guest selects 29 da
 ## 110. Verify the correct cleaner is shown for the current cleaning [DONE - VERIFY] (Done - please verify)
 
 **Client's words:** The guest/cleaning view showed a cleaner from a previous cleaning instead of the cleaner currently assigned to the active cleaning. The client was told this was corrected; verify that the current cleaning displays its assigned cleaner and historical cleanings retain their own cleaner.
+
+## 26. Reconnect channel to enable deposits and ID screening for Airbnb  [DONE] (Implementation complete — needs live test)
+
+Project: Guesthub | key: f3-e9a1e2465c | created: 2026-11-03
+
+**Client's words:** i got this email from channex and it needs addressed, i have to have my connection in order to be able to charge customers deposits and accept their id for screening per airbnb policies, this needs addressed: email: Dear Partner, The channel listed below was disconnected and has now been removed automatically. If you want to restore the connection, please create and connect the channel again.
+all the properties are then listed.
+this email was dated 0ct 25
+
+**Implementation:** Added a property-scoped Channex channel-management flow using a single-use token. Reconnecting a real Airbnb channel and verifying deposits/ID-screening still needs a live test.
+
+## 83. Provide each host with their own API credentials for paid services  [DONE] (Implementation complete — needs live test)
+
+Project: Guesthub | key: m-85547b859843 | created: 2026-11-05
+
+**Client's words:** And any of these API’s that cost money to use each host will need to get their own API credentials so that way they can input them in the backend where applicable so that way I’m not charging the host for anything other than using the features of this site all or most of all the API’s I would like the host to have their own credentials
+
+**Implementation:** PriceLabs and Wheelhouse host keys are encrypted per host; Stripe and Seam use host-owned connected accounts; Channex remains platform-managed and property-scoped. PriceLabs IAPI onboarding/certification is still pending.
+
+## 111. Make PriceLabs and Wheelhouse an either/or host choice [DONE] (Implementation complete — needs live test)
+
+**Client's words:** During signup, hosts should choose either PriceLabs or Wheelhouse, not both. They should be able to change that choice later through an easy setting.
+
+**Implementation note:** The client later preferred using GuestHub's API integration where safe and easy for hosts, but raised security concerns about shared API credentials. Confirm the final integration/account-isolation approach before implementation.
+
+**Implementation:** GuestHub retains the mutually exclusive PriceLabs/Wheelhouse provider choice and clears old provider linkage/rates on switching. PriceLabs IAPI mode is scaffolded but not production-enabled pending its Swagger schema.
+
+## 112. Confirm API credential ownership and isolate host usage [DONE] (Implementation complete — needs live test)
+
+**Client's words:** The client ultimately said GuestHub may use its own API keys if doing so does not put the platform owner's account or credentials at risk, and if one host's misuse cannot compromise or flag the owner's account. Otherwise, hosts should use their own credentials. The user experience should remain as simple as possible.
+
+**Implementation note:** This updates the earlier request in item 83 for every host to enter their own credentials. Review each integration separately and document the security/isolation model before deciding which credentials are shared or host-owned.
+
+**Implementation:** Credential ownership and isolation are documented in INTEGRATIONS.md. Shared PriceLabs/Wheelhouse key fallbacks are removed; Stripe and Seam account ownership is scoped per host. Live provider tests and PriceLabs IAPI completion remain outstanding.
+

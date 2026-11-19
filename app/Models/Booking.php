@@ -52,7 +52,7 @@ class Booking extends Model
         'vehicle_make_model', 'license_plate_photo_path', 'vehicle_info_bypassed_at', 'vehicle_info_deferred_at',
         'id_date_of_birth', 'id_age', 'id_expiry_date', 'id_number', 'id_zip', 'id_name', 'id_scan_status', 'id_scanned_at',
         'id_first_name', 'id_last_name', 'id_scan_source', 'id_name_match', 'id_scan_attempts', 'license_plate', 'license_plate_state',
-        'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'processing_fee_cents', 'total_cents',
+        'accommodation_cents', 'cleaning_fee_cents', 'tax_cents', 'booking_platform', 'processing_fee_cents', 'total_cents',
         'payment_method', 'host_payment_method_id', 'hold_expires_at', 'payment_confirmed_at', 'guests_count', 'direct_booking_reminded_at',
         'direct_booking_request', 'direct_booking_approved_at',
         'lease_application_id', 'lease_offer_id',
@@ -138,11 +138,49 @@ class Booking extends Model
 
         static::saved(function (self $booking): void {
             app(IcalExportService::class)->invalidate((int) $booking->property_id);
+
+            if ($booking->wasRecentlyCreated || $booking->wasChanged([
+                'property_id', 'check_in_date', 'check_out_date', 'status',
+                'cancelled_at', 'total_cents', 'accommodation_cents',
+                'cleaning_fee_cents', 'tax_cents',
+            ])) {
+                $booking->queuePriceLabsIapiSync((int) $booking->property_id);
+
+                if ($booking->wasChanged('property_id')) {
+                    $booking->queuePriceLabsIapiSync((int) $booking->getOriginal('property_id'));
+                }
+            }
         });
 
         static::deleted(function (self $booking): void {
             app(IcalExportService::class)->invalidate((int) $booking->property_id);
+            $booking->queuePriceLabsIapiSync((int) $booking->property_id);
         });
+    }
+
+    private function queuePriceLabsIapiSync(int $propertyId): void
+    {
+        if (! $propertyId) {
+            return;
+        }
+
+        $property = Property::query()
+            ->whereKey($propertyId)
+            ->where('pricing_provider', 'pricelabs')
+            ->where('pricelabs_mode', 'pms')
+            ->whereNotNull('pricelabs_iapi_listing_id')
+            ->first();
+
+        if (! $property) {
+            return;
+        }
+
+        $start = $this->check_in_date ? $this->check_in_date->toDateString() : null;
+        $end = $this->check_out_date
+            ? $this->check_out_date->copy()->subDay()->toDateString()
+            : null;
+
+        \App\Jobs\PushPriceLabsBookingToIapi::dispatch((int) $property->id, $start, $end)->afterCommit();
     }
 
     public function leaseOffer(): BelongsTo

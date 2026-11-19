@@ -11,8 +11,11 @@ use App\Services\FeatureGate;
 use App\Services\Pms\AirbnbIcalImporter;
 use App\Services\Pms\AvailabilityLedger;
 use App\Services\Pms\ChannexOutboxSender;
+use App\Services\Pms\ChannexProvider;
 use App\Services\Pms\PmsProviderInterface;
 use App\Services\Pms\PriceLabsRateSource;
+use App\Services\Pms\PriceLabs\PriceLabsIapiClient;
+use App\Services\Pms\PriceLabs\PriceLabsIapiSync;
 use App\Services\Pms\PriceLabsSync;
 use App\Services\Pms\WheelhouseApiClient;
 use App\Services\Pms\WheelhouseApiException;
@@ -53,16 +56,19 @@ class PropertyAvailabilityController extends Controller
             'availabilities' => $availabilities,
             'blockedCount' => $availabilities->where('is_available', false)->count(),
             'isMapped' => (bool) $property->channex_room_type_id,
+            'channexEnvironment' => app(ChannexProvider::class)->environment(),
+            'channexConfigured' => filled(config('services.channex.api_key')),
             'pendingCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '<', 10)->count(),
             'failedCount' => ChannexOutbox::where('property_id', $property->id)->where('attempts', '>=', 10)->count(),
             'lastOutboxError' => ChannexOutbox::where('property_id', $property->id)->whereNotNull('last_error')->latest('updated_at')->value('last_error'),
-            'priceLabsKeySet' => (bool) ($property->owner?->pricelabs_api_key ?: config('services.pricelabs.api_key')),
+            'priceLabsKeySet' => (bool) $property->owner?->pricelabs_api_key,
             'priceLabsHostKeySet' => (bool) $property->owner?->pricelabs_api_key,
-            'priceLabsPlatformKeySet' => (bool) config('services.pricelabs.api_key'),
-            'wheelhousePartnerKeySet' => (bool) config('services.wheelhouse.partner_api_key'),
+            'priceLabsIapiEnabled' => app(PriceLabsIapiClient::class)->enabled(),
+            'priceLabsIapiEmail' => (string) ($property->owner?->pricelabs_account_email ?? ''),
+            'wheelhouseApiAvailable' => true,
             'wheelhouseUserKeySet' => (bool) $property->owner?->wheelhouse_user_api_key,
             'pushLog' => DB::table('channex_push_logs')
-                ->where('channex_property_id', (string) $property->channex_property_id)
+                ->whereIn('channex_property_id', array_filter([(string) $property->channex_property_id, 'guesthub:'.$property->id]))
                 ->latest('id')->limit(30)->get(),
             'calendarExportEnabled' => $property->owner && FeatureGate::enabled($property->owner, 'calendar_export'),
             'calendarExportUrl' => $property->ical_export_token
@@ -162,6 +168,7 @@ class PropertyAvailabilityController extends Controller
         $property->forceFill([
             'pricelabs_listing_id' => $listingId,
             'pricelabs_pms' => $pms,
+            'pricelabs_mode' => 'key',
             'pricelabs_last_refreshed_at' => null, // so the next pull is not skipped as "unchanged"
         ])->save();
 
@@ -183,7 +190,7 @@ class PropertyAvailabilityController extends Controller
         $submittedKey = trim((string) ($data['pricelabs_api_key'] ?? ''));
         $key = $submittedKey ?: $source->apiKeyFor($property);
         if (! $key) {
-            return back()->with('error', 'Enter a PriceLabs API key to verify it.');
+            return back()->with('error', 'Add your PriceLabs API key.');
         }
 
         try {
@@ -199,6 +206,47 @@ class PropertyAvailabilityController extends Controller
         return back()
             ->with('success', 'PriceLabs API key verified. Choose the listing for this property.')
             ->with('priceLabsListings', $listings);
+    }
+
+    public function registerPriceLabsIapi(Request $request, Property $property, PriceLabsIapiSync $iapi)
+    {
+        $data = $request->validate([
+            'pricelabs_account_email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $owner = $property->owner;
+        if (! $owner) {
+            return back()->with('error', 'Assign this property to a host before configuring PriceLabs.');
+        }
+
+        $owner->forceFill(['pricelabs_account_email' => $data['pricelabs_account_email']])->save();
+
+        try {
+            $iapi->registerListing($property);
+            $iapi->pushCalendar($property);
+            $iapi->pushReservations($property);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'PriceLabs listing setup started, but a push failed: '.$exception->getMessage());
+        }
+
+        ActivityLog::record('property_pricelabs_iapi_registered', "{$property->name}: PriceLabs IAPI listing and initial calendar sent.", 'properties', $property);
+
+        return back()->with('success', 'PriceLabs listing registered and the initial calendar was sent.');
+    }
+
+    public function pushPriceLabsReservations(Property $property, PriceLabsIapiSync $iapi)
+    {
+        try {
+            $result = $iapi->pushReservations($property);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'PriceLabs reservations could not be sent: '.$exception->getMessage());
+        }
+
+        return back()->with('success', 'PriceLabs reservation sync completed.');
     }
 
     public function releaseManualRates(Property $property)
@@ -267,12 +315,15 @@ class PropertyAvailabilityController extends Controller
         try {
             $listings = $client->listings(trim($data['wheelhouse_user_api_key']));
         } catch (WheelhouseApiException $exception) {
-            return back()->with('error', 'Wheelhouse key verification failed: '.$exception->getMessage());
+            $message = in_array($exception->status, [401, 403], true)
+                ? 'That key was not accepted. Check the key and try again.'
+                : 'Wheelhouse key verification failed: '.$exception->getMessage();
+
+            return back()->with('error', $message);
         }
 
         $owner->forceFill([
             'wheelhouse_user_api_key' => trim($data['wheelhouse_user_api_key']),
-            'wheelhouse_integrators_user_id' => null,
         ])->save();
 
         return back()
@@ -316,17 +367,6 @@ class PropertyAvailabilityController extends Controller
         return back()->with('success', 'Wheelhouse listing saved.');
     }
 
-    public function connectWheelhouse(Property $property, WheelhouseConnectionService $connection)
-    {
-        try {
-            $connection->connectIntegratorListing($property);
-        } catch (WheelhouseApiException $exception) {
-            return back()->with('error', 'Wheelhouse connection failed: '.$exception->getMessage());
-        }
-
-        return back()->with('success', 'GuestHub registered the host and created or updated the Wheelhouse listing.');
-    }
-
     public function savePricingProvider(Request $request, Property $property, AvailabilityLedger $ledger)
     {
         $data = $request->validate([
@@ -343,8 +383,8 @@ class PropertyAvailabilityController extends Controller
         if ($provider === 'wheelhouse' && ! $property->wheelhouse_listing_id) {
             return back()->with('error', 'Connect Wheelhouse and choose or create a listing first.');
         }
-        if ($provider === 'wheelhouse' && (! $property->owner?->wheelhouse_user_api_key || ! config('services.wheelhouse.partner_api_key'))) {
-            return back()->with('error', 'Configure the Wheelhouse partner key and host API key before activating Wheelhouse.');
+        if ($provider === 'wheelhouse' && (! $property->owner?->wheelhouse_user_api_key || ! $property->wheelhouse_channel)) {
+            return back()->with('error', 'Add the host Wheelhouse API key and choose a listing with its channel before activating Wheelhouse.');
         }
 
         $previous = $property->pricing_provider;
@@ -353,10 +393,23 @@ class PropertyAvailabilityController extends Controller
         }
 
         DB::transaction(function () use ($property, $previous, $provider, $ledger): void {
+            $updates = ['pricing_provider' => $provider];
             if ($previous && $previous !== $provider) {
                 $ledger->clearProviderRates($property, $previous);
+                if ($previous === 'pricelabs') {
+                    $updates += [
+                        'pricelabs_listing_id' => null,
+                        'pricelabs_pms' => null,
+                        'pricelabs_last_refreshed_at' => null,
+                    ];
+                } elseif ($previous === 'wheelhouse') {
+                    $updates += [
+                        'wheelhouse_listing_id' => null,
+                        'wheelhouse_channel' => null,
+                    ];
+                }
             }
-            $property->forceFill(['pricing_provider' => $provider])->save();
+            $property->forceFill($updates)->save();
         });
 
         ActivityLog::record(
@@ -384,9 +437,10 @@ class PropertyAvailabilityController extends Controller
             ->map(fn (array $item) => [
                 'id' => (string) ($item['id'] ?? ''),
                 'channel' => (string) ($item['channel'] ?? ''),
-                'title' => (string) ($item['title'] ?? $item['nickname'] ?? $item['id'] ?? ''),
+                'title' => (string) ($item['title'] ?? $item['id'] ?? ''),
+                'is_active' => (bool) ($item['is_active'] ?? true),
             ])
-            ->filter(fn (array $item) => $item['id'] !== '' && $item['channel'] !== '')
+            ->filter(fn (array $item) => $item['id'] !== '' && $item['channel'] !== '' && $item['is_active'])
             ->values()
             ->all();
     }

@@ -432,6 +432,11 @@ class GuestController extends Controller
             return response()->json(['ok' => false, 'error' => 'Payments are not available right now. Please contact us.'], 503);
         }
 
+        $owner = $booking->property->owner;
+        if (! filled($owner?->stripe_account_id) || ! $owner->stripe_charges_enabled) {
+            return response()->json(['ok' => false, 'error' => 'Card payments are not available for this host. Please contact the property owner.'], 422);
+        }
+
         $amountCents = $booking->calculatePreCheckinChargeCents();
 
         if ($amountCents <= 0) {
@@ -442,10 +447,21 @@ class GuestController extends Controller
         // reuse the existing pending one if there is one, re-fetching its
         // client_secret from Stripe so the guest can still complete payment.
         $existing = $booking->charges()->where('type', \App\Models\Charge::TYPE_DEPOSIT)->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
+        if ($existing && $existing->stripe_account_id !== $owner->stripe_account_id) {
+            $retired = $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id);
+            if ($retired === false) {
+                return response()->json(['ok' => false, 'error' => 'Deposit has already been paid.'], 422);
+            }
+            if ($retired === null) {
+                return response()->json(['ok' => false, 'error' => 'A previous payment is still processing. Please wait before trying again.'], 409);
+            }
+            $existing = null;
+        }
+
         if ($existing) {
             return response()->json([
                 'ok' => true,
-                'client_secret' => $service->retrieveClientSecret($existing->stripe_payment_intent_id),
+                'client_secret' => $service->retrieveClientSecret($existing->stripe_payment_intent_id, $owner->stripe_account_id),
                 'publishable_key' => config('services.stripe.key'),
                 'amount_cents' => $existing->amount_cents,
             ]);
@@ -453,6 +469,7 @@ class GuestController extends Controller
 
         $result = $service->createPendingIntent(
             $booking,
+            $owner->stripe_account_id,
             \App\Models\Charge::TYPE_DEPOSIT,
             $amountCents,
             'precheckin_approval',
@@ -584,8 +601,17 @@ class GuestController extends Controller
         $booking = $this->booking($bookingId, $token);
         $service = app(\App\Services\Payments\PaymentService::class);
 
+        if (! $booking->pay_by_cc) {
+            return response()->json(['ok' => false, 'error' => 'Card payment is not enabled for this booking.'], 403);
+        }
+
         if (! $service->isConfigured()) {
             return response()->json(['ok' => false, 'error' => 'Payments are not available right now. Please contact us.'], 503);
+        }
+
+        $owner = $booking->property->owner;
+        if (! filled($owner?->stripe_account_id) || ! $owner->stripe_charges_enabled) {
+            return response()->json(['ok' => false, 'error' => 'Card payments are not available for this host. Please contact the property owner.'], 422);
         }
 
         $type = $request->validate(['type' => ['required', 'string', 'in:parking,early_checkin,late_checkout,incidentals']])['type'];
@@ -615,8 +641,19 @@ class GuestController extends Controller
         // Avoid creating a duplicate outstanding intent for the same type —
         // reuse the existing pending one if there is one already.
         $existing = $booking->charges()->where('type', $type)->where('status', \App\Models\Charge::STATUS_PENDING)->latest()->first();
+        if ($existing && $existing->stripe_account_id !== $owner->stripe_account_id) {
+            $retired = $service->retirePendingIntentForAccountChange($existing, $owner->stripe_account_id);
+            if ($retired === false) {
+                return response()->json(['ok' => false, 'error' => 'This charge has already been paid.'], 422);
+            }
+            if ($retired === null) {
+                return response()->json(['ok' => false, 'error' => 'A previous payment is still processing. Please wait before trying again.'], 409);
+            }
+            $existing = null;
+        }
+
         if ($existing) {
-            $clientSecret = $service->retrieveClientSecret($existing->stripe_payment_intent_id);
+            $clientSecret = $service->retrieveClientSecret($existing->stripe_payment_intent_id, $owner->stripe_account_id);
 
             return response()->json([
                 'ok' => true,
@@ -627,7 +664,7 @@ class GuestController extends Controller
             ]);
         }
 
-        $result = $service->createPendingIntent($booking, $type, $amountCents, 'guest_initiated');
+        $result = $service->createPendingIntent($booking, $owner->stripe_account_id, $type, $amountCents, 'guest_initiated');
 
         return response()->json([
             'ok' => true,

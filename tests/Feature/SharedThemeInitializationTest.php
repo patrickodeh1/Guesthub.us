@@ -61,80 +61,47 @@ class SharedThemeInitializationTest extends TestCase
         }
     }
 
-    public function test_brand_variables_follow_extreme_theme_colors_on_authenticated_shells(): void
+    public function test_brand_variables_keep_the_fixed_product_palette_despite_legacy_settings(): void
     {
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'must_change_password' => false,
-            'status' => 'active',
-            'password' => Hash::make('StrongPassword123!'),
-        ]);
-        $admin->assignRole('admin');
-
-        Setting::putValue('theme_color', '#facc15');
-        Setting::putValue('button_primary_color', '#facc15');
-
-        $light = $this->actingAs($admin)->get(route('profile.edit'));
-        $light->assertOk()
-            ->assertSee('--theme-primary: #facc15', false)
-            ->assertSee('--on-primary: #0f172a', false);
-
-        Setting::putValue('theme_color', '#111827');
-        Setting::putValue('button_primary_color', '#111827');
-
-        $dark = $this->actingAs($admin)->get(route('profile.edit'));
-        $dark->assertOk()
-            ->assertSee('--theme-primary: #111827', false)
-            ->assertSee('--on-primary: #ffffff', false);
-
-        $this->assertSame('#0f172a', Branding::contrastText('#facc15'));
-        $this->assertSame('#ffffff', Branding::contrastText('#111827'));
-    }
-
-    public function test_admin_settings_keeps_brand_color_in_sync_with_theme_color(): void
-    {
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'must_change_password' => false,
-            'status' => 'active',
-            'password' => Hash::make('StrongPassword123!'),
-        ]);
-        $admin->assignRole('admin');
-
-        $response = $this->actingAs($admin)->put('/admin/settings', [
-            'gps_radius_meters' => 150,
-            'theme_color' => '#facc15',
-            'site_name' => 'GuestHub',
-        ]);
-
-        $response->assertRedirect();
-        $this->assertSame('#facc15', Setting::getValue('theme_color'));
-        $this->assertSame('#facc15', Setting::getValue('brand_color'));
-    }
-
-    public function test_admin_can_reset_brand_and_button_colors_to_defaults(): void
-    {
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $admin = User::factory()->create([
-            'email_verified_at' => now(),
-            'must_change_password' => false,
-            'status' => 'active',
-            'password' => Hash::make('StrongPassword123!'),
-        ]);
-        $admin->assignRole('admin');
-
         Setting::putValue('theme_color', '#facc15');
         Setting::putValue('brand_color', '#facc15');
         Setting::putValue('button_primary_color', '#111827');
 
-        $response = $this->actingAs($admin)
-            ->post(route('admin.settings.reset-colors'));
-        $response->assertRedirect();
+        $this->assertSame(Branding::DEFAULT_THEME_COLOR, Branding::themeColor());
+        $this->assertSame(Branding::DEFAULT_BUTTON_COLOR, Branding::buttonColor());
+        $this->assertSame('#0f172a', Branding::contrastText('#facc15'));
+        $this->assertSame('#ffffff', Branding::contrastText('#111827'));
+    }
 
-        $this->assertSame(\App\Support\Branding::DEFAULT_THEME_COLOR, Setting::getValue('theme_color'));
-        $this->assertSame(\App\Support\Branding::DEFAULT_THEME_COLOR, Setting::getValue('brand_color'));
-        $this->assertSame(\App\Support\Branding::DEFAULT_BUTTON_COLOR, Setting::getValue('button_primary_color'));
+    public function test_admin_settings_updates_do_not_change_the_fixed_brand_palette(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create([
+            'email_verified_at' => now(),
+            'must_change_password' => false,
+            'status' => 'active',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $admin->assignRole('admin');
+
+        $this->actingAs($admin)->put('/admin/settings', [
+            'gps_radius_meters' => 150,
+            'theme_color' => '#facc15',
+            'button_primary_color' => '#111827',
+            'site_name' => 'GuestHub',
+        ])->assertRedirect();
+
+        $this->assertSame(Branding::DEFAULT_THEME_COLOR, Branding::themeColor());
+        $this->assertSame(Branding::DEFAULT_BUTTON_COLOR, Branding::buttonColor());
+    }
+
+    public function test_legacy_color_settings_cannot_override_the_shared_branding_helpers(): void
+    {
+        Setting::putValue('theme_color', '#ffffff');
+        Setting::putValue('brand_color', '#000000');
+        Setting::putValue('button_primary_color', '#ff0000');
+
+        $this->assertSame(Branding::DEFAULT_THEME_COLOR, Branding::themeColor());
+        $this->assertSame(Branding::DEFAULT_BUTTON_COLOR, Branding::buttonColor());
     }
 }

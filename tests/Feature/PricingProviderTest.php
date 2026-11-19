@@ -61,7 +61,7 @@ class PricingProviderTest extends TestCase
     public function test_direct_only_pricelabs_rates_are_applied_and_used_in_quotes(): void
     {
         $date = now()->addDays(20)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-101',
@@ -90,7 +90,7 @@ class PricingProviderTest extends TestCase
     public function test_manual_rates_are_not_overwritten_by_provider_sync(): void
     {
         $date = now()->addDays(21)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-102',
@@ -120,7 +120,7 @@ class PricingProviderTest extends TestCase
     public function test_channex_rate_plan_gate_and_outbox_behavior_are_preserved(): void
     {
         $date = now()->addDays(22)->toDateString();
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'pricelabs',
             'pricelabs_listing_id' => 'pl-103',
@@ -185,7 +185,7 @@ class PricingProviderTest extends TestCase
 
     public function test_price_labs_key_verification_encrypts_and_hides_the_host_key(): void
     {
-        config(['services.pricelabs.api_key' => 'platform-key']);
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
         Http::fake([
             'https://api.pricelabs.co/v1/listings_minimal' => Http::response([[
                 'id' => 'pl-201',
@@ -236,21 +236,18 @@ class PricingProviderTest extends TestCase
         $this->assertNull($this->owner->fresh()->pricelabs_api_key);
     }
 
-    public function test_wheelhouse_recommendations_use_the_shared_ledger_and_quote_path(): void
+    public function test_wheelhouse_recommendations_use_the_host_key_and_shared_ledger(): void
     {
         $date = now()->addDays(24)->toDateString();
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-        ]);
-        $this->owner->forceFill(['wheelhouse_user_api_key' => 'user-key'])->save();
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'host-read-only-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'wheelhouse',
-            'wheelhouse_listing_id' => 'test-1-2',
+            'wheelhouse_listing_id' => 'channel-listing-1',
             'wheelhouse_channel' => 'airbnb',
         ])->save();
         Http::fake([
-            'wheelhouse.test/ss_api/v1/listings/*/price_recommendations*' => Http::response([
+            'wheelhouse.test/ss_api/v1/listings/channel-listing-1/price_recommendations*' => Http::response([
                 'data' => [['stay_date' => $date, 'price' => 175.25, 'min_stay' => 1]],
             ]),
         ]);
@@ -262,77 +259,152 @@ class PricingProviderTest extends TestCase
             'property_id' => $this->property->id,
             'date' => $date,
             'rate' => 175.25,
+            'min_stay_arrival' => 1,
             'rates_source' => 'wheelhouse',
         ]);
         $this->assertSame(17525, $this->quote($date)['subtotal_cents']);
         Http::assertSent(fn (ClientRequest $request) => str_contains($request->url(), '/price_recommendations')
             && str_contains($request->url(), 'channel=airbnb')
-            && $request->hasHeader('X-Integration-Api-Key', 'partner-key')
-            && $request->hasHeader('X-User-API-Key', 'user-key'));
+            && $request->hasHeader('X-Integration-Api-Key', 'host-read-only-key')
+            && ! $request->hasHeader('X-User-API-Key'));
     }
 
-    public function test_guesthub_managed_wheelhouse_connection_registers_user_and_upserts_unique_listing(): void
+    public function test_wheelhouse_lists_are_paginated_and_scoped_to_each_hosts_key(): void
     {
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-        ]);
-        Http::fake([
-            'wheelhouse.test/ss_api/v1/user_registration' => Http::response(['user_api_key' => 'returned-user-key']),
-            'wheelhouse.test/ss_api/v1/listings/*' => Http::response(['id' => 'ok']),
-        ]);
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $otherOwner = User::factory()->create(['name' => 'Second Rate Host']);
+        $otherOwner->assignRole('owner');
+        $otherProperty = Property::factory()->create(['owner_id' => $otherOwner->id]);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'first-host-key'])->save();
+        $otherOwner->forceFill(['wheelhouse_user_api_key' => 'second-host-key'])->save();
 
-        app(WheelhouseConnectionService::class)->connectIntegratorListing($this->property);
+        Http::fake(function (ClientRequest $request) {
+            $key = $request->header('X-Integration-Api-Key')[0] ?? '';
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+            $page = (int) ($query['page'] ?? 1);
+            if ($key === 'first-host-key') {
+                return Http::response($page === 1
+                    ? [['id' => 'first-listing', 'channel' => 'airbnb', 'title' => 'First Host Home', 'is_active' => true]]
+                    : []);
+            }
 
-        $user = $this->owner->fresh();
-        $property = $this->property->fresh();
-        $this->assertSame('test-'.$user->id, $user->wheelhouse_integrators_user_id);
-        $this->assertSame('returned-user-key', $user->wheelhouse_user_api_key);
-        $this->assertSame("test-{$user->id}-{$property->id}", $property->wheelhouse_listing_id);
-        $this->assertNotSame('returned-user-key', DB::table('users')->where('id', $user->id)->value('wheelhouse_user_api_key'));
-        Http::assertSent(fn (ClientRequest $request) => $request->method() === 'POST'
-            && str_ends_with($request->url(), '/user_registration')
-            && $request['integrators_user_id'] === 'test-'.$user->id
-            && $request->hasHeader('X-Integration-Api-Key', 'partner-key'));
-        Http::assertSent(fn (ClientRequest $request) => $request->method() === 'PUT'
-            && str_ends_with($request->url(), '/listings/test-'.$user->id.'-'.$property->id)
-            && $request['source_user_id'] === 'test-'.$user->id
-            && $request->hasHeader('X-User-API-Key', 'returned-user-key'));
+            return Http::response([['id' => 'second-listing', 'channel' => 'vrbo', 'title' => 'Second Host Home', 'is_active' => true]]);
+        });
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $this->property), [
+                'wheelhouse_user_api_key' => 'first-host-key',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('wheelhouseListings', [
+                ['id' => 'first-listing', 'channel' => 'airbnb', 'title' => 'First Host Home', 'is_active' => true],
+            ]);
+
+        $this->actingAs($otherOwner)
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $otherProperty), [
+                'wheelhouse_user_api_key' => 'second-host-key',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('wheelhouseListings', [
+                ['id' => 'second-listing', 'channel' => 'vrbo', 'title' => 'Second Host Home', 'is_active' => true],
+            ]);
+
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-Integration-Api-Key', 'second-host-key'));
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-listing', $this->property), [
+                'wheelhouse_selection' => 'second-listing|vrbo',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Choose a listing returned by Wheelhouse for this host.');
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-wheelhouse-listing', $this->property), [
+                'wheelhouse_selection' => 'first-listing|airbnb',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+        $this->assertSame('first-listing', $this->property->fresh()->wheelhouse_listing_id);
+        $this->assertSame('airbnb', $this->property->fresh()->wheelhouse_channel);
+
+        $all = app(\App\Services\Pms\WheelhouseApiClient::class)->listings('first-host-key', 1);
+        $this->assertCount(1, $all);
+        Http::assertSent(fn (ClientRequest $request) => str_contains($request->url(), 'page=2')
+            && $request->hasHeader('X-Integration-Api-Key', 'first-host-key'));
+        $this->assertSame('first-host-key', $this->owner->fresh()->wheelhouse_user_api_key);
+        $this->assertSame('second-host-key', $otherOwner->fresh()->wheelhouse_user_api_key);
     }
 
-    public function test_wheelhouse_recommendations_webhook_triggers_an_immediate_pull(): void
+    public function test_invalid_wheelhouse_key_is_not_saved_and_shows_clear_error(): void
     {
-        $date = now()->addDays(25)->toDateString();
-        config([
-            'services.wheelhouse.partner_api_key' => 'partner-key',
-            'services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1',
-            'services.wheelhouse.webhook_secret' => 'webhook-secret',
-        ]);
-        $this->owner->forceFill([
-            'wheelhouse_user_api_key' => 'user-key',
-            'wheelhouse_integrators_user_id' => 'test-'.$this->owner->id,
-        ])->save();
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        Http::fake(['wheelhouse.test/ss_api/v1/listings*' => Http::response(['error' => 'API key authorization failed.'], 401)]);
+
+        $this->actingAs($this->owner)
+            ->from(route('admin.properties.availability.index', $this->property))
+            ->post(route('admin.properties.availability.save-wheelhouse-key', $this->property), [
+                'wheelhouse_user_api_key' => 'invalid-key',
+            ])
+            ->assertRedirect(route('admin.properties.availability.index', $this->property))
+            ->assertSessionHas('error', 'That key was not accepted. Check the key and try again.');
+
+        $this->assertNull($this->owner->fresh()->wheelhouse_user_api_key);
+    }
+
+    public function test_revoked_wheelhouse_key_returns_unauthorized_without_crashing_sync(): void
+    {
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'revoked-key'])->save();
         $this->property->forceFill([
             'pricing_provider' => 'wheelhouse',
-            'wheelhouse_listing_id' => "test-{$this->owner->id}-{$this->property->id}",
+            'wheelhouse_listing_id' => 'revoked-listing',
+            'wheelhouse_channel' => 'airbnb',
         ])->save();
         Http::fake([
-            'wheelhouse.test/ss_api/v1/listings/*/price_recommendations*' => Http::response([
-                'data' => [['stay_date' => $date, 'price' => 189.00, 'min_stay' => 1]],
+            'wheelhouse.test/ss_api/v1/listings/revoked-listing/price_recommendations*' => Http::response(['error' => 'API key authorization failed.'], 403),
+        ]);
+
+        $result = app(PriceLabsSync::class)->sync($this->property);
+
+        $this->assertSame('unauthorized', $result['status']);
+        $this->assertStringContainsString('key was not accepted', $result['message']);
+        $this->assertSame('revoked-key', $this->owner->fresh()->wheelhouse_user_api_key);
+    }
+
+    public function test_wheelhouse_rates_flow_to_channex_outbox(): void
+    {
+        $date = now()->addDays(25)->toDateString();
+        config(['services.wheelhouse.base_url' => 'https://wheelhouse.test/ss_api/v1']);
+        $this->owner->forceFill(['wheelhouse_user_api_key' => 'host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'wheelhouse',
+            'wheelhouse_listing_id' => 'channex-linked-listing',
+            'wheelhouse_channel' => 'airbnb',
+            'channex_property_id' => 'ch-property',
+            'channex_room_type_id' => 'ch-room',
+            'channex_rate_plan_id' => 'ch-plan',
+            'rate_source' => 'external',
+        ])->save();
+        Http::fake([
+            'wheelhouse.test/ss_api/v1/listings/channex-linked-listing/price_recommendations*' => Http::response([
+                'data' => [['stay_date' => $date, 'price' => 199.50, 'min_stay' => 1]],
             ]),
         ]);
 
-        $this->post(route('webhooks.wheelhouse', ['secret' => 'webhook-secret']), [
-            'event' => 'listing_recommendations_updated',
-            'listing_id' => $this->property->wheelhouse_listing_id,
-            'external_user_id' => $this->owner->wheelhouse_integrators_user_id,
-        ])->assertNoContent();
+        $result = app(PriceLabsSync::class)->sync($this->property);
 
+        $this->assertSame('ok', $result['status']);
+        $this->assertSame('guesthub', $this->property->fresh()->rate_source);
         $this->assertDatabaseHas('property_availabilities', [
             'property_id' => $this->property->id,
             'date' => $date,
-            'rate' => 189.00,
+            'rate' => 199.50,
             'rates_source' => 'wheelhouse',
+        ]);
+        $this->assertDatabaseHas('channex_outbox', [
+            'property_id' => $this->property->id,
+            'kind' => 'restrictions',
+            'date' => $date,
         ]);
     }
 
@@ -340,10 +412,12 @@ class PricingProviderTest extends TestCase
     {
         $providerDate = now()->addDays(26)->toDateString();
         $manualDate = now()->addDays(27)->toDateString();
-        config(['services.wheelhouse.partner_api_key' => 'partner-key']);
         $this->owner->forceFill(['wheelhouse_user_api_key' => 'wheelhouse-user-key'])->save();
         $this->property->forceFill(['pricing_provider' => 'pricelabs'])->save();
-        $this->property->forceFill(['wheelhouse_listing_id' => 'existing-wheelhouse-listing'])->save();
+        $this->property->forceFill([
+            'wheelhouse_listing_id' => 'existing-wheelhouse-listing',
+            'wheelhouse_channel' => 'airbnb',
+        ])->save();
         app(AvailabilityLedger::class)->setDates($this->property, [$providerDate], ['rate' => 220.00], 'pricelabs');
         app(AvailabilityLedger::class)->setDates($this->property, [$manualDate], ['rate' => 88.00], 'manual');
 
@@ -355,6 +429,8 @@ class PricingProviderTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertSame('wheelhouse', $this->property->fresh()->pricing_provider);
+        $this->assertNull($this->property->fresh()->pricelabs_listing_id);
+        $this->assertNull($this->property->fresh()->pricelabs_pms);
         $this->assertDatabaseHas('property_availabilities', [
             'property_id' => $this->property->id,
             'date' => $providerDate,
@@ -369,6 +445,112 @@ class PricingProviderTest extends TestCase
         ]);
         $this->assertSame(10000, $this->quote($providerDate)['subtotal_cents']);
         $this->assertSame(8800, $this->quote($manualDate)['subtotal_cents']);
+    }
+
+    public function test_hosts_only_use_their_own_pricelabs_keys_and_cannot_cross_access_listings(): void
+    {
+        $otherOwner = User::factory()->create(['name' => 'Other Host', 'host_name' => 'Other Host']);
+        $otherOwner->forceFill(['pricelabs_api_key' => 'other-host-key'])->save();
+        $otherProperty = Property::factory()->create([
+            'owner_id' => $otherOwner->id,
+            'active' => true,
+            'address' => '22 Other Street',
+            'city' => 'San Diego',
+            'state' => 'CA',
+            'zip' => '92101',
+            'beds' => 2,
+            'baths' => '1.5',
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'other-listing',
+            'pricelabs_pms' => 'hostaway',
+        ]);
+        $date = now()->addDays(28)->toDateString();
+        $this->owner->forceFill(['pricelabs_api_key' => 'first-host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'first-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        Http::fake(function (ClientRequest $request) use ($date) {
+            $key = $request->header('X-API-Key')[0] ?? '';
+            return Http::response([[
+                'last_refreshed_at' => '2026-11-18T00:00:00Z',
+                'data' => [['date' => $date, 'price' => $key === 'first-host-key' ? 111 : 222, 'min_stay' => 1]],
+            ]]);
+        });
+
+        $firstResult = app(PriceLabsSync::class)->sync($this->property);
+        $otherResult = app(PriceLabsSync::class)->sync($otherProperty);
+
+        $this->assertSame('ok', $firstResult['status']);
+        $this->assertSame('ok', $otherResult['status']);
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $this->property->id, 'date' => $date, 'rate' => 111, 'rates_source' => 'pricelabs',
+        ]);
+        $this->assertDatabaseHas('property_availabilities', [
+            'property_id' => $otherProperty->id, 'date' => $date, 'rate' => 222, 'rates_source' => 'pricelabs',
+        ]);
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-API-Key', 'first-host-key'));
+        Http::assertSent(fn (ClientRequest $request) => $request->hasHeader('X-API-Key', 'other-host-key'));
+    }
+
+    public function test_missing_host_pricelabs_key_skips_without_making_a_provider_request(): void
+    {
+        config(['services.pricelabs.api_key' => 'must-not-be-used']);
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'no-key-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+        Http::fake();
+
+        $result = app(PriceLabsSync::class)->sync($this->property);
+
+        $this->assertSame('skipped', $result['status']);
+        $this->assertSame('Add your PriceLabs API key.', $result['message']);
+        Http::assertNothingSent();
+    }
+
+    public function test_switching_back_from_wheelhouse_clears_wheelhouse_linkage(): void
+    {
+        $this->owner->forceFill(['pricelabs_api_key' => 'host-key'])->save();
+        $this->property->forceFill([
+            'pricing_provider' => 'wheelhouse',
+            'wheelhouse_listing_id' => 'wheelhouse-listing',
+            'wheelhouse_channel' => 'airbnb',
+            'pricelabs_listing_id' => 'pricelabs-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        $this->actingAs($this->owner)
+            ->post(route('admin.properties.availability.save-pricing-provider', $this->property), [
+                'pricing_provider' => 'pricelabs',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $fresh = $this->property->fresh();
+        $this->assertSame('pricelabs', $fresh->pricing_provider);
+        $this->assertNull($fresh->wheelhouse_listing_id);
+        $this->assertNull($fresh->wheelhouse_channel);
+        $this->assertSame('pricelabs-listing', $fresh->pricelabs_listing_id);
+    }
+
+    public function test_shared_key_usage_report_lists_missing_host_keys_without_changing_data(): void
+    {
+        $this->property->forceFill([
+            'pricing_provider' => 'pricelabs',
+            'pricelabs_listing_id' => 'legacy-shared-key-listing',
+            'pricelabs_pms' => 'hostaway',
+        ])->save();
+
+        $this->artisan('integrations:report-shared-key-usage')
+            ->expectsOutputToContain('legacy-shared-key-listing')
+            ->assertExitCode(0);
+
+        $this->assertSame('legacy-shared-key-listing', $this->property->fresh()->pricelabs_listing_id);
+        $this->assertSame('pricelabs', $this->property->fresh()->pricing_provider);
     }
 
     private function quote(string $checkIn): array

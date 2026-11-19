@@ -3,6 +3,7 @@
 use App\Http\Controllers\CalendarExportController;
 use App\Http\Controllers\DirectBookingController;
 use App\Http\Controllers\LeaseApplicationController;
+use App\Http\Controllers\PriceLabsIapiController;
 use App\Http\Controllers\PublicListingController;
 use App\Http\Controllers\StripeConnectController;
 use Illuminate\Support\Facades\Route;
@@ -100,4 +101,8 @@ Route::middleware('web')->group(function (): void {
         ->name('public.indexnow.key');
     Route::post('/webhooks/stripe/connect', [StripeConnectController::class, 'webhook'])
         ->name('webhooks.stripe.connect');
+
+    Route::post('/webhooks/pricelabs/sync', [PriceLabsIapiController::class, 'sync'])->middleware('throttle:120,1')->name('webhooks.pricelabs.sync');
+    Route::post('/webhooks/pricelabs/calendar-trigger', [PriceLabsIapiController::class, 'calendarTrigger'])->middleware('throttle:30,1')->name('webhooks.pricelabs.calendar-trigger');
+    Route::post('/webhooks/pricelabs/hook', [PriceLabsIapiController::class, 'hook'])->middleware('throttle:120,1')->name('webhooks.pricelabs.hook');
 });

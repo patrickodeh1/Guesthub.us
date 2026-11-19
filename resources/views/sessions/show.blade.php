@@ -391,9 +391,9 @@
                             <img src="{{ $ghBarLogo }}" alt="{{ $ghBarSite }}" class="h-8 max-w-[140px] w-auto object-contain">
                         @endif
                     </div>
-                    <span class="guest-status-pill is-ready">
-                        <x-icon name="clock" class="h-4 w-4" />
-                        Ready to start
+                    <span class="guest-status-pill {{ \App\Services\CleanerAccessSteps::locationVerified($session) ? 'is-ready' : '' }}">
+                        <x-icon name="{{ \App\Services\CleanerAccessSteps::locationVerified($session) ? 'check' : 'map-pin' }}" class="h-4 w-4" />
+                        {{ \App\Services\CleanerAccessSteps::locationVerified($session) ? 'Ready to start' : 'Location verification' }}
                     </span>
                 </div>
                 <div class="px-6 py-10 md:py-16">
@@ -415,9 +415,11 @@
                     @else
                         <div class="mb-6">
                             {{-- gh-ready-gate --}}
-                            <h1 class="guest-status-title">Ready to start</h1>
-                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) )
+                            @if (\App\Services\CleanerAccessSteps::locationVerified($session))
+                                <h1 class="guest-status-title">Ready to start</h1>
                                 <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
+                            @else
+                                <h1 class="guest-status-title">Verify your location</h1>
                             @endif
                         </div>
 

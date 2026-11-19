@@ -166,10 +166,13 @@ class GpsOverrideAndScheduleTest extends TestCase
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
-            'owner_id' => $owner->id
+            'owner_id' => $owner->id,
+            'cleaner_start_window_minutes' => 120,
+            'cleaner_end_window_minutes' => 120,
+            'cleaner_start_window_enabled' => true,
         ]);
-        
-        $propertyTz = config('app.timezone');
+
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $futureTime = now($propertyTz)->addHours(4);
 
         $session = CleaningSession::factory()->create([
@@ -177,6 +180,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
+            'assignment_status' => 'confirmed',
             'scheduled_date' => $futureTime->toDateString(),
             'scheduled_time' => $futureTime->toTimeString(),
         ]);
@@ -184,14 +188,12 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
+        $response->assertSee('Session not available yet');
         $response->assertSee('You cannot start yet.');
         $response->assertDontSee('Ready to start');
-        
-        // Assert we do not see the View Only mode (which shows they can view it)
-        $response->assertDontSee('You can view the checklist, but you can only start working');
     }
 
-    public function test_cleaner_can_access_checklist_after_scheduled_time()
+    public function test_cleaner_can_reach_location_verification_after_scheduled_time()
     {
         $owner = $this->createUser();
         $owner->assignRole('owner');
@@ -200,10 +202,13 @@ class GpsOverrideAndScheduleTest extends TestCase
         $cleaner->assignRole('housekeeper');
         
         $property = Property::factory()->create([
-            'owner_id' => $owner->id
+            'owner_id' => $owner->id,
+            'cleaner_start_window_minutes' => 120,
+            'cleaner_end_window_minutes' => 120,
+            'cleaner_start_window_enabled' => true,
         ]);
-        
-        $propertyTz = config('app.timezone');
+
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $pastTime = now($propertyTz)->subHours(1);
 
         $session = CleaningSession::factory()->create([
@@ -211,6 +216,11 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
+            'assignment_status' => 'confirmed',
+            // The factory can generate gps_confirmed_at from its random initial status.
+            // This test specifically exercises the pre-GPS verification screen.
+            'gps_confirmed_at' => null,
+            'gps_override_enabled' => false,
             'scheduled_date' => $pastTime->toDateString(),
             'scheduled_time' => $pastTime->toTimeString(),
         ]);
@@ -218,8 +228,9 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
+        $response->assertSee('Verify my location');
         $response->assertDontSee('Session Not Yet Available');
-        $response->assertSee('Ready to start');
+        $response->assertDontSee('Ready to start');
     }
 
     public function test_owner_can_open_cleaner_workflow_without_changing_assigned_cleaner(): void
@@ -365,7 +376,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $admin->id
         ]);
         
-        $propertyTz = config('app.timezone');
+        $propertyTz = $property->timezone ?: config('app.timezone');
         $futureTime = now($propertyTz)->addHours(2);
 
         $session = CleaningSession::factory()->create([

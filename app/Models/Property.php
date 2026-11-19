@@ -76,7 +76,7 @@ class Property extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'guest_name', 'internal_name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
+        'name', 'guest_name', 'internal_name', 'unit_number', 'slug', 'address', 'city', 'state', 'zip', 'country', 'latitude', 'longitude', 'events_radius_miles', 'timezone', 'checkout_time', 'checkin_time',
         'map_embed_url', 'map_directions_url', 'contact_phone', 'contact_email',
         'welcome_intro', 'checkin_instructions', 'lockbox_code', 'parking_instructions',
         'requires_vehicle_photo',
@@ -94,6 +94,7 @@ class Property extends Model
         'channex_rate_plan_id',
         'rate_source',
         'pricelabs_listing_id', 'pricelabs_pms', 'pricelabs_last_refreshed_at', 'pricelabs_synced_at',
+        'pricelabs_iapi_listing_id', 'pricelabs_mode', 'pricelabs_iapi_listing_pushed_at', 'pricelabs_iapi_calendar_pushed_at', 'pricelabs_iapi_last_price_received_at', 'pricelabs_iapi_last_error',
         'pricing_provider', 'wheelhouse_listing_id', 'wheelhouse_channel', 'wheelhouse_synced_at',
         'airbnb_ical_url',
         'deposit_cap_cents',
@@ -108,6 +109,9 @@ class Property extends Model
     {
         return [
             'channex_availability_seeded_at' => 'datetime',
+            'pricelabs_iapi_listing_pushed_at' => 'datetime',
+            'pricelabs_iapi_calendar_pushed_at' => 'datetime',
+            'pricelabs_iapi_last_price_received_at' => 'datetime',
             'active' => 'boolean', 'requires_vehicle_photo' => 'boolean', 'latitude' => 'decimal:7', 'longitude' => 'decimal:7',
             'parking_rate_sunday' => 'decimal:2', 'parking_rate_monday' => 'decimal:2',
             'parking_rate_tuesday' => 'decimal:2', 'parking_rate_wednesday' => 'decimal:2',

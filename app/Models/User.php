@@ -68,14 +68,16 @@ class User extends Authenticatable
         'stripe_account_id',
         'stripe_charges_enabled',
         'stripe_payouts_enabled',
+        'pricelabs_account_email',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
         'pricelabs_api_key',
+        'pricelabs_account_email',
         'wheelhouse_user_api_key',
-        'wheelhouse_integrators_user_id',
+        'wheelhouse_integrators_user_id', // Deprecated legacy partner-API identifier; retained for old rows only.
     ];
 
     protected function casts(): array
@@ -182,6 +184,11 @@ class User extends Authenticatable
     }
 
     // ─── Status helpers ───────────────────────────────────────────────────────
+
+    public function seamConnectedAccounts(): HasMany
+    {
+        return $this->hasMany(SeamConnectedAccount::class);
+    }
 
     public function properties(): BelongsToMany
     {

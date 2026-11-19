@@ -48,9 +48,15 @@ class PaymentService
      * reuse an existing pending intent (e.g. on guest page reload) instead
      * of creating a new one.
      */
-    public function retrieveClientSecret(string $paymentIntentId): ?string
+    public function retrieveClientSecret(string $paymentIntentId, string $connectedAccountId): ?string
     {
-        return $this->client()->paymentIntents->retrieve($paymentIntentId)->client_secret;
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to retrieve a guest payment.');
+        }
+
+        return $this->client()->paymentIntents->retrieve($paymentIntentId, [], [
+            'stripe_account' => $connectedAccountId,
+        ])->client_secret;
     }
 
     /**
@@ -61,6 +67,10 @@ class PaymentService
      */
     public function createDirectBookingIntent(Booking $booking, string $connectedAccountId): array
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a direct booking payment.');
+        }
+
         if (! $booking->isDirectBooking() || $booking->status !== Booking::STATUS_PENDING_PAYMENT
             || ($booking->direct_booking_request && ! $booking->direct_booking_approved_at)
             || ($booking->hold_expires_at && $booking->hold_expires_at->isPast())) {
@@ -140,6 +150,10 @@ class PaymentService
      */
     public function createLeaseApplicationIntent(LeaseApplication $application, string $connectedAccountId): array
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a lease application payment.');
+        }
+
         if ($application->status !== 'submitted'
             || $application->payment_method !== 'card'
             || $application->fee_status !== 'pending'
@@ -314,14 +328,21 @@ class PaymentService
         return ['client_secret' => $intent->client_secret, 'charge' => $charge];
     }
 
-    public function createPendingIntent(Booking $booking, string $type, int $amountCents, string $billingMoment, ?string $description = null): array
+    public function createPendingIntent(Booking $booking, string $connectedAccountId, string $type, int $amountCents, string $billingMoment, ?string $description = null): array
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a guest payment.');
+        }
+
         $intent = $this->client()->paymentIntents->create([
             'amount' => $amountCents,
             'currency' => 'usd',
             'payment_method_types' => ['card'],
             'description' => $description ?: "{$type} charge for booking {$booking->booking_id}",
             'metadata' => ['booking_id' => $booking->id, 'type' => $type],
+        ], [
+            'stripe_account' => $connectedAccountId,
+            'idempotency_key' => 'guest-charge-'.$booking->id.'-'.$type.'-attempt-'.$booking->charges()->where('type', $type)->count(),
         ]);
 
         $charge = $booking->charges()->create([
@@ -329,6 +350,7 @@ class PaymentService
             'amount_cents' => $amountCents,
             'status' => Charge::STATUS_PENDING,
             'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $connectedAccountId,
             'billing_moment' => $billingMoment,
             'description' => $description,
         ]);
@@ -444,6 +466,45 @@ class PaymentService
         return $charge;
     }
 
+    /**
+     * Retire an older pending platform/other-account intent before a guest
+     * retries against the property's currently connected Stripe account.
+     * Returns false when Stripe confirms the old intent already succeeded.
+     */
+    public function retirePendingIntentForAccountChange(Charge $charge, string $connectedAccountId): ?bool
+    {
+        if ($charge->stripe_account_id === $connectedAccountId) {
+            return true;
+        }
+
+        $options = $charge->stripe_account_id
+            ? ['stripe_account' => $charge->stripe_account_id]
+            : [];
+        $intent = $this->client()->paymentIntents->retrieve($charge->stripe_payment_intent_id, [], $options);
+
+        if ($intent->status === 'succeeded') {
+            $this->finalize($charge->stripe_payment_intent_id);
+
+            return false;
+        }
+
+        if ($intent->status === 'canceled') {
+            $charge->update(['status' => Charge::STATUS_FAILED]);
+
+            return true;
+        }
+
+        if (! in_array($intent->status, ['requires_payment_method', 'requires_confirmation', 'requires_action', 'requires_capture'], true)) {
+            // Do not start a second charge while the old intent is processing.
+            return null;
+        }
+
+        $this->client()->paymentIntents->cancel($charge->stripe_payment_intent_id, [], $options);
+        $charge->update(['status' => Charge::STATUS_FAILED]);
+
+        return true;
+    }
+
     public function cancelPendingIntent(Charge $charge): void
     {
         if ($charge->status !== Charge::STATUS_PENDING || ! $charge->stripe_payment_intent_id) {
@@ -506,8 +567,12 @@ class PaymentService
      * createPendingIntent()+finalize() above instead, so card data stays
      * entirely within Stripe's own embedded component.
      */
-    public function charge(Booking $booking, string $type, int $amountCents, string $paymentMethodId, string $billingMoment, ?string $description = null): Charge
+    public function charge(Booking $booking, string $connectedAccountId, string $type, int $amountCents, string $paymentMethodId, string $billingMoment, ?string $description = null): Charge
     {
+        if (blank($connectedAccountId)) {
+            throw new \LogicException('A connected Stripe account is required to create a guest payment.');
+        }
+
         $intent = $this->client()->paymentIntents->create([
             'amount' => $amountCents,
             'currency' => 'usd',
@@ -516,13 +581,14 @@ class PaymentService
             'confirm' => true,
             'description' => $description ?: "{$type} charge for booking {$booking->booking_id}",
             'metadata' => ['booking_id' => $booking->id, 'type' => $type],
-        ]);
+        ], ['stripe_account' => $connectedAccountId]);
 
         $charge = $booking->charges()->create([
             'type' => $type,
             'amount_cents' => $amountCents,
             'status' => $intent->status === 'succeeded' ? Charge::STATUS_SUCCESS : Charge::STATUS_FAILED,
             'stripe_payment_intent_id' => $intent->id,
+            'stripe_account_id' => $connectedAccountId,
             'billing_moment' => $billingMoment,
             'captured_at' => $intent->status === 'succeeded' ? now() : null,
             'description' => $description,

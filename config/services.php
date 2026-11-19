@@ -77,11 +77,12 @@ return [
     ],
 
     'pricelabs' => [
-        'api_key' => env('PRICELABS_API_KEY'),
+        'integration_name' => env('PRICELABS_INTEGRATION_NAME'),
+        'integration_token' => env('PRICELABS_INTEGRATION_TOKEN'),
+        'iapi_base_url' => env('PRICELABS_IAPI_BASE_URL'),
     ],
 
     'wheelhouse' => [
-        'partner_api_key' => env('WHEELHOUSE_PARTNER_API_KEY'),
         'base_url' => env('WHEELHOUSE_BASE_URL', 'https://api.usewheelhouse.com/ss_api/v1'),
         'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
     ],
@@ -89,6 +90,7 @@ return [
     'channex' => [
         'api_key' => env('CHANNEX_API_KEY'),
         'base_url' => env('CHANNEX_BASE_URL', 'https://staging.channex.io/api/v1'),
+        'default_currency' => env('CHANNEX_DEFAULT_CURRENCY', 'USD'),
         'webhook_secret' => env('CHANNEX_WEBHOOK_SECRET'),
     ],
 

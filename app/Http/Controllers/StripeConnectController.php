@@ -11,6 +11,17 @@ use Stripe\Exception\SignatureVerificationException;
 use Stripe\StripeClient;
 use Stripe\Webhook;
 
+/**
+ * Human setup checklist:
+ * - Set STRIPE_CLIENT_ID from the Stripe Connect OAuth settings.
+ * - Register route('admin.connect.return') as an allowed OAuth redirect URI.
+ * - Configure route('webhooks.stripe.connect') as a Connect webhook endpoint
+ *   listening to connected-account events, including account.updated and
+ *   account.application.deauthorized; store its signing secret in
+ *   STRIPE_CONNECT_WEBHOOK_SECRET.
+ * - OAuth remains in place for now; Stripe recommends Connect Onboarding for
+ *   new Standard-account integrations as a later migration.
+ */
 class StripeConnectController extends Controller
 {
     public function onboard(Request $request)
@@ -102,6 +113,34 @@ class StripeConnectController extends Controller
             return response()->json(['ok' => false, 'error' => 'Invalid payload'], 400);
         } catch (SignatureVerificationException) {
             return response()->json(['ok' => false, 'error' => 'Invalid signature'], 401);
+        }
+
+        if ($event->type === 'account.application.deauthorized') {
+            // Connect events identify the connected account at the event root;
+            // data.object is the Stripe application, not the connected account.
+            $connectedAccountId = $event->account ?? null;
+            if (is_string($connectedAccountId) && $connectedAccountId !== '') {
+                $user = User::query()->where('stripe_account_id', $connectedAccountId)->first();
+
+                if ($user) {
+                    $user->forceFill([
+                        'stripe_account_id' => null,
+                        'stripe_charges_enabled' => false,
+                        'stripe_payouts_enabled' => false,
+                    ])->save();
+
+                    Log::info('Stripe Connect account was deauthorized.', [
+                        'user_id' => $user->id,
+                        'account_id' => $connectedAccountId,
+                    ]);
+                } else {
+                    Log::warning('Stripe Connect deauthorization event has no matching user.', [
+                        'account_id' => $connectedAccountId,
+                    ]);
+                }
+            } else {
+                Log::warning('Stripe Connect deauthorization event did not include a connected account ID.');
+            }
         }
 
         if ($event->type === 'account.updated') {

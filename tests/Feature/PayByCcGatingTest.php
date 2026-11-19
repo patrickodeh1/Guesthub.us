@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Charge;
 use App\Models\Property;
+use App\Models\User;
+use App\Services\Payments\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -36,6 +39,127 @@ class PayByCcGatingTest extends TestCase
         $booking->refresh();
         $this->assertTrue((bool) $booking->pay_by_cc);
         $this->assertNull($booking->platform_payment_selected_at);
+    }
+
+    public function test_guest_deposit_intent_is_blocked_when_host_has_no_connected_stripe_account(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $property = Property::factory()->create([
+            'owner_id' => $owner->id,
+            'deposit_cap_cents' => 5000,
+        ]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $this->postJson(route('guest.deposit.intent', [$booking->booking_id, $booking->token]))
+            ->assertStatus(422)
+            ->assertJson(['ok' => false, 'error' => 'Card payments are not available for this host. Please contact the property owner.']);
+
+        $this->assertDatabaseCount('charges', 0);
+    }
+
+    public function test_guest_charge_intent_is_blocked_when_pay_by_cc_is_false(): void
+    {
+        $this->configureStripe();
+        $booking = Booking::factory()->create(['pay_by_cc' => false]);
+
+        $this->postJson(route('guest.charge.intent', [$booking->booking_id, $booking->token]), [
+            'type' => 'parking',
+        ])->assertStatus(403)->assertJson(['ok' => false]);
+    }
+
+    public function test_guest_deposit_intent_is_created_for_the_hosts_connected_account(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $owner->forceFill([
+            'stripe_account_id' => 'acct_host_connected',
+            'stripe_charges_enabled' => true,
+        ])->save();
+        $property = Property::factory()->create([
+            'owner_id' => $owner->id,
+            'deposit_cap_cents' => 5000,
+        ]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $payments = \Mockery::mock(PaymentService::class);
+        $payments->shouldReceive('isConfigured')->once()->andReturn(true);
+        $payments->shouldReceive('createPendingIntent')
+            ->once()
+            ->withArgs(fn (Booking $record, string $account, string $type, int $amount, string $moment) =>
+                $record->id === $booking->id
+                && $account === 'acct_host_connected'
+                && $type === Charge::TYPE_DEPOSIT
+                && $moment === 'precheckin_approval'
+            )
+            ->andReturn(['client_secret' => 'pi_connected_secret']);
+        $this->app->instance(PaymentService::class, $payments);
+
+        $this->postJson(route('guest.deposit.intent', [$booking->booking_id, $booking->token]))
+            ->assertOk()
+            ->assertJson(['ok' => true, 'client_secret' => 'pi_connected_secret']);
+    }
+
+    public function test_guest_itemized_charge_uses_the_hosts_connected_stripe_account(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $owner->forceFill([
+            'stripe_account_id' => 'acct_host_connected',
+            'stripe_charges_enabled' => true,
+        ])->save();
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $payments = \Mockery::mock(PaymentService::class);
+        $payments->shouldReceive('isConfigured')->once()->andReturn(true);
+        $payments->shouldReceive('createPendingIntent')
+            ->once()
+            ->withArgs(fn (Booking $record, string $account, string $type, int $amount, string $moment) =>
+                $record->id === $booking->id
+                && $account === 'acct_host_connected'
+                && $type === Charge::TYPE_INCIDENTALS
+                && $amount > 0
+                && $moment === 'guest_initiated'
+            )
+            ->andReturn(['client_secret' => 'pi_itemized_connected_secret']);
+        $this->app->instance(PaymentService::class, $payments);
+
+        $this->postJson(route('guest.charge.intent', [$booking->booking_id, $booking->token]), [
+            'type' => 'incidentals',
+        ])->assertOk()->assertJson([
+            'ok' => true,
+            'client_secret' => 'pi_itemized_connected_secret',
+        ]);
+    }
+
+    public function test_guest_itemized_charge_is_blocked_when_host_cannot_accept_card_payments(): void
+    {
+        $this->configureStripe();
+        $owner = User::factory()->create();
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'incidentals_charge' => 40,
+            'pay_by_cc' => true,
+        ]);
+
+        $this->postJson(route('guest.charge.intent', [$booking->booking_id, $booking->token]), [
+            'type' => 'incidentals',
+        ])->assertStatus(422)->assertJson(['ok' => false]);
+        $this->assertDatabaseCount('charges', 0);
     }
 
     public function test_deposit_intent_is_refused_when_pay_by_cc_is_false(): void
@@ -86,7 +210,10 @@ class PayByCcGatingTest extends TestCase
     public function test_deposit_intent_is_refused_when_nothing_is_due(): void
     {
         $this->configureStripe();
+        $owner = User::factory()->create(['stripe_account_id' => 'acct_test', 'stripe_charges_enabled' => true]);
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
         $booking = Booking::factory()->create([
+            'property_id' => $property->id,
             'pay_by_cc' => true,
             'additional_deposit_mode' => false,
             'incidentals_charge' => 0,
@@ -101,7 +228,12 @@ class PayByCcGatingTest extends TestCase
     public function test_charge_intent_rejects_unknown_type(): void
     {
         $this->configureStripe();
-        $booking = Booking::factory()->create(['pay_by_cc' => true]);
+        $owner = User::factory()->create(['stripe_account_id' => 'acct_test', 'stripe_charges_enabled' => true]);
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'pay_by_cc' => true,
+        ]);
 
         $response = $this->postJson(
             route('guest.charge.intent', [$booking->booking_id, $booking->token]),
@@ -114,7 +246,13 @@ class PayByCcGatingTest extends TestCase
     public function test_charge_intent_for_parking_is_refused_when_nothing_due(): void
     {
         $this->configureStripe();
-        $booking = Booking::factory()->create(['pay_by_cc' => true, 'parking_needed' => false]);
+        $owner = User::factory()->create(['stripe_account_id' => 'acct_test', 'stripe_charges_enabled' => true]);
+        $property = Property::factory()->create(['owner_id' => $owner->id]);
+        $booking = Booking::factory()->create([
+            'property_id' => $property->id,
+            'pay_by_cc' => true,
+            'parking_needed' => false,
+        ]);
 
         $response = $this->postJson(
             route('guest.charge.intent', [$booking->booking_id, $booking->token]),

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Property;
+use App\Models\PropertyLock;
 use App\Models\Category;
 use App\Models\CategoryPage;
 use App\Models\InstructionStep;
@@ -13,6 +14,7 @@ use App\Models\PropertyNotificationRecipient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\MediaService;
+use App\Services\SeamService;
 use Illuminate\Support\Str;
 
 class PropertyController extends Controller
@@ -237,10 +239,56 @@ class PropertyController extends Controller
 
         $this->ensureVisible($request, $property);
 
+        $property->loadMissing('owner.seamConnectedAccounts');
+        $seamAccounts = $property->owner?->seamConnectedAccounts ?? collect();
+        $assignedElsewhere = PropertyLock::query()
+            ->whereNotNull('seam_device_id')
+            ->where('seam_device_id', '!=', '')
+            ->where('property_id', '!=', $property->id)
+            ->pluck('seam_device_id')
+            ->all();
+        $seamDevices = [];
+
+        $connectedSeamAccounts = $seamAccounts->where('status', 'connected');
+        if ($property->owner && $connectedSeamAccounts->isNotEmpty() && filled(config('services.seam.api_key'))) {
+            $seam = app(SeamService::class);
+            foreach ($connectedSeamAccounts as $account) {
+                try {
+                    foreach ($seam->listDevices($account->seam_connected_account_id) as $device) {
+                        $deviceId = $device['device_id'] ?? null;
+                        if (! $deviceId || in_array($deviceId, $assignedElsewhere, true)) {
+                            continue;
+                        }
+
+                        $battery = data_get($device, 'properties.battery.level');
+                        $batteryPercent = is_numeric($battery)
+                            ? (int) max(0, min(100, round((float) $battery <= 1.001 ? (float) $battery * 100 : (float) $battery)))
+                            : null;
+
+                        if ($batteryPercent !== null) {
+                            PropertyLock::where('seam_device_id', $deviceId)->update(['battery_level' => $batteryPercent]);
+                        }
+
+                        $seamDevices[] = [
+                            'device_id' => $deviceId,
+                            'display_name' => $device['display_name'] ?? $device['nickname'] ?? 'Smart lock',
+                            'provider' => $device['device_provider']['device_provider_name'] ?? $device['device_provider']['display_name'] ?? $account->provider ?? 'Smart lock',
+                            'manufacturer' => $device['device_manufacturer']['display_name'] ?? $device['device_manufacturer']['manufacturer'] ?? $account->provider,
+                            'battery_level' => $batteryPercent,
+                        ];
+                    }
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        }
+
         return view('admin.properties.form', [
             'property' => $property,
             'owners' => $this->ownerOptions($request),
             'returnTo' => $request->headers->get('referer'),
+            'seamAccounts' => $seamAccounts,
+            'seamDevices' => collect($seamDevices)->unique('device_id')->values(),
         ]);
     }
 
@@ -416,6 +464,7 @@ class PropertyController extends Controller
             'city' => ['required', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:255'],
             'zip' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'size:2', 'alpha'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
             'map_embed_url' => ['nullable', 'url'],

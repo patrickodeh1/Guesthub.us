@@ -33,6 +33,9 @@
         {{-- Sync status --}}
         <section id="sync-status" class="card card-pad">
             <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-700">
+                @if(auth()->user()->hasRole('admin'))
+                    <span class="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-semibold">Channex: {{ strtoupper($channexEnvironment) }} · {{ $channexConfigured ? 'API key set' : 'API key missing' }}</span>
+                @endif
                 <span><strong>{{ $pendingCount }}</strong> change(s) waiting to send to Channex</span>
                 <span class="{{ $failedCount ? 'font-semibold text-red-700' : '' }}"><strong>{{ $failedCount }}</strong> failed</span>
                 @if($property->pricing_provider === 'wheelhouse')
@@ -244,6 +247,26 @@
                     @endif
                 </div>
 
+                {{-- Channex connection and mapping --}}
+                <div>
+                    <h3 class="font-semibold text-slate-900">Channex connection</h3>
+                    <p class="section-copy">Create the Channex property, its single room type, and a default rate plan from this GuestHub property. You can then connect Airbnb, Vrbo, Booking.com, and other supported channels in the embedded Channex screen.</p>
+                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                        @if(! $property->channex_property_id || ! $property->channex_room_type_id || ! $property->channex_rate_plan_id)
+                            <form method="post" action="{{ route('admin.properties.channex.create', $property) }}">
+                                @csrf
+                                <button type="submit" class="btn-secondary">{{ $property->channex_property_id ? 'Continue Channex setup' : 'Create in Channex' }}</button>
+                            </form>
+                        @else
+                            <span class="text-sm font-medium text-emerald-700">Property, room type, and rate plan created</span>
+                            <a href="{{ route('admin.properties.channex.channels', $property) }}" class="btn-primary">Connect OTA channels</a>
+                        @endif
+                        @if($property->channex_property_id)
+                            <span class="field-help">Channex property ID saved</span>
+                        @endif
+                    </div>
+                </div>
+
                 {{-- Channex room type --}}
                 <div>
                     <h3 class="font-semibold text-slate-900">Channex room type</h3>
@@ -341,12 +364,10 @@
                     </form>
 
                     <h4 class="mt-6 font-semibold text-slate-900">PriceLabs</h4>
-                    <p class="section-copy mt-1">Host API keys take precedence over the platform key. Keys are encrypted at rest; they are never shown again after saving.</p>
+                    <p class="section-copy mt-1">Each host must use their own PriceLabs API key. Keys are encrypted at rest and never shown again after saving.</p>
                     <p class="field-help mt-1">
                         @if($priceLabsHostKeySet)
                             A host key is saved.
-                        @elseif($priceLabsPlatformKeySet)
-                            Using the configured platform key.
                         @else
                             No PriceLabs key is configured.
                         @endif
@@ -354,7 +375,7 @@
                     <form method="post" action="{{ route('admin.properties.availability.verify-pricelabs', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                         @csrf
                         <label class="field-label min-w-[260px] flex-1">PriceLabs API key
-                            <input type="password" name="pricelabs_api_key" autocomplete="new-password" class="input" placeholder="{{ $priceLabsKeySet ? 'Leave blank to use the saved key' : 'Paste API key' }}">
+                            <input type="password" name="pricelabs_api_key" autocomplete="new-password" class="input" placeholder="{{ $priceLabsKeySet ? 'Leave blank to use your saved key' : 'Paste API key' }}">
                         </label>
                         <button type="submit" class="btn-secondary">Verify and load listings</button>
                     </form>
@@ -379,7 +400,7 @@
                         @csrf
                         @php
                             $activeProviderReady = ($property->pricing_provider === 'pricelabs' && $priceLabsKeySet && $property->pricelabs_listing_id)
-                                || ($property->pricing_provider === 'wheelhouse' && $wheelhousePartnerKeySet && $wheelhouseUserKeySet && $property->wheelhouse_listing_id);
+                                || ($property->pricing_provider === 'wheelhouse' && $wheelhouseApiAvailable && $wheelhouseUserKeySet && $property->wheelhouse_listing_id && $property->wheelhouse_channel);
                         @endphp
                         <button type="submit" class="btn-primary" {{ $activeProviderReady ? '' : 'disabled' }}>Pull active provider rates now</button>
                         @if($property->pricing_provider === 'pricelabs' && $property->pricelabs_synced_at)
@@ -389,26 +410,51 @@
                         @endif
                     </form>
 
-                    <h4 class="mt-6 font-semibold text-slate-900">Wheelhouse</h4>
-                    @if($wheelhousePartnerKeySet)
-                        <p class="section-copy mt-1">Connect an existing Wheelhouse account with its User API Key, or create/update a GuestHub-managed Wheelhouse listing.</p>
-                    @else
-                        <p class="field-help mt-1">GuestHub’s Wheelhouse partner key is not configured. Existing account access and integrator registration are unavailable until credentials are added.</p>
+                    @if($priceLabsIapiEnabled)
+                        <div class="mt-5 rounded-xl border border-slate-200 p-4">
+                            <h4 class="font-semibold text-slate-900">PriceLabs direct PMS integration (v2)</h4>
+                            <p class="section-copy mt-1">Connect this property to the host's PriceLabs account. Use the email address registered with PriceLabs. GuestHub sends the listing and its initial 730-day calendar.</p>
+                            <form method="post" action="{{ route('admin.properties.availability.register-pricelabs-iapi', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
+                                @csrf
+                                <label class="field-label min-w-[260px] flex-1">Host's PriceLabs account email
+                                    <input type="email" name="pricelabs_account_email" value="{{ old('pricelabs_account_email', $priceLabsIapiEmail) }}" class="input" maxlength="255" required>
+                                </label>
+                                <button type="submit" class="btn-secondary">Register listing and send calendar</button>
+                            </form>
+                            @if($property->pricelabs_mode === 'pms' && $property->pricelabs_iapi_listing_id)
+                                <dl class="mt-3 grid gap-1 text-sm text-slate-700">
+                                    <div>Listing ID: <strong>{{ $property->pricelabs_iapi_listing_id }}</strong></div>
+                                    <div>Listing pushed: <strong>{{ $property->pricelabs_iapi_listing_pushed_at?->diffForHumans() ?? 'not recorded' }}</strong></div>
+                                    <div>Calendar pushed: <strong>{{ $property->pricelabs_iapi_calendar_pushed_at?->diffForHumans() ?? 'not recorded' }}</strong></div>
+                                    <div>Last price received: <strong>{{ $property->pricelabs_iapi_last_price_received_at?->diffForHumans() ?? 'not received yet' }}</strong></div>
+                                </dl>
+                                @if($property->pricelabs_iapi_last_error)
+                                    <p class="field-help mt-2 text-red-700">Last PriceLabs error: {{ $property->pricelabs_iapi_last_error }}</p>
+                                @endif
+                                <form method="post" action="{{ route('admin.properties.availability.push-pricelabs-reservations', $property) }}" class="mt-3">
+                                    @csrf
+                                    <button type="submit" class="btn-secondary">Send reservations to PriceLabs</button>
+                                </form>
+                            @endif
+                        </div>
                     @endif
+
+                    <h4 class="mt-6 font-semibold text-slate-900">Wheelhouse</h4>
+                    <p class="section-copy mt-1">Connect your own Wheelhouse account using a read-only RM API key. In Wheelhouse, open API & MCP → API Keys and create a read-only key. GuestHub only reads your listings and price recommendations; it never changes Wheelhouse data.</p>
                     @if($wheelhouseUserKeySet)
-                        <p class="field-help mt-2">A Wheelhouse User API Key is saved for this host.</p>
+                        <p class="field-help mt-2">A Wheelhouse key is saved securely for this host. The full key is never displayed.</p>
                     @endif
                     <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-key', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                         @csrf
-                        <label class="field-label min-w-[260px] flex-1">Wheelhouse User API Key
-                            <input type="password" name="wheelhouse_user_api_key" autocomplete="new-password" class="input" placeholder="Paste an existing-account key" required>
+                        <label class="field-label min-w-[260px] flex-1">Wheelhouse read-only RM API key
+                            <input type="password" name="wheelhouse_user_api_key" autocomplete="new-password" class="input" placeholder="Paste your read-only RM API key" required>
                         </label>
-                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Verify existing account</button>
+                        <button type="submit" class="btn-secondary">Verify and load listings</button>
                     </form>
                     @if(session('wheelhouseListings'))
                         <form method="post" action="{{ route('admin.properties.availability.save-wheelhouse-listing', $property) }}" class="mt-3 flex flex-wrap items-end gap-3">
                             @csrf
-                            <label class="field-label min-w-[280px] flex-1">Existing Wheelhouse listing
+                            <label class="field-label min-w-[280px] flex-1">Your active Wheelhouse listing
                                 <select name="wheelhouse_selection" class="input" required>
                                     <option value="">— Select listing —</option>
                                     @foreach(session('wheelhouseListings') as $option)
@@ -419,12 +465,8 @@
                             <button type="submit" class="btn-secondary">Save listing</button>
                         </form>
                     @elseif($property->wheelhouse_listing_id)
-                        <p class="field-help mt-2">Linked listing: {{ $property->wheelhouse_listing_id }}{{ $property->wheelhouse_channel ? ' ('.$property->wheelhouse_channel.')' : ' (GuestHub-managed)' }}</p>
+                        <p class="field-help mt-2">Linked listing: {{ $property->wheelhouse_listing_id }} ({{ $property->wheelhouse_channel }})</p>
                     @endif
-                    <form method="post" action="{{ route('admin.properties.availability.connect-wheelhouse', $property) }}" class="mt-3">
-                        @csrf
-                        <button type="submit" class="btn-secondary" {{ $wheelhousePartnerKeySet ? '' : 'disabled' }}>Create/update GuestHub-managed Wheelhouse listing</button>
-                    </form>
                 </div>
 
                 {{-- Sync tools --}}

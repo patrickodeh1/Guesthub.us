@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/stripe',
             'webhooks/stripe/connect',
             'webhooks/wheelhouse/*',
+            'webhooks/pricelabs/*',
         ]);
         // Trust the load balancer / reverse proxy in front of the app (if any) so
         // Laravel correctly detects HTTPS. Without this, session/remember-me cookies

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\ChannexConnectionController;
 use App\Http\Controllers\Admin\CalendarAssignController;
 use App\Http\Controllers\Admin\CalendarStatusController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -23,6 +24,7 @@ use App\Http\Controllers\Admin\PropertyListingController;
 use App\Http\Controllers\Admin\PropertyLockboxController;
 use App\Http\Controllers\Admin\PropertyLockController;
 use App\Http\Controllers\Admin\QuickAssignController;
+use App\Http\Controllers\Admin\SeamConnectionController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TrainingLogController;
 use App\Http\Controllers\Admin\UserController;
@@ -150,12 +152,13 @@ Route::middleware('auth')->group(function () {
         ->name('password.force-change.store');
 });
 Route::post('/webhooks/seam', [SeamWebhookController::class, 'handle'])->name('webhooks.seam');
+Route::post('/webhooks/wheelhouse/{secret}', [\App\Http\Controllers\WheelhouseWebhookController::class, 'handle'])
+    ->withoutMiddleware([\App\Http\Middleware\EnforceResourceAccess::class])
+    ->name('webhooks.wheelhouse');
+
 Route::post('/webhooks/channex', [ChannexWebhookController::class, 'handle'])->name('webhooks.channex');
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
 Route::post('/webhooks/telnyx/sms', [TelnyxWebhookController::class, 'handle'])->name('webhooks.telnyx.sms');
-Route::post('/webhooks/wheelhouse/{secret}', [\App\Http\Controllers\WheelhouseWebhookController::class, 'handle'])
-    ->middleware('throttle:60,1')
-    ->name('webhooks.wheelhouse');
 
 Route::get('/checkin', [GuestController::class, 'checkinByReservation'])->middleware('throttle:60,1')->name('checkin.rid');
 Route::post('/checkin/verify', [GuestController::class, 'verifyReservationLogin'])->middleware('throttle:10,1')->name('checkin.verify');
@@ -409,6 +412,10 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('media/files', [MediaController::class, 'storeFile'])->name('media.files.store')->middleware('role:admin,owner,company,manager');
     Route::delete('media/files/{file}', [MediaController::class, 'destroyFile'])->name('media.files.destroy')->middleware('role:admin,owner,company,manager');
     Route::post('properties/{property}/duplicate', [PropertyController::class, 'duplicate'])->name('properties.duplicate');
+    Route::post('properties/{property}/locks/connect', [SeamConnectionController::class, 'connect'])->name('locks.connect')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('properties/{property}/locks/connect/return', [SeamConnectionController::class, 'returned'])->name('locks.connect.return')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::get('properties/{property}/locks/connect/failed', [SeamConnectionController::class, 'failed'])->name('locks.connect.failed')->middleware(['role:admin,owner,company', 'property.access']);
+
     Route::post('properties/{property}/locks', [PropertyLockController::class, 'store'])->name('properties.locks.store')->middleware(['role:admin,owner,company', 'property.access']);
     Route::put('properties/{property}/locks/{lock}', [PropertyLockController::class, 'update'])->name('properties.locks.update')->middleware(['role:admin,owner,company', 'property.access']);
     Route::delete('properties/{property}/locks/{lock}', [PropertyLockController::class, 'destroy'])->name('properties.locks.destroy')->middleware(['role:admin,owner,company', 'property.access']);
@@ -420,6 +427,9 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/save-ical-url', [PropertyAvailabilityController::class, 'saveIcalUrl'])->name('properties.availability.save-ical-url')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/import-ical', [PropertyAvailabilityController::class, 'importIcal'])->name('properties.availability.import-ical')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/compare-ical', [PropertyAvailabilityController::class, 'compareIcal'])->name('properties.availability.compare-ical')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/channex/create', [ChannexConnectionController::class, 'createProperty'])->name('properties.channex.create')->middleware(['role:admin,owner', 'property.access']);
+    Route::get('properties/{property}/channex/channels', [ChannexConnectionController::class, 'channels'])->name('properties.channex.channels')->middleware(['role:admin,owner', 'property.access']);
+
     Route::post('properties/{property}/availability/push-to-channex', [PropertyAvailabilityController::class, 'pushToChannex'])->name('properties.availability.push-to-channex')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/fetch-rate-plans', [PropertyAvailabilityController::class, 'fetchRatePlans'])->name('properties.availability.fetch-rate-plans')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-rate-settings', [PropertyAvailabilityController::class, 'saveRateSettings'])->name('properties.availability.save-rate-settings')->middleware(['role:admin,owner,company', 'property.access']);
@@ -431,11 +441,12 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('properties/{property}/availability/retry-failed', [PropertyAvailabilityController::class, 'retryFailed'])->name('properties.availability.retry-failed')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/release-manual', [PropertyAvailabilityController::class, 'releaseManualRates'])->name('properties.availability.release-manual')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/verify-pricelabs', [PropertyAvailabilityController::class, 'verifyPriceLabsKey'])->name('properties.availability.verify-pricelabs')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/register-pricelabs-iapi', [PropertyAvailabilityController::class, 'registerPriceLabsIapi'])->name('properties.availability.register-pricelabs-iapi')->middleware(['role:admin,owner,company', 'property.access']);
+    Route::post('properties/{property}/availability/push-pricelabs-reservations', [PropertyAvailabilityController::class, 'pushPriceLabsReservations'])->name('properties.availability.push-pricelabs-reservations')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-pricing-provider', [PropertyAvailabilityController::class, 'savePricingProvider'])->name('properties.availability.save-pricing-provider')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/sync-pricing', [PropertyAvailabilityController::class, 'syncPriceLabs'])->name('properties.availability.sync-pricing')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-wheelhouse-key', [PropertyAvailabilityController::class, 'saveWheelhouseKey'])->name('properties.availability.save-wheelhouse-key')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('properties/{property}/availability/save-wheelhouse-listing', [PropertyAvailabilityController::class, 'saveWheelhouseListing'])->name('properties.availability.save-wheelhouse-listing')->middleware(['role:admin,owner,company', 'property.access']);
-    Route::post('properties/{property}/availability/connect-wheelhouse', [PropertyAvailabilityController::class, 'connectWheelhouse'])->name('properties.availability.connect-wheelhouse')->middleware(['role:admin,owner,company', 'property.access']);
     Route::post('media/bulk-move', [MediaController::class, 'bulkMove'])->name('media.bulk-move')->middleware('role:admin,owner,company,manager');
     Route::delete('media/bulk-delete', [MediaController::class, 'bulkDelete'])->name('media.bulk-delete')->middleware('role:admin,owner,company,manager');
 
