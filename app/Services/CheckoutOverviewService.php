@@ -43,10 +43,16 @@ class CheckoutOverviewService
 
         $bookings = $this->active(Booking::with('property'))
             ->whereHas('property', fn ($q) => $q->visibleTo($user))
-            ->whereDate('check_out_date', '>=', $today->toDateString())
+            ->where(fn ($w) => $w
+                ->whereDate('check_out_date', '>=', $today->toDateString())
+                ->orWhere(fn ($h) => $h
+                    ->whereNotNull('checked_out_at')
+                    ->whereDate('check_out_date', '>=', $today->copy()->subDays(2)->toDateString())))
             ->whereDate('check_out_date', '<=', $windowEnd->toDateString())
             ->orderBy('check_out_date')
-            ->get();
+            ->get()
+            ->filter(fn (Booking $b) => $b->check_out_date->toDateString() >= $today->toDateString() || $b->holdsArchiveForCleaning())
+            ->values();
 
         if ($bookings->isEmpty()) {
             return [
@@ -129,7 +135,7 @@ class CheckoutOverviewService
                     'overlap' => $group->count() > 1,
                     'property' => $primary->property,
                     'date' => $primary->check_out_date,
-                    'bucket' => $outDate === $today->toDateString() ? 'today'
+                    'bucket' => $outDate <= $today->toDateString() ? 'today'
                         : ($outDate === $tomorrow->toDateString() ? 'tomorrow' : 'later'),
                     'checkout_time' => $this->timeLabel(\App\Support\BookingTimes::approved($primary->checkout_time_status, $primary->checkout_time_preference))
                         ?? $this->timeLabel($primary->property?->checkout_time),

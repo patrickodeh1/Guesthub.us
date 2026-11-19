@@ -125,7 +125,11 @@ class BookingController extends Controller
                 ->orWhere(fn ($s) => $s
                     ->whereDate('check_in_date', '<=', today())
                     ->whereDate('check_out_date', '>', today())
-                    ->whereNull('checked_out_at')))
+                    ->whereNull('checked_out_at'))
+                ->orWhere(fn ($s) => $s
+                    ->whereNotNull('checked_out_at')
+                    ->whereNull('cancelled_at')
+                    ->whereDate('check_out_date', '<', today())))
             ->get()
             ->sortBy(fn ($b) => $b->todayTabSortKey())
             ->values();

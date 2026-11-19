@@ -44,10 +44,11 @@ class DashboardDayService
                 $b = $row['booking'];
                 $date = $row['date']->toDateString();
                 $cleanerRows[$b->id] = $row;
-                if (! isset($offsets[$date])) {
+                // A held checkout from an earlier day (cleaning still open) stays on Today.
+                $offset = $offsets[$date] ?? ($date < $todayStr ? 0 : null);
+                if ($offset === null) {
                     continue;
                 }
-                $offset = $offsets[$date];
 
                 // Upcoming (day 3+) lists check-ins only; in-house guests appear under Currently hosting.
                 // Check-outs live in Today only (Currently hosting covers the rest).
@@ -95,7 +96,9 @@ class DashboardDayService
                     'booking' => $b,
                     'todo' => $todo,
                     'notes' => $notes,
-                    'ok' => $row['covered'] ? 'Cleaner: '.$row['cleaner'] : null,
+                    'ok' => $row['covered']
+                        ? 'Cleaner: '.$row['cleaner'].(in_array($stage = $b->checkedOutLabel(), ['Cleaning in progress', 'Finalized'], true) ? ' · '.$stage : '')
+                        : null,
                     'ok_name' => $row['covered'] ? $row['cleaner'] : null,
                     'ok_pending' => (bool) ($row['cleaner_pending'] ?? false),
                     'assign' => $assign,
@@ -260,9 +263,14 @@ class DashboardDayService
             if ($i['assign']) {
                 $cleaner = ['text' => 'No cleaner assigned', 'tone' => 'red'];
             } elseif ($i['ok']) {
-                $cleaner = ! empty($i['ok_pending']) && isset($i['ok_name'])
-                    ? ['text' => $i['ok_name'].' · pending acceptance', 'tone' => 'slate']
-                    : ['text' => $i['ok_name'] ?? $i['ok'], 'tone' => isset($i['ok_name']) ? 'green' : 'slate'];
+                $stage = ($i['booking']->checked_out_at ?? null) ? $i['booking']->checkedOutLabel() : 'Checked out';
+                if (isset($i['ok_name']) && in_array($stage, ['Cleaning in progress', 'Finalized'], true)) {
+                    $cleaner = ['text' => $i['ok_name'].' · '.$stage, 'tone' => 'green'];
+                } else {
+                    $cleaner = ! empty($i['ok_pending']) && isset($i['ok_name'])
+                        ? ['text' => $i['ok_name'].' · pending acceptance', 'tone' => 'slate']
+                        : ['text' => $i['ok_name'] ?? $i['ok'], 'tone' => isset($i['ok_name']) ? 'green' : 'slate'];
+                }
             }
         }
 

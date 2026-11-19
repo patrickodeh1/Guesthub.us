@@ -1150,7 +1150,7 @@ class Booking extends Model
     public function todayTabLabel(): string
     {
         if ($this->checked_out_at) {
-            return 'Checked out';
+            return $this->checkedOutLabel();
         }
 
         $nights = max(0, (int) $this->check_in_date->copy()->startOfDay()->diffInDays($this->check_out_date->copy()->startOfDay()));
@@ -1181,7 +1181,7 @@ class Booking extends Model
     public function todayTabTimedLabel(): string
     {
         if ($this->checked_out_at) {
-            return 'Checked out';
+            return $this->checkedOutLabel();
         }
 
         $nights = max(0, (int) $this->check_in_date->copy()->startOfDay()->diffInDays($this->check_out_date->copy()->startOfDay()));
@@ -1436,7 +1436,7 @@ class Booking extends Model
     public function weekCardDynamicLabel(): string
     {
         if ($this->checked_out_at) {
-            return 'Checked out';
+            return $this->checkedOutLabel();
         }
 
         if ($this->isMarkedCheckedIn() && ! $this->checked_out_at) {
@@ -1903,6 +1903,9 @@ if ($this->license_plate_photo_path) {
                 if ($booking->isCancelled() || $booking->isPendingPayment() || ! $booking->isPastCheckoutTime()) {
                     continue;
                 }
+                if ($booking->holdsArchiveForCleaning()) {
+                    continue;
+                }
                 $updates = ['archived_at' => now()];
                 $booking->update($updates);
                 $count++;
@@ -1979,6 +1982,56 @@ if ($this->license_plate_photo_path) {
         return route('guest.show', [$this->booking_id, $this->token]);
     }
 
+    private bool $cleaningStageDone = false;
+    private ?string $cleaningStageValue = null;
+
+    /** True while this stay's checkout cleaning is still open, so the guest stays visible and unarchived. */
+    public function holdsArchiveForCleaning(): bool
+    {
+        if (! $this->check_out_date) {
+            return false;
+        }
+        $tz = $this->property?->timezone ?? 'America/New_York';
+        if (now($tz)->toDateString() > $this->check_out_date->copy()->addDays(2)->toDateString()) {
+            return false;
+        }
+
+        return $this->linkedCleanings()->whereNotIn('status', ['completed', 'cancelled'])->exists();
+    }
+
+    /** 'in_progress' | 'finalized' | null (no cleaning, or not started yet). */
+    protected function cleaningStage(): ?string
+    {
+        if ($this->cleaningStageDone) {
+            return $this->cleaningStageValue;
+        }
+        $this->cleaningStageDone = true;
+        if ($this->isArchived() || ! $this->check_out_date) {
+            return null;
+        }
+        $rows = $this->linkedCleanings()->where('status', '<>', 'cancelled')->get(['status', 'started_at']);
+        if ($rows->isEmpty()) {
+            return null;
+        }
+        if ($rows->contains(fn ($r) => $r->status === 'in_progress' || ($r->status !== 'completed' && $r->started_at))) {
+            return $this->cleaningStageValue = 'in_progress';
+        }
+        if ($rows->every(fn ($r) => $r->status === 'completed')) {
+            return $this->cleaningStageValue = 'finalized';
+        }
+
+        return null;
+    }
+
+    public function checkedOutLabel(): string
+    {
+        return match ($this->cleaningStage()) {
+            'in_progress' => 'Cleaning in progress',
+            'finalized' => 'Finalized',
+            default => 'Checked out',
+        };
+    }
+
     public function effectiveStatus(): string
     {
         if ($this->status === 'guest_approved' && $this->isCheckinDay()) {
@@ -1992,6 +2045,13 @@ if ($this->license_plate_photo_path) {
     {
         if ($this->isCancelledByGuest()) {
             return 'Cancelled by Guest';
+        }
+
+        if ($this->status === 'checked_out' || $this->checked_out_at) {
+            $stage = $this->checkedOutLabel();
+            if ($stage !== 'Checked out') {
+                return $stage;
+            }
         }
 
         return str($this->effectiveStatus())->replace('_', ' ')->title()->toString();

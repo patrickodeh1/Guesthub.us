@@ -21,7 +21,16 @@
         $pill = 'Check-in'.$whenWord; $pillClass = 'bg-emerald-100 text-emerald-800';
         $detail = trim(($time ? $time.' · ' : '').$nightsLabel);
     } elseif ($kind === 'checkout') {
-        $pill = 'Check-out'.$whenWord; $pillClass = 'bg-slate-100 text-slate-600';
+        if ($b->checked_out_at) {
+            $pill = $b->checkedOutLabel();
+            $pillClass = match ($pill) {
+                'Cleaning in progress' => 'bg-amber-100 text-amber-800',
+                'Finalized' => 'bg-sky-100 text-sky-800',
+                default => 'bg-slate-100 text-slate-600',
+            };
+        } else {
+            $pill = 'Check-out'.$whenWord; $pillClass = 'bg-slate-100 text-slate-600';
+        }
         $detail = $time ?: null;
     } else {
         $pill = 'Hosting'; $pillClass = 'bg-slate-100 text-slate-600';
