@@ -1572,7 +1572,7 @@ export default function checklistRenderer(config = {}) {
                          requiredViews: 0,
                          requiresViewing: ${showDetails || task.type === 'instructions' ? 'true' : 'false'},
                          hasContentToView: ${showDetails || task.type === 'instructions' ? 'true' : 'false'},
-                         taskType: '${task.type}',
+                         taskType: '${(task.photo_required && task.type === 'room') ? 'verify' : task.type}',
                          get photoRequirement() {
                              if (this.taskType === 'instructions') return 0;
                              if (this.taskType === 'verify' || this.taskType === 'verify_video') return 1;

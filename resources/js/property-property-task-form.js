@@ -97,6 +97,13 @@ export default function propertyPropertyTaskForm({ suggestUrl, storeUrl, csrf, p
                     formData.append('captions[]', input.value || '');
                 });
                 
+                // Per-cleaner photo requirement
+                if (event.target.querySelector('input[name="photo_required_present"]')) {
+                    formData.append('photo_required_present', '1');
+                    event.target.querySelectorAll('input[name="photo_required_user_ids[]"]:checked')
+                        .forEach(cb => formData.append('photo_required_user_ids[]', cb.value));
+                }
+
                 // Add CSRF token
                 formData.append('_token', this.csrf);
 

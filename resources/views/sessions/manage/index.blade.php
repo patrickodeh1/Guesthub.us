@@ -11,7 +11,7 @@
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Cleaning start allowances</h3>
-                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">When enabled, cleaners can start only within the configured range around the scheduled time. Both values at 0:00 means the exact scheduled time. Switch the window off to remove all time restrictions.</p>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">When enabled, cleaners can start only within the configured range around the scheduled time. Enter both values in hours. For example, with a scheduled time of 10:00 AM, 1:00 before and 2:00 after lets a cleaner start between 9:00 AM and 12:00 PM. Both values at 0:00 means the exact scheduled time. Switch the window off to remove all time restrictions.</p>
                 </div>
                 <form method="post" action="{{ route('manage.sessions.cleaning-window.update') }}" class="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="window_enabled" value="0">

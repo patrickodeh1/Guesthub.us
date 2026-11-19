@@ -35,6 +35,60 @@ class Task extends Model
         'training_version' => 'integer',
     ];
 
+    /** True when this cleaner must attach a photo to this task at this property before ticking it off. */
+    public function requiresPhotoFrom(int $propertyId, int $userId): bool
+    {
+        if ($userId <= 0 || $propertyId <= 0 || ! $this->id) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\DB::table('task_photo_requirements')
+            ->where('task_id', $this->id)
+            ->where('property_id', $propertyId)
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /** Cleaners who can be asked to attach photos for tasks at this property. */
+    public static function photoCleanerOptions($property)
+    {
+        $q = \App\Models\User::role('housekeeper');
+        if (! empty($property->owner_id)) {
+            $ids = \Illuminate\Support\Facades\DB::table('housekeeper_owner')
+                ->where('owner_id', $property->owner_id)->pluck('housekeeper_id');
+            if ($ids->isNotEmpty()) {
+                $q->whereIn('users.id', $ids);
+            }
+        }
+
+        return $q->orderBy('name')->get(['users.id', 'users.name']);
+    }
+
+    public function photoRequiredUserIds(int $propertyId): array
+    {
+        return \Illuminate\Support\Facades\DB::table('task_photo_requirements')
+            ->where('task_id', $this->id)->where('property_id', $propertyId)
+            ->pluck('user_id')->map(fn ($i) => (int) $i)->all();
+    }
+
+    public function syncPhotoRequirements(int $propertyId, array $userIds): void
+    {
+        $allowed = static::photoCleanerOptions(\App\Models\Property::find($propertyId))
+            ->pluck('id')->map(fn ($i) => (int) $i)->all();
+        $wanted = array_values(array_intersect(array_map('intval', $userIds), $allowed));
+        $tbl = \Illuminate\Support\Facades\DB::table('task_photo_requirements')
+            ->where('task_id', $this->id)->where('property_id', $propertyId);
+
+        (clone $tbl)->whereNotIn('user_id', $wanted)->delete();
+        $existing = (clone $tbl)->pluck('user_id')->map(fn ($i) => (int) $i)->all();
+        foreach (array_diff($wanted, $existing) as $uid) {
+            \Illuminate\Support\Facades\DB::table('task_photo_requirements')->insert([
+                'property_id' => $propertyId, 'task_id' => $this->id, 'user_id' => $uid,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+    }
+
     public function instructionalVideos(): BelongsToMany
     {
         return $this->belongsToMany(InstructionalVideo::class, 'instructional_video_task')

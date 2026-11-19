@@ -268,7 +268,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'is_default'   => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
@@ -286,6 +286,8 @@ class PropertyController extends Controller
             'instruction_completion_method' => ['nullable', 'string', Rule::in(['manual', 'time', 'scroll'])],
             'media.*'      => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,mov,avi,webm,mkv', 'max:204800'], // 200MB
             'captions.*'   => ['nullable', 'string', 'max:255'],
+            'photo_required_user_ids' => ['nullable', 'array'],
+            'photo_required_user_ids.*' => ['integer'],
         ]);
 
         $name = trim($validated['name']);
@@ -334,6 +336,9 @@ class PropertyController extends Controller
                     'visible_to_housekeeper' => (bool)($validated['visible_to_housekeeper'] ?? true),
                 ]
             ]);
+            if ($request->boolean('photo_required_present')) {
+                $task->syncPhotoRequirements((int) $property->id, $request->input('photo_required_user_ids', []));
+            }
             
             // Clone template media if requested
             if ($request->filled('template_task_id')) {
@@ -395,7 +400,7 @@ class PropertyController extends Controller
 
         $validated = $request->validate([
             'tasks' => ['required', 'string'], // JSON string
-            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
+            'default_type' => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'default_is_sporadic' => ['nullable', 'boolean'],
         ]);
 
@@ -483,7 +488,7 @@ class PropertyController extends Controller
 
         $data = $request->validate([
             'name'         => ['required', 'string', 'max:160'],
-            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions'])],
+            'type'         => ['required', Rule::in(['room', 'inventory', 'verify', 'verify_video', 'instructions', 'lockbox'])],
             'is_sporadic'  => ['nullable', 'boolean'],
             'is_default'   => ['nullable', 'boolean'],
             'instructions' => ['nullable', 'string', 'max:5000'],
@@ -500,6 +505,8 @@ class PropertyController extends Controller
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:0'],
             'instruction_completion_method' => ['nullable', 'string', Rule::in(['manual', 'time', 'scroll'])],
             'bump_version' => ['nullable', 'boolean'],
+            'photo_required_user_ids' => ['nullable', 'array'],
+            'photo_required_user_ids.*' => ['integer'],
             'media.*'      => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,mov,avi,webm,mkv', 'max:204800'], // 200MB
             'captions.*'   => ['nullable', 'string', 'max:255'],
         ]);
@@ -536,6 +543,9 @@ class PropertyController extends Controller
         }
 
         $task->update($updateData);
+        if ($request->boolean('photo_required_present')) {
+            $task->syncPhotoRequirements((int) $property->id, $request->input('photo_required_user_ids', []));
+        }
 
         if (isset($data['instructional_video_ids'])) {
             $task->instructionalVideos()->sync($data['instructional_video_ids']);
@@ -631,6 +641,8 @@ class PropertyController extends Controller
             'instruction_completion_method' => ['nullable', 'string', Rule::in(['manual', 'time', 'scroll'])],
             'media.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,mov,avi,webm,mkv', 'max:204800'],
             'captions.*' => ['nullable', 'string', 'max:255'],
+            'photo_required_user_ids' => ['nullable', 'array'],
+            'photo_required_user_ids.*' => ['integer'],
         ]);
 
         $name = trim($validated['name']);
@@ -679,6 +691,9 @@ class PropertyController extends Controller
                 'show_after_step_id' => $request->filled('show_after_step_id') ? (int) $request->input('show_after_step_id') : null,
             ]
         ]);
+        if ($request->boolean('photo_required_present')) {
+            $task->syncPhotoRequirements((int) $property->id, $request->input('photo_required_user_ids', []));
+        }
 
         // Process media uploads
         if ($request->hasFile('media')) {
@@ -740,6 +755,8 @@ class PropertyController extends Controller
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:0'],
             'instruction_completion_method' => ['nullable', 'string', Rule::in(['manual', 'time', 'scroll'])],
             'bump_version' => ['nullable', 'boolean'],
+            'photo_required_user_ids' => ['nullable', 'array'],
+            'photo_required_user_ids.*' => ['integer'],
             'media.*' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,mp4,mov,avi,webm,mkv', 'max:204800'],
             'captions.*' => ['nullable', 'string', 'max:255'],
         ]);
@@ -778,6 +795,9 @@ class PropertyController extends Controller
         }
 
         $task->update($taskUpdateData);
+        if ($request->boolean('photo_required_present')) {
+            $task->syncPhotoRequirements((int) $property->id, $request->input('photo_required_user_ids', []));
+        }
 
         if (isset($validated['instructional_video_ids'])) {
             $task->instructionalVideos()->sync($validated['instructional_video_ids']);

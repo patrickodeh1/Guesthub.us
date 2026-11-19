@@ -9,6 +9,8 @@
 
 @php
     $isEdit = $mode === 'edit' && $task;
+    $photoCleaners = \App\Models\Task::photoCleanerOptions($property);
+    $photoSelected = $isEdit ? $task->photoRequiredUserIds((int) $property->id) : [];
     $storeUrl = $isEdit
         ? route('properties.tasks.update', [$property, $room, $task])
         : route('properties.tasks.store', [$property, $room]);
@@ -214,6 +216,23 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400">Only included if specifically checked when scheduling a session</div>
                 </div>
             </label>
+        </div>
+
+        {{-- Per-cleaner photo requirement --}}
+        <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
+            <input type="hidden" name="photo_required_present" value="1" />
+            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Require photo from specific cleaners</div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Selected cleaners must attach a photo before they can check this task off. Everyone else just ticks it.</p>
+            @forelse($photoCleaners as $pc)
+                <label class="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="photo_required_user_ids[]" value="{{ $pc->id }}"
+                           {{ in_array((int) $pc->id, $photoSelected, true) ? 'checked' : '' }}
+                           class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500" />
+                    <span>{{ $pc->name }}</span>
+                </label>
+            @empty
+                <p class="text-xs text-gray-500 dark:text-gray-400">No cleaners found for this property.</p>
+            @endforelse
         </div>
 
         {{-- Instructions --}}

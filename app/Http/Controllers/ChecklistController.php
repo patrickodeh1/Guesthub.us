@@ -90,7 +90,7 @@ class ChecklistController extends Controller
             $nowChecked = ! $item->checked;
         }
 
-        if ($nowChecked && in_array($task->type, ['verify', 'verify_video'], true)) {
+        if ($nowChecked && (in_array($task->type, ['verify', 'verify_video'], true) || $task->requiresPhotoFrom((int) $session->property_id, (int) auth()->id()))) {
             $hasFile = method_exists($item, 'photos')
                 ? $item->photos()->exists()
                 : \App\Models\ChecklistItemPhoto::where('checklist_item_id', $item->id)->exists();
@@ -207,7 +207,7 @@ class ChecklistController extends Controller
             $nowChecked = ! $item->checked;
         }
 
-        if ($nowChecked && in_array($task->type, ['verify', 'verify_video'], true)) {
+        if ($nowChecked && (in_array($task->type, ['verify', 'verify_video'], true) || $task->requiresPhotoFrom((int) $session->property_id, (int) auth()->id()))) {
             $hasFile = method_exists($item, 'photos')
                 ? $item->photos()->exists()
                 : \App\Models\ChecklistItemPhoto::where('checklist_item_id', $item->id)->exists();

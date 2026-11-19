@@ -111,7 +111,7 @@
 
                     @php
                         $isVideo = $task->type === 'verify_video';
-                        $isMandatory = in_array($task->type, ['verify', 'verify_video', 'inventory'], true);
+                        $isMandatory = in_array($task->type, ['verify', 'verify_video', 'inventory'], true) || $task->requiresPhotoFrom((int) $session->property_id, (int) auth()->id());
                         $hasPhotos = $item && $item->photos->count() > 0;
                     @endphp
 
