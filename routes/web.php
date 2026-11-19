@@ -850,6 +850,7 @@ Route::middleware('auth')->group(function () {
     // Photo Management
     Route::post('sessions/{session}/rooms/{room}/photos', [PhotoController::class, 'store'])->name('photos.store');
     Route::delete('sessions/{session}/photos/{photo}', [PhotoController::class, 'destroy'])->name('photos.destroy');
+    Route::post('sessions/{session}/photos/{type}/{id}/retain', \App\Http\Controllers\PhotoRetainController::class)->whereIn('type', ['room', 'task'])->whereNumber('id')->name('photos.retain');
 
     // Task Media Management
     Route::post('tasks/{task}/media', [TaskMediaController::class, 'store'])->name('tasks.media.store')->middleware('role:admin,owner,company,manager');

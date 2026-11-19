@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\Log;
 class PruneOldSessionPhotos extends Command
 {
     protected $signature = 'photos:prune-old
-        {--issue-days=60 : Days to keep photos attached to issue items}
-        {--verification-days=30 : Days to keep verification photos}
+        {--issue-days=0 : Ignored. Issue photos are never pruned}
+        {--verification-days=15 : Days to keep verification photos}
         {--days=15 : Days to keep all other cleaner photos}
         {--dry-run : List only}';
-    protected $description = 'Delete expired cleaner photo files and mark their rows as purged (issue 60d, verification 30d, other 15d)';
+    protected $description = 'Delete expired cleaner photo files and mark their rows as purged (issue photos kept indefinitely, verification 15d, other 15d, retained photos never)';
 
     // Never delete files under these folders, whatever a DB row says.
     private const PROTECTED_PREFIXES = [
@@ -35,13 +35,13 @@ class PruneOldSessionPhotos extends Command
         $verifyDays = max(1, (int) $this->option('verification-days'));
         $otherDays = max(1, (int) $this->option('days'));
         $dry = (bool) $this->option('dry-run');
-        $earliest = now()->subDays(min($issueDays, $verifyDays, $otherDays));
+        $earliest = now()->subDays(min($verifyDays, $otherDays));
         $stats = ['purged' => 0, 'files_kept' => 0, 'protected' => 0, 'errors' => 0];
 
-        $this->info(($dry ? '[DRY RUN] ' : '') . "Retention: issue {$issueDays}d, verification {$verifyDays}d, other {$otherDays}d");
+        $this->info(($dry ? '[DRY RUN] ' : '') . "Retention: issue photos kept indefinitely, verification {$verifyDays}d, other {$otherDays}d");
 
         foreach ([RoomPhoto::class, ChecklistItemPhoto::class] as $model) {
-            $query = $model::whereNull('purged_at')->where('created_at', '<', $earliest);
+            $query = $model::whereNull('purged_at')->where('retained', false)->where('created_at', '<', $earliest);
             if ($model === ChecklistItemPhoto::class) {
                 $query->with('checklistItem.task');
             }
@@ -50,6 +50,9 @@ class PruneOldSessionPhotos extends Command
                 foreach ($photos as $photo) {
                     try {
                         [$class, $days] = $this->classify($photo, $issueDays, $verifyDays, $otherDays);
+                        if ($class === 'issue') {
+                            continue; // issue photos are kept indefinitely
+                        }
                         if ($photo->created_at->gte(now()->subDays($days))) {
                             continue; // not expired for its category yet
                         }

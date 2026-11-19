@@ -699,9 +699,14 @@
 
                 <div class="mt-4 grid gap-2.5">
                     @if($nsOut)
-                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. Guest checked out {{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
+                        <div class="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm text-slate-600 font-semibold">Stay complete. @if($booking->checked_in_at)Guest checked in {{ $booking->localTimestamp($booking->checked_in_at)->format('M j, Y g:i A') }} and checked out @else Guest checked out @endif{{ $booking->localTimestamp($booking->checked_out_at)->format('M j, Y g:i A') }}</div>
                     @elseif($nsIn)
-                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Currently hosting. Waiting on the guest to check out.</div>
+                        <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold grid gap-1">
+                            @if($booking->checked_in_at)
+                            <div>Guest checked in {{ $booking->localTimestamp($booking->checked_in_at)->format('M j, Y g:i A') }}</div>
+                            @endif
+                            <div>Currently hosting. Waiting on the guest to check out.</div>
+                        </div>
                     @elseif($booking->isCheckinApproved())
                         <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 font-semibold">Unit ready, check-in approved {{ $booking->localTimestamp($booking->checkin_approved_at)->format('M j, Y g:i A') }}. Waiting on the guest to check in.</div>
                     @elseif($booking->isDepositVerified())

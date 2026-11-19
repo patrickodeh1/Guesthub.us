@@ -2675,7 +2675,7 @@
                                                         $photoUrl = $photo['url'] ?? '';
                                                     @endphp
                                                     @if(!empty($photo['purged']))
-<div class="photo-removed">Photos removed from server</div>
+<div class="photo-removed">Deleted automatically after the retention period</div>
 @elseif($photoUrl)
                                                         @php
                                                             $photoCapturedAt = $photo['captured_at'] ?? null;
@@ -2750,7 +2750,7 @@
                                             @endphp
                                             @if(!empty($photo->purged_at))
 <article class="pair-card">
-    <div class="pair-slot photo-removed">Photos removed from server</div>
+    <div class="pair-slot photo-removed">Deleted automatically after the retention period</div>
     <div class="pair-footer">
         <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
         <div class="pair-time"><span>Required Verification</span></div>
@@ -2766,6 +2766,12 @@
                                                             <img src="{{ $photoUrl }}" alt="Required Photo" loading="lazy">
                                                         @endif
                                                     </button>
+                                                    @auth
+                                                    <form method="POST" action="{{ route('photos.retain', [$session->id, 'task', $photo->id]) }}" class="no-pdf" style="margin-top:6px;">
+                                                        @csrf
+                                                        <button type="submit" title="{{ $photo->retained ? 'Saved permanently. Click to unsave' : 'Save this photo permanently' }}">{{ $photo->retained ? '★ Saved' : '☆ Save' }}</button>
+                                                    </form>
+                                                    @endauth
                                                     <div class="pair-footer">
                                                         <div class="pair-room">{{ $propNameStr }} - {{ $item->task?->name ?? 'Verify' }}</div>
                                                         <div class="pair-time">
@@ -2858,7 +2864,7 @@
                                                     <td>{{ $roomGallery['room_name'] }}</td>
                                                     <td>
                                                         @if(!empty($photo['purged']))
-                                                            <span class="photo-removed">Photos removed from server</span>
+                                                            <span class="photo-removed">Deleted automatically after the retention period</span>
                                                         @else
                                                             <img class="table-thumb" src="{{ $photo['url'] }}" alt="Completion photo">
                                                         @endif
@@ -2939,7 +2945,7 @@
                                                 @endphp
                                                 <article class="pair-card">
                                                     @if(!empty($photo['purged']))
-<div class="pair-slot photo-removed">Photos removed from server</div>
+<div class="pair-slot photo-removed">Deleted automatically after the retention period</div>
 @else
 <button
                                                         type="button"
@@ -2958,7 +2964,15 @@
                                                         <div class="pair-time">
                                                             <span>{{ $photo['uploader'] ?? $preparedBy }}</span>
                                                         </div>
-                                                        @unless(!empty($photo['purged']))
+                                                        @auth
+@if(!empty($photo['photo_id']) && empty($photo['purged']))
+<form method="POST" action="{{ route('photos.retain', [$session->id, $photo['photo_type'], $photo['photo_id']]) }}" class="no-pdf" style="margin-top:6px;">
+    @csrf
+    <button type="submit" title="{{ !empty($photo['retained']) ? 'Saved permanently. Click to unsave' : 'Save this photo permanently' }}">{{ !empty($photo['retained']) ? '★ Saved' : '☆ Save' }}</button>
+</form>
+@endif
+@endauth
+@unless(!empty($photo['purged']))
 <div class="pair-actions no-pdf">
                                                             <button
                                                                 type="button"
