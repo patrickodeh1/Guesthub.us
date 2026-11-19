@@ -56,6 +56,7 @@ class User extends Authenticatable
         'terminated_by',
         'termination_reason',
         'phone',
+        'timezone',
         'avatar',
         'admin_tour_completed_at',
         'dashboard_tour_completed_at',

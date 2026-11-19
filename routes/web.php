@@ -710,6 +710,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [CleaningProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [CleaningProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/preferences', [CleaningProfileController::class, 'updatePreferences'])->name('profile.preferences.update');
+    Route::patch('/profile/timezone', [\App\Http\Controllers\ProfileTimezoneController::class, 'update'])->name('profile.timezone.update');
     Route::delete('/profile', [CleaningProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Properties

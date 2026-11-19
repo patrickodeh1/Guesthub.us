@@ -40,6 +40,33 @@ class TimezoneHelper
         return $local ? $local->format($format) : $default;
     }
 
+    public static function isValid(?string $timezone): bool
+    {
+        return is_string($timezone) && $timezone !== '' && in_array($timezone, timezone_identifiers_list(), true);
+    }
+
+    /**
+     * "9:00 PM CST", or "9:00 PM CST (10:00 PM EST your time)" when the
+     * viewer's offset differs from the instant's own timezone.
+     */
+    public static function dualTime(Carbon $instant, ?string $viewerTz = null): string
+    {
+        $base = $instant->format('g:i A T');
+
+        if (! self::isValid($viewerTz)) {
+            return $base;
+        }
+
+        $mine = $instant->copy()->setTimezone($viewerTz);
+        if ($mine->utcOffset() === $instant->utcOffset()) {
+            return $base;
+        }
+
+        $fmt = $mine->toDateString() === $instant->toDateString() ? 'g:i A T' : 'g:i A T, M j';
+
+        return $base.' ('.$mine->format($fmt).' your time)';
+    }
+
     private static function resolveTimezone(Property|string|null $source): string
     {
         if ($source instanceof Property) {

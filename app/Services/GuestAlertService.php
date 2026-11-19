@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Helpers\TimezoneHelper;
 use App\Mail\GuestAlertMail;
 use App\Models\Booking;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Branding;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -165,7 +167,7 @@ class GuestAlertService
         'arrival_soon' => [
             'label' => 'Guest arriving within the hour',
             'default_guest_message' => '',
-            'default_staff_message' => '{guest_name} is due to arrive at {property_internal_name} around {check_in_time}. Be on standby.',
+            'default_staff_message' => '{guest_name} is due to arrive at {property_internal_name} around {check_in_time} (in about {arrives_in}). Be on standby.',
         ],
         'photo_id_uploaded' => [
             'label' => 'Photo ID uploaded',
@@ -389,7 +391,7 @@ class GuestAlertService
         // app-name prefix on the stored wording is redundant there. SMS keeps
         // it, since a text only shows a number with no sender display name.
         $guestMessage = self::stripSenderPrefix(self::render($row['guest_message'], $booking, $extraTokens), $appName);
-        $staffMessage = self::stripSenderPrefix(self::render($row['staff_message'], $booking, $extraTokens), $appName);
+        $staffMessage = self::stripSenderPrefix(self::render($row['staff_message'], $booking, $extraTokens, true), $appName);
 
         // Subject identifies the guest, never the app (the sender already
         // shows the app name).
@@ -414,14 +416,18 @@ class GuestAlertService
 
         [$staffPhones, $staffEmails] = trim($staffMessage) !== '' ? self::staffRecipients($row) : [[], []];
 
+        $staffTz = self::staffTimezones();
+
         foreach ($staffPhones as $phone) {
-            SmsNotificationService::guestAlert($phone, self::withSenderPrefix($staffMessage, $appName), false);
+            $msg = self::stripSenderPrefix(self::render($row['staff_message'], $booking, $extraTokens, true, $staffTz['phones'][$phone] ?? null), $appName);
+            SmsNotificationService::guestAlert($phone, self::withSenderPrefix($msg, $appName), false);
         }
 
         if (! empty($staffEmails)) {
             foreach ($staffEmails as $recipient) {
                 try {
-                    Mail::to($recipient)->send(new GuestAlertMail($label, $staffMessage, $subject));
+                    $emailMessage = self::stripSenderPrefix(self::render($row['staff_message'], $booking, $extraTokens, true, $staffTz['emails'][strtolower((string) $recipient)] ?? null), $appName);
+                    Mail::to($recipient)->send(new GuestAlertMail($label, $emailMessage, $subject));
                     Log::info("Guest alert email sent (staff, {$event}) to {$recipient}.");
                 } catch (\Throwable $e) {
                     Log::error("Guest alert email failed (staff, {$event}, {$recipient}): ".$e->getMessage());
@@ -574,7 +580,62 @@ class GuestAlertService
         return url('/');
     }
 
-    protected static function render(string $template, Booking $booking, array $extraTokens = []): string
+    /**
+     * Saved timezones of staff users, keyed by normalized phone and by
+     * lowercase email, so each staff message can show the recipient's own time.
+     *
+     * @return array{phones: array<string, string>, emails: array<string, string>}
+     */
+    protected static function staffTimezones(): array
+    {
+        $phones = [];
+        $emails = [];
+
+        try {
+            User::query()->whereNotNull('timezone')->where('timezone', '!=', '')
+                ->get(['phone', 'email', 'timezone'])
+                ->each(function ($u) use (&$phones, &$emails) {
+                    if (! TimezoneHelper::isValid($u->timezone)) {
+                        return;
+                    }
+                    if ($p = self::normalizePhoneForSms($u->phone)) {
+                        $phones[$p] = $u->timezone;
+                    }
+                    if ($u->email) {
+                        $emails[strtolower($u->email)] = $u->timezone;
+                    }
+                });
+        } catch (\Throwable $e) {
+            Log::warning('staffTimezones failed: '.$e->getMessage());
+        }
+
+        return ['phones' => $phones, 'emails' => $emails];
+    }
+
+    /** Property-time label for staff, plus the recipient's own time when it differs. */
+    protected static function staffTime(Booking $booking, string $which, ?string $viewerTz): string
+    {
+        $plain = $which === 'in' ? $booking->effectiveCheckinTimeFormatted() : $booking->effectiveCheckoutTimeFormatted();
+
+        try {
+            $date = $which === 'in' ? $booking->check_in_date : $booking->check_out_date;
+            if (! $date) {
+                return $plain;
+            }
+
+            $time = $which === 'in' ? $booking->effectiveCheckinTime() : $booking->effectiveCheckoutTime();
+            $tz = $booking->property?->timezone;
+            if (! TimezoneHelper::isValid($tz)) {
+                $tz = config('app.display_timezone') ?: config('app.timezone');
+            }
+
+            return TimezoneHelper::dualTime(Carbon::parse($date->toDateString().' '.$time, $tz), $viewerTz);
+        } catch (\Throwable $e) {
+            return $plain;
+        }
+    }
+
+    protected static function render(string $template, Booking $booking, array $extraTokens = [], bool $staff = false, ?string $viewerTz = null): string
     {
         $parkingStatus = is_null($booking->parking_needed)
             ? 'not yet specified'
@@ -590,8 +651,8 @@ class GuestAlertService
             '{admin_link}' => self::adminLink($booking),
             '{check_in_date}' => $booking->check_in_date?->format('M j, Y') ?? '',
             '{check_out_date}' => $booking->check_out_date?->format('M j, Y') ?? '',
-            '{check_in_time}' => $booking->effectiveCheckinTimeFormatted(),
-            '{check_out_time}' => $booking->effectiveCheckoutTimeFormatted(),
+            '{check_in_time}' => $staff ? self::staffTime($booking, 'in', $viewerTz) : $booking->effectiveCheckinTimeFormatted(),
+            '{check_out_time}' => $staff ? self::staffTime($booking, 'out', $viewerTz) : $booking->effectiveCheckoutTimeFormatted(),
             '{parking_status}' => $parkingStatus,
             '{step_name}' => Setting::getValue('background_check_step_name', 'Background Check'),
             '{license_plate}' => $booking->license_plate ?: 'not read',
