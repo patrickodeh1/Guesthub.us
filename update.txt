@@ -1,0 +1,1 @@
+task 27 time zone alerts to show correct local and property times  [DONE] [prod note reset alerts to use the updated text and run migrations]
