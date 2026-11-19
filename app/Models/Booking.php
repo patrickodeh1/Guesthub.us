@@ -1356,6 +1356,25 @@ class Booking extends Model
         return $date->toDateString() >= $this->check_in_date->toDateString();
     }
 
+    /** True from one hour before the property's check-in time (property timezone) on the check-in date. */
+    public function isCheckinAccessOpen(?CarbonInterface $now = null): bool
+    {
+        $timezone = $this->property?->timezone ?? 'America/New_York';
+        $now = ($now ?? now())->setTimezone($timezone);
+        $day = $this->check_in_date->toDateString();
+
+        if ($now->toDateString() > $day) {
+            return true;
+        }
+        if ($now->toDateString() < $day) {
+            return false;
+        }
+
+        [$h, $m] = array_map('intval', explode(':', $this->standardCheckinTime()));
+
+        return $now->greaterThanOrEqualTo($now->copy()->setTime($h, $m)->subHour());
+    }
+
     public function daysUntilCheckIn(?CarbonInterface $date = null): int
     {
         $date ??= now();
