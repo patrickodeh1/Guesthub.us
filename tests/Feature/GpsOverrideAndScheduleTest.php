@@ -180,6 +180,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
+            'assignment_status' => 'confirmed',
             'scheduled_date' => $futureTime->toDateString(),
             'scheduled_time' => $futureTime->toTimeString(),
         ]);
@@ -187,8 +188,8 @@ class GpsOverrideAndScheduleTest extends TestCase
         $response = $this->actingAs($cleaner)->get(route('sessions.show', $session));
 
         $response->assertOk();
-        $response->assertSee('Session Not Yet Available');
-        $response->assertSee('View Only Mode');
+        $response->assertSee('Session not available yet');
+        $response->assertSee('You cannot start yet.');
         $response->assertDontSee('Ready to start');
     }
 
@@ -215,6 +216,7 @@ class GpsOverrideAndScheduleTest extends TestCase
             'owner_id' => $owner->id,
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
+            'assignment_status' => 'confirmed',
             'scheduled_date' => $pastTime->toDateString(),
             'scheduled_time' => $pastTime->toTimeString(),
         ]);
