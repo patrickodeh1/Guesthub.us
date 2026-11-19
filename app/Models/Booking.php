@@ -1351,7 +1351,8 @@ class Booking extends Model
 
     public function isCheckinDay(?CarbonInterface $date = null): bool
     {
-        $date ??= now();
+        $timezone = $this->property?->timezone ?? 'America/New_York';
+        $date = ($date ?? now())->copy()->setTimezone($timezone);
 
         return $date->toDateString() >= $this->check_in_date->toDateString();
     }
