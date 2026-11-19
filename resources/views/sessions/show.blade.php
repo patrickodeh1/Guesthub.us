@@ -415,9 +415,11 @@
                     @else
                         <div class="mb-6">
                             {{-- gh-ready-gate --}}
-                            <h1 class="guest-status-title">Ready to start</h1>
-                            @if (\App\Services\CleanerAccessSteps::locationVerified($session) )
+                            @if (\App\Services\CleanerAccessSteps::locationVerified($session))
+                                <h1 class="guest-status-title">Ready to start</h1>
                                 <p class="mt-3 text-sm leading-6 text-slate-600 mb-4">You're all set. Tap Begin when you're ready to start cleaning.</p>
+                            @else
+                                <h1 class="guest-status-title">Verify your location</h1>
                             @endif
                         </div>
 
