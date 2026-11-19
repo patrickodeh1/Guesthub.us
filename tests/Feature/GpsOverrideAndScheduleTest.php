@@ -217,6 +217,10 @@ class GpsOverrideAndScheduleTest extends TestCase
             'housekeeper_id' => $cleaner->id,
             'status' => 'pending',
             'assignment_status' => 'confirmed',
+            // The factory can generate gps_confirmed_at from its random initial status.
+            // This test specifically exercises the pre-GPS verification screen.
+            'gps_confirmed_at' => null,
+            'gps_override_enabled' => false,
             'scheduled_date' => $pastTime->toDateString(),
             'scheduled_time' => $pastTime->toTimeString(),
         ]);
