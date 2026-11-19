@@ -27,10 +27,15 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Cleaning has started at {$property->internal_display_name}.\n"
-            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
-            . "Start Time: " . TimezoneHelper::format(now(), $property) . "\n"
-            . "Job ID: #{$session->id}";
+        if (! \App\Services\CleaningMessages::enabled('cleaning_started', $property->owner_id)) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('cleaning_started', [
+            'property_name' => $property->internal_display_name,
+            'cleaner' => $housekeeper->name ?? 'N/A',
+            'time' => TimezoneHelper::format(now(), $property),
+            'job_id' => $session->id,
+        ], $property->owner_id);
 
         self::dispatch($session, 'started', $message);
     }
@@ -52,10 +57,15 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Cleaning has been completed at {$property->internal_display_name}.\n"
-            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
-            . "Completion Time: " . TimezoneHelper::format(now(), $property) . "\n"
-            . "Job ID: #{$session->id}";
+        if (! \App\Services\CleaningMessages::enabled('cleaning_finished', $property->owner_id)) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('cleaning_finished', [
+            'property_name' => $property->internal_display_name,
+            'cleaner' => $housekeeper->name ?? 'N/A',
+            'time' => TimezoneHelper::format(now(), $property),
+            'job_id' => $session->id,
+        ], $property->owner_id);
 
         self::dispatch($session, 'finished', $message);
     }
@@ -77,9 +87,14 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Finished photos have started at {$property->internal_display_name}.\n"
-            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n"
-            . "Time: " . TimezoneHelper::format(now(), $property);
+        if (! \App\Services\CleaningMessages::enabled('photo_started', $property->owner_id)) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('photo_started', [
+            'property_name' => $property->internal_display_name,
+            'cleaner' => $housekeeper->name ?? 'N/A',
+            'time' => TimezoneHelper::format(now(), $property),
+        ], $property->owner_id);
 
         self::dispatch($session, 'photo', $message);
     }
@@ -97,12 +112,16 @@ class CleaningSmsNotificationService
         }
 
         $housekeeper = $session->housekeeper;
-        $message = "Task Note Added\n\n"
-            . "Property: {$property->internal_display_name}\n"
-            . "Task: {$task->name}\n"
-            . "Cleaner: " . ($housekeeper->name ?? 'N/A') . "\n\n"
-            . "Note:\n'{$noteContent}'\n\n"
-            . "Time: " . TimezoneHelper::format(now(), $property);
+        if (! \App\Services\CleaningMessages::enabled('task_note', $property->owner_id)) {
+            return;
+        }
+        $message = \App\Services\CleaningMessages::render('task_note', [
+            'property_name' => $property->internal_display_name,
+            'cleaner' => $housekeeper->name ?? 'N/A',
+            'time' => TimezoneHelper::format(now(), $property),
+            'task' => $task->name,
+            'note' => $noteContent,
+        ], $property->owner_id);
 
         self::dispatch($session, 'note', $message);
     }
@@ -307,7 +326,7 @@ class CleaningSmsNotificationService
         $property = $session->property;
         $time = $session->scheduled_time ? $session->scheduled_time->format('g:i A') : '';
         $lead = $minutesAway >= 50 ? '1 hour' : "{$minutesAway} minutes";
-        if (! \App\Services\CleaningMessages::enabled('start_reminder')) {
+        if (! \App\Services\CleaningMessages::enabled('start_reminder', $property->owner_id)) {
             return;
         }
         $message = \App\Services\CleaningMessages::render('start_reminder', [
@@ -315,7 +334,7 @@ class CleaningSmsNotificationService
             'lead' => $lead,
             'time' => $time,
             'session_link' => route('sessions.show', $session),
-        ]);
+        ], $property->owner_id);
 
         self::dispatchToCleaner($session, 'start_reminder_1h', $message);
     }
@@ -333,7 +352,7 @@ class CleaningSmsNotificationService
         $housekeeper = $session->housekeeper;
         $guest = $session->booking?->guest_name ?? ($session->no_guest ? 'No guest' : 'N/A');
 
-        if (! \App\Services\CleaningMessages::enabled('almost_done')) {
+        if (! \App\Services\CleaningMessages::enabled('almost_done', $property->owner_id)) {
             return;
         }
         $message = \App\Services\CleaningMessages::render('almost_done', [
@@ -342,7 +361,7 @@ class CleaningSmsNotificationService
             'guest' => $guest,
             'time' => TimezoneHelper::format(now(), $property),
             'job_id' => $session->id,
-        ]);
+        ], $property->owner_id);
 
         self::dispatch($session, 'almost_done', $message);
     }

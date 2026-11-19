@@ -444,8 +444,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::match(['put', 'post'], 'settings', [SettingsController::class, 'update'])->name('settings.update')->middleware('role:admin');
     Route::get('settings/legal', [SettingsController::class, 'legalEdit'])->name('settings.legal.edit')->middleware('role:admin');
     Route::match(['put', 'post'], 'settings/legal', [SettingsController::class, 'legalUpdate'])->name('settings.legal.update')->middleware('role:admin');
-    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin');
-    Route::match(['put', 'post'], 'settings/notifications', [NotificationSettingsController::class, 'update'])->name('settings.notifications.update')->middleware('role:admin');
+    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])->name('settings.notifications.edit')->middleware('role:admin,owner,company,manager');
+    Route::match(['put', 'post'], 'settings/notifications', [NotificationSettingsController::class, 'update'])->name('settings.notifications.update')->middleware('role:admin,owner,company,manager');
 
     // ─── Guest Notices (conditional pop-ups / check-in steps) ──────────────
     Route::resource('notices', GuestNoticeController::class)->except(['show'])->middleware('role:admin,manager');

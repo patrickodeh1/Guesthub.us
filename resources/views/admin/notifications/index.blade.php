@@ -23,13 +23,28 @@
 @endphp
     <div class="page-header">
         <div>
-            <p class="eyebrow">Global settings</p>
+            <p class="eyebrow">{{ $isGlobalScope ? 'Admin settings' : 'Settings for '.($scopeOptions[$scopeOwnerId] ?? 'this account') }}</p>
             <h1 class="page-title">Notifications</h1>
-            <p class="page-subtitle">Global settings control guest lifecycle messages and Cleaning Ops defaults. To configure cleaning event switches and recipients for a specific property, use its Notifications page from <a class="font-semibold text-[var(--theme-primary)] underline" href="{{ route('admin.properties.index') }}">Properties</a>.</p>
+            <p class="page-subtitle">{{ $isGlobalScope ? 'Your wording is the default for any owner who has not edited their own.' : 'These messages only apply to the properties and guests of this account.' }} To configure cleaning event switches and recipients for a specific property, use its Notifications page from <a class="font-semibold text-[var(--theme-primary)] underline" href="{{ route('admin.properties.index') }}">Properties</a>.</p>
         </div>
     </div>
 
-    <form method="post" action="{{ route('admin.settings.notifications.update') }}" class="card ns" id="ns" data-view="list">
+    <div class="card" style="padding:12px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label for="nsScope" style="font-weight:600;font-size:13px">Editing messages for</label>
+        @if(count($scopeOptions) + ($scopeIsAdmin ? 1 : 0) > 1)
+            <select id="nsScope" class="input" style="max-width:340px" onchange="if(this.value){location.href=this.value}">
+                @if($scopeIsAdmin)<option value="{{ route('admin.settings.notifications.edit', ['scope' => 'global']) }}" @selected($isGlobalScope)>{{ auth()->user()->name }} (you, admin)</option>@endif
+                @foreach($scopeOptions as $oid => $olabel)
+                    <option value="{{ route('admin.settings.notifications.edit', ['scope' => $oid]) }}" @selected($scopeOwnerId === $oid)>{{ $olabel }}</option>
+                @endforeach
+            </select>
+        @else
+            <strong>{{ $isGlobalScope ? auth()->user()->name.' (you, admin)' : ($scopeOptions[$scopeOwnerId] ?? '') }}</strong>
+        @endif
+        @if(! $isGlobalScope)<span class="hint" style="margin:0">Changes here do not affect any other account.</span>@endif
+    </div>
+
+    <form method="post" action="{{ route('admin.settings.notifications.update', ['scope' => $scopeOwnerId ?? 'global']) }}" class="card ns" id="ns" data-view="list">
         @csrf @method('put')
         @if($errors->any())<div class="ns-err">Settings were NOT saved: {{ $errors->first() }}</div>@endif
 
@@ -58,6 +73,7 @@
                         @endforeach
                     </div>
                 @endforeach
+@if($isGlobalScope)
                 <div class="ns-g">
                     <div class="ns-gh">Direct booking, lease and system emails</div>
                     @foreach($directEvents as $dkey => $dmeta)
@@ -68,12 +84,15 @@
                         </div>
                     @endforeach
                 </div>
+@endif
                 <div class="ns-g">
                     <div class="ns-gh">Cleaning and staff</div>
+@if($isGlobalScope)
                     <div class="ns-row" data-id="g_globals" data-name="global cleaning switches">
                         <span class="nm">Global cleaning switches<span class="sub"></span></span>
                         <i class="dot" hidden></i>
                     </div>
+@endif
                     @foreach($cleaningEvents as $ckey => $cmeta)
                         <div class="ns-row" data-id="c_{{ $ckey }}" data-name="{{ mb_strtolower($cmeta['label']) }}">
                             <span class="nm">{{ $cmeta['label'] }}<span class="sub"></span></span>
@@ -125,11 +144,12 @@
                             @endforeach
                         </div>
                         <button type="button" class="lnk addr">+ Add recipient</button>
-                        <p class="hint">Contact desk uses the phone and email under Settings &gt; General. Owner, Manager, Staff, and Viewer notify every user with that role, at their own phone or email.</p>
+                        <p class="hint">Contact desk uses the phone and email under Settings &gt; General. Owner, Company, Manager and Cleaner notify only the people linked to the property, at their own phone or email.</p>
                         <input type="hidden" name="alerts[{{ $key }}][_complete]" value="1">
                     </section>
                 @endforeach
 
+@if($isGlobalScope)
                 <section class="ns-e" data-id="g_globals" data-kind="globals" hidden>
                     <div class="ns-eh"><h2>Global cleaning switches</h2></div>
                     <p class="hint">These switches control live notifications used by Cleaning Ops.</p>
@@ -143,8 +163,10 @@
                         @endforeach
                     </div>
                 </section>
+@endif
 
-                @foreach($directEvents as $dkey => $dmeta)
+                @if($isGlobalScope)
+@foreach($directEvents as $dkey => $dmeta)
                     @php
                         $drow = $directConfig[$dkey];
                         $daud = str_starts_with($dkey, 'staff_') ? 'Staff' : (str_starts_with($dkey, 'host_') ? 'Host' : 'Guest');
@@ -168,6 +190,7 @@
                         </div>
                     </section>
                 @endforeach
+@endif
 
                 @foreach($cleaningEvents as $ckey => $cmeta)
                     @php

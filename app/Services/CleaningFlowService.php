@@ -110,7 +110,7 @@ class CleaningFlowService
                         'property_name' => $property->internal_display_name,
                         'when' => self::whenLabel($created->scheduled_date, $created->scheduled_time),
                         'assign_link' => url('/manage/sessions').'?assign='.$created->id,
-                    ]);
+                    ], $property->owner_id);
                 } catch (\Throwable $e) {
                     Log::error('CleaningFlow needs-cleaner alert failed: '.$e->getMessage());
                 }
@@ -246,14 +246,14 @@ class CleaningFlowService
                 return;
             }
             if (! Setting::get('notify_assignments', true)
-                || ! CleaningMessages::enabled($changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'))) {
+                || ! CleaningMessages::enabled($changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'), $session->property?->owner_id)) {
                 return;
             }
             $phone = self::phoneFor($user);
             if (! $phone) {
                 Log::info("CleaningFlow: cleaner {$user->id} has no phone, assignment text skipped.");
                 $session->forceFill(['assignment_status' => 'pending_confirmation'])->saveQuietly();
-                self::alertAdmins('admin_no_phone', ['cleaner' => $user->name, 'property_name' => $session->property->internal_display_name]);
+                self::alertAdmins('admin_no_phone', ['cleaner' => $user->name, 'property_name' => $session->property->internal_display_name], $session->property->owner_id);
                 return;
             }
 
@@ -261,7 +261,8 @@ class CleaningFlowService
             $when = self::whenLabel($session->scheduled_date, $session->scheduled_time);
             $msg = CleaningMessages::render(
                 $changed && $oldWhen ? 'assignment_moved' : ($changed ? 'assignment_updated' : 'assignment_new'),
-                ['property_name' => $p->internal_display_name, 'when' => $when, 'old_when' => $oldWhen ?? '', 'session_link' => route('sessions.show', $session)]
+                ['property_name' => $p->internal_display_name, 'when' => $when, 'old_when' => $oldWhen ?? '', 'session_link' => route('sessions.show', $session)],
+                $p->owner_id
             );
 
             $result = SmsNotificationService::deliver($phone, $msg, 'cleaning');
@@ -278,7 +279,7 @@ class CleaningFlowService
             ]);
 
             if (! empty($result['error'])) {
-                self::alertAdmins('admin_send_failed', ['cleaner' => $user->name, 'property_name' => $p->internal_display_name, 'when' => $when]);
+                self::alertAdmins('admin_send_failed', ['cleaner' => $user->name, 'property_name' => $p->internal_display_name, 'when' => $when], $p->owner_id);
             }
             $session->forceFill(['assignment_status' => 'pending_confirmation', 'cleaner_notified_at' => now()])->saveQuietly();
         } catch (\Throwable $e) {
@@ -325,8 +326,8 @@ class CleaningFlowService
             $user = $users->firstWhere('id', $pending->first()->housekeeper_id) ?? $users->first();
 
             if (! $isAnswer) {
-                if (CleaningMessages::enabled('cleaner_reply_help')) {
-                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_reply_help'), 'cleaning');
+                if (CleaningMessages::enabled('cleaner_reply_help', $pending->first()?->property?->owner_id)) {
+                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_reply_help', [], $pending->first()?->property?->owner_id), 'cleaning');
                 }
                 return true;
             }
@@ -341,19 +342,19 @@ class CleaningFlowService
             if ($yes) {
                 $session->forceFill(['assignment_status' => 'confirmed'])->saveQuietly();
                 Log::info("SMS-LOG in CONFIRMED: {$user->name} accepted cleaning session {$session->id}.");
-                self::alertAdmins('admin_accepted', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day]);
-                if (CleaningMessages::enabled('cleaner_confirmed')) {
-                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_confirmed', ['property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)]), 'cleaning');
+                self::alertAdmins('admin_accepted', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day], $session->property->owner_id);
+                if (CleaningMessages::enabled('cleaner_confirmed', $session->property->owner_id)) {
+                    SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_confirmed', ['property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)], $session->property->owner_id), 'cleaning');
                 }
                 return true;
             }
 
             $session->forceFill(['assignment_status' => 'declined'])->saveQuietly();
             Log::info("SMS-LOG in DECLINED: {$user->name} declined cleaning session {$session->id}.");
-            if (CleaningMessages::enabled('cleaner_declined')) {
-                SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_declined', ['property_name' => $name, 'when' => $day]), 'cleaning');
+            if (CleaningMessages::enabled('cleaner_declined', $session->property->owner_id)) {
+                SmsNotificationService::deliver($phone, CleaningMessages::render('cleaner_declined', ['property_name' => $name, 'when' => $day], $session->property->owner_id), 'cleaning');
             }
-            self::alertAdmins('admin_declined', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)]);
+            self::alertAdmins('admin_declined', ['cleaner' => $user->name, 'property_name' => $name, 'when' => $day, 'session_link' => route('sessions.show', $session)], $session->property->owner_id);
             return true;
         } catch (\Throwable $e) {
             Log::error('CleaningFlow reply failed: '.$e->getMessage());
@@ -377,7 +378,7 @@ class CleaningFlowService
             if (! \Illuminate\Support\Facades\Cache::add($key, 1, now()->addDays(3))) {
                 continue;
             }
-            self::alertAdmins('admin_unconfirmed', ['cleaner' => $x->housekeeper?->name ?? 'Cleaner', 'property_name' => $x->property->internal_display_name, 'when' => self::whenLabel($x->scheduled_date, $x->scheduled_time)]);
+            self::alertAdmins('admin_unconfirmed', ['cleaner' => $x->housekeeper?->name ?? 'Cleaner', 'property_name' => $x->property->internal_display_name, 'when' => self::whenLabel($x->scheduled_date, $x->scheduled_time)], $x->property->owner_id);
             $sent++;
         }
         return $sent;
@@ -420,21 +421,76 @@ class CleaningFlowService
                 'property_name' => $session->property?->internal_display_name ?? 'the property',
                 'when' => $session->scheduled_date ? self::whenLabel($session->scheduled_date, $session->scheduled_time) : '',
                 'assign_link' => url('/manage/sessions').'?assign='.$session->id,
-            ]);
+            ], $session->property?->owner_id);
         } catch (\Throwable $e) {
             Log::error('CleaningFlow notifyCleanerCancelled failed: '.$e->getMessage());
         }
     }
 
-    private static function alertAdmins(string $key, array $vars = []): void
+    /** Guest checked out: tell the assigned cleaner. Property only, never the guest name. Once per job. */
+    public static function notifyGuestCheckedOut(Booking $booking): void
+    {
+        try {
+            $property = $booking->property;
+            if (! $property) {
+                return;
+            }
+            $ownerId = $property->owner_id;
+            if (! CleaningMessages::enabled('guest_checked_out', $ownerId)) {
+                return;
+            }
+
+            $live = fn ($s) => $s && $s->housekeeper_id && ! in_array($s->status, ['cancelled', 'completed'], true) && $s->assignment_status !== 'declined';
+            $session = self::checkoutSessionFor($booking);
+            if (! $live($session)) {
+                $session = CleaningSession::where('property_id', $property->id)
+                    ->whereDate('scheduled_date', $booking->check_out_date)
+                    ->whereNotNull('housekeeper_id')
+                    ->whereNotIn('status', ['cancelled', 'completed'])
+                    ->where(fn ($q) => $q->whereNull('assignment_status')->orWhere('assignment_status', '<>', 'declined'))
+                    ->orderBy('id')->first();
+            }
+            if (! $live($session)) {
+                return;
+            }
+            if (NotificationLog::where('cleaning_session_id', $session->id)->where('notification_type', 'guest_checked_out')->exists()) {
+                return;
+            }
+
+            $user = $session->housekeeper;
+            $phone = $user ? self::phoneFor($user) : null;
+            if (! $phone) {
+                Log::info("CleaningFlow: cleaner {$session->housekeeper_id} has no phone, checkout text skipped.");
+                return;
+            }
+
+            $msg = CleaningMessages::render('guest_checked_out', ['property_name' => $property->internal_display_name], $ownerId);
+            $result = SmsNotificationService::deliver($phone, $msg, 'cleaning');
+            NotificationLog::create([
+                'property_id' => $session->property_id,
+                'user_id' => $user->id,
+                'cleaning_session_id' => $session->id,
+                'notification_type' => 'guest_checked_out',
+                'recipient_phone' => $phone,
+                'message_content' => $msg,
+                'delivery_status' => $result['status'],
+                'error_message' => $result['error'],
+                'sent_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('CleaningFlow notifyGuestCheckedOut failed: '.$e->getMessage());
+        }
+    }
+
+    private static function alertAdmins(string $key, array $vars = [], $ownerId = null): void
     {
         if ($key === 'admin_needs_cleaner' && self::$suppressNeedsCleaner) {
             return;
         }
-        if (! CleaningMessages::enabled($key)) {
+        if (! CleaningMessages::enabled($key, $ownerId)) {
             return;
         }
-        $message = CleaningMessages::render($key, $vars);
+        $message = CleaningMessages::render($key, $vars, $ownerId);
         $numbers = collect([Setting::getValue('contact_phone'), config('services.telnyx.admin_notify_number')])
             ->filter()->unique(fn ($n) => SmsConsentService::normalizePhone($n));
         foreach ($numbers as $n) {

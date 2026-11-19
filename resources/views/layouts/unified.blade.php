@@ -281,6 +281,13 @@
                             <x-icon name="users" class="h-4 w-4 text-slate-400" />
                             My Account
                         </a>
+                        @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']))
+                        <a href="{{ route('admin.settings.notifications.edit') }}"
+                           class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                            <x-icon name="settings" class="h-4 w-4 text-slate-400" />
+                            Notification Settings
+                        </a>
+                        @endif
                         @if($cleaning ?? false)
                             <div @click.stop class="border-y border-slate-100 px-4 py-2">
                                 <label class="mb-1.5 block text-xs font-medium text-slate-500">Language</label>

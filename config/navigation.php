@@ -250,7 +250,7 @@ return [
                     'collapsible' => true,
                     'children' => [
                         ['label' => 'General', 'routes' => [['name' => 'admin.settings.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.edit']],
-                        ['label' => 'Notification Settings', 'routes' => [['name' => 'admin.settings.notifications.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.notifications.*']],
+                        ['label' => 'Notification Settings', 'routes' => [['name' => 'admin.settings.notifications.edit', 'roles' => $staff]], 'active' => ['admin.settings.notifications.*']],
                         ['label' => 'Legal', 'routes' => [['name' => 'admin.settings.legal.edit', 'roles' => ['admin']]], 'active' => ['admin.settings.legal.*']],
                         ['label' => 'Packages', 'routes' => [['name' => 'admin.packages.index', 'roles' => ['admin']]], 'active' => ['admin.packages.*']],
                         ['label' => 'Direct booking settings', 'routes' => [['name' => 'admin.features.index', 'roles' => ['admin']]], 'active' => ['admin.features.*']],

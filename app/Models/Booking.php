@@ -1933,6 +1933,11 @@ if ($this->license_plate_photo_path) {
         $this->applyLateCheckoutFee($source, $at);
 
         GuestAlertService::send('checkout_completed', $this);
+        try {
+            \App\Services\CleaningFlowService::notifyGuestCheckedOut($this);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         ActivityLogService::guest($source, "Guest {$this->guest_name} checked out ({$source}).", 'check', [
             'booking_id' => $this->id,

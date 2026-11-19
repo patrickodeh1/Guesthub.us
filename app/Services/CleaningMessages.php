@@ -101,14 +101,60 @@ class CleaningMessages
             'tokens' => ['cleaner', 'property_name', 'when'],
             'default' => 'The assignment text to {cleaner} for {property_name} on {when} failed to send. Job will need to be confirmed manually.',
         ],
+        'guest_checked_out' => [
+            'label' => 'Guest checked out',
+            'audience' => 'To cleaner',
+            'tokens' => ['property_name'],
+            'default' => 'The guest has checked out of {property_name}.',
+        ],
+        'cleaning_started' => [
+            'label' => 'Cleaning started',
+            'audience' => 'To property contacts',
+            'tokens' => ['property_name', 'cleaner', 'time', 'job_id'],
+            'default' => "Cleaning has started at {property_name}.\nCleaner: {cleaner}\nStart Time: {time}\nJob ID: #{job_id}",
+        ],
+        'cleaning_finished' => [
+            'label' => 'Cleaning finished',
+            'audience' => 'To property contacts',
+            'tokens' => ['property_name', 'cleaner', 'time', 'job_id'],
+            'default' => "Cleaning has been completed at {property_name}.\nCleaner: {cleaner}\nCompletion Time: {time}\nJob ID: #{job_id}",
+        ],
+        'photo_started' => [
+            'label' => 'Finished photos started',
+            'audience' => 'To property contacts',
+            'tokens' => ['property_name', 'cleaner', 'time'],
+            'default' => "Finished photos have started at {property_name}.\nCleaner: {cleaner}\nTime: {time}",
+        ],
+        'task_note' => [
+            'label' => 'Task note added',
+            'audience' => 'To property contacts',
+            'tokens' => ['property_name', 'task', 'cleaner', 'note', 'time'],
+            'default' => "Task Note Added\n\nProperty: {property_name}\nTask: {task}\nCleaner: {cleaner}\n\nNote:\n'{note}'\n\nTime: {time}",
+        ],
     ];
 
-    public static function config(): array
+    public static function settingKey($ownerId = null): string
     {
-        $stored = json_decode(Setting::getValue('cleaning_messages_config', '') ?: '', true) ?: [];
+        $ownerId = $ownerId ? (int) $ownerId : 0;
+
+        return $ownerId ? "cleaning_messages_config_o{$ownerId}" : 'cleaning_messages_config';
+    }
+
+    protected static function stored($ownerId = null): array
+    {
+        $raw = json_decode(Setting::getValue(self::settingKey($ownerId), '') ?: '', true);
+
+        return is_array($raw) ? $raw : [];
+    }
+
+    /** Effective config for an owner: their saved rows, else the global rows, else code defaults. */
+    public static function config($ownerId = null): array
+    {
+        $global = self::stored();
+        $own = $ownerId ? self::stored($ownerId) : [];
         $out = [];
         foreach (self::EVENTS as $key => $meta) {
-            $row = is_array($stored[$key] ?? null) ? $stored[$key] : [];
+            $row = is_array($own[$key] ?? null) ? $own[$key] : (is_array($global[$key] ?? null) ? $global[$key] : []);
             $message = trim((string) ($row['message'] ?? ''));
             $out[$key] = [
                 'message' => $message !== '' ? $message : $meta['default'],
@@ -118,14 +164,14 @@ class CleaningMessages
         return $out;
     }
 
-    public static function enabled(string $key): bool
+    public static function enabled(string $key, $ownerId = null): bool
     {
-        return (bool) (self::config()[$key]['enabled'] ?? false);
+        return (bool) (self::config($ownerId)[$key]['enabled'] ?? false);
     }
 
-    public static function render(string $key, array $vars = []): string
+    public static function render(string $key, array $vars = [], $ownerId = null): string
     {
-        $message = self::config()[$key]['message'] ?? (self::EVENTS[$key]['default'] ?? '');
+        $message = self::config($ownerId)[$key]['message'] ?? (self::EVENTS[$key]['default'] ?? '');
         $map = [];
         foreach ($vars as $k => $v) {
             $map['{'.$k.'}'] = (string) $v;
@@ -137,9 +183,9 @@ class CleaningMessages
     }
 
     /** Save from the settings form. Rows that did not arrive complete keep their saved values. */
-    public static function put(array $input): void
+    public static function put(array $input, $ownerId = null): void
     {
-        $existing = self::config();
+        $existing = self::config($ownerId);
         $clean = [];
         foreach (self::EVENTS as $key => $meta) {
             $row = $input[$key] ?? null;
@@ -153,6 +199,21 @@ class CleaningMessages
                 'enabled' => ! empty($row['enabled']),
             ];
         }
+
+        if ($ownerId) {
+            // Owners store only what differs from the global rows, so they keep inheriting the rest.
+            $global = self::config();
+            $store = [];
+            foreach ($clean as $k => $r) {
+                if ($r != $global[$k]) {
+                    $store[$k] = $r;
+                }
+            }
+            Setting::putValue(self::settingKey($ownerId), json_encode($store));
+
+            return;
+        }
+
         Setting::putValue('cleaning_messages_config', json_encode($clean));
     }
 

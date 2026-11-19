@@ -277,14 +277,15 @@ class GuestAlertService
         ];
     }
 
-    public static function config(): array
+    public static function config($ownerId = null): array
     {
         $stored = json_decode(Setting::getValue('guest_alerts_config', '') ?: '', true) ?: [];
+        $own = $ownerId ? (json_decode(Setting::getValue(self::settingKey($ownerId), '') ?: '', true) ?: []) : [];
         $config = [];
         $overrides = self::defaultToggleOverrides();
 
         foreach (self::EVENTS as $key => $meta) {
-            $row = self::migrateLegacyRow($stored[$key] ?? []);
+            $row = self::migrateLegacyRow($own[$key] ?? ($stored[$key] ?? []));
 
             $config[$key] = array_merge(
                 [
@@ -348,7 +349,14 @@ class GuestAlertService
         return $labels;
     }
 
-    public static function putConfig(array $config): void
+    public static function settingKey($ownerId = null): string
+    {
+        $ownerId = $ownerId ? (int) $ownerId : 0;
+
+        return $ownerId ? "guest_alerts_config_o{$ownerId}" : 'guest_alerts_config';
+    }
+
+    public static function putConfig(array $config, $ownerId = null): void
     {
         $clean = [];
 
@@ -363,6 +371,29 @@ class GuestAlertService
                 $clean[$key]["{$source}_sms"] = (bool) ($row["{$source}_sms"] ?? false);
                 $clean[$key]["{$source}_email"] = (bool) ($row["{$source}_email"] ?? false);
             }
+        }
+
+        if ($ownerId) {
+            // Owners store only events that differ from the global config, so they keep inheriting the rest.
+            $pick = function (array $r): array {
+                $o = ['guest_message' => trim((string) ($r['guest_message'] ?? '')), 'staff_message' => trim((string) ($r['staff_message'] ?? ''))];
+                foreach (self::RECIPIENT_SOURCES as $s) {
+                    $o["{$s}_sms"] = (bool) ($r["{$s}_sms"] ?? false);
+                    $o["{$s}_email"] = (bool) ($r["{$s}_email"] ?? false);
+                }
+
+                return $o;
+            };
+            $global = self::config();
+            $store = [];
+            foreach ($clean as $k => $r) {
+                if ($pick($r) != $pick($global[$k] ?? [])) {
+                    $store[$k] = $r;
+                }
+            }
+            Setting::putValue(self::settingKey($ownerId), json_encode($store));
+
+            return;
         }
 
         Setting::putValue('guest_alerts_config', json_encode($clean));
@@ -384,7 +415,8 @@ class GuestAlertService
         }
 
         $label = self::labels()[$event];
-        $row = self::config()[$event];
+        $ownerId = $booking->property?->owner_id;
+        $row = self::config($ownerId)[$event];
         $appName = Branding::siteName();
 
         // The email already brands itself (header + footer), so a leading
@@ -414,7 +446,7 @@ class GuestAlertService
             }
         }
 
-        [$staffPhones, $staffEmails] = trim($staffMessage) !== '' ? self::staffRecipients($row) : [[], []];
+        [$staffPhones, $staffEmails] = trim($staffMessage) !== '' ? self::staffRecipients($row, $booking->property) : [[], []];
 
         $staffTz = self::staffTimezones();
 
@@ -445,7 +477,7 @@ class GuestAlertService
      *
      * @return array{0: array<int, string>, 1: array<int, string>}
      */
-    protected static function staffRecipients(array $row): array
+    protected static function staffRecipients(array $row, ?\App\Models\Property $property = null): array
     {
         $phones = collect();
         $emails = collect();
@@ -473,7 +505,7 @@ class GuestAlertService
                 continue; // role not created on this install
             }
 
-            $users = User::role($role)->get(['phone', 'email']);
+            $users = self::usersForRole($role, $property);
 
             if ($smsOn) {
                 foreach ($users as $user) {
@@ -491,6 +523,42 @@ class GuestAlertService
             $phones->filter()->unique()->values()->all(),
             $emails->filter()->unique()->values()->all(),
         ];
+    }
+
+    /** Only the people linked to this property's account, never every user with the role. */
+    protected static function usersForRole(string $role, ?\App\Models\Property $property)
+    {
+        if (! $property || $role === 'admin') {
+            return User::role($role)->get(['phone', 'email']);
+        }
+
+        $ownerId = (int) $property->owner_id;
+        $db = \Illuminate\Support\Facades\DB::class;
+        $linked = fn () => $db::table('housekeeper_owner')->where('owner_id', $ownerId)->pluck('housekeeper_id');
+
+        if ($role === 'owner') {
+            return $ownerId ? User::role('owner')->whereKey($ownerId)->get(['phone', 'email']) : collect();
+        }
+        if ($role === 'company') {
+            if (! $ownerId) {
+                return collect();
+            }
+            $parent = User::query()->whereKey($ownerId)->value('owner_id');
+            $ids = collect([$ownerId, $parent])->merge($linked())->filter()->unique()->values();
+
+            return User::role('company')->whereIn('id', $ids)->get(['phone', 'email']);
+        }
+        if ($role === 'manager') {
+            $ids = $db::table('property_user')->where('property_id', $property->id)->pluck('user_id');
+
+            return User::role('manager')->whereIn('id', $ids)->get(['phone', 'email']);
+        }
+        if (! $ownerId) {
+            return collect();
+        }
+        $ids = $linked()->merge(User::query()->where('owner_id', $ownerId)->pluck('id'))->unique()->values();
+
+        return User::role($role)->whereIn('id', $ids)->get(['phone', 'email']);
     }
 
     protected static function anyStaffEmailEnabled(array $row): bool
