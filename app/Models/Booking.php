@@ -1351,9 +1351,29 @@ class Booking extends Model
 
     public function isCheckinDay(?CarbonInterface $date = null): bool
     {
-        $date ??= now();
+        $timezone = $this->property?->timezone ?? 'America/New_York';
+        $date = ($date ?? now())->copy()->setTimezone($timezone);
 
         return $date->toDateString() >= $this->check_in_date->toDateString();
+    }
+
+    /** True from one hour before the property's check-in time (property timezone) on the check-in date. */
+    public function isCheckinAccessOpen(?CarbonInterface $now = null): bool
+    {
+        $timezone = $this->property?->timezone ?? 'America/New_York';
+        $now = ($now ?? now())->setTimezone($timezone);
+        $day = $this->check_in_date->toDateString();
+
+        if ($now->toDateString() > $day) {
+            return true;
+        }
+        if ($now->toDateString() < $day) {
+            return false;
+        }
+
+        [$h, $m] = array_map('intval', explode(':', $this->standardCheckinTime()));
+
+        return $now->greaterThanOrEqualTo($now->copy()->setTime($h, $m)->subHour());
     }
 
     public function daysUntilCheckIn(?CarbonInterface $date = null): int
@@ -1688,7 +1708,10 @@ if ($this->license_plate_photo_path) {
 
     public function addressAvailableAtFormatted(): string
     {
-        return $this->safeFormatTime($this->effectiveCheckinTime(), subHour: true);
+        $eff = $this->effectiveCheckinTime();
+        $std = $this->standardCheckinTime();
+        $base = $this->safeParseTime($eff)->lt($this->safeParseTime($std)) ? $eff : $std;
+        return $this->safeFormatTime($base, subHour: true);
     }
 
     private function safeParseTime(string $value): Carbon
@@ -1860,7 +1883,11 @@ if ($this->license_plate_photo_path) {
             return true;
         }
 
-        [$hour, $minute] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
+        // An earlier-than-standard guest time never shortens the stay: use the later of guest and property time.
+        $eff = $this->effectiveCheckoutTime();
+        $std = $this->standardCheckoutTime();
+        $base = $this->safeParseTime($eff)->gt($this->safeParseTime($std)) ? $eff : $std;
+        [$hour, $minute] = array_map('intval', explode(':', $base));
         $threshold = $now->copy()->setTime($hour, $minute)->addMinutes($graceMinutes);
 
         return $now->greaterThanOrEqualTo($threshold);

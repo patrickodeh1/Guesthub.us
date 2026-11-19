@@ -1677,6 +1677,12 @@ $upload = $request->file('license_plate_photo');
             return 'waiting';
         }
 
+        // Hold the guide until one hour before the property's check-in time,
+        // unless the host approved check-in or the guest is already in.
+        if (! $booking->isCheckinApproved() && ! $booking->isMarkedCheckedIn() && ! $booking->isCheckinAccessOpen()) {
+            return 'waiting';
+        }
+
 
 
         if (! $booking->gps_verified) {
