@@ -1688,7 +1688,10 @@ if ($this->license_plate_photo_path) {
 
     public function addressAvailableAtFormatted(): string
     {
-        return $this->safeFormatTime($this->effectiveCheckinTime(), subHour: true);
+        $eff = $this->effectiveCheckinTime();
+        $std = $this->standardCheckinTime();
+        $base = $this->safeParseTime($eff)->lt($this->safeParseTime($std)) ? $eff : $std;
+        return $this->safeFormatTime($base, subHour: true);
     }
 
     private function safeParseTime(string $value): Carbon
@@ -1860,7 +1863,11 @@ if ($this->license_plate_photo_path) {
             return true;
         }
 
-        [$hour, $minute] = array_map('intval', explode(':', $this->effectiveCheckoutTime()));
+        // An earlier-than-standard guest time never shortens the stay: use the later of guest and property time.
+        $eff = $this->effectiveCheckoutTime();
+        $std = $this->standardCheckoutTime();
+        $base = $this->safeParseTime($eff)->gt($this->safeParseTime($std)) ? $eff : $std;
+        [$hour, $minute] = array_map('intval', explode(':', $base));
         $threshold = $now->copy()->setTime($hour, $minute)->addMinutes($graceMinutes);
 
         return $now->greaterThanOrEqualTo($threshold);
