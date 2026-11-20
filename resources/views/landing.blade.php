@@ -9,6 +9,20 @@
     @php($siteLogo = \App\Support\Branding::logoUrl())
     @php($siteFavicon = \App\Support\Branding::faviconUrl())
     @if($siteFavicon)<link rel="icon" href="{{ $siteFavicon }}">@endif
+    @php($ogBase = 'https://'.request()->getHost())
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="GuestHub">
+    <meta property="og:title" content="GuestHub: Short-term rental management">
+    <meta property="og:description" content="Bookings, guest journeys and property operations from one connected platform.">
+    <meta property="og:url" content="{{ $ogBase }}/">
+    <meta property="og:image" content="{{ $ogBase }}/images/share/og-guesthub.jpg?v=1">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="GuestHub: short-term rental management">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="GuestHub: Short-term rental management">
+    <meta name="twitter:description" content="Bookings, guest journeys and property operations from one connected platform.">
+    <meta name="twitter:image" content="{{ $ogBase }}/images/share/og-guesthub.jpg?v=1">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://images.unsplash.com">

@@ -398,6 +398,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::delete('photo-guide/{reference}', [PhotoReferenceController::class, 'destroy'])->name('photo-guide.destroy')->middleware('role:admin,owner,company,manager');
     Route::post('photo-guide/{reference}', [PhotoReferenceController::class, 'updateReference'])->name('photo-guide.update')->middleware('role:admin,owner,company,manager');
     Route::post('instructions/reorder', [InstructionStepController::class, 'reorder'])->name('instructions.reorder')->middleware('role:admin,owner,company,manager');
+    Route::post('instructions/{instruction}/copy', [\App\Http\Controllers\Admin\InstructionStepController::class, 'copy'])->name('instructions.copy');
+    Route::post('instructions/{instruction}/unlink', [\App\Http\Controllers\Admin\InstructionStepController::class, 'unlink'])->name('instructions.unlink');
     Route::delete('instructions/images/{image}', [InstructionStepController::class, 'destroyImage'])->name('instructions.images.destroy')->middleware('role:admin,owner,company,manager');
     Route::resource('instructions', InstructionStepController::class)->except(['show'])->middleware('role:admin,owner,company,manager');
 

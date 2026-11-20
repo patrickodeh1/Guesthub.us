@@ -93,7 +93,191 @@ class InstructionStepController extends Controller
         return view('admin.instructions.show', [
             'property' => $property,
             'stepsByType' => $stepsByType,
+            'copyTargets' => $this->copyTargets($property),
+        ] + $this->linkInfo($stepsByType));
+    }
+
+    /** Same-owner properties the current user may copy steps to. */
+    private function copyTargets(Property $property)
+    {
+        if ($property->owner_id === null) {
+            return collect();
+        }
+        $user = auth()->user();
+
+        return Property::query()
+            ->when(! $user->hasRole('admin'), fn ($q) => $q->whereIn('properties.id', Property::visibleTo($user)->select('properties.id')))
+            ->where('properties.owner_id', $property->owner_id)
+            ->where('properties.id', '!=', $property->id)
+            ->orderBy('properties.name')
+            ->get(['properties.id', 'properties.name']);
+    }
+
+    private function linkInfo(array $stepsByType): array
+    {
+        $all = collect($stepsByType)->flatMap(fn ($c) => $c->all())->values();
+        $srcIds = $all->pluck('linked_from_step_id')->filter()->unique();
+        $linkSources = InstructionStep::with('property:id,name')->whereIn('id', $srcIds)->get()->keyBy('id');
+        $copyCounts = InstructionStep::whereIn('linked_from_step_id', $all->pluck('id'))
+            ->selectRaw('linked_from_step_id, count(*) as c')->groupBy('linked_from_step_id')
+            ->pluck('c', 'linked_from_step_id');
+
+        return compact('linkSources', 'copyCounts');
+    }
+
+    /** Push the original's content to every synced copy. Order is left alone. */
+    private function syncCopies(InstructionStep $source): void
+    {
+        $rootId = $source->linked_from_step_id ?: $source->id;
+        $copies = InstructionStep::where(fn ($q) => $q->where('id', $rootId)->orWhere('linked_from_step_id', $rootId))
+            ->where('id', '!=', $source->id)->get();
+        if ($copies->isEmpty()) {
+            return;
+        }
+        $source->load('images');
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        foreach ($copies as $copy) {
+            $oldImage = $copy->image_path;
+            $copy->forceFill([
+                'type' => $source->type,
+                'action' => $source->action,
+                'title' => $source->title,
+                'content' => $source->content,
+                'image_path' => $this->copyFile($source->image_path),
+                'active' => $source->active,
+                'visibility' => $source->visibility,
+                'show_before_gps' => $source->show_before_gps,
+                'for_guest_parking' => $source->for_guest_parking,
+                'for_guest_no_parking' => $source->for_guest_no_parking,
+                'for_cleaner' => $source->for_cleaner,
+                'requires_photo' => $source->requires_photo,
+            ])->save();
+            if ($oldImage && $oldImage !== $source->image_path && $disk->exists($oldImage)) {
+                $disk->delete($oldImage);
+            }
+            foreach ($copy->images as $img) {
+                $disk->delete($img->image_path);
+                $img->delete();
+            }
+            foreach ($source->images as $img) {
+                InstructionStepImage::create([
+                    'instruction_step_id' => $copy->id,
+                    'image_path' => $this->copyFile($img->image_path),
+                    'sort_order' => $img->sort_order,
+                ]);
+            }
+        }
+    }
+
+    /** Remove a step from its sync group; if it was the root, the next member becomes the new root. */
+    private function leaveGroup(InstructionStep $step): void
+    {
+        if ($step->linked_from_step_id) {
+            $step->forceFill(['linked_from_step_id' => null])->save();
+            return;
+        }
+        $members = InstructionStep::where('linked_from_step_id', $step->id)->orderBy('id')->get();
+        if ($members->isEmpty()) {
+            return;
+        }
+        $newRoot = $members->first();
+        $newRoot->forceFill(['linked_from_step_id' => null])->save();
+        InstructionStep::whereIn('id', $members->skip(1)->pluck('id'))->update(['linked_from_step_id' => $newRoot->id]);
+    }
+
+    public function unlink(InstructionStep $instruction)
+    {
+        abort_unless(auth()->user()->hasRole('admin') || \App\Models\Property::visibleTo(auth()->user())->whereKey($instruction->property_id)->exists(), 403, 'You do not have access to this property.');
+        $this->leaveGroup($instruction);
+
+        return back()->with('success', '"' . $instruction->title . '" is now its own step and can be edited.');
+    }
+
+    private function copyFile(?string $path): ?string
+    {
+        if (! $path) {
+            return $path;
+        }
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        if (! $disk->exists($path)) {
+            return $path;
+        }
+        $ext = pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg';
+        $dir = trim(dirname($path), './') ?: 'instruction-steps';
+        $new = $dir . '/' . uniqid() . '.' . $ext;
+        $disk->copy($path, $new);
+
+        return $new;
+    }
+
+    public function copy(Request $request, InstructionStep $instruction)
+    {
+        abort_unless(auth()->user()->hasRole('admin') || \App\Models\Property::visibleTo(auth()->user())->whereKey($instruction->property_id)->exists(), 403, 'You do not have access to this property.');
+        $source = $instruction->property;
+        if (! $source) {
+            return back()->withErrors(['copy' => 'This step applies to every property, so it cannot be copied.']);
+        }
+        $data = $request->validate(['target_ids' => ['required', 'array', 'min:1'], 'target_ids.*' => ['integer'], 'mode' => ['nullable', 'in:once,sync']], [
+            'target_ids.required' => 'Tick at least one property to copy to.',
         ]);
+        $allowed = $this->copyTargets($source)->pluck('id')->map(fn ($i) => (int) $i);
+        $targets = collect($data['target_ids'])->map(fn ($i) => (int) $i)->unique()->intersect($allowed)->values();
+        if ($targets->isEmpty()) {
+            return back()->withErrors(['copy' => 'Steps can only be copied to properties with the same owner.']);
+        }
+
+        $sync = $request->input('mode') === 'sync';
+        $rootId = $instruction->linked_from_step_id ?: $instruction->id;
+        if ($sync) {
+            $already = InstructionStep::where(fn ($q) => $q->where('id', $rootId)->orWhere('linked_from_step_id', $rootId))->pluck('property_id')->map(fn ($i) => (int) $i)->all();
+            $targets = $targets->reject(fn ($id) => in_array($id, $already, true))->values();
+            if ($targets->isEmpty()) {
+                return back()->withErrors(['copy' => 'Those properties already have a synced copy of this step.']);
+            }
+        }
+
+        $instruction->load('images');
+        $position = (int) array_search($instruction->id, InstructionStep::where('property_id', $instruction->property_id)
+            ->where('type', $instruction->type)->orderBy('sort_order')->orderBy('id')->pluck('id')->all(), true);
+        foreach ($targets as $targetId) {
+            $new = new InstructionStep();
+            $new->forceFill([
+                'property_id' => $targetId,
+                'source_step_id' => null,
+                'linked_from_step_id' => $sync ? $rootId : null,
+                'type' => $instruction->type,
+                'action' => $instruction->action,
+                'sort_order' => (int) InstructionStep::where('property_id', $targetId)->where('type', $instruction->type)->max('sort_order') + 1,
+                'title' => $instruction->title,
+                'content' => $instruction->content,
+                'image_path' => $this->copyFile($instruction->image_path),
+                'active' => $instruction->active,
+                'visibility' => $instruction->visibility,
+                'show_before_gps' => $instruction->show_before_gps,
+                'for_guest_parking' => $instruction->for_guest_parking,
+                'for_guest_no_parking' => $instruction->for_guest_no_parking,
+                'for_cleaner' => $instruction->for_cleaner,
+                'requires_photo' => $instruction->requires_photo,
+            ])->save();
+
+            // Place the copy at the same position as the original and renumber that property's list.
+            $ids = InstructionStep::where('property_id', $targetId)->where('type', $instruction->type)
+                ->where('id', '!=', $new->id)->orderBy('sort_order')->orderBy('id')->pluck('id')->all();
+            array_splice($ids, min($position, count($ids)), 0, [$new->id]);
+            foreach ($ids as $i => $id) {
+                InstructionStep::where('id', $id)->update(['sort_order' => $i]);
+            }
+
+            foreach ($instruction->images as $img) {
+                InstructionStepImage::create([
+                    'instruction_step_id' => $new->id,
+                    'image_path' => $this->copyFile($img->image_path),
+                    'sort_order' => $img->sort_order,
+                ]);
+            }
+        }
+
+        return back()->with('success', '"' . $instruction->title . '" copied to ' . $targets->count() . ' ' . \Illuminate\Support\Str::plural('property', $targets->count()) . '.');
     }
 
     public function create(Request $request)
@@ -145,6 +329,7 @@ class InstructionStepController extends Controller
         $instruction->update($data);
 
         $this->storeGalleryImages($request, $instruction);
+        $this->syncCopies($instruction->fresh());
 
         return redirect()
             ->route('admin.instructions.show', $instruction->property_id)
@@ -157,6 +342,7 @@ class InstructionStepController extends Controller
         $propertyId = $instruction->property_id;
         $type = $instruction->type;
 
+        $this->leaveGroup($instruction);
         $instruction->delete();
 
         return redirect()
@@ -178,7 +364,11 @@ class InstructionStepController extends Controller
         $stepProperty = $image->instructionStep?->property_id;
         abort_unless(auth()->user()->hasRole('admin') || ($stepProperty && \App\Models\Property::visibleTo(auth()->user())->whereKey($stepProperty)->exists()), 403, 'You do not have access to this property.');
         \Illuminate\Support\Facades\Storage::disk('public')->delete($image->image_path);
+        $stepModel = $image->instructionStep;
         $image->delete();
+        if ($stepModel) {
+            $this->syncCopies($stepModel);
+        }
         return response()->json(['ok' => true]);
     }
 

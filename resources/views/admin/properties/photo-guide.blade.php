@@ -26,22 +26,48 @@
                     <button class="btn-secondary" onclick="return confirm('Stop using the linked guide?')">Unlink and use own photos</button>
                 </form>
             </div>
-        @elseif ($usedByCount)
-            <p class="text-sm text-slate-700">{{ $usedByCount }} other {{ \Illuminate\Support\Str::plural('property', $usedByCount) }} use this guide. Changes here update them too.</p>
-        @elseif ($sourceOptions->count())
-            <form method="POST" action="{{ route('admin.photo-guide.link', $property) }}" class="flex flex-col gap-2 sm:flex-row">
-                @csrf
-                <select name="source_id" class="input w-full" required>
-                    <option value="" disabled selected>Use another property's guide...</option>
-                    @foreach ($sourceOptions as $opt)
-                        <option value="{{ $opt->id }}">{{ $opt->name }}</option>
-                    @endforeach
-                </select>
-                <button class="btn-primary shrink-0">Use this guide</button>
-            </form>
-            <p class="text-xs text-slate-500">Cleaners here will see that property's photos and instructions. This property's own photos below are not used while linked.</p>
         @else
-            <p class="text-sm text-slate-500">No other property has a photo guide to share yet.</p>
+            @if ($usedByCount && ! $shareTargets->count())
+                <p class="text-sm text-slate-700">{{ $usedByCount }} other {{ \Illuminate\Support\Str::plural('property', $usedByCount) }} use this guide. Changes here update them too.</p>
+            @elseif ($shareTargets->count() && $references->count())
+                <form method="POST" action="{{ route('admin.photo-guide.link', $property) }}" class="space-y-3">
+                    @csrf
+                    <input type="hidden" name="share_form" value="1">
+                    <p class="text-sm text-slate-700">Tick the properties that should show this property's photo guide to their cleaners. When you edit the guide here, those properties update automatically.</p>
+                    <div class="grid gap-2 sm:grid-cols-2">
+                        @foreach ($shareTargets as $t)
+                            <label class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm">
+                                <input type="checkbox" name="target_ids[]" value="{{ $t->id }}" @checked($t->photo_guide_source_id == $property->id)>
+                                <span class="font-semibold text-slate-900">{{ $t->name }}</span>
+                                @if ($t->photo_guide_source_id == $property->id)
+                                    <span class="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Linked</span>
+                                @endif
+                            </label>
+                        @endforeach
+                    </div>
+                    <button class="btn-primary">Save sharing</button>
+                    <p class="text-xs text-slate-500">Only properties with the same owner are listed. A linked property's own guide photos are not used while it is linked.</p>
+                </form>
+            @elseif ($shareTargets->count())
+                <p class="text-sm text-slate-500">Add guide photos below, then you can share this guide with your other properties.</p>
+            @endif
+            @if (! $usedByCount && $sourceOptions->count())
+                <div class="border-t border-slate-100 pt-3">
+                    <p class="mb-2 text-sm font-semibold text-slate-700">Or use another property's guide instead:</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($sourceOptions as $opt)
+                            <form method="POST" action="{{ route('admin.photo-guide.link', $property) }}">
+                                @csrf
+                                <input type="hidden" name="source_id" value="{{ $opt->id }}">
+                                <button class="btn-secondary" onclick="return confirm('Use {{ addslashes($opt->name) }}\'s guide here? This property\'s own photos stop showing.')">{{ $opt->name }}</button>
+                            </form>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+            @if (! $shareTargets->count() && ! $usedByCount && ! $sourceOptions->count())
+                <p class="text-sm text-slate-500">No other properties with the same owner to share with.</p>
+            @endif
         @endif
     </div>
 

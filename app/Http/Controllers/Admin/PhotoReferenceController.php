@@ -30,10 +30,12 @@ class PhotoReferenceController extends Controller
         if (! $linkedSource && ! $usedByCount) {
             $q = $user->hasRole('admin') ? Property::query() : Property::visibleTo($user);
             $sourceOptions = $q->whereNull('properties.photo_guide_source_id')
+                ->where('properties.owner_id', $property->owner_id)
                 ->where('properties.id', '!=', $property->id)
                 ->whereHas('photoReferences')
                 ->orderBy('properties.name')->get();
         }
+        $shareTargets = $linkedSource ? collect() : $this->shareTargets($property);
         $unmatched = [];
         if ($linkedSource) {
             $map = $property->guideRoomMap();
@@ -44,11 +46,53 @@ class PhotoReferenceController extends Controller
                 }
             }
         }
-        return compact('linkedSource', 'usedByCount', 'sourceOptions', 'unmatched');
+        return compact('linkedSource', 'usedByCount', 'sourceOptions', 'unmatched', 'shareTargets');
+    }
+
+    /** Same-owner properties this guide can be shared with (already-linked ones included). */
+    private function shareTargets(Property $property)
+    {
+        if ($property->owner_id === null) {
+            return collect();
+        }
+        $user = request()->user();
+        $q = $user->hasRole('admin') ? Property::query() : Property::visibleTo($user);
+
+        return $q->where('properties.owner_id', $property->owner_id)
+            ->where('properties.id', '!=', $property->id)
+            ->where(fn ($w) => $w->whereNull('properties.photo_guide_source_id')
+                ->orWhere('properties.photo_guide_source_id', $property->id))
+            ->whereNotIn('properties.id', Property::whereNotNull('photo_guide_source_id')->pluck('photo_guide_source_id'))
+            ->orderBy('properties.name')->get();
+    }
+
+    private function shareGuide(Request $request, Property $property)
+    {
+        if ($property->photo_guide_source_id) {
+            return back()->withErrors(['source_id' => 'This property uses another guide, so it cannot share its own. Unlink it first.']);
+        }
+        $eligible = $this->shareTargets($property)->pluck('id')->map(fn ($i) => (int) $i);
+        $wanted = collect($request->input('target_ids', []))->map(fn ($i) => (int) $i)->unique()->intersect($eligible)->values();
+
+        if ($wanted->isNotEmpty() && ! $property->photoReferences()->exists()) {
+            return back()->withErrors(['source_id' => 'Add guide photos to this property before sharing it.']);
+        }
+
+        Property::where('photo_guide_source_id', $property->id)
+            ->whereIn('id', $eligible)->whereNotIn('id', $wanted)
+            ->update(['photo_guide_source_id' => null]);
+        if ($wanted->isNotEmpty()) {
+            Property::whereIn('id', $wanted)->update(['photo_guide_source_id' => $property->id]);
+        }
+
+        return back()->with('status', $wanted->isEmpty() ? 'Sharing turned off for this guide.' : 'This guide is now used by ' . $wanted->count() . ' ' . \Illuminate\Support\Str::plural('property', $wanted->count()) . '.');
     }
 
     public function link(Request $request, Property $property)
     {
+        if ($request->boolean('share_form')) {
+            return $this->shareGuide($request, $property);
+        }
         $data = $request->validate(['source_id' => ['nullable', 'integer']]);
         $sourceId = $data['source_id'] ?? null;
 
@@ -56,11 +100,9 @@ class PhotoReferenceController extends Controller
             abort_if((int) $sourceId === (int) $property->id, 422, 'A property cannot use its own guide as a link.');
             $user = $request->user();
             $source = Property::findOrFail($sourceId);
-            abort_unless(
-                $source->hasSameOwnerAs($property),
-                422,
-                'Guides can only be shared between properties of the same owner.'
-            );
+            if (! $source->hasSameOwnerAs($property)) {
+                return back()->withErrors(['source_id' => 'Guides can only be shared between properties of the same owner.']);
+            }
             abort_unless($user->hasRole('admin') || Property::visibleTo($user)->whereKey($sourceId)->exists(), 403, 'You do not have access to that property.');
             abort_if($source->photo_guide_source_id, 422, 'That property is itself linked to another guide.');
             abort_if(Property::where('photo_guide_source_id', $property->id)->exists(), 422, 'Other properties use this guide, so it cannot link to another one.');
