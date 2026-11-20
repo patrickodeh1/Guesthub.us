@@ -36,7 +36,7 @@ class Booking extends Model
 
     protected $fillable = [
         'booking_id', 'reservation_id', 'source', 'booking_platform', 'channex_booking_id', 'guest_name', 'phone', 'email', 'check_in_date', 'check_out_date',
-        'property_id', 'id_type', 'token', 'photo_id_path', 'photo_id_back_path', 'photo_id_received', 'parking_needed', 'early_checkin_tier', 'checkin_time_preference', 'checkout_time_preference', 'checkin_time_status', 'checkout_time_status', 'gps_verified', 'guest_authenticated_at', 'checkin_disclaimer_agreed_at',
+        'property_id', 'id_type', 'token', 'photo_id_path', 'photo_id_back_path', 'photo_id_received', 'parking_needed', 'early_checkin_tier', 'checkin_time_preference', 'checkout_time_preference', 'checkin_time_status', 'checkout_time_status', 'gps_verified', 'guest_authenticated_at', 'checkin_disclaimer_agreed_at', 'checkin_instructions_started_at',
         'manually_checked_in', 'checked_in_at', 'checked_out_at', 'late_checkout_type', 'late_checkout_hours', 'late_checkout_actual_time', 'gps_overridden', 'status', 'cancelled_at', 'cancelled_by_guest', 'cancellation_fee_applies', 'notes', 'welcome_message', 'identity_confirmed_at', 'registration_notified_at',
         'approved_at', 'decline_reason', 'archived_at', 'background_check_completed_at', 'deposit_verified_at', 'platform_payment_selected_at', 'checkin_approved_at',
         'contract_snapshot', 'contract_version', 'contract_accepted_at', 'contract_signed_name', 'contract_signed_ip', 'contract_signed_user_agent', 'contract_signed_device_id',
@@ -106,6 +106,7 @@ class Booking extends Model
             'ledger_published_at' => 'datetime',
             'checkin_reminder_sent_at' => 'datetime',
             'last_incomplete_checkin_reminder_at' => 'datetime',
+            'checkin_instructions_started_at' => 'datetime',
             'pre_arrival_viewed_at' => 'datetime',
             'checkout_reminder_sent_at' => 'datetime',
             'late_checkout_deducted_at' => 'datetime',
