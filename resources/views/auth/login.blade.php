@@ -38,6 +38,13 @@
         <section class="grid place-items-center px-5 py-10">
             <form method="post" action="{{ route('login.store') }}" class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-xs dark:border-slate-700 dark:bg-slate-900">
                 @csrf
+                <div class="mb-5 flex items-center justify-center">
+                    @if($loginLogo)
+                        <img src="{{ $loginLogo }}" alt="{{ $loginSiteName }}" class="max-h-12 max-w-48 object-contain">
+                    @else
+                        <span class="text-lg font-semibold">{{ $loginSiteName }}</span>
+                    @endif
+                </div>
                 <p class="eyebrow">{{ $loginSiteName }}</p>
                 <h1 class="mt-2 text-3xl font-semibold text-slate-950 dark:text-white">Welcome back</h1>
                 <p class="mt-2 text-sm leading-6 text-slate-600">Sign in to see today's arrivals, cleanings and properties at a glance.</p>
@@ -53,6 +60,9 @@
                     <a href="{{ route('password.request') }}" class="mt-3 inline-block text-sm text-[var(--theme-primary)] underline">Forgot password?</a>
                 @endif
                 <button class="btn-primary mt-6 w-full">Sign in</button>
+                @if(Route::has('signup'))
+                    <p class="mt-5 text-center text-sm text-slate-600 dark:text-slate-300">New to {{ $loginSiteName }}? <a href="{{ route('signup') }}" class="font-semibold text-[var(--theme-primary)] underline">Create an account</a></p>
+                @endif
                 {{--<p class="mt-5 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-500">Demo access: admin@example.com / password. Change this password before production launch.</p> --}}
             </form>
         </section>
