@@ -12,6 +12,7 @@ Cleaning guide issue. See in this picture, it says to ask instead of the actual 
 Also, it’s not letting me continue on the report. Only the required check boxes need checked if it’s not a required photo it doesn’t need checked it’s optional. {skip he complaint because he walked through if cleaners start skipping checkbox he'd as it be restored so leave as is until he raise it again}
 
 
+I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
 
 
 
@@ -24,7 +25,10 @@ ONGOING
 
 
 
-I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
 
 
@@ -197,16 +201,9 @@ We have to add the domain to cloudflare switch the nameservers from the current 
 We set on proxy and SSL to use cloudflare origin certificate
 On the site level we add turnstile to all forms and also modify headers of the page so it catches and blocks bots and suspicious activities
 Got it. Ok moving forward we need to implement that now. We will start with guest hub
-J
-What do you need me to do as far as the stripe issue
-@patodeh
 
 
-Also currently I’m not seeing a sync/push update with platforms (anirbnb VRBO booking dot com furnished finder Zillow etc) option unless I’m not looking in the right area.
-@jamesd408
 
-Also currently I’m not seeing a sync/push update with platforms (anirbnb VRBO booking dot com furnished finder Zillow etc) option unless I’m not looking in the right area.
-we cant do that directly we have to use it with channex and the setup for this specifficaly isnt complete but its part of what i am sending next
 @jamesd408
  Also on this view for mobile and desktop please Chang sit in the following manner:
 Make the headings standout more (cell color along the full row, bold text bigger text just somthing that makes it very clear where the next set starts)
@@ -223,30 +220,19 @@ Nov 19, 2026
 
 
 
-
-also i need a campaign setup on telnyx to send out mass texts to subscribers as i plan to send out a promotional text to our customers in 5 days for a sale holiday we havee here in the states. can you please let me know when you can come online to do that so we can get it setup
-I need you to update the Web hooks. I’m getting alerts like every couple of hours that the cleaner has not accepted the job although she did accept the job. Also, can we delete the old site or anything that we don’t need off of the server?
-J
 Also on a sidenote, if I do need to cancel a job and re-create it if I cancel the job, it should still show up for that GUEST but just as a reschedule one time I had to do that because something wasn’t working right I can’t remember what but I deleted the job and then I had to re-create it, but I couldn’t link it to the GUEST at that point
 J
-Also remember, I need as soon as I enter a guest manually or it’s imported and they haven’t registered yet. It shouldn’t give any options. It should just say something like unregistered or Something like that with no fields to fill-in no messages or anything like that just the guest name and information that I’ve already entered
-yes
-J
-Yeah, as long as you have everything migrated from flip status from when I had to use it that one time that I already told you about then you can delete it
-ok for the domain should it just be down too or should i show something its place
-J
 
+yes
+
+
+I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
 
 For the direct booking will need to have reviews so that people can review the property similar to the way that Airbnb does their reviews. And if we can import reviews from the other platforms and mix them in with the reviews left by the direct booking so that it looks all seamless that would be great also
 
 Also, I’m seeing that there might be a need for an app as well ai can do the app but it’s asking for Guest Hub repository link and/or API documentation, can you prepare that as well
 
 
-
-Then in this step, it’s also asking for another picture so it’s redundant. It doesn’t need to be there to take the picture. But also, this is a duplicate this step is actually for the GUEST
-https://www.freelancer.com/fileservice/v4/download/67638594-5a93-4224-9d7a-592ab8ec5059?signature=nvea3zGy0eSOmc4hroRxeZTZPydRo1e_fCnLFVmeXsY%3D&issued=1795126165&expires=1795212565&disposition=attachment&signature_version=2&image-optimizer=force&format=webply&width=400
-IMG_8878.pngIMG_8878.png
-11:00 PM
 
 
 
