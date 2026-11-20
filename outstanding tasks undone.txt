@@ -2,6 +2,17 @@
                                   DONE
 ==============================================================
 
+In the new update, I need a text file that tells me everything that’s been updated and also how to access it and then before you send me the update. I need you to put a version number into the system so that we can track the version numbers from here out and the updates
+
+Hi. Couple things that happened in the past few hours. I Got a text alert saying that Alex was checked into Chicago, but he checked in already like 1 or 2 days ago, so I think we have to keep sending the guest a text message until they say that they’ve checked in on the app or something needs to happen because we can’t let this go on because they’re gonna have questions and they’re gonna wonder what the Wi-Fi information is and how to use the smart home system and everything so once they start the process if the check-in complete hasn’t been completed within like 15 minutes we need to send them a text message like every 30 seconds or something. I don’t know what to do. I think that’s probably the best course of action just to make it annoying so that way they hit that I’ve checked in button or something. I don’t know.
+
+Quick question I wanna make sure that you changed the allowance of instructions to be viewed after 4 PM. Provided that manager guest approval has been made. Because on the guest checking in today, it says instructions will be visible after 8 PM but it should always be visible after 4 PM. Provided that the manager approval final step has been made if that hasn’t been made then it won’t be visible until after that has been made.
+
+But if a guest checks in at 8 PM, they might arrive early so we always wanna make sure that we’re giving the guest access after the property check-in time
+
+
+
+
 Then in this step, it’s also asking for another picture so it’s redundant. It doesn’t need to be there to take the picture. But also, this is a duplicate this step is actually for the GUEST
 
 
@@ -48,9 +59,6 @@ NOT DONE
 
 
 
-In the new update, I need a text file that tells me everything that’s been updated and also how to access it and then before you send me the update. I need you to put a version number into the system so that we can track the version numbers from here out and the updates
-
-
 Yes get rid of all junk spam and i’m not sure what you mean by self sign up. You need to implement any forms with cloud flare running in the background without any user interaction like captcha or anything annoying like that.
 
 Secondly We need to figure out what the issue is with different browsers as you mentioned earlier you said that one related issue was that their browser and then I got this complaint from another guest who also had a browser issue with scanning his ID. Here’s what he said.
@@ -85,12 +93,6 @@ J
 
 On the Cleaning report if a guest needs to be charged for additional cleaning or replacement of items I need to be able to put that on there so that way it can figures into their portfolio or whatever so that way, I know how much to deduct from their incidentals
 I understand
-
-
-
-
-
-Hi. Couple things that happened in the past few hours. I Got a text alert saying that Alex was checked into Chicago, but he checked in already like 1 or 2 days ago, so I think we have to keep sending the guest a text message until they say that they’ve checked in on the app or something needs to happen because we can’t let this go on because they’re gonna have questions and they’re gonna wonder what the Wi-Fi information is and how to use the smart home system and everything so once they start the process if the check-in complete hasn’t been completed within like 15 minutes we need to send them a text message like every 30 seconds or something. I don’t know what to do. I think that’s probably the best course of action just to make it annoying so that way they hit that I’ve checked in button or something. I don’t know.
 
 
 
@@ -142,10 +144,6 @@ I’d like us to find a better arrangement for my services. Last time I sent an 
 
 
 
-
-Quick question I wanna make sure that you changed the allowance of instructions to be viewed after 4 PM. Provided that manager guest approval has been made. Because on the guest checking in today, it says instructions will be visible after 8 PM but it should always be visible after 4 PM. Provided that the manager approval final step has been made if that hasn’t been made then it won’t be visible until after that has been made.
-
-But if a guest checks in at 8 PM, they might arrive early so we always wanna make sure that we’re giving the guest access after the property check-in time
 
 Additionally, that extra layer of access that we manually select that that’s something that I do with my properties, but other hosts aren’t so concerned with that so let that be an option for each host to select.
 
