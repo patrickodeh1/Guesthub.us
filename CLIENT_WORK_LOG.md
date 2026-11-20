@@ -69,9 +69,10 @@
 **Client request:** Record extra cleaning charges and replacement-item charges on a cleaning report so they can be included in the guest's incidentals/deductions.
 
 ### 10. Guest check-in reminders
-**Status:** Not started  
-**Client request:** If a guest starts check-in but does not finish, continue prompting them until they complete it. Client suggested very frequent reminders (even every 30 seconds).  
-**Safety/product decision required:** Do not implement 30-second messaging without rate limits, opt-out/compliance review, deduplication, and a less disruptive cadence agreed with the client.
+**Status:** Implemented — needs staging test  
+**User-confirmed behaviour:** Start the reminder clock only after the guest passes location verification and the check-in instructions are unlocked. Send the first reminder 30 minutes later, then repeat every 30 minutes until the guest taps “I'm checked in”, `checked_in_at` is set, or the booking status becomes `currently_hosting`. The event remains configurable in Admin → Notifications alongside the other guest alerts.  
+**Implementation:** Added `checkin_instructions_started_at` to record the first successful guest GPS verification (also set when an admin overrides GPS); the scheduled command now uses that timestamp, sends at 30-minute intervals, and runs every minute so the due time is not delayed by a 10-minute scheduler cadence. Existing cancellation/terminal-status exclusions remain.  
+**Verification required:** Run the migration and scheduler on staging; verify no reminder before 30 minutes, repeated 30-minute reminders while incomplete, and immediate stopping after check-in confirmation.
 
 ### 11. Integration API-key ownership and pricing-tool exclusivity
 **Status:** Not started  
