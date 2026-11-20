@@ -1294,7 +1294,8 @@ $upload = $request->file('license_plate_photo');
         }
 
         $booking->update([
-            'gps_verified'  => true,
+            'gps_verified' => true,
+            'checkin_instructions_started_at' => $booking->checkin_instructions_started_at ?? now(),
         ]);
 
         ActivityLogService::guest('gps_verified', "Guest {$booking->guest_name} GPS verified and checked in (distance: ".round($distance)."m, accuracy: ".round($accuracy)."m).", 'gps', [
