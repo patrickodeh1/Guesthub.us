@@ -1,0 +1,318 @@
+==============================================================
+                                  DONE
+==============================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+==============================================================
+NOT DONE
+==============================================================
+
+
+
+scraper seems to be working however those dates i asked you to put into the correct place, are being shown on the site and those dates should NOT be shown on the site. can you check that when you get a chance
+Nov 08, 2026
+
+
+In the new update, I need a text file that tells me everything that’s been updated and also how to access it and then before you send me the update. I need you to put a version number into the system so that we can track the version numbers from here out and the updates
+
+
+Yes get rid of all junk spam and i’m not sure what you mean by self sign up. You need to implement any forms with cloud flare running in the background without any user interaction like captcha or anything annoying like that.
+
+Secondly We need to figure out what the issue is with different browsers as you mentioned earlier you said that one related issue was that their browser and then I got this complaint from another guest who also had a browser issue with scanning his ID. Here’s what he said.
+
+“The only thing I can think of that could be smoother was the initial driver's license scan process. I assume it works for iPhone, but with my Android I had to download the Opera browser in order to select the correct camera for the scan. That's the fault of the website, but letting people without iPhones know about the browser would be helpful for those less tech savvy than myself.”
+
+We need to redirect the user to the correct browser or we need to alert them or something because in the ID scan if it takes the picture, they just assume that everything is all good and then I have to look at the picture and see that it’s blurry Google scanner or whatever you’re using in the background should automatically if it’s not being read correctly it should automatically prompt the GUEST that it’s not being red that something needs to change switch to a browser or turn your light on or move to an area with less light because it’s creating a glare all these things should tell the user in real time as their camera is open to let them know what they need to do to adjust the lighting or whatever to get a good picture
+@jamesd408
+
+that their browser and then I got this complaint from another guest who also had a browser issue with scanning his ID. Here’s what he said.
+
+
+
+J
+For a new user creation, I need to text The individual to their phone as well as their email with their password. I shouldn’t have to enter the password. It should automatically text them a temporary all numeric password and then they need to be prompted on first login to change this automatically before they are able to access anything else and then additionally include the link to GUEST HUB as well.
+Nov 13, 2026
+
+
+This could be included as an add-on to their monthly plan, or handled however you think would be best. I just wanted to raise this with you before I finalize things, as I think it's an important decision.
+
+J
+
+
+
+I noticed when I went to approve a guest for early check-in today it would not allow me to approve them because of the time lapse in between Cleaning, but I feel this error should be caught on the GUEST side meaning if that’s going to be an issue then The shouldn’t be able to select it and they should only be able to select from the times that are available so please update that and then keep it to a two hour window instead of a four hour window in between the last guest checking out and the new guest checking in it needs to be two hours in between or actually that should be able to be specified in the property settings because each host turnover will be different
+I can’t edit the Cleaning after the fact sometimes I need to add pictures or I need to check off boxes or I need to add notes and I need this option but it’s not the same thing as editing the cleaning task so make sure that they’re not confusing when you put a menu item in there, but I do need this added rather quickly because I have reports that I need to edit so maybe menu choices can be cleaning session and cleaning report that give you a view edit screen for each of those?
+There’s also a huge issue now I had to delete a Cleaning if I delete a Cleaning, it should automatically put that back in the pool so I can reassign it to somebody else and restart the list because I needed to edit something which you removed the edit feature from the sessions. I don’t know why, but I had to restart the Cleaning and it says it won’t allow me to set it for this current time because there’s a guest checking in which doesn’t leave enough time. I can set times for whatever I want. I’m the big guy at the website so I need to be able to do whatever the fuck I want without running into these issues.
+So yes, it should give me those warnings even still so that way it’s brought to my attention but clicking the same button again will override those or ignore those warnings
+
+When you were talking about the use of those other API’s and stuff like that, I guess it should be fine as long as my account can never get compromised because of it and as long as any host abuse can’t be implemented on me if for some reason, the host does something wrong I just don’t wanna get my API flagged or whatever so if that’s the case then they should have their own API or if they use my API then it’s fine but as far as the billing goes, we’re gonna bill their card for whatever their monthly subscription is as far as the billing for their customers so if a guest books with them directly or whatever then it’s going to bill there stripe or payment processor whichever one they use it’s gonna bill their account not my account. I’m not going to charge their guests. Anything I’m just charging the host so for every booking they get the if there’s a fee or anything that will go to me and I will charge them monthly or whatever and that will be automated but as far as their guests amount goes like if they’re checking in for three days and the total is gonna be $300 well then that $300 is gonna get charged to the hosts stripe account or Square account or whatever it is that way if there’s any chargebacks, they don’t fall on me they fall on the host. I Can’t be absorbing any kind of chargebacks and taking accountability for any GUEST that they don’t prescreen or pre-authorize or whatever you know what I mean so I can’t be assumed liable and have to come out of pocket for those amounts so therefore all those amounts should always be the host responsibility on their stripe or whatever I would like to have stripe as an option for sure because that’s a lot of the host use that one and we should probably have other payment options as well. Whatever the other popular ones are like maybe PayPal processing or whatever you think as far as an offer offering to offer to the hosts for their guest payments.
+J
+
+On the Cleaning report if a guest needs to be charged for additional cleaning or replacement of items I need to be able to put that on there so that way it can figures into their portfolio or whatever so that way, I know how much to deduct from their incidentals
+I understand
+
+
+
+
+
+Hi. Couple things that happened in the past few hours. I Got a text alert saying that Alex was checked into Chicago, but he checked in already like 1 or 2 days ago, so I think we have to keep sending the guest a text message until they say that they’ve checked in on the app or something needs to happen because we can’t let this go on because they’re gonna have questions and they’re gonna wonder what the Wi-Fi information is and how to use the smart home system and everything so once they start the process if the check-in complete hasn’t been completed within like 15 minutes we need to send them a text message like every 30 seconds or something. I don’t know what to do. I think that’s probably the best course of action just to make it annoying so that way they hit that I’ve checked in button or something. I don’t know.
+
+
+
+
+
+Can you also let me know about the API keys which one is better because we wanna keep it easy for the host so that the site can be very very easy to use for the host and for the GUEST so if we use my existing API key for certain things and then is that going to cause a problem or anything later down the road also for price labs the API key has to be theirs I believe because otherwise they’re listing would have to be imported into our software so if we can do a workaround with that one to get the price labs Incorporated into our software without using their API key and without bringing their listing into my account then that would be ideal, but if not, then we’re gonna have to use their API key and some people may not understand how to get an API key so we’ll need to make that process easy as well so please advise on that and then also let me know about the text file with all the updates so that I can start testing
+J
+Also, I noticed you put the cleaning margin times there, but those should actually be there in the property details under Cleaning assignments so I think each property has to have different tabs and when you’re changing the cleaning preferences for the property that’s where that needs to be
+@jamesd408
+
+Can you also let me know about the API keys which one is better because we wanna keep it easy for the host so that the site can be very very easy to use for the host and for the GUEST so if we use my existing API key for certain things and then is that going to cause a problem or anything later down the road also for price labs the API key has to be theirs I believe because otherwise they’re listing would have to be imported into our software so if we can do a workaround with that one to get the price labs Incorporated into our software without using their API key and without bringing their listing into my account then that would be ideal, but if not, then we’re gonna have to use their API key and some people may not understand how to get an API key so we’ll need to make that process easy as well so please advise on that and then also let me know about the text file with all the updates so that I can start testing
+Charging hosts through packages and add-ons is the best option right now. Most of the integrations (Channex, Seam, Telnyx, Google vision and geo..., Wheelhouse) already run on our own keys this way, so we only need a few tweaks to finish it. Hosts won’t have to deal with API keys for those.
+
+OK, so for those pricing tools wheelhouse and price labs it will be in either or not both so that will need to be part of the sign-up process and if they want to change it later should be easy to do for the host so they will not use both wheelhouse and price labs. They will use one or the other.
+@jamesd408
+
+OK, so for those pricing tools wheelhouse and price labs it will be in either or not both so that will need to be part of the sign-up process and if they want to change it later should be easy to do for the host so they will not use both wheelhouse and price labs. They will use one or the other.
+yes
+J
+Is the API and everything good to go with chsnnex yet or are you still working on that part?
+still need some tweaks I am working on let
+
+
+
+Also, for the extra charges, I need to have a global option that I have access to Like a table that I allow each feature as included or paid along with the amounts because I will allow a free 30 day trial as well and then some guests I’ll allow an indefinite trial so that will need to be configured as well
+And then we need to get a sales page up for all the features and then also a side-by-side comparison to the different level levels they can subscribe to
+Also, it looks like the pictures are being deleted from the app every couple of weeks so instead of deleting all of them, save the issue ones for 60 days and save the required ones for verification for 30 days and then once the photos are purged, there should be a message in there instead of them, looking like the photos were never there to begin with there should be a message saying photos remove removed from server or something like that
+You could save that issue for later if it’s time-consuming, I don’t want to distract from the current fix
+Nov 17, 2026
+
+J
+
+{The screen needs to look a lot better. I think you’re still working on it so that’s why I asked you to provide me a text file which I still don’t see so that I can start testing things. I don’t wanna start telling you things that need fixed when that part hasn’t been fixed you know what I mean but this screen looks awful like really bad. It should look really nice.
+Like that check out message about Cleaning or something like that I don’t even understand that the unit is clean and ready to go. 
+
+https://www.freelancer.com/fileservice/v4/download/f28e3edc-0b1c-4542-9be9-d7bfd78a4c9b?signature=cIta5e0mcJhi4OyjOo7jsTpGP4Jc6O9UcE9hPVZ2ahg%3D&issued=1795131756&expires=1795218156&disposition=attachment&signature_version=2&image-optimizer=force&format=webply&width=888
+
+The next step is that the guest needs to check in? I don’t need to see all that stuff.. I need to see that it’s been clean if I need to check on the Cleaning, I should be able to see the Cleaning report from the prior GUEST and I need to see what time he checks in and if he needs parking and to view edit his record that’s all I don’t need to see who cleaned it or anything like that. I just need to know that he’s good to check in. This is all for the first guest.
+}
+For the second guest, she still needs to pay her deposit so I need to see that we’re waiting on deposit on her and that she arrives in a couple days I don’t need to see anything else
+
+
+Yeah And so on, I don’t need to see all these details about these guests until really like the day before or the day of it. It’s just a lot of screen clutter and I wish it would look better.
+
+Also, I’m exploring other things here and I see about the rental agreement but I don’t see the device ID and I don’t see the terms of the rental agreement or any of that. Usually those things are long contracts. I don’t see that unless that I’m not supposed to see that unless I’m only supposed to see the digital signatures but also on the screen that I click through to get to the agreement I don’t need to see any of that stuff. All I need to see is the button view rental agreement that’s it I don’t need to see any other crap that that’s there like date time is assigned or any of that because that’ll be displayed on the rental agreement when I pull it up.
+J
+Also, I need to see a version number underneath the logo on the Edmund screen. I still don’t see that that’s why I really need this text file because I really need to look at what I’m testing because I know you have a lot more stuff that you haven’t done yet that you said is coming in the next couple of days so I don’t know if I’m telling you issues that you’re fixing and have an uploaded yet or what so really give me that text while before we go any Further.
+I’d like us to find a better arrangement for my services. Last time I sent an invoice you said it was over your budget and I had to compromise, and I don’t want that to keep happening.
+
+
+
+
+Quick question I wanna make sure that you changed the allowance of instructions to be viewed after 4 PM. Provided that manager guest approval has been made. Because on the guest checking in today, it says instructions will be visible after 8 PM but it should always be visible after 4 PM. Provided that the manager approval final step has been made if that hasn’t been made then it won’t be visible until after that has been made.
+
+But if a guest checks in at 8 PM, they might arrive early so we always wanna make sure that we’re giving the guest access after the property check-in time
+
+Additionally, that extra layer of access that we manually select that that’s something that I do with my properties, but other hosts aren’t so concerned with that so let that be an option for each host to select.
+
+Additionally, when the GUEST registers we will need to have user created options that each host can add specifically for that property like for instance mine has parking some places don’t need to know if they are going to have parking or not. Other host might want to sell add-ons for for instance, like would you like a grocery delivery before your arrival? And then there will be a spot for a fee, which will show up as like a extra service at the GUEST can select if they select it then it charges them that fee, but by default that fee should be zero and if there’s no fee set, it should just not mention that there’s a price so instead of putting the price as zero, it should not even show a price at all. Other hosts might want to add other things that they can pre-add when registering so it will be a case by case basis so that needs to be an option as well
+J
+also, for our staff account creation, the host will want to enter their pay And they might have a couple of different payscales like for instance cleaners they might get paid for the job or they might get paid hourly or both depending on the project So we want to collect that data and then tag that to each job once the cleaner is selected so that way they can select whether she’s getting paid by the job or by the hour and the accounting portion that we will add later will then be able to compute that and then mark as paid once the employee is paid
+I will have to make modification to cap access at property time so the instructions would be always available 1 hr before property checkin time
+
+
+
+And for the others I will add it as part of what I'd do later
+Ok please write these down so they are on your list.
+
+Now for an issue just found. First, the videos are still not working on iPhone. I don’t know if they are working on android or not I cannot confirm. Secondly, if I want to assign something to a task for a mandatory watch, it needs to show just the tasks for whichever property that I select and in case cases where there’s multiple properties then it will need to do the same thing because I cannot scroll through a list of 100 tasks every single time to try to find the right one and additionally there are multiple tasks that just all say the same thing like they repeat themselves because it’s pulling from each of the properties so I don’t even know what property it’s assigned to so first when you assign it to a pro you select the property and then it’ll show you the tasks but these are only if their task required if they’re not task required, then it won’t pull up the list and then the tasks need to be in order separated by room so that I can tell quickly and I can find them . Third. I need to be able to modify the video categories.
+Additionally, I just found another small glitch in the navigation for admin under the media category. You have the word categories. This links to our categories edit page. I feel this is a setting that should be in the settings properties. If this is a global setting, then it should only be accessible by admin, but if each host can change their categories and images than this should be a host setting and not a media setting
+Quick question for my Chicago property I have to access two external websites for every guest that stays these websites. Don’t have an API that I’m aware of. I would like to be able to click a link or button from the guest profile page and have the form filled out with the GUEST information if possible.
+also, I have another site that I need to send one time passcodes to. Was wondering if that is fairly simple to set up.
+J
+I would also like to set up a one time passcode for the guests that register just to make sure that we’re getting the phone number correct because I had an instant today where the GUEST typed in his phone number incorrectly. And also, I need to remove a lot of those terms from the text conditions since it’s already been approved. We need to shorten it so that it doesn’t look like it’s a lot or maybe be put it as a link that they agree to the terms and conditions of text messaging and then provide a link with a pop-up or something. I don’t know it just is a lot in that box.
+@jamesd408
+
+Quick question for my Chicago property I have to access two external websites for every guest that stays these websites. Don’t have an API that I’m aware of. I would like to be able to click a link or button from the guest profile page and have the form filled out with the GUEST information if possible.
+What websites are these for the form and for the passcodes so I can look at it and see if there's a way to implement it
+@jamesd408
+
+I would also like to set up a one time passcode for the guests that register just to make sure that we’re getting the phone number correct because I had an instant today where the GUEST typed in his phone number incorrectly. And also, I need to remove a lot of those terms from the text conditions since it’s already been approved. We need to shorten it so that it doesn’t look like it’s a lot or maybe be put it as a link that they agree to the terms and conditions of text messaging and then provide a link with a pop-up or something. I don’t know it just is a lot in that box.
+Yes we can do this as soon as guests enter their number we send a code to the number and let them fill it
+The website for the one time passcodes is actually going to be two sites. I would like the main databases for these to stay separate but I would like one user registration so like a global registration so I’m not getting users for different sites in case they want to sign up for both sites then they’re signed up for both sites by accessing just the one site but basically they would just share the user table or we could link the user tables from both databases or something so that way we have one login But two separate login pages if you want to check it out, you can go check them out. The forms are already there. It just needs the backend one time passcode thing done, and then the user tables would need linked.
+Jammin92 dot com and rc101country dot com But since we are linking the User tables together, we do need to know which website they came from so that way later on down the road when we mark it to them, we’re only marketing to the specific genre that they signed up for
+The site that I need a click through to do the information from the GUEST for GUEST HUB is livly dot com and parking dot com
+J
+Obviously, I only need to access the parking one for GUEST. They need parking if they don’t need it then I only need the other one.
+Alright I will look into them
+Nov 18, 2
+
+
+J
+Additionally we need to add cloudflare one into the mix. Are you familiar with how to do this so that everything is 100 percent secure?
+@jamesd408
+
+If I change any file files, I will send you the file that I changed.
+
+Additionally we need to add cloudflare one into the mix. Are you familiar with how to do this so that everything is 100 percent secure?
+Yes I am
+J
+Ok is it done at a server level or a site level? The goal is to secure everything from unauthorized ai agents, bots, spyware, hacks, and any other malicious activity.
+@jamesd408
+
+Ok is it done at a server level or a site level? The goal is to secure everything from unauthorized ai agents, bots, spyware, hacks, and any other malicious activity.
+It's done both on server and site level
+
+We have to add the domain to cloudflare switch the nameservers from the current registrar I don't know which you currently use if it's GoDaddy
+We set on proxy and SSL to use cloudflare origin certificate
+On the site level we add turnstile to all forms and also modify headers of the page so it catches and blocks bots and suspicious activities
+Got it. Ok moving forward we need to implement that now. We will start with guest hub
+J
+What do you need me to do as far as the stripe issue
+@patodeh
+
+
+Also currently I’m not seeing a sync/push update with platforms (anirbnb VRBO booking dot com furnished finder Zillow etc) option unless I’m not looking in the right area.
+@jamesd408
+
+Also currently I’m not seeing a sync/push update with platforms (anirbnb VRBO booking dot com furnished finder Zillow etc) option unless I’m not looking in the right area.
+we cant do that directly we have to use it with channex and the setup for this specifficaly isnt complete but its part of what i am sending next
+@jamesd408
+ Also on this view for mobile and desktop please Chang sit in the following manner:
+Make the headings standout more (cell color along the full row, bold text bigger text just somthing that makes it very clear where the next set starts)
+
+Additionally for direct booking listing can we import this from another platform so we don’t have to create a new listing, and then sync from guest hub for any other updates (so a one time import)
+
+i will look if there is a way we can use channex to import this
+On the main page can you add the compatibility logos like Airbnb VRBO booking dot com furnished finder Zillow and maybe create a menu that includes: pricing (with chart that shows what’s in each tier to compare side by side), compatibility, work flows, etc that takes them to that portion of the front page. Also a login link on that menu. Add inventory management and the other upcoming features like AI image detection, claim reporting, etc
+J
+Also add the logo on the login page along with create account link. For the request an account page I am should be: Property Owner, Property Manager/Cohost, Cleaning Company, Cleaner. For cleaner we need to know the property ID to tag them with. The property ID will be unique and should be numbers only. The cleaning company should ask for the name of their company.
+Nov 19, 2026
+
+
+
+
+
+
+also i need a campaign setup on telnyx to send out mass texts to subscribers as i plan to send out a promotional text to our customers in 5 days for a sale holiday we havee here in the states. can you please let me know when you can come online to do that so we can get it setup
+I need you to update the Web hooks. I’m getting alerts like every couple of hours that the cleaner has not accepted the job although she did accept the job. Also, can we delete the old site or anything that we don’t need off of the server?
+J
+Also on a sidenote, if I do need to cancel a job and re-create it if I cancel the job, it should still show up for that GUEST but just as a reschedule one time I had to do that because something wasn’t working right I can’t remember what but I deleted the job and then I had to re-create it, but I couldn’t link it to the GUEST at that point
+J
+Also remember, I need as soon as I enter a guest manually or it’s imported and they haven’t registered yet. It shouldn’t give any options. It should just say something like unregistered or Something like that with no fields to fill-in no messages or anything like that just the guest name and information that I’ve already entered
+yes
+J
+Yeah, as long as you have everything migrated from flip status from when I had to use it that one time that I already told you about then you can delete it
+ok for the domain should it just be down too or should i show something its place
+J
+
+I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
+
+For the direct booking will need to have reviews so that people can review the property similar to the way that Airbnb does their reviews. And if we can import reviews from the other platforms and mix them in with the reviews left by the direct booking so that it looks all seamless that would be great also
+
+Also, I’m seeing that there might be a need for an app as well ai can do the app but it’s asking for Guest Hub repository link and/or API documentation, can you prepare that as well
+
+Cleaning guide issue. See in this picture, it says to ask instead of the actual code and I can’t see where to edit this on the step-by-step
+https://www.freelancer.com/fileservice/v4/download/8693f51b-4d1f-452f-8ec1-9c3ce1486bb2?signature=KvEsUMrDb_d3WfgQJf0BpN8_aR8igDw2Sjt2p-rYW6s%3D&issued=1795126165&expires=1795212565&disposition=attachment&signature_version=2&image-optimizer=force&format=webply&width=400
+IMG_8877.pngIMG_8877.png
+10:57 PM
+
+Then in this step, it’s also asking for another picture so it’s redundant. It doesn’t need to be there to take the picture. But also, this is a duplicate this step is actually for the GUEST
+https://www.freelancer.com/fileservice/v4/download/67638594-5a93-4224-9d7a-592ab8ec5059?signature=nvea3zGy0eSOmc4hroRxeZTZPydRo1e_fCnLFVmeXsY%3D&issued=1795126165&expires=1795212565&disposition=attachment&signature_version=2&image-optimizer=force&format=webply&width=400
+IMG_8878.pngIMG_8878.png
+11:00 PM
+
+J
+Also, it’s not letting me continue on the report. Only the required check boxes need checked if it’s not a required photo it doesn’t need checked it’s optional.
+
+================================
+OLDER REQUEST UNDONE TASKS
+=================================
+
+**Client's words:** Under HOSPITALITY the first link will then be Manage Listings. Also I’m not sure how to do it But I think you might know. Some hosts have their own domain name and I’ve seen sites that can redirect their domain name directly to the page that we have set up for them on our site so that will need to be a setting as well
+
+
+**Client's words:** Also media and photos should be the same. But categories for images and video and categories for training vs site images.
+
+
+**Client's words:** whatever is deleted should delete all associated files too.
+
+**Client's words:** Also, while you’re setting the texting up, I need another alert if somebody through GUEST HUB needs a GPS override request it should alert me and then I can respond yes or no, and it will automatically override or not allow
+
+**Client's words:** Ok please fix the guest check in time stamp overwrite issue. It shouldn’t be overwritten and also there should be an audit trail for guest activity so I can see that the guest checked out, then admin checked them back in then the guest checked out again which is the final timestamp to report as actual guest check out time. The very last entry. Also make sure time and date stamps are accurate and in the local time zone if the property
+
+
+
+You really need to change the wording on here because if I need to edit a cleaning, it’s already been done. I shouldn’t be taken to the edit the cleaning job. It’s too confusing. You need to change this somehow because when I edit the job meaning like before it starts or even while it’s in progress, I edit the job categories in the job assignments and the things that appear like the time that they can start and things like that if I edit the report, that’s something completely different.
+
+
+
+**Client's words:** only on the same day if it’s an admin that’s trying to reopen the report then I can do it whenever I want an admin or owner or manager they’re all the same thing. I don’t need to add notes unless I want to add note so there should be a button to add a note and not a big long field in case they don’t want to.. and the other stuff just looks unformed I get this page better looking please
+
+
+
+
+
+
+**Client's words:** and the other stuff just looks unformed I get this page better looking please
+
+file:///home/soarersavannah/Downloads/ScreenRecording_10-31-2026%2013-37-09_1.mp4
+
+(missing file: 2013-37-09_1.mp4)
+
+
+
+
+
+**Client's words:** And then when I am giving people access, I can give you company access, which gives you access similar to mine except for you can’t change global properties. And then if I want to white label it meaning let somebody else use their logo and rebrand it then that would be a different account type altogether but as far as rolls, go use the list that I gave you above. It’s too long of a list when it comes to checking notifications off and on on those boxes.
+
+
+
+
+
+
+
+**Client's words:** In the near future I would like to have ai built in so guests can ask questions about the property instead of having to find the menu selection so put that on the list also
+
+
+
+**Client's words:** For a new user creation, I need to text The individual to their phone as well as their email with their password. I shouldn’t have to enter the password. It should automatically text them a temporary all numeric password and then they need to be prompted on first login to change this automatically before they are able to access anything else and then additionally include the link to GUEST HUB as well.
+
+
+
+
+
+remember version number task
+
+
+
+
