@@ -10,15 +10,16 @@ class RemindIncompleteCheckins extends Command
 {
     protected $signature = 'bookings:remind-incomplete-checkins';
 
-    protected $description = 'Remind guests every ten minutes after they start check-in until they confirm arrival';
+    protected $description = 'Remind guests every thirty minutes after GPS verification until they confirm arrival';
 
     public function handle(): int
     {
-        $cutoff = now()->subMinutes(10);
+        $cutoff = now()->subMinutes(30);
 
         $bookings = Booking::query()
             ->whereDate('check_in_date', now()->toDateString())
-            ->whereNotNull('guest_authenticated_at')
+            ->whereNotNull('checkin_instructions_started_at')
+            ->where('checkin_instructions_started_at', '<=', $cutoff)
             ->whereNull('checked_in_at')
             ->where(function ($query) {
                 $query->whereNull('manually_checked_in')
