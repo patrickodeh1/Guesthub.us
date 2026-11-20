@@ -36,7 +36,7 @@
 **Dependency:** Cloudflare account/domain/DNS access and confirmation of current proxy/SSL setup. Do not claim infrastructure is secured from application code alone.
 
 ### 3. ID scanning across browsers and devices
-**Status:** Not started  
+**Status:** Excluded by user instruction — do not touch  
 **Client request:** Resolve Android browser/camera selection problems and improve ID capture feedback. Detect unreadable/blurred/glared/poorly lit images while the camera is open and guide the guest to correct the issue or use a supported browser.  
 **Acceptance checks:** Test real iOS Safari and Android Chrome devices; do not claim browser compatibility based only on desktop emulation.
 
@@ -96,9 +96,8 @@
 **Client request:** On the page leading to the agreement, show only a “View Rental Agreement” action. Ensure the agreement itself exposes the full terms and device ID as well as signatures.
 
 ### 16. Guest instruction release timing and host settings
-**Status:** Needs reconciliation before implementation  
-**Client wording:** Instructions should be available after 4 PM once manager guest approval is complete; if approval is incomplete, keep them hidden. Client also said instructions should be available one hour before property check-in time. The client additionally wants the extra manual approval layer to be optional per host.  
-**Conflict:** “After 4 PM” and “one hour before property check-in” are not necessarily the same rule. Inspect current implementation and log the exact behaviour; ask for a decision only if code and existing settings do not resolve precedence.
+**Status:** Completed elsewhere — excluded from this backlog  
+**User confirmation:** User confirmed this task is already done. Do not change it or ask for a timing decision.
 
 ### 17. Property-specific guest registration questions and add-ons
 **Status:** Not started  
