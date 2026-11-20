@@ -188,3 +188,25 @@
 - Some requests are product-scale projects, not isolated bug fixes. Each will be checked against existing architecture before code changes.
 - Infrastructure changes requiring DNS, Cloudflare, payment-provider, third-party site, or production-device access cannot be truthfully marked complete from repository edits alone.
 - Do not claim a feature is verified unless tests or a reproducible staging check actually ran.
+
+
+### 35. Cleaning margin configuration placement
+**Status:** Not started  
+**Client request:** Move cleaning margin/turnover time settings out of the current general location and into each property's details under **Cleaning assignments**, so each property can have its own values.
+
+### 36. One-time listing import and subsequent sync
+**Status:** Not started  
+**Client request:** Allow a host to import an existing listing from another platform once, then manage subsequent listing updates from Guest Hub. Channex was mentioned as a possible import path, but the available import capability and supported source platforms must be verified before promising this.
+
+### 37. Shared registration across Jammin92 and RC101Country
+**Status:** Not started — separate application/database integration  
+**Client request:** Keep the two sites' main databases separate while allowing one global user registration/login identity to access both sites. Preserve which site the user originally registered from so future marketing can be segmented by site/genre.  
+**Dependencies:** Access to both codebases and databases, authentication architecture decision, and a migration/linking strategy. Do not merge the databases as a shortcut.
+
+### 38. External-site one-time passcode workflow
+**Status:** Blocked pending site details  
+**Client request:** Set up sending one-time passcodes to the other external website(s), in addition to verifying phone numbers for Guest Hub guest registration. The client named Jammin92.com and RC101Country.com in the shared-registration discussion, but the exact OTP entry points and delivery requirements need confirmation.
+
+### 39. Cloudflare One / Zero Trust scope
+**Status:** Blocked pending infrastructure access and security design  
+**Client request:** Add Cloudflare One to protect the service against unauthorized agents, bots, spyware and other malicious activity. This is broader than adding Turnstile to forms: determine which origins, admin paths, server services and users should be protected by Cloudflare Zero Trust, then configure DNS, proxy, origin certificates, access policies and application protections with the account owner.
