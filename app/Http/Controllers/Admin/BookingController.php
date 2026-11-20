@@ -590,7 +590,10 @@ class BookingController extends Controller
     {
         $this->guardNotCancelled($booking);
 
-        $booking->update(['gps_verified' => true]);
+        $booking->update([
+            'gps_verified' => true,
+            'checkin_instructions_started_at' => $booking->checkin_instructions_started_at ?? now(),
+        ]);
         ActivityLogService::security('gps_override', auth()->user()->name." overrode GPS verification for {$booking->guest_name} ({$booking->booking_id}).", [
             'subject_type' => Booking::class,
             'subject_id'   => $booking->id,
