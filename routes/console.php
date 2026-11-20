@@ -23,6 +23,7 @@ Schedule::command('bookings:archive-overdue')->everyFiveMinutes();
 // day. Runs early morning so guests get it well before typical check-in
 // times; the whereNull(checkin_reminder_sent_at) guard makes re-runs safe.
 Schedule::command('bookings:send-checkin-reminders')->dailyAt('08:00');
+Schedule::command('bookings:remind-incomplete-checkins')->everyTenMinutes()->withoutOverlapping(9);
 
 // "Check-out is available tomorrow" alert, sent once per booking the evening
 // before check-out (task 30). The whereNull(checkout_reminder_sent_at) guard
