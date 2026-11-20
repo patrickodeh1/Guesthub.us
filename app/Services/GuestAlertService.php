@@ -57,6 +57,11 @@ class GuestAlertService
             'default_guest_message' => "Hi {guest_first_name}, today's the day. Check-in at {property_name} opens at {check_in_time}.",
             'default_staff_message' => '{guest_name} is due to check in today at {property_name}, opening at {check_in_time}. Make sure the unit is ready.',
         ],
+        'incomplete_checkin_reminder' => [
+            'label' => 'Incomplete check-in reminder (every 10 minutes)',
+            'default_guest_message' => "Hi {guest_first_name}, you still need to finish checking in at {property_name}. Please tap the I'm checked in button when you have arrived: {guest_link}",
+            'default_staff_message' => '',
+        ],
         'checkin_ready' => [
             'label' => 'Unit ready to check in',
             'default_guest_message' => "Hi {guest_first_name}, your unit at {property_name} is ready. Visit your check-in link to complete check-in and unlock your guide: {guest_link}",
