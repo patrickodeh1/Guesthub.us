@@ -24,6 +24,7 @@ ONGOING
 
 
 
+I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
 
 
 
@@ -235,7 +236,6 @@ Yeah, as long as you have everything migrated from flip status from when I had t
 ok for the domain should it just be down too or should i show something its place
 J
 
-I need you to find tune the scanner for the vehicle information because guests are taking pictures from too far away and it’s not reading the State or it’s not reading the letters correctly as you can see in the last two guests that registered their plates. The one doesn’t even have the State, and then the other one added an extra letter at the beginning, which doesn’t need to be there and then neither one of them has the vehicle information either so I need you to tighten it up like you did with the barcode image so that they are instructed to get closer to the vehicle get closer get closer move back, etc. so that way it captures everything that we need
 
 For the direct booking will need to have reviews so that people can review the property similar to the way that Airbnb does their reviews. And if we can import reviews from the other platforms and mix them in with the reviews left by the direct booking so that it looks all seamless that would be great also
 

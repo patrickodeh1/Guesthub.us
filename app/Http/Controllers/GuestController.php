@@ -1105,7 +1105,7 @@ class GuestController extends Controller
         $this->booking($bookingId, $token);
         $request->validate(['frame' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240']]);
 
-        return response()->json(app(\App\Services\PlateScanner::class)->scan($request->file('frame')->get()));
+        return response()->json(app(\App\Services\PlateScanner::class)->scan($request->file('frame')->get(), $request->boolean('live')));
     }
 
     public function submitVehicleInfo(Request $request, string $bookingId, string $token)
@@ -1128,6 +1128,7 @@ $upload = $request->file('license_plate_photo');
             'license_plate_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
             'license_plate' => ['nullable', 'string', 'max:12', 'regex:/^[A-Za-z0-9 \-]+$/'],
             'license_plate_state' => ['nullable', 'string', 'size:2'],
+            'vehicle_make_model' => ['nullable', 'string', 'max:80'],
         ]);
 
         $updates = [];
@@ -1137,6 +1138,33 @@ $upload = $request->file('license_plate_photo');
             throw ValidationException::withMessages(['license_plate_photo' => 'Photo rejected. Please photograph the entire back of your vehicle, with the plate, make and model all visible.']);
         }
 
+        $plate = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate')));
+        if ($plate === '' && ! empty($scan['plate'])) {
+            $plate = $scan['plate'];
+        }
+        $state = strtoupper(trim((string) $request->input('license_plate_state')));
+        if ($state === '' && ! empty($scan['state'])) {
+            $state = $scan['state'];
+        }
+        $makeModel = trim((string) preg_replace('/\s+/', ' ', (string) $request->input('vehicle_make_model')));
+        if ($makeModel === '' && ! empty($scan['make_model'])) {
+            $makeModel = $scan['make_model'];
+        }
+
+        $missing = [];
+        if ($plate === '') {
+            $missing['license_plate'] = 'Please enter your plate number.';
+        }
+        if ($state === '') {
+            $missing['license_plate_state'] = 'Please choose the state on your plate.';
+        }
+        if ($makeModel === '') {
+            $missing['vehicle_make_model'] = 'Please enter your vehicle make and model.';
+        }
+        if ($missing) {
+            throw ValidationException::withMessages($missing);
+        }
+
         $storedPath = $upload->store('license-plates');
         if ($storedPath === false) {
             throw ValidationException::withMessages([
@@ -1144,14 +1172,9 @@ $upload = $request->file('license_plate_photo');
             ]);
         }
         $updates['license_plate_photo_path'] = $storedPath;
-        $updates['license_plate'] = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $request->input('license_plate'))) ?: null;
-        $updates['license_plate_state'] = strtoupper((string) $request->input('license_plate_state')) ?: null;
-        if (empty($updates['license_plate']) && ! empty($scan['plate'])) {
-            $updates['license_plate'] = $scan['plate'];
-        }
-        if (empty($updates['license_plate_state']) && ! empty($scan['state'])) {
-            $updates['license_plate_state'] = $scan['state'];
-        }
+        $updates['license_plate'] = $plate;
+        $updates['license_plate_state'] = $state;
+        $updates['vehicle_make_model'] = mb_substr($makeModel, 0, 80);
 
         $booking->update($updates);
 
