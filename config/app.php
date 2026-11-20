@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Guest Hub'),
 
+    // Public release identifier displayed in the application shell.
+    'version' => env('APP_VERSION', trim(file_get_contents(base_path('VERSION')))),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
