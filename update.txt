@@ -1,1 +1,29 @@
+changes not on the server are in fix/outstanding_work & integrations/phase-0-pricelabs-safety main is up to date with serrver so zip the files/changes two branches only
+
 task 27 time zone alerts to show correct local and property times  [DONE] [prod note reset alerts to use the updated text and run migrations]
+pricelabs/wheelhouse done
+
+## 30. Add owner‑specific checkout SMS without guest name, list tasks in text file  [DONE] - also made owners edit and manage their notifications
+
+## 31. Display guest checkout all day, update status to cleaning then archive  [DONE] dashboard and guest list now show cleaning progess
+
+## 38. Add photo‑verification tasks visible only to selected cleaners  [DONE] - ran npm run build for this so ship build folder
+
+
+
+
+## 44. Improve Facebook share image, fix link preview, revamp sales page, launch beta  [ DONE] (To do)
+
+{
+Upload two files (same folder paths): resources/views/landing.blade.php and public/images/share/og-guesthub.jpg.
+Clear the view cache on the server: php artisan view:clear, or empty storage/framework/views/ in cPanel File Manager.
+Check it: curl -s https://guesthub.us | grep -c "og:image" should print 4 or more. Then press “Scrape Again” in Facebook’s Sharing Debugger, and test WhatsApp with https://guesthub.us/?v=2.}
+
+
+
+
+## 48. Add ability to link photo guides across properties for reuse  [DONE] has a migration also made checkin and out steps copy and linked to other properties
+
+
+
+
