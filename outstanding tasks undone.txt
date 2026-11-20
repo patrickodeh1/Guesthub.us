@@ -16,9 +16,9 @@
 
 
 
-
-
-
+==================================================================
+ONGOING
+==================================================================
 
 
 
@@ -39,8 +39,6 @@ NOT DONE
 
 
 
-scraper seems to be working however those dates i asked you to put into the correct place, are being shown on the site and those dates should NOT be shown on the site. can you check that when you get a chance
-Nov 08, 2026
 
 
 In the new update, I need a text file that tells me everything that’s been updated and also how to access it and then before you send me the update. I need you to put a version number into the system so that we can track the version numbers from here out and the updates
