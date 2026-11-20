@@ -1,0 +1,65 @@
+GUEST HUB — CLIENT UPDATE NOTES
+================================
+
+Release: 1.0.0
+Branch: work/2026-11-remaining-client-backlog
+
+WHAT CHANGED IN THIS RELEASE
+----------------------------
+
+1. Application version tracking
+   - Added a VERSION file at the repository root.
+   - Current version: 1.0.0.
+   - Laravel exposes the value as config('app.version').
+   - The version is displayed directly beneath the brand logo in the authenticated
+     application sidebar.
+   - Future releases should update VERSION and include matching release notes.
+
+2. Login screen branding
+   - The brand logo is now displayed inside the sign-in card as well as in the
+     desktop branding panel. This ensures it is visible on mobile, where the
+     desktop panel is hidden.
+
+3. Create-account entry point
+   - Added a Create an account link below the sign-in button.
+   - It opens the existing account-request flow at /signup.
+
+HOW TO CHECK
+------------
+
+A. Version number
+   1. Sign in to Guest Hub.
+   2. Look directly below the logo at the top of the left navigation sidebar.
+   3. Confirm that it reads: Version 1.0.0.
+
+B. Login logo and signup link
+   1. Sign out, or open the sign-in page in a private browser window.
+   2. Confirm the brand logo appears inside the sign-in card.
+   3. Confirm the Create an account link appears below Sign in.
+   4. Open the link and confirm it takes you to the account-request form.
+
+NOT INCLUDED / NOT CLAIMED AS COMPLETE
+--------------------------------------
+
+- This release does not complete the remaining client backlog.
+- The signup form still needs the requested four account categories and the
+  additional Cleaner property-ID / Cleaning Company name fields. Those fields
+  require coordinated validation, storage and approval-flow changes and are
+  separately recorded in CLIENT_WORK_LOG.md.
+- Cloudflare DNS, proxy, SSL/origin certificate and account-level security
+  cannot be verified or completed from repository changes alone.
+- Browser/device-specific ID and video scanning still require real iPhone and
+  Android testing.
+- No production deployment has been performed from this update.
+- Automated PHP/Laravel and browser tests were not run in this remote repository
+  editing session. Please run the project's test suite and verify the steps above
+  in staging before release.
+
+REVIEW FILES
+------------
+
+- VERSION
+- config/app.php
+- resources/views/layouts/unified.blade.php
+- resources/views/auth/login.blade.php
+- CLIENT_WORK_LOG.md
