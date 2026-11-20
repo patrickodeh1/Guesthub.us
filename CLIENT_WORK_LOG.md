@@ -25,7 +25,8 @@
 ## Current execution log
 
 ### 1. Version number and client-facing update notes
-**Status:** Not started  
+**Status:** Implemented — needs staging test
+**Implemented:** Added root `VERSION` file (`1.0.0`), exposed it as `config('app.version')`, and displayed it beneath the brand in the authenticated sidebar. Added `CLIENT_UPDATE_NOTES.txt` with client-facing access and test steps. Automated/staging verification remains outstanding.  
 **Client request:** Add a version number under the logo and provide a text file explaining everything updated and how to access/test it.  
 **Acceptance checks:** Version is visible in the authenticated application shell; version is stored in source control; release notes list only changes actually delivered and give clear navigation/testing steps.
 
@@ -131,7 +132,8 @@
 **Client request:** Add platform compatibility logos, section navigation (pricing, compatibility, workflows), login link, pricing comparison, and feature mentions including inventory management, AI image detection and claims reporting.
 
 ### 24. Login and account-request flow
-**Status:** Partially present; needs review  
+**Status:** Partially implemented — needs staging test and remaining signup changes
+**Implemented:** The login page already had desktop-only brand treatment; added the logo inside the sign-in card so it also appears on mobile, plus a Create an account link to the existing `/signup` request form. **Still outstanding:** the request form currently offers only Property Owner, Cleaner, and Company / Manager. The client asked for four distinct choices (Property Owner, Property Manager/Cohost, Cleaning Company, Cleaner), numeric property ID for cleaners, and company name for cleaning companies. The controller currently validates only `owner`, `housekeeper`, and `company`; the requested extra fields need coordinated schema, validation, approval and property-linking changes.  
 **Client request:** Show the brand logo and a Create Account link on login. Account types: Property Owner, Property Manager/Cohost, Cleaning Company, Cleaner. Cleaner signup must collect a numeric property ID; Cleaning Company signup must collect company name.
 
 ### 25. Cancel/recreate cleaning and guest association
