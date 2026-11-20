@@ -92,6 +92,7 @@
                     </span>
                 @endif
             @endif
+            <span class="text-[10px] font-medium tracking-wide text-slate-400">Version {{ config('app.version') }}</span>
         </a>
         <button type="button" id="admin-sidebar-close" class="rounded-md p-1 text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40 lg:hidden" aria-label="Close navigation">
             <x-icon name="x" class="h-5 w-5" />
