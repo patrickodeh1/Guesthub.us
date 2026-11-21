@@ -14,10 +14,23 @@ class SignupApprovedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public User $user, public bool $resend = false) {}
+    public function __construct(public User $user, public bool $resend = false, public ?string $temporaryPassword = null) {}
 
     public function build(): static
     {
+        if ($this->temporaryPassword !== null) {
+            $siteName = Branding::siteName();
+            $body = "Hi {$this->user->name},\\n\\nYour {$siteName} account has been approved. Use the temporary password below to sign in. You will be required to choose a new password before you can access the account.";
+
+            return $this->subject("Your {$siteName} account is approved")
+                ->view('emails.signup-approved', [
+                    'body' => $body,
+                    'temporaryPassword' => $this->temporaryPassword,
+                    'loginUrl' => route('login'),
+                    'user' => $this->user,
+                ]);
+        }
+
         $setupUrl = PasswordSetupController::linkFor($this->user);
         $vars = ['{lead_name}' => $this->user->name, '{site_name}' => Branding::siteName()];
 
