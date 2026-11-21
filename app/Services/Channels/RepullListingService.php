@@ -115,9 +115,6 @@ class RepullListingService
         }
 
         $link = $this->linkFor($listing, $channel);
-        if ($channel === 'booking' && filled($hotelId)) {
-            $link->external_listing_id = (string) $hotelId;
-        }
         $link->forceFill(['state' => 'publishing', 'connection_id' => $connection->id, 'last_error' => null, 'last_error_at' => null])->save();
 
         try {
@@ -128,7 +125,7 @@ class RepullListingService
 
             $result = $channel === 'airbnb'
                 ? $this->publishAirbnb($link, $connection, $remoteId, $force, $idem)
-                : $this->publishBooking($listing, $link, $remoteId, $idem);
+                : $this->publishBooking($listing, $link, $remoteId, $idem, $hotelId);
 
             $this->applyResult($listing, $link, $channel, $result, $hash);
         } catch (RepullException $e) {
@@ -276,7 +273,7 @@ class RepullListingService
         return is_array($res['result'] ?? null) ? $res['result'] : $res;
     }
 
-    private function publishBooking(PropertyListing $listing, ListingChannelLink $link, string $remoteId, string $idem): array
+    private function publishBooking(PropertyListing $listing, ListingChannelLink $link, string $remoteId, string $idem, ?string $hotelId = null): array
     {
         if (blank($link->external_listing_id)) {
             $p = $listing->property;
@@ -351,7 +348,7 @@ class RepullListingService
             throw new ChannelPublishBlocked('Booking.com is not ready to publish: '.$detail);
         }
 
-        $res = $this->client->publishBooking($remoteId, ['hotelId' => (string) $link->external_listing_id], $idem);
+        $res = $this->client->publishBooking($remoteId, ['hotelId' => (string) ($hotelId ?: $link->external_listing_id)], $idem);
 
         return is_array($res['result'] ?? null) ? $res['result'] : $res;
     }
