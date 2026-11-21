@@ -117,6 +117,26 @@ class ListingChannelController extends Controller
         return back()->with('success', ucfirst($channel).' listing taken off the market.');
     }
 
+    public function setListingOnline(Request $request, Property $property, RepullListingService $service)
+    {
+        $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
+        $listing = $property->listing()->first();
+        abort_unless($listing, 404);
+        $listing->setRelation('property', $property);
+
+        try {
+            $result = $service->setListingOnline($listing, $request->boolean('online'));
+        } catch (ChannelPublishBlocked|RepullException $e) {
+            return back()->withErrors(['channel' => $e instanceof RepullException ? $this->friendly($e) : $e->getMessage()]);
+        }
+
+        $message = $request->boolean('online') ? 'Online' : 'Offline';
+        return back()
+            ->with('channel_results', $result['channels'])
+            ->with($result['ok'] ? 'success' : 'warning', 'Repull '.$message.' request finished. Review each channel result below; any failed channel may still be live.');
+    }
+
     public function readiness(Request $request, Property $property, RepullListingService $service)
     {
         $this->authorizeProperty($request, $property);
