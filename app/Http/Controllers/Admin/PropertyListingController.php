@@ -31,10 +31,19 @@ class PropertyListingController extends Controller
     {
         $this->authorizeProperty($request, $property);
 
+        $listing = $property->listing()->with(['photos', 'listingRooms', 'channelLinks'])->firstOrNew();
+        $lockedFields = $listing->channelLinks->flatMap(function ($link) {
+            return collect($link->locked_fields ?? [])->map(fn ($field) => [
+                'channel' => $link->channel,
+                'field' => strtolower((string) $field),
+            ]);
+        })->values();
+
         return view('admin.listings.edit', [
             'property' => $property->load(['amenities']),
-            'listing' => $property->listing()->with(['photos', 'listingRooms'])->firstOrNew(),
-            'listingRooms' => $property->listing?->listingRooms ?? collect(),
+            'listing' => $listing,
+            'listingRooms' => $listing->listingRooms,
+            'lockedFields' => $lockedFields,
             'paymentMethods' => $property->owner_id
                 ? HostPaymentMethod::query()->where('owner_id', $property->owner_id)->orderBy('id')->get()
                 : collect(),
