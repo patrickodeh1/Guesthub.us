@@ -100,7 +100,7 @@ class CleaningJobService
             ]);
         }
 
-        $checkout = $this->assertSchedulable($data);
+        $checkout = $this->assertSchedulable($data, $confirmConflicts);
 
         if (! $confirmConflicts) {
             $conflicts = $this->detectConflicts($data, $session);
@@ -184,12 +184,13 @@ class CleaningJobService
     }
 
     public const MIN_TURNOVER_MINUTES = 240;
+    public const DEFAULT_TURNOVER_MINUTES = 240;
 
     /**
      * Hard rules, not overridable. Returns the departing guest's effective
      * checkout, or null when no guest checks out that day at that property.
      */
-    private function assertSchedulable(array $data): ?Carbon
+    private function assertSchedulable(array $data, bool $confirmTurnoverOverride = false): ?Carbon
     {
         $date = Carbon::parse($data['scheduled_date'])->toDateString();
         $dead = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
@@ -225,13 +226,53 @@ class CleaningJobService
                 $fail("The next guest's check-in time request is still pending. Approve or decline it before scheduling a cleaner.");
             }
             $arrive = Carbon::parse($date.' '.$in->effectiveCheckinTime());
-            if ($start->diffInMinutes($arrive, false) < self::MIN_TURNOVER_MINUTES) {
-                $fail('The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
-                    .(self::MIN_TURNOVER_MINUTES / 60).' hours after a '.$start->format('g:i A').' start.');
+            $minimumMinutes = (int) (Property::query()->whereKey((int) $data['property_id'])->value('turnover_gap_minutes') ?? self::DEFAULT_TURNOVER_MINUTES);
+            if ($start->diffInMinutes($arrive, false) < $minimumMinutes) {
+                $conflict = [
+                    'type' => 'turnover_gap',
+                    'message' => 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
+                        .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.',
+                ];
+                if (! $confirmTurnoverOverride) {
+                    throw new ConflictsDetected([$conflict]);
+                }
             }
         }
 
         return $checkout;
+    }
+
+    /** Return turnover-gap warnings so confirmed overrides can be recorded in the activity log. */
+    public function detectTurnoverConflicts(array $data): array
+    {
+        $date = Carbon::parse($data['scheduled_date'])->toDateString();
+        $propertyId = (int) $data['property_id'];
+        $minimumMinutes = (int) (Property::query()->whereKey($propertyId)->value('turnover_gap_minutes') ?? self::DEFAULT_TURNOVER_MINUTES);
+        if ($minimumMinutes <= 0) {
+            return [];
+        }
+
+        $dead = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+        $live = fn ($q) => $q->whereNull('cancelled_at')
+            ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
+        $out = Booking::query()->where('property_id', $propertyId)->whereDate('check_out_date', $date)->where($live)->first();
+        $in = Booking::query()->where('property_id', $propertyId)->whereDate('check_in_date', $date)
+            ->when($out, fn ($q) => $q->where('id', '<>', $out->id))->where($live)->first();
+        if (! $out || ! $in || $in->checkin_time_status === 'pending' || $out->checkout_time_status === 'pending') {
+            return [];
+        }
+
+        $start = Carbon::parse($date.' '.($data['scheduled_time'] ?? $out->effectiveCheckoutTime()));
+        $arrive = Carbon::parse($date.' '.$in->effectiveCheckinTime());
+        if ($start->diffInMinutes($arrive, false) >= $minimumMinutes) {
+            return [];
+        }
+
+        return [[
+            'type' => 'turnover_gap',
+            'message' => 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
+                .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.',
+        ]];
     }
 
     public const CLEANER_OVERLAP_MINUTES = 180;
