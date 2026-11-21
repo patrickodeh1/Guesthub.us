@@ -195,7 +195,7 @@ class ListingChannelController extends Controller
             return back()->withErrors(['channel' => 'Complete the listing first: '.implode(', ', $blocked).'.']);
         }
         if (! $service->connectionFor($listing, $channel)) {
-            return back()->withErrors(['channel' => 'Connect the host\'s '.ucfirst($channel).' account first.']);
+            return back()->withErrors(['channel' => 'Connect the host\'s '.ucfirst($channel).' account with full management access before publishing.']);
         }
 
         $service->linkFor($listing, $channel)->forceFill(['state' => 'publishing', 'last_error' => null])->save();
