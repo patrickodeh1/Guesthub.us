@@ -46,7 +46,7 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
         // Content-hash no-op: do not call Repull when a prior successful push
         // already contains the current GuestHub content.
         $link = $listing->channelLinks->firstWhere('channel', $this->channel);
-        if (! $this->force && $link && in_array($link->state, ['published', 'live'], true)
+        if (! $this->force && $link && in_array($link->state, ['published', 'live', 'publishing'], true)
             && filled($link->content_hash) && hash_equals((string) $link->content_hash, $mapper->hash($listing))) {
             return;
         }
