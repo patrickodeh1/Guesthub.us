@@ -91,14 +91,26 @@ class RepullListingService
     public function pushContent(PropertyListing $listing): array
     {
         $id = $this->ensureRemoteListing($listing);
-        $photos = $this->pushCanonicalPhotos($listing, $id, $idem);
+        $photoSync = $this->pushCanonicalPhotos($listing, $id, $idem);
         $payload = $this->mapper->contentPayload($listing);
         unset($payload['photos']);
-        if ($photos !== []) {
+        if ($photoSync['payload'] !== []) {
             $payload['photosMode'] = 'append';
-            $payload['photos'] = $photos;
+            $payload['photos'] = $photoSync['payload'];
         }
         $res = $this->client->updateListingContent($id, $payload);
+        $deferred = (array) (data_get($res, 'deferred') ?? data_get($res, 'data.deferred') ?? []);
+        if (in_array('photos', $deferred, true)) {
+            throw new RepullException('Repull deferred the listing photos instead of attaching them to the canonical listing.', 'photo_attach_deferred');
+        }
+        foreach ($photoSync['uploaded'] as $uploaded) {
+            $uploaded['photo']->forceFill([
+                'repull_photo_listing_id' => $id,
+                'repull_photo_path' => $uploaded['path'],
+                'repull_photo_url' => $uploaded['url'],
+                'repull_uploaded_at' => now(),
+            ])->save();
+        }
         $out = ['changed' => (array) ($res['changed'] ?? []), 'deferred' => (array) ($res['deferred'] ?? [])];
         $this->event($listing, null, 'push_content', 'ok', null, $out);
 
@@ -387,12 +399,13 @@ class RepullListingService
         $photos = $listing->photos->sortBy('sort_order')->values();
         $newPhotos = $photos->filter(fn ($photo) => (string) $photo->repull_photo_listing_id !== $repullId)->values();
         if ($newPhotos->isEmpty()) {
-            return [];
+            return ['payload' => [], 'uploaded' => []];
         }
 
         $driver = extension_loaded('imagick') ? ImagickDriver::class : GdDriver::class;
         $manager = new ImageManager(new $driver);
         $payload = [];
+        $uploadedPhotos = [];
 
         foreach ($newPhotos as $photo) {
             if (! Storage::disk('public')->exists($photo->path)) {
@@ -410,14 +423,10 @@ class RepullListingService
                 pathinfo($photo->path, PATHINFO_FILENAME).'.jpg',
                 'image/jpeg',
                 $jpeg,
+                $idem.'-photo-'.$photo->id,
             );
 
-            $photo->forceFill([
-                'repull_photo_listing_id' => $repullId,
-                'repull_photo_path' => $uploaded['path'],
-                'repull_photo_url' => $uploaded['publicUrl'],
-                'repull_uploaded_at' => now(),
-            ])->save();
+            $uploadedPhotos[] = ['photo' => $photo, 'path' => $uploaded['path'], 'url' => $uploaded['publicUrl']];
 
             $payload[] = [
                 'url' => $uploaded['publicUrl'],
@@ -425,7 +434,7 @@ class RepullListingService
             ];
         }
 
-        return $payload;
+        return ['payload' => $payload, 'uploaded' => $uploadedPhotos];
     }
 
     private function applyResult(PropertyListing $listing, ListingChannelLink $link, string $channel, array $result, string $hash): void
