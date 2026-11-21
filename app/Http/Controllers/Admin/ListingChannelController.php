@@ -94,7 +94,7 @@ class ListingChannelController extends Controller
         }
 
         try {
-            $connect->confirmConnection($ownerId, $provider, $externalAccountId);
+            $connect->confirmConnection($ownerId, $provider, $externalAccountId, (string) $request->query('connectionId', ''));
         } catch (RepullException $e) {
             return redirect()->route('admin.properties.index')
                 ->withErrors(['channel' => $this->friendly($e)]);
