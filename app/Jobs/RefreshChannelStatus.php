@@ -81,8 +81,14 @@ class RefreshChannelStatus implements ShouldQueue
 
                 $live = data_get($detailData, 'live') ?? data_get($detailData, 'isLive');
                 $link = $listing->channelLinks()->firstOrNew(['channel' => 'airbnb']);
+                $nextState = $link->state;
+                if (in_array($link->state, ['live', 'published'], true) && $live === true) {
+                    $nextState = 'live';
+                } elseif ($link->state === 'live' && $live === false) {
+                    $nextState = 'published';
+                }
                 $link->forceFill([
-                    'state' => $live === true ? 'live' : ($live === false && $link->state === 'live' ? 'published' : $link->state),
+                    'state' => $nextState,
                     'connection_id' => $connection->id,
                     'external_listing_id' => (string) ($remoteConnection['airbnbId'] ?? $link->external_listing_id ?? ''),
                     'sync_category' => $syncCategory !== null ? (string) $syncCategory : null,
