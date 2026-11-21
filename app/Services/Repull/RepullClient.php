@@ -80,7 +80,18 @@ class RepullClient
     }
 
     // ── Connect ─────────────────────────────────────────────────────────────
-    /** POST /v1/connect → { sessionId, url, expiresAt } */
+    /** POST /v1/connect/{provider} → { sessionId, url, expiresAt }. */
+    public function createChannelConnectSession(string $provider, array $payload): array
+    {
+        $provider = strtolower(trim($provider));
+        if (! in_array($provider, ['airbnb', 'booking', 'vrbo'], true)) {
+            throw new RepullException('Unsupported Connect provider.', 'invalid_request');
+        }
+
+        return $this->request('POST', '/v1/connect/'.$provider, $payload);
+    }
+
+    /** POST /v1/connect → { sessionId, url, expiresAt } (multi-provider legacy flow). */
     public function createConnectSession(array $payload): array
     {
         return $this->request('POST', '/v1/connect', $payload);
