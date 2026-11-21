@@ -6,6 +6,7 @@ use App\Models\PropertyListing;
 use App\Services\Channels\ListingContentMapper;
 use App\Services\Channels\ChannelPublishBlocked;
 use App\Services\Channels\RepullListingService;
+use App\Services\Repull\RepullException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -59,7 +60,12 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
             $service->publish($listing, $this->channel, $this->force, $this->hotelId);
         } catch (ChannelPublishBlocked $e) {
             $service->recordBlocked($listing, $this->channel, $e);
+        } catch (RepullException $e) {
+            // The service already persisted the failed channel state. Retry only
+            // transient vendor/network failures; permanent 4xx errors stop here.
+            if ($e->retryable) {
+                throw $e;
+            }
         }
-        // RepullException (retryable only) propagates so the queue retries with backoff.
     }
 }
