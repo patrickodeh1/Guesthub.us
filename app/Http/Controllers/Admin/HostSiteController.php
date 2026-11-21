@@ -89,6 +89,10 @@ class HostSiteController extends Controller
         }
 
         $customDomain = strtolower(rtrim(trim((string) ($data['custom_domain'] ?? '')), '.'));
+        $applicationHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        if ($customDomain !== '' && ($customDomain === $applicationHost || str_ends_with($customDomain, '.'.$applicationHost))) {
+            throw ValidationException::withMessages(['custom_domain' => 'Use a domain you control; GuestHub-owned hostnames and their subdomains cannot be assigned to a host site.']);
+        }
         if ($customDomain !== (string) $site->custom_domain) {
             $site->custom_domain = $customDomain !== '' ? $customDomain : null;
             $site->domain_verification_token = $customDomain !== '' ? Str::random(48) : null;
