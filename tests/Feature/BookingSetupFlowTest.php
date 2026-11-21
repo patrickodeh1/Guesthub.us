@@ -100,12 +100,14 @@ class BookingSetupFlowTest extends TestCase
             'access_type' => 'full_access',
         ]);
 
-        $link = app(RepullListingService::class)->publish($listing->load(['property', 'photos', 'listingRooms']), 'booking');
+        $link = app(RepullListingService::class)->publish($listing->load(['property', 'photos', 'listingRooms']), 'booking', false, 'selected-hotel-9');
 
         $this->assertSame('hotel-100', $link->external_listing_id);
         $this->assertSame('room-1', $listing->fresh()->listingRooms()->orderBy('room_number')->first()->booking_room_id);
         $this->assertSame('rate-2', $listing->fresh()->listingRooms()->orderBy('room_number')->skip(1)->first()->booking_rate_id);
         $this->assertSame('published', $link->state);
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/listings/repull-100/publish/booking')
+            && $request['hotelId'] === 'selected-hotel-9');
         Http::assertSentCount(6);
     }
 }
