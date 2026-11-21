@@ -42,7 +42,7 @@ class BillingQuantityResolver
             $quantity = match ($unit) {
                 'per_property' => $counts['per_property'],
                 'per_device' => $counts['per_device'],
-                'per_channel_listing' => $counts['per_channel_listing'],
+                'per_channel_listing' => max(1, $counts['per_channel_listing']),
                 default => 1,
             };
 
