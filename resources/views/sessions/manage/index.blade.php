@@ -215,14 +215,17 @@
                                 <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
                                     <div></div>
                                     <x-action-dropdown align="right">
-                                        <x-dropdown-link :href="route('sessions.show', $s)">
+                                        <x-dropdown-link :href="route('reports.sessions.show', ['token' => $s->report_token])">
     Cleaning Report
+</x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'edit_report' => 1])">
+    Edit Report
 </x-dropdown-link>
 <x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
     Act as Cleaner
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
-    Edit cleaning
+    Edit Cleaning Schedule
 </x-dropdown-link>
 @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->status === 'pending' && ! $s->gps_override_enabled)
 <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
@@ -308,14 +311,17 @@
                                         <td class="px-4 py-3">
                                             <div class="flex items-center justify-end whitespace-nowrap gap-2 pr-2">
                                                 <x-action-dropdown align="right">
-                                                    <x-dropdown-link :href="route('sessions.show', $s)">
+                                                    <x-dropdown-link :href="route('reports.sessions.show', ['token' => $s->report_token])">
     Cleaning Report
+</x-dropdown-link>
+<x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'edit_report' => 1])">
+    Edit Report
 </x-dropdown-link>
 <x-dropdown-link :href="route('sessions.show', ['session' => $s->id, 'view_as_cleaner' => 1])" target="_blank" rel="noopener noreferrer">
     Act as Cleaner
 </x-dropdown-link>
 <x-dropdown-link href="#" @click.prevent="$dispatch('open-assignment', { id: {{ $s->id }} })">
-    Edit cleaning
+    Edit Cleaning Schedule
 </x-dropdown-link>
 @if (auth()->user()?->hasAnyRole(['admin', 'owner', 'company']) && $s->status === 'pending' && ! $s->gps_override_enabled)
 <button type="button" class="w-full text-left px-4 py-2 text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none transition"
