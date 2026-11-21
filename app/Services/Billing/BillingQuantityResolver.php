@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\Feature;
 use App\Models\Property;
 use App\Models\PropertyLock;
+use App\Models\PropertyListing;
 use App\Models\User;
 
 class BillingQuantityResolver
@@ -41,6 +42,7 @@ class BillingQuantityResolver
             $quantity = match ($unit) {
                 'per_property' => $counts['per_property'],
                 'per_device' => $counts['per_device'],
+                'per_channel_listing' => $counts['per_channel_listing'],
                 default => 1,
             };
 
@@ -53,7 +55,7 @@ class BillingQuantityResolver
     }
 
     /**
-     * @return array{per_property:int,per_device:int}
+     * @return array{per_property:int,per_device:int,per_channel_listing:int}
      */
     public function counts(User $user): array
     {
@@ -66,6 +68,11 @@ class BillingQuantityResolver
             'per_property' => $propertyIds->count(),
             'per_device' => PropertyLock::query()->whereIn('property_id', $propertyIds)
                 ->whereNotNull('seam_device_id')->where('seam_device_id', '!=', '')->count(),
+            'per_channel_listing' => PropertyListing::query()
+                ->whereNotNull('repull_listing_id')
+                ->whereHas('property', fn ($query) => $query->whereIn('id', $propertyIds))
+                ->whereHas('channelLinks', fn ($query) => $query->whereIn('state', ['published', 'live', 'partial']))
+                ->distinct('property_listings.id')->count('property_listings.id'),
         ];
     }
 }
