@@ -29,6 +29,24 @@
             </section>
         @endif
 
+        @if(session('readiness_results'))
+            <section class="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 class="font-semibold text-slate-900">Repull address readiness</h2>
+                <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                    @foreach(session('readiness_results') as $channel => $result)
+                        <div class="rounded-lg border border-slate-200 p-3 text-sm">
+                            <p class="font-semibold">{{ ucfirst($channel) }} · {{ $result['ready'] === null ? 'Not reported' : ($result['ready'] ? 'Ready' : 'Needs attention') }}</p>
+                            @if(!empty($result['missing']))
+                                <ul class="mt-2 list-disc pl-5 text-slate-600">
+                                    @foreach($result['missing'] as $missingItem)<li>{{ is_string($missingItem) ? $missingItem : json_encode($missingItem) }}</li>@endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         @if(session('channel_results'))
             <section class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-semibold text-slate-900">Per-channel result</h2>
