@@ -11,11 +11,12 @@ Implemented in this delivery
 - Publish failures are recorded and surfaced; queue retries are limited to retryable vendor/network failures. Fixed the queued-publish state guard so manually queued jobs actually run when the controller has marked the link `publishing`.
 - Repull photo-delete requests now pass the returned storage path in the required query string.
 - Multiple bed types/quantities can be configured per room.
-- Admin-maintained global Repull amenity catalog with host-side picker; only documented example IDs are seeded, and admins can add further IDs confirmed by Repull.
+- Admin-maintained global Repull amenity catalog with host-side picker; only documented example IDs are seeded, admins can add further IDs confirmed by Repull, deactivated IDs are omitted from sync, and in-use IDs cannot be renamed/deleted.
 - Structured Booking.com licence editor with variant ID and editable field/value rows.
 - Repull readiness results are displayed per channel; OTA-managed title/description fields are marked in the listing editor.
 - Vrbo remains opt-in beta. Publishing is disabled by default (REPULL_VRBO_PUBLISH_ENABLED=false), and the code refuses to edit an existing Vrbo listing.
 - Host-branded pages, slug collision checks/availability feedback, logo/brand styling, slug aliases, custom-domain ownership verification, custom-host route isolation and host-scoped SEO resources.
+- If the add-on lapses, already-live OTA listings remain untouched; a queued first publish is marked blocked rather than left stuck in a publishing state.
 - Repull channel sync is a recurring subscription add-on (repull_channel_sync), priced by the admin as a per-listing add-on in Packages/Plan. It is not a standalone one-off charge. Automatic publish jobs enforce the entitlement too, so queued syncs stop when the add-on is no longer active.
 
 How to access
