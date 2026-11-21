@@ -70,6 +70,9 @@ class PropertyListingController extends Controller
             'listing_rooms.*.room_name' => ['nullable', 'string', 'max:120'],
             'listing_rooms.*.bed_type' => ['nullable', Rule::in(['king_bed', 'queen_bed', 'double_bed', 'single_bed', 'sofa_bed', 'bunk_bed', 'air_mattress', 'futon'])],
             'listing_rooms.*.bed_quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'listing_rooms.*.beds' => ['nullable', 'array', 'max:4'],
+            'listing_rooms.*.beds.*.bedType' => ['required_with:listing_rooms.*.beds.*.quantity', Rule::in(['king_bed', 'queen_bed', 'double_bed', 'single_bed', 'sofa_bed', 'bunk_bed', 'air_mattress', 'futon'])],
+            'listing_rooms.*.beds.*.quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'listing_rooms.*.is_private' => ['nullable', 'boolean'],
             'property_type' => ['required', Rule::in(['apartment', 'house', 'condo', 'townhouse', 'villa', 'guesthouse', 'hotel', 'other'])],
             'room_type' => ['required', Rule::in(['entire_home', 'private_room', 'shared_room', 'hotel_room'])],
@@ -116,24 +119,30 @@ class PropertyListingController extends Controller
 
         $roomsSyncEnabled = (bool) ($data['rooms_sync_enabled'] ?? false);
         $roomRows = collect($data['listing_rooms'] ?? [])
+            ->map(function (array $room): array {
+                $beds = collect($room['beds'] ?? [])
+                    ->filter(fn ($bed) => filled($bed['bedType'] ?? null) && filled($bed['quantity'] ?? null))
+                    ->map(fn ($bed) => ['bedType' => $bed['bedType'], 'quantity' => (int) $bed['quantity']])
+                    ->values();
+
+                // Backwards compatibility for older clients/forms that submit one bed type.
+                if ($beds->isEmpty() && filled($room['bed_type'] ?? null) && filled($room['bed_quantity'] ?? null)) {
+                    $beds->push(['bedType' => $room['bed_type'], 'quantity' => (int) $room['bed_quantity']]);
+                }
+
+                $room['beds'] = $beds->all();
+                return $room;
+            })
             ->filter(fn ($room) => filled($room['room_type'] ?? null))
             ->values();
         if ($roomsSyncEnabled && $roomRows->isEmpty()) {
             throw ValidationException::withMessages(['listing_rooms' => 'Add at least one room before enabling room-layout sync.']);
         }
-        $configuredBedCount = (int) $roomRows->sum(fn ($room) => (int) ($room['bed_quantity'] ?? 0));
+        $configuredBedCount = (int) $roomRows->sum(fn ($room) => collect($room['beds'])->sum('quantity'));
         if ($roomsSyncEnabled && $configuredBedCount < 1) {
             throw ValidationException::withMessages(['listing_rooms' => 'Configure at least one bed in the room layout.']);
         }
         $totalBeds = $roomsSyncEnabled ? $configuredBedCount : (int) ($data['total_beds'] ?? $property->beds ?? 0);
-        foreach ($roomRows as $room) {
-            if (filled($room['bed_type'] ?? null) && empty($room['bed_quantity'])) {
-                throw ValidationException::withMessages(['listing_rooms' => 'Enter a bed quantity for every selected bed type.']);
-            }
-            if (! filled($room['bed_type'] ?? null) && filled($room['bed_quantity'] ?? null)) {
-                throw ValidationException::withMessages(['listing_rooms' => 'Choose a bed type for every bed quantity.']);
-            }
-        }
 
         $published = (bool) $data['published'];
         $wasPublished = $listing->exists && $listing->published_at !== null;
@@ -234,9 +243,9 @@ class PropertyListingController extends Controller
                             'room_type' => $room['room_type'],
                             'room_number' => $room['room_number'] ?? null,
                             'room_name' => $room['room_name'] ?? null,
-                            'bed_type' => $room['bed_type'] ?? null,
-                            'bed_quantity' => $room['bed_quantity'] ?? null,
-                            'beds' => filled($room['bed_type'] ?? null) && ! empty($room['bed_quantity']) ? [['bedType' => $room['bed_type'], 'quantity' => (int) $room['bed_quantity']]] : [],
+                            'bed_type' => $room['beds'][0]['bedType'] ?? null,
+                            'bed_quantity' => (int) collect($room['beds'])->sum('quantity') ?: null,
+                            'beds' => $room['beds'],
                             'is_private' => (bool) ($room['is_private'] ?? true),
                         ]);
                     }
