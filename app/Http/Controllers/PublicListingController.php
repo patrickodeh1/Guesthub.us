@@ -21,6 +21,16 @@ class PublicListingController extends Controller
 {
     private const PER_PAGE = 24;
 
+    public function customDomain(Request $request)
+    {
+        $site = HostSite::query()
+            ->where('custom_domain', strtolower($request->getHost()))
+            ->whereNotNull('domain_verified_at')
+            ->first();
+
+        return $site ? $this->host($site->slug) : redirect()->route('public.stays.index');
+    }
+
     public function browse(Request $request)
     {
         return $this->renderBrowse($request);
@@ -115,7 +125,9 @@ class PublicListingController extends Controller
         $owner = $ownerListings->first()->property->owner;
         $hostSite = $site ?: HostSite::query()->where('user_id', $owner->id)->first();
         $title = $hostSite?->display_name ?: ($owner->host_name ?: $owner->name);
-        $canonical = route('public.host.show', $hostSite?->slug ?: $hostSlug);
+        $canonical = $hostSite?->custom_domain && strtolower(request()->getHost()) === $hostSite->custom_domain
+            ? url('/')
+            : route('public.host.show', $hostSite?->slug ?: $hostSlug);
         $cards = $ownerListings->map(fn (PropertyListing $listing) => $this->present($listing))->values();
         $mapPoints = $this->mapPoints($cards);
         $schema = $this->itemListSchema($cards, $canonical, $title.' stays');
