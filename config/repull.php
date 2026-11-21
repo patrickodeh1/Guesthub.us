@@ -21,6 +21,8 @@ return [
     // Signing secret returned once when the webhook subscription is created.
     'webhook_secret' => env('REPULL_WEBHOOK_SECRET'),
     'timeout' => (int) env('REPULL_TIMEOUT', 20),
+    // Login-based Vrbo beta: enable only after throwaway-account and terms verification.
+    'vrbo_publish_enabled' => (bool) env('REPULL_VRBO_PUBLISH_ENABLED', false),
     // Max age (seconds) of a webhook timestamp before it is rejected as a replay.
     'webhook_tolerance' => (int) env('REPULL_WEBHOOK_TOLERANCE', 300),
 ];
