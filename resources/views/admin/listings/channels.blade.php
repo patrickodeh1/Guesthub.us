@@ -6,6 +6,20 @@
             <p class="mt-1 text-sm text-slate-600">Edit your listing once in GuestHub and publish it to Airbnb and Booking.com. Calendar and rates sync separately.</p>
         </div>
 
+        @if(session('channel_results'))
+            <section class="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 class="font-semibold text-slate-900">Per-channel result</h2>
+                <div class="mt-2 grid gap-2 text-sm">
+                    @foreach(session('channel_results') as $result)
+                        <div class="rounded-lg border border-slate-200 p-3">
+                            <p class="font-semibold">{{ ucfirst($result['channel'] ?? $result['platform'] ?? 'Channel') }} · {{ ($result['ok'] ?? false) ? 'Confirmed' : 'Not confirmed' }}</p>
+                            @if(!empty($result['message']))<p class="mt-1 text-slate-600">{{ $result['message'] }}</p>@endif
+                            @if(!empty($result['fix']))<p class="mt-1 text-amber-800">{{ $result['fix'] }}</p>@endif
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
         @if(session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{{ session('success') }}</div>
         @endif
@@ -112,9 +126,19 @@
         @endforeach
 
         @if($featureEnabled && $listing && $listing->repull_listing_id)
-            <form method="post" action="{{ route('admin.properties.channels.readiness', $property) }}">@csrf
-                <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Check channel readiness</button>
-            </form>
+            <div class="flex flex-wrap gap-2">
+                <form method="post" action="{{ route('admin.properties.channels.online-status', $property) }}">@csrf
+                    <input type="hidden" name="online" value="0">
+                    <button class="rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700" onclick="return confirm('Take this listing offline on every connected channel?')">Take offline everywhere</button>
+                </form>
+                <form method="post" action="{{ route('admin.properties.channels.online-status', $property) }}">@csrf
+                    <input type="hidden" name="online" value="1">
+                    <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Put online everywhere</button>
+                </form>
+                <form method="post" action="{{ route('admin.properties.channels.readiness', $property) }}">@csrf
+                    <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Check channel readiness</button>
+                </form>
+            </div>
         @endif
     </div>
 </x-admin-layout>
