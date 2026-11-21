@@ -72,7 +72,7 @@ class PropertyListingController extends Controller
             'listing_rooms.*.bed_quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'listing_rooms.*.beds' => ['nullable', 'array', 'max:4'],
             'listing_rooms.*.beds.*.bedType' => ['required_with:listing_rooms.*.beds.*.quantity', Rule::in(['king_bed', 'queen_bed', 'double_bed', 'single_bed', 'sofa_bed', 'bunk_bed', 'air_mattress', 'futon'])],
-            'listing_rooms.*.beds.*.quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'listing_rooms.*.beds.*.quantity' => ['nullable', 'required_with:listing_rooms.*.beds.*.bedType', 'integer', 'min:1', 'max:20'],
             'listing_rooms.*.is_private' => ['nullable', 'boolean'],
             'property_type' => ['required', Rule::in(['apartment', 'house', 'condo', 'townhouse', 'villa', 'guesthouse', 'hotel', 'other'])],
             'room_type' => ['required', Rule::in(['entire_home', 'private_room', 'shared_room', 'hotel_room'])],
