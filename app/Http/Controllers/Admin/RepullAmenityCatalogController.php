@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Amenity;
 use App\Models\RepullAmenityCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -56,6 +57,9 @@ class RepullAmenityCatalogController extends Controller
     public function destroy(Request $request, RepullAmenityCatalog $amenity)
     {
         $this->adminOnly($request);
+        if (Amenity::query()->where('repull_amenity_id', $amenity->canonical_id)->exists()) {
+            return back()->withErrors(['amenity' => 'This ID is mapped to one or more properties. Deactivate it instead so it stops syncing without losing the existing mapping.']);
+        }
         $amenity->delete();
 
         return back()->with('success', 'Repull amenity mapping removed. Existing property mappings are left untouched.');
