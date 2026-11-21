@@ -24,7 +24,7 @@ class RepullPhotoApiTest extends TestCase
             'storage.example.com/signed-upload' => Http::response('', 200),
         ]);
 
-        $result = app(RepullClient::class)->uploadListingPhoto('repull-9', 'cover.jpg', 'image/jpeg', 'image-bytes', 'idem-photo-1');
+        $result = app(RepullClient::class)->uploadListingPhoto('repull-9', 'cover.jpg', 'image/jpeg', 'image-bytes');
 
         $this->assertSame('https://cdn.repull.dev/listings/repull-9/cover.jpg', $result['publicUrl']);
         Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/listings/repull-9/photos/upload-url'
@@ -32,7 +32,7 @@ class RepullPhotoApiTest extends TestCase
             && $request['fileType'] === 'image/jpeg'
             && $request['fileSize'] === 11
             && $request->hasHeader('Authorization', 'Bearer repull-test-key')
-            && $request->hasHeader('Idempotency-Key', 'idem-photo-1'));
+            && ! $request->hasHeader('Idempotency-Key'));
         Http::assertSent(fn ($request) => $request->url() === 'https://storage.example.com/signed-upload'
             && $request->method() === 'PUT'
             && $request->body() === 'image-bytes'
