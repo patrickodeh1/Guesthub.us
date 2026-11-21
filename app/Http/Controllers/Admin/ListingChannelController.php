@@ -9,6 +9,7 @@ use App\Models\ChannelConnection;
 use App\Models\Property;
 use App\Services\Channels\ChannelPublishBlocked;
 use App\Services\Channels\ListingContentMapper;
+use App\Services\Channels\ImportFromAirbnbService;
 use App\Services\Channels\RepullConnectService;
 use App\Services\Channels\RepullListingService;
 use App\Services\Repull\RepullException;
@@ -25,6 +26,30 @@ class ListingChannelController extends Controller
 
         $listing = $property->listing()->with(['photos', 'channelLinks'])->first();
         $listing?->setRelation('property', $property);
+
+        $airbnbListings = [];
+        $ownerAirbnbConnections = ChannelConnection::query()
+            ->where('owner_id', $property->owner_id)
+            ->where('channel', 'airbnb')
+            ->where('status', 'connected')
+            ->get();
+        if ($property->owner && FeatureGate::enabled($property->owner, 'repull_channel_sync')
+            && app(RepullClient::class)->isConfigured() && $ownerAirbnbConnections->isNotEmpty()) {
+            try {
+                $remote = app(RepullClient::class)->getAirbnbListings();
+                $accountIds = $ownerAirbnbConnections->pluck('external_account_id')->map(fn ($id) => (string) $id)->all();
+                $connectionIds = $ownerAirbnbConnections->map(fn ($connection) => (string) data_get($connection->meta, 'connection_id'))->filter()->all();
+                $airbnbListings = collect(data_get($remote, 'data', []))->map(function ($item) use ($accountIds, $connectionIds) {
+                    $item['connections'] = collect($item['connections'] ?? [])->filter(function ($connection) use ($accountIds, $connectionIds) {
+                        return in_array((string) ($connection['accountId'] ?? ''), $accountIds, true)
+                            || in_array((string) ($connection['id'] ?? ''), $connectionIds, true);
+                    })->values()->all();
+                    return $item;
+                })->filter(fn ($item) => ! empty($item['connections']))->values()->all();
+            } catch (RepullException $e) {
+                report($e);
+            }
+        }
 
         $missing = [];
         foreach (RepullListingService::PUBLISHABLE as $channel) {
@@ -49,6 +74,7 @@ class ListingChannelController extends Controller
             'listing' => $listing,
             'bookingLink' => $bookingLink,
             'bookingLicenceInfo' => $bookingLicenceInfo,
+            'airbnbListings' => $airbnbListings,
             'links' => $listing ? $listing->channelLinks->keyBy('channel') : collect(),
             'connections' => ChannelConnection::query()->where('owner_id', $property->owner_id)->where('status', 'connected')->get()->groupBy('channel'),
             'missing' => $missing,
@@ -80,6 +106,39 @@ class ListingChannelController extends Controller
         } catch (RepullException $e) {
             return back()->withErrors(['channel' => $this->friendly($e)]);
         }
+    }
+
+    public function importAirbnb(Request $request, Property $property, ImportFromAirbnbService $import)
+    {
+        $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
+        abort_unless($property->owner, 422, 'This property has no owner to import listings for.');
+
+        $data = $request->validate(['selection' => ['required', 'string', 'max:200']]);
+        $parts = explode('|', $data['selection']);
+        if (count($parts) !== 3 || in_array('', $parts, true)) {
+            return back()->withErrors(['selection' => 'Choose a valid Airbnb listing and account.']);
+        }
+        [$repullListingId, $connectionId, $accountId] = $parts;
+
+        $ownedConnection = ChannelConnection::query()
+            ->where('owner_id', $property->owner_id)
+            ->where('channel', 'airbnb')
+            ->where('status', 'connected')
+            ->get()
+            ->first(fn ($connection) => (string) $connection->external_account_id === (string) $accountId
+                || (string) data_get($connection->meta, 'connection_id') === (string) $connectionId);
+        if (! $ownedConnection) {
+            return back()->withErrors(['selection' => 'That Airbnb account is not connected to this host.']);
+        }
+
+        try {
+            $listing = $import->importInto($property, (string) $repullListingId, (string) $connectionId);
+        } catch (ChannelPublishBlocked|RepullException $e) {
+            return back()->withErrors(['channel' => $e instanceof RepullException ? $this->friendly($e) : $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Airbnb listing imported into an unpublished GuestHub draft. Review the content, photos, rooms and rates before publishing.');
     }
 
     public function refreshAirbnbStatus(Request $request, Property $property)
