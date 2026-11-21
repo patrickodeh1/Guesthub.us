@@ -62,7 +62,10 @@ class CalendarAssignController extends Controller
         }
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
-        $overridden = $confirmed ? $cleaningJobService->detectConflicts($data, $session) : [];
+        $overridden = $confirmed ? array_merge(
+            $cleaningJobService->detectConflicts($data, $session),
+            $cleaningJobService->detectTurnoverConflicts($data)
+        ) : [];
 
         try {
             $saved = $cleaningJobService->quickAssign($actor, $data, $session, $confirmed);
