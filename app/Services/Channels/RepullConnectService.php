@@ -160,7 +160,7 @@ class RepullConnectService
         }
         if ($provider === 'vrbo-login') {
             $connected = data_get($details, 'connected') ?? data_get($details, 'data.connected');
-            if ($connected === false) {
+            if ($connected !== true) {
                 throw new RepullException('Repull has not confirmed the Vrbo connection yet.', 'connection_not_confirmed');
             }
         }
