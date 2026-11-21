@@ -463,7 +463,7 @@ class PropertyController extends Controller
             $data['turnover_gap_minutes'] = (int) round((float) $data['turnover_gap_hours'] * 60);
             unset($data['turnover_gap_hours']);
         } elseif (! $property) {
-            $data['turnover_gap_minutes'] = \\App\\Services\\CleaningJobService::DEFAULT_TURNOVER_MINUTES;
+            $data['turnover_gap_minutes'] = \App\Services\CleaningJobService::DEFAULT_TURNOVER_MINUTES;
         }
 
         $data['deposit_cap_cents'] = $request->filled('deposit_cap_dollars')
