@@ -108,6 +108,29 @@ class RepullConnectService
         return $url;
     }
 
+
+    public function confirmConnection(int $ownerId, string $provider, string $externalAccountId): ChannelConnection
+    {
+        $channel = $this->channelFromProvider($provider);
+        if (! $channel || $externalAccountId === '') {
+            throw new RepullException('Repull returned an incomplete channel connection.', 'invalid_response');
+        }
+
+        $details = $this->client->request('GET', '/v1/connect/'.rawurlencode($provider));
+        $accounts = (array) (data_get($details, 'accounts') ?? data_get($details, 'data.accounts') ?? []);
+        $account = collect($accounts)->first(fn ($item) => (string) ($item['externalAccountId'] ?? '') === $externalAccountId);
+        if (! $account) {
+            throw new RepullException('Repull did not confirm the connected account.', 'connection_not_confirmed');
+        }
+
+        return $this->recordConnection($ownerId, $channel, $externalAccountId, [
+            'connection_id' => $account['connectionId'] ?? data_get($details, 'connectionId'),
+            'access_type' => $account['accessType'] ?? data_get($details, 'accessType'),
+            'display_name' => $account['name'] ?? $account['displayName'] ?? null,
+            'provider' => $provider,
+        ]);
+    }
+
     public function recordConnection(int $ownerId, string $channel, string $externalAccountId, array $meta = []): ChannelConnection
     {
         $connection = ChannelConnection::firstOrNew([
