@@ -68,7 +68,7 @@ class PackageController extends Controller
             'feats.*.is_free' => ['required', 'boolean'],
             'feats.*.active' => ['required', 'boolean'],
             'feats.*.price' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
-            'feats.*.billing_unit' => ['required', 'in:flat,per_property,per_device'],
+            'feats.*.billing_unit' => ['required', 'in:flat,per_property,per_device,per_channel_listing'],
         ]);
 
         $packages = Package::query()->get()->keyBy('id');
