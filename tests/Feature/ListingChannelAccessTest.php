@@ -272,6 +272,22 @@ class ListingChannelAccessTest extends TestCase
         );
 
         Http::assertNothingSent();
+        $pendingListing = $this->listingFor($owner);
+        $pendingConnection = ChannelConnection::create([
+            'owner_id' => $owner->id, 'provider' => 'repull', 'channel' => 'airbnb',
+            'external_account_id' => 'airbnb-account-pending', 'status' => 'connected', 'access_type' => 'full_access',
+        ]);
+        $pendingLink = ListingChannelLink::create([
+            'listing_id' => $pendingListing->id, 'channel' => 'airbnb', 'connection_id' => $pendingConnection->id,
+            'state' => 'publishing',
+        ]);
+        (new PublishListingToChannel($pendingListing->id, 'airbnb'))->handle(
+            app(\App\Services\Channels\RepullListingService::class),
+            app(ListingContentMapper::class),
+        );
+        $this->assertSame('error', $pendingLink->fresh()->state);
+        $this->assertStringContainsString('subscription is not active', $pendingLink->fresh()->last_error);
+
     }
 
 
