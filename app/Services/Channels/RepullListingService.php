@@ -153,6 +153,62 @@ class RepullListingService
         return $this->client->getPublishStatus((string) $listing->repull_listing_id);
     }
 
+    /**
+     * Take the Repull listing offline/online across every connected channel.
+     * Every channel result is applied independently; one failure never hides
+     * another channel's success.
+     *
+     * @return array{ok:bool,channels:array<int,array<string,mixed>>}
+     */
+    public function setListingOnline(PropertyListing $listing, bool $online): array
+    {
+        if (! filled($listing->repull_listing_id)) {
+            throw new ChannelPublishBlocked('This listing has not been created in Repull yet.');
+        }
+
+        $action = $online ? 'online' : 'offline';
+        $response = $this->client->request(
+            'POST',
+            '/v1/listings/'.rawurlencode((string) $listing->repull_listing_id).'/'.$action
+        );
+        $channels = (array) (data_get($response, 'channels') ?? data_get($response, 'data.channels') ?? []);
+        if ($channels === []) {
+            throw new RepullException('Repull did not return per-channel results for the '.$action.' request.', 'invalid_response');
+        }
+
+        $allOk = true;
+        foreach ($channels as $result) {
+            $channel = strtolower((string) ($result['channel'] ?? $result['platform'] ?? ''));
+            if (! in_array($channel, self::CHANNELS, true)) {
+                continue;
+            }
+
+            $link = $this->linkFor($listing, $channel);
+            $ok = ($result['ok'] ?? false) === true;
+            if (! $ok) {
+                $allOk = false;
+            }
+
+            $message = trim((string) ($result['message'] ?? $result['fix'] ?? $result['code'] ?? ''));
+            $link->forceFill([
+                'state' => $ok ? ($online ? 'published' : 'unlisted') : $link->state,
+                'last_synced_at' => $ok ? now() : $link->last_synced_at,
+                'last_error' => $ok ? null : ($message !== '' ? $message : 'Repull did not confirm this channel action.'),
+                'last_error_at' => $ok ? null : now(),
+            ])->save();
+
+            $this->event($listing, $link, $action, $ok ? 'ok' : 'error', null, [
+                'ok' => $ok,
+                'state' => $result['state'] ?? null,
+                'code' => $result['code'] ?? null,
+                'message' => $message,
+                'fix' => $result['fix'] ?? null,
+            ]);
+        }
+
+        return ['ok' => $allOk, 'channels' => $channels];
+    }
+
     public function unlist(PropertyListing $listing, string $channel): ListingChannelLink
     {
         $link = $this->linkFor($listing, $channel);
