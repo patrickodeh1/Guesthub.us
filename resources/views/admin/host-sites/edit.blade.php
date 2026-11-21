@@ -51,8 +51,8 @@
                 <img src="{{ url('/img/'.$site->logo_path) }}" alt="{{ $site->display_name }} logo" class="mb-4 max-h-24 max-w-full object-contain">
             @endif
             <label class="field-label">Upload logo
-                <input type="file" name="logo" accept="image/*" class="input">
-                <span class="field-help">PNG, JPG, SVG or WebP image, up to 5 MB. A transparent PNG or SVG works best.</span>
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" class="input">
+                <span class="field-help">PNG, JPG or WebP image, up to 5 MB. A transparent PNG or SVG works best.</span>
             </label>
             <div class="mt-6 rounded-xl border border-slate-200 p-4">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Preview</p>
