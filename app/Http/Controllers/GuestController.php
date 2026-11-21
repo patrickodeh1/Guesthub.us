@@ -79,7 +79,7 @@ class GuestController extends Controller
             'parkingSteps'  => ($state === 'guide' && ! $booking->instructionsCompleted()) ? $this->parkingSteps($booking) : [],
             'preGpsSteps'   => in_array($state, ['unit_not_ready', 'waiting', 'arrival'], true) ? $this->preGpsSteps($booking) : [],
             'guestNoticePopups' => \App\Services\GuestNoticeService::popups($booking, $noticePhase),
-            'checkinTimeOptions' => $this->checkinTimeOptions(),
+            'checkinTimeOptions' => $this->checkinTimeOptions($booking),
             'checkoutTimeOptions' => $this->checkoutTimeOptions(),
             // task: vehicle info is never required at Step 1 -- prompt for
             // it later in-flow instead, once it's actually needed (~1 day
@@ -1823,17 +1823,40 @@ $upload = $request->file('license_plate_photo');
             ->toArray();
     }
 
-    private function checkinTimeOptions(): array
+    private function checkinTimeOptions(Booking $booking): array
     {
         $hours = array_merge(range(8, 23), [0]);
-
+        $date = $booking->check_in_date->toDateString();
+        $dead = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
+        $previousCheckout = Booking::query()
+            ->where('property_id', $booking->property_id)
+            ->whereDate('check_out_date', $date)
+            ->where('id', '<>', $booking->id)
+            ->whereNull('cancelled_at')
+            ->where(fn ($query) => $query->whereNull('status')->orWhereNotIn('status', $dead))
+            ->first();
+        $earliestAllowed = null;
+        if ($previousCheckout) {
+            $minimumMinutes = (int) ($booking->property?->turnover_gap_minutes ?? \\App\\Services\\CleaningJobService::DEFAULT_TURNOVER_MINUTES);
+            $earliestAllowed = \\Carbon\\Carbon::parse($date.' '.$previousCheckout->effectiveCheckoutTime())->addMinutes($minimumMinutes);
+        }
 
         $options = [];
         foreach ($hours as $hour) {
             $value = sprintf('%02d:00', $hour);
-            $label = \Carbon\Carbon::createFromTime($hour, 0)->format('g:i A');
-            $options[$value] = $label;
+            $candidate = \\Carbon\\Carbon::parse($date.' '.$value);
+            if ($earliestAllowed && $candidate->lt($earliestAllowed)) {
+                continue;
+            }
+            $options[$value] = $candidate->format('g:i A');
         }
+
+        // Keep an already-submitted preference visible if a host later changes
+        // the property's turnover setting; do not offer it as a new option.
+        if ($booking->checkin_time_preference && ! array_key_exists($booking->checkin_time_preference, $options)) {
+            $options[$booking->checkin_time_preference] = \\Carbon\\Carbon::parse($date.' '.$booking->checkin_time_preference)->format('g:i A');
+        }
+
         return $options;
     }
 
