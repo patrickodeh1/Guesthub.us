@@ -115,7 +115,7 @@ class RepullListingService
 
     /**
      * @throws ChannelPublishBlocked when GuestHub refuses to attempt it (record it via recordBlocked)
-     * @throws RepullException only when the failure is retryable (after recording it on the link)
+     * @throws RepullException for any vendor/API failure after recording it on the link
      */
     public function publish(PropertyListing $listing, string $channel, bool $force = false, ?string $hotelId = null): ListingChannelLink
     {
@@ -164,9 +164,7 @@ class RepullListingService
             $this->applyResult($listing, $link, $channel, $result, $hash);
         } catch (RepullException $e) {
             $this->fail($listing, $link, $channel, $e);
-            if ($e->retryable) {
-                throw $e;
-            }
+            throw $e;
         }
 
         return $link->fresh();
