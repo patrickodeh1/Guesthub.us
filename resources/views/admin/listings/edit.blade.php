@@ -8,6 +8,9 @@
             $sameDayCutoffTime = substr($sameDayCutoffTime, 0, 5);
         }
         $photoCount = $listing->exists ? $listing->photos->count() : 0;
+        $lockedFieldNames = collect($lockedFields ?? [])->pluck('field')->all();
+        $titleLocked = in_array('title', $lockedFieldNames, true) || in_array('name', $lockedFieldNames, true);
+        $descriptionLocked = count(array_intersect(['description', 'summary', 'space'], $lockedFieldNames)) > 0;
         $roomRows = old('listing_rooms', $listingRooms->map(fn ($room) => [
             'room_type' => $room->room_type, 'room_number' => $room->room_number,
             'room_name' => $room->room_name, 'bed_type' => $room->bed_type,
@@ -79,6 +82,7 @@
                 <p class="section-copy">Use accurate, guest-facing information. The street address and private access details are not part of this listing.</p>
                 <div class="mt-5 listing-responsive-grid grid gap-5 md:grid-cols-2">
                     <label class="field-label md:col-span-2">Listing title
+                        @if($titleLocked)<span class="field-help text-amber-700">A connected OTA manages this field. Changes here may not overwrite it; edit it directly on the OTA.</span>@endif
                         <input name="public_title" value="{{ old('public_title', $listing->public_title) }}" maxlength="255" class="input" placeholder="A clear, descriptive title">
                         @error('public_title')<span class="field-help text-red-700">{{ $message }}</span>@enderror
                     </label>
@@ -122,6 +126,7 @@
                         </select>
                     </label>
                     <label class="field-label md:col-span-2">Description
+                        @if($descriptionLocked)<span class="field-help text-amber-700">A connected OTA manages this field. Changes here may not overwrite it; edit it directly on the OTA.</span>@endif
                         <textarea name="public_description" rows="9" maxlength="30000" class="textarea">{{ $descriptionValue }}</textarea>
                         <span class="field-help">{{ $descriptionWords }} words; publishing requires at least 150. An empty description gets a factual draft generated from the property details and amenities.</span>
                         @error('public_description')<span class="field-help text-red-700">{{ $message }}</span>@enderror
