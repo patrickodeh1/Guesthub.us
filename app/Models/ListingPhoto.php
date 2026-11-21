@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Jobs\PublishListingToChannel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
