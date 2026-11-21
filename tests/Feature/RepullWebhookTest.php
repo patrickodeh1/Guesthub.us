@@ -44,7 +44,7 @@ class RepullWebhookTest extends TestCase
 
     private function completed(string $state, string $accountId = '1693389202618766851'): array
     {
-        return ['data' => ['state' => $state], 'account' => ['provider' => 'airbnb', 'externalAccountId' => $accountId]];
+        return ['data' => ['state' => $state], 'account' => ['provider' => 'airbnb', 'externalAccountId' => $accountId, 'accessType' => 'full_access']];
     }
 
     public function test_completed_connect_attaches_the_account_to_the_signed_owner(): void
@@ -55,7 +55,7 @@ class RepullWebhookTest extends TestCase
         $this->send($this->completed($state), 'connect.session.completed')->assertOk();
 
         $this->assertDatabaseHas('channel_connections', [
-            'owner_id' => $owner->id, 'channel' => 'airbnb', 'external_account_id' => '1693389202618766851', 'status' => 'connected',
+            'owner_id' => $owner->id, 'channel' => 'airbnb', 'external_account_id' => '1693389202618766851', 'status' => 'connected', 'access_type' => 'full_access',
         ]);
     }
 
