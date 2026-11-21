@@ -94,6 +94,15 @@
                     <label class="field-label">Bedrooms
                         <input type="number" min="0" max="100" name="bedrooms" value="{{ old('bedrooms', $listing->bedrooms ?? $property->beds) }}" class="input">
                     </label>
+                    <label class="field-label">Bathrooms
+                        <input type="number" min="0" max="50" step="0.5" name="bathrooms" value="{{ old('bathrooms', $property->baths) }}" class="input">
+                    </label>
+                    <label class="field-label">Check-in time
+                        <input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ?? '16:00') }}" class="input">
+                    </label>
+                    <label class="field-label">Check-out time
+                        <input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ?? '11:00') }}" class="input">
+                    </label>
                     <label class="field-label">Property type
                         <select name="property_type" class="input">
                             @foreach(['apartment' => 'Apartment', 'house' => 'House', 'condo' => 'Condo', 'townhouse' => 'Townhouse', 'villa' => 'Villa', 'guesthouse' => 'Guesthouse', 'hotel' => 'Hotel', 'other' => 'Other'] as $value => $label)
