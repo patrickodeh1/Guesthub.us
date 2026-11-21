@@ -133,7 +133,7 @@
                             <span class="text-gray-600 dark:text-gray-300"> &middot; checkout {{ \Carbon\Carbon::parse($n['date'])->format($dateFormat) }}</span>
                             <a href="{{ route('admin.guests.show', $n['booking_id']) }}" class="ml-1 text-xs text-indigo-600 hover:underline">{{ $n['guest_name'] }}</a>
                         </div>
-                        <x-button type="button" @click="$dispatch('open-assignment', { property_id: {{ $n['property_id'] }}, date: '{{ $n['date'] }}' })" class="whitespace-nowrap">Assign cleaner</x-button>
+                        <x-button type="button" @click="$dispatch('open-assignment', { booking_id: {{ $n['booking_id'] }}, property_id: {{ $n['property_id'] }}, date: '{{ $n['date'] }}' })" class="whitespace-nowrap">Assign cleaner</x-button>
                     </div>
                 @endforeach
             </div>
