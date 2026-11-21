@@ -80,8 +80,7 @@ class RepullConnectService
                 'redirectUrl' => $redirectUrl,
                 'state' => $state,
                 'allowedProviders' => ['booking-extranet-login'],
-                'accessType' => 'messaging',
-            ]);
+                ]);
         } elseif ($channel === 'booking') {
             $res = $this->client->createChannelConnectSession('booking', [
                 'redirectUrl' => $redirectUrl,
@@ -109,23 +108,62 @@ class RepullConnectService
     }
 
 
-    public function confirmConnection(int $ownerId, string $provider, string $externalAccountId, ?string $redirectConnectionId = null): ChannelConnection
-    {
+    public function confirmConnection(
+        int $ownerId,
+        string $provider,
+        string $externalAccountId,
+        ?string $redirectConnectionId = null,
+        ?string $redirectAccessType = null
+    ): ChannelConnection {
+        $provider = strtolower($provider);
         $channel = $this->channelFromProvider($provider);
         if (! $channel || $externalAccountId === '') {
             throw new RepullException('Repull returned an incomplete channel connection.', 'invalid_response');
         }
 
+        if ($provider === 'booking') {
+            $details = $this->client->request('GET', '/v1/connect/booking');
+            if ((data_get($details, 'connected') ?? data_get($details, 'data.connected')) !== true) {
+                throw new RepullException('Repull has not confirmed the Booking.com connection yet.', 'connection_not_confirmed');
+            }
+
+            return $this->recordConnection($ownerId, 'booking', $externalAccountId, [
+                'connection_id' => $redirectConnectionId,
+                'access_type' => 'full_access',
+                'display_name' => 'Booking.com '.$externalAccountId,
+                'provider' => $provider,
+            ]);
+        }
+
+        if ($provider === 'booking-extranet-login') {
+            // Extranet login is a messaging-only companion connection. The signed
+            // redirect state binds the returned account to this owner; the webhook
+            // supplies richer account metadata when it arrives.
+            return $this->recordConnection($ownerId, 'booking', $externalAccountId, [
+                'connection_id' => $redirectConnectionId,
+                'access_type' => 'messaging',
+                'display_name' => 'Booking.com Extranet',
+                'provider' => $provider,
+            ]);
+        }
+
         $details = $this->client->request('GET', '/v1/connect/'.rawurlencode($provider));
         $accounts = (array) (data_get($details, 'accounts') ?? data_get($details, 'data.accounts') ?? []);
-        $account = collect($accounts)->first(fn ($item) => (string) ($item['externalAccountId'] ?? '') === $externalAccountId);
-        if (! $account) {
-            throw new RepullException('Repull did not confirm the connected account.', 'connection_not_confirmed');
+        $account = collect($accounts)->first(fn ($item) => (string) ($item['externalAccountId'] ?? $item['accountId'] ?? '') === $externalAccountId);
+
+        if ($provider === 'airbnb' && ! $account) {
+            throw new RepullException('Repull did not confirm the connected Airbnb account.', 'connection_not_confirmed');
+        }
+        if ($provider === 'vrbo-login') {
+            $connected = data_get($details, 'connected') ?? data_get($details, 'data.connected');
+            if ($connected === false) {
+                throw new RepullException('Repull has not confirmed the Vrbo connection yet.', 'connection_not_confirmed');
+            }
         }
 
         return $this->recordConnection($ownerId, $channel, $externalAccountId, [
             'connection_id' => $account['connectionId'] ?? data_get($details, 'connectionId') ?? data_get($details, 'id') ?? $redirectConnectionId,
-            'access_type' => $account['accessType'] ?? data_get($details, 'accessType'),
+            'access_type' => $account['accessType'] ?? data_get($details, 'accessType') ?? $redirectAccessType,
             'display_name' => $account['name'] ?? $account['displayName'] ?? null,
             'provider' => $provider,
         ]);
