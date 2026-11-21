@@ -25,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PmsProviderInterface::class, function () {
             return match (config('pms.provider')) {
                 'nextpax' => new NextPaxProvider(),
+                'repull' => new ChannexProvider(),
                 default => new ChannexProvider(),
             };
         });
