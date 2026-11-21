@@ -167,7 +167,7 @@ class GuestController extends Controller
             'phone_country_code' => ['nullable', 'string', 'max:10'],
             'email' => ['required', 'email', 'max:255'],
             'parking_needed' => [is_null($booking->parking_needed) ? 'required' : 'nullable'],
-            'checkin_time_preference' => ['required', 'string', \\Illuminate\\Validation\\Rule::in(array_keys($this->checkinTimeOptions($booking)))],
+            'checkin_time_preference' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys($this->checkinTimeOptions($booking)))],
             'checkout_time_preference' => ['nullable', 'string'],
             // Never required at Step 1 -- task: don't block the initial guest
             // flow on vehicle info. Actually prompted later, in the waiting
@@ -1837,14 +1837,14 @@ $upload = $request->file('license_plate_photo');
             ->first();
         $earliestAllowed = null;
         if ($previousCheckout) {
-            $minimumMinutes = (int) ($booking->property?->turnover_gap_minutes ?? \\App\\Services\\CleaningJobService::DEFAULT_TURNOVER_MINUTES);
-            $earliestAllowed = \\Carbon\\Carbon::parse($date.' '.$previousCheckout->effectiveCheckoutTime())->addMinutes($minimumMinutes);
+            $minimumMinutes = (int) ($booking->property?->turnover_gap_minutes ?? \App\Services\CleaningJobService::DEFAULT_TURNOVER_MINUTES);
+            $earliestAllowed = \Carbon\Carbon::parse($date.' '.$previousCheckout->effectiveCheckoutTime())->addMinutes($minimumMinutes);
         }
 
         $options = [];
         foreach ($hours as $hour) {
             $value = sprintf('%02d:00', $hour);
-            $candidate = \\Carbon\\Carbon::parse($date.' '.$value);
+            $candidate = \Carbon\Carbon::parse($date.' '.$value);
             if ($earliestAllowed && $candidate->lt($earliestAllowed)) {
                 continue;
             }
