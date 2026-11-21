@@ -128,6 +128,9 @@ class ImportFromAirbnbService
     private function replacePhotos(PropertyListing $listing, Property $property, array $photos): void
     {
         foreach ($listing->photos()->get() as $old) {
+            if ($old->source_channel === 'airbnb' && (string) $old->source_listing_id === (string) $listing->repull_listing_id) {
+                $old->forceFill(['source_channel' => null, 'source_listing_id' => null, 'source_photo_id' => null])->saveQuietly();
+            }
             Storage::disk('public')->delete([$old->path, $old->thumbnail_path]);
             $old->delete();
         }
