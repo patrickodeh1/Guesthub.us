@@ -90,9 +90,10 @@ class RepullConnectService
         $connection->fill([
             'owner_id' => $ownerId,
             'status' => 'connected',
+            'access_type' => $meta['access_type'] ?? $connection->access_type,
             'connected_at' => $connection->connected_at ?? now(),
             'last_error' => null,
-            'meta' => array_merge($connection->meta ?? [], array_filter($meta, fn ($v) => $v !== null && $v !== '')),
+            'meta' => array_merge($connection->meta ?? [], array_filter($meta, fn ($v) => $v !== null && $v !== '' && $v !== 'access_type')),
         ])->save();
 
         return $connection;
