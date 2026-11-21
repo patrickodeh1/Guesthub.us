@@ -335,6 +335,16 @@
         <aside class="card card-pad min-w-0 self-start xl:sticky xl:top-6">
             <h2 class="section-title">Property settings</h2>
 
+            <section class="mt-5 rounded-xl border border-slate-200 p-4">
+                <h3 class="text-sm font-bold text-slate-900">Cleaning assignments</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">Set the minimum time this property needs between one guest checking out and the next guest checking in. Guests will only be offered check-in times that meet this requirement.</p>
+                <label class="field-label mt-3">Minimum guest turnover (hours)
+                    <x-help-tip text="For example, 4 hours means the next guest cannot select a check-in time until at least four hours after the previous guest's checkout. Set 0 to remove the minimum gap." />
+                    <input type="number" name="turnover_gap_hours" min="0" max="24" step="0.5" required value="{{ old('turnover_gap_hours', ($property->turnover_gap_minutes ?? 240) / 60) }}" class="input">
+                </label>
+                @error('turnover_gap_hours')<span class="mt-1 block text-xs text-red-700">{{ $message }}</span>@enderror
+            </section>
+
             <label class="mt-5 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold"><span>Active property<x-help-tip text="Inactive properties are hidden from lists and scheduling but keep all their data." /></span><input type="checkbox" name="active" value="1" @checked(old('active', $property->active ?? true)) class="rounded border-slate-300"></label>
             <label class="mt-3 flex items-center justify-between rounded-xl border border-slate-200 p-4 text-sm font-semibold">
                 <span>Require license plate photo<x-help-tip text="Only asked of guests who say they need parking. Turn it off for properties with no parking." /></span>
