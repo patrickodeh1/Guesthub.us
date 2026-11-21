@@ -58,7 +58,7 @@ class RepullVrboPublishTest extends TestCase
 
     public function test_running_vrbo_job_is_polled_again_after_ten_seconds(): void
     {
-        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev']);
+        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev', 'repull.vrbo_publish_enabled' => true]);
         [, $link] = $this->makePublishingLink();
         Queue::fake();
         Http::fake([
