@@ -105,7 +105,7 @@ class HostSiteController extends Controller
         $suffix = 2;
 
         while (
-            HostSite::query()->where('slug', $candidate)->when($current, fn ($q) => $q->whereKeyNot($current->id))->exists()
+            HostSite::query()->where('slug', $candidate)->when($current, fn ($q) => $q->where('id', '!=', $current->id))->exists()
             || HostSiteAlias::query()->where('slug', $candidate)->where('host_site_id', '!=', $current?->id ?? 0)->exists()
         ) {
             $tail = '-'.$suffix++;
