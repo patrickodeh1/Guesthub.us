@@ -135,6 +135,12 @@ class RepullClient
         return $this->request('GET', '/v1/channels/airbnb/listings', [], null, $query);
     }
 
+    /** GET/POST /v1/channels/booking/content for property licences and other granular content. */
+    public function bookingContent(string $method, array $body = [], array $query = []): array
+    {
+        return $this->request($method, '/v1/channels/booking/content', $body, null, $query);
+    }
+
     /** POST /v1/channels/booking/setup  {action: create-property|add-room|advance|..., ...} */
     public function bookingSetup(array $body, ?string $idempotencyKey = null): array
     {
