@@ -27,10 +27,6 @@ class PropertyListing extends Model
                 return;
             }
 
-            $channels = $listing->channelLinks()
-                ->whereIn('state', ['published', 'live', 'partial'])
-                ->pluck('channel');
-
             self::queueChannelContentSync($listing->id);
         });
     }
