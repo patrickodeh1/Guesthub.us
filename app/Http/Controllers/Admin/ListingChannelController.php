@@ -162,14 +162,14 @@ class ListingChannelController extends Controller
 
         $ownerId = $connect->ownerIdFromState((string) $request->query('state', ''));
         $provider = (string) $request->query('provider', '');
-        $externalAccountId = (string) $request->query('externalAccountId', '');
+        $externalAccountId = (string) ($request->query('externalAccountId') ?? $request->query('accountId') ?? $request->query('connectionId') ?? '');
         if (! $ownerId || (int) $request->user()->id !== $ownerId || $provider === '' || $externalAccountId === '') {
             return redirect()->route('admin.properties.index')
                 ->withErrors(['channel' => 'The returned channel connection could not be securely matched to your account.']);
         }
 
         try {
-            $connect->confirmConnection($ownerId, $provider, $externalAccountId, (string) $request->query('connectionId', ''));
+            $connect->confirmConnection($ownerId, $provider, $externalAccountId, (string) $request->query('connectionId', ''), (string) $request->query('accessType', ''));
         } catch (RepullException $e) {
             return redirect()->route('admin.properties.index')
                 ->withErrors(['channel' => $this->friendly($e)]);
