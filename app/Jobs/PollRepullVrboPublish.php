@@ -122,9 +122,13 @@ class PollRepullVrboPublish implements ShouldQueue
             'live' => $live,
             'last_synced_at' => now(),
             'last_error' => $errors !== [] ? implode("\n", $errors) : null,
-            'content_hash' => $mapper->hash($link->listing),
             'meta' => $meta,
         ])->save();
+
+        $currentHash = $mapper->hash($link->listing);
+        if (filled($link->content_hash) && ! hash_equals((string) $link->content_hash, $currentHash)) {
+            PublishListingToChannel::dispatch($link->listing_id, 'vrbo')->afterCommit();
+        }
 
         Log::info('Repull Vrbo publish job completed', [
             'link_id' => $link->id,
