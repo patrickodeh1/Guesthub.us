@@ -139,7 +139,7 @@
                                 <label class="field-label text-xs">Access level
                                     <select name="access_type" class="input">
                                         <option value="full_access">Full management</option>
-                                        <option value="messaging">Messaging only (keep existing PMS; no content/calendar writes)</option>
+                                        <option value="messaging">Messaging-only access (GuestHub inbox is not included yet)</option>
                                         <option value="read_only">Read only (import)</option>
                                     </select>
                                 </label>
@@ -147,14 +147,14 @@
                                 <label class="field-label text-xs">Access level
                                     <select name="access_type" class="input">
                                         <option value="full_access">Full access (calendar and prices)</option>
-                                        <option value="messaging">Messaging only (keep existing PMS)</option>
+                                        <option value="messaging">Messaging-only access (GuestHub inbox is not included yet)</option>
                                     </select>
                                 </label>
                             @elseif($channel === 'booking')
                                 <label class="field-label text-xs">Connection type
                                     <select name="connection_mode" class="input">
                                         <option value="standard">Booking.com partner connection (full management)</option>
-                                        <option value="extranet">Booking.com Extranet login (messaging only)</option>
+                                        <option value="extranet">Booking.com Extranet login (connection only; no GuestHub inbox yet)</option>
                                     </select>
                                 </label>
                             @endif
@@ -162,7 +162,7 @@
                         </form>
                     @endif
                     @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && ! $canManageChannel)
-                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This account is messaging-only or read-only. GuestHub cannot publish, change calendars or unlist with this access level. Reconnect with full management when the host is ready to switch.</p>
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This account is connected with read-only or messaging access. GuestHub does not include OTA messaging in this release and cannot publish, change calendars or unlist with this access level. Reconnect with full management when the host is ready to switch.</p>
                     @endif
                     @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && $canManageChannel)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
