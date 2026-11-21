@@ -24,7 +24,8 @@ class PublicListingController extends Controller
     public function customDomain(Request $request)
     {
         $applicationHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-        if (strtolower($request->getHost()) === $applicationHost) {
+        $requestHost = strtolower($request->getHost());
+        if ($requestHost === $applicationHost || $requestHost === 'www.'.$applicationHost || 'www.'.$requestHost === $applicationHost) {
             return app(LandingController::class)->show();
         }
 
