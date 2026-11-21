@@ -156,9 +156,9 @@ class RepullClient
     }
 
     /** Start a Vrbo listing create or content-update job. */
-    public function publishVrbo(string $listingId, array $body = []): array
+    public function publishVrbo(string $listingId, array $body = [], ?string $idempotencyKey = null): array
     {
-        return $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/publish/vrbo', $body);
+        return $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/publish/vrbo', $body, $idempotencyKey);
     }
 
     /** Poll a Vrbo publish job returned by publishVrbo(). */
