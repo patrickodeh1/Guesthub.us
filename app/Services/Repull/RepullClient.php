@@ -110,10 +110,63 @@ class RepullClient
         return $this->request('PUT', '/v1/listings/'.rawurlencode($listingId).'/content', $content);
     }
 
+    /**
+     * Mint a short-lived storage URL, then PUT raw image bytes to storage.
+     * The Repull bearer key is never forwarded to the storage host.
+     */
+    public function uploadListingPhoto(string $listingId, string $fileName, string $fileType, string $bytes): array
+    {
+        $upload = $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/photos/upload-url', [
+            'fileName' => $fileName,
+            'fileType' => $fileType,
+            'fileSize' => strlen($bytes),
+        ]);
+
+        $uploadUrl = (string) (data_get($upload, 'uploadUrl') ?? data_get($upload, 'data.uploadUrl') ?? '');
+        $publicUrl = (string) (data_get($upload, 'publicUrl') ?? data_get($upload, 'data.publicUrl') ?? '');
+        $path = (string) (data_get($upload, 'path') ?? data_get($upload, 'data.path') ?? '');
+        if ($uploadUrl === '' || $publicUrl === '' || $path === '') {
+            throw new RepullException('Repull returned an incomplete photo upload target.', 'invalid_photo_upload_target');
+        }
+
+        $response = Http::withHeaders(['Content-Type' => $fileType])
+            ->withBody($bytes, $fileType)
+            ->timeout(120)
+            ->put($uploadUrl);
+
+        if (! $response->successful()) {
+            throw new RepullException('Repull photo storage upload failed with HTTP '.$response->status().'.', 'photo_upload_failed', $response->status(), $response->serverError());
+        }
+
+        return ['publicUrl' => $publicUrl, 'path' => $path, 'token' => data_get($upload, 'token')];
+    }
+
+    /** Delete a canonical Repull photo by the storage path returned at upload. */
+    public function deleteListingPhoto(string $listingId, string $path): array
+    {
+        return $this->request('DELETE', '/v1/listings/'.rawurlencode($listingId).'/photos', [], null, [
+            'path' => $path,
+        ]);
+    }
+
     /** GET /v1/listings/{id}/publish-status → addressReadiness, channels[], connections[] (incl. lockedFields). */
     public function getPublishStatus(string $listingId): array
     {
         return $this->request('GET', '/v1/listings/'.rawurlencode($listingId).'/publish-status');
+    }
+
+    /** Start a Vrbo listing create or content-update job. */
+    public function publishVrbo(string $listingId, array $body = []): array
+    {
+        return $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/publish/vrbo', $body);
+    }
+
+    /** Poll a Vrbo publish job returned by publishVrbo(). */
+    public function getVrboPublishJob(string $listingId, string $jobId): array
+    {
+        return $this->request('GET', '/v1/listings/'.rawurlencode($listingId).'/publish/vrbo', [], null, [
+            'jobId' => $jobId,
+        ]);
     }
 
     // ── Publish ─────────────────────────────────────────────────────────────
