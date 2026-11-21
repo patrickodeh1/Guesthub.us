@@ -173,13 +173,19 @@
                             @endif
                             <button @disabled(!empty($gaps)) class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{{ $link && $link->external_listing_id ? 'Update on '.$label : 'Publish to '.$label }}</button>
                         </form>
-                        @if($featureEnabled && $canManageChannel && $link && in_array($state, ['live', 'published', 'partial']))
+                        @if($featureEnabled && $canManageChannel && $link && in_array($state, ['live', 'published', 'partial']) && $channel !== 'vrbo')
                             <form method="post" action="{{ route('admin.properties.channels.unlist', [$property, $channel]) }}" onsubmit="return confirm('Take this listing off {{ $label }}?')">@csrf
                                 <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Take off market</button>
                             </form>
                         @endif
+                        @if($channel === 'vrbo' && $link && in_array($state, ['live', 'published', 'partial']))
+                            <p class="text-xs text-slate-500">Use the all-channel offline/online controls below to change Vrbo availability.</p>
+                        @endif
                     @endif
                 </div>
+                @if($channel === 'vrbo' && $state === 'publishing')
+                    <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Vrbo onboarding or content publishing runs in the background and can take 5–15 minutes. Refresh this page to see the final status.</p>
+                @endif
             </section>
         @endforeach
 
@@ -214,10 +220,12 @@
             <div class="flex flex-wrap gap-2">
                 <form method="post" action="{{ route('admin.properties.channels.online-status', $property) }}">@csrf
                     <input type="hidden" name="online" value="0">
+                    <input name="hotel_id" value="{{ old('hotel_id') }}" class="input max-w-xs" placeholder="Booking.com property ID (optional)">
                     <button class="rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700" onclick="return confirm('Take this listing offline on every connected channel?')">Take offline everywhere</button>
                 </form>
                 <form method="post" action="{{ route('admin.properties.channels.online-status', $property) }}">@csrf
                     <input type="hidden" name="online" value="1">
+                    <input name="hotel_id" value="{{ old('hotel_id') }}" class="input max-w-xs" placeholder="Booking.com property ID (optional)">
                     <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Put online everywhere</button>
                 </form>
                 <form method="post" action="{{ route('admin.properties.channels.readiness', $property) }}">@csrf
