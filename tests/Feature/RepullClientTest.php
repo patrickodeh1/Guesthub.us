@@ -61,4 +61,20 @@ class RepullClientTest extends TestCase
         $this->expectException(RepullException::class);
         (new RepullClient())->getPublishStatus('1');
     }
+
+    public function test_channel_connect_uses_provider_specific_endpoint_and_full_access_for_airbnb(): void
+    {
+        Http::fake(['api.repull.dev/v1/connect/airbnb' => Http::response(['url' => 'https://connect.repull.dev/cs_test'], 201)]);
+        $response = (new RepullClient())->createChannelConnectSession('airbnb', [
+            'redirectUrl' => 'https://guesthub.test/welcome/channels/connected',
+            'state' => 'owner-state',
+            'accessType' => 'full_access',
+        ]);
+
+        $this->assertSame('https://connect.repull.dev/cs_test', $response['url']);
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/connect/airbnb'
+            && $request['accessType'] === 'full_access'
+            && $request['state'] === 'owner-state');
+    }
+
 }
