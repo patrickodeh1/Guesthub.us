@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Amenity extends Model
 {
-    protected $fillable = ['property_id', 'title', 'icon', 'details', 'images', 'active'];
+    protected $fillable = ['property_id', 'title', 'icon', 'details', 'images', 'active', 'repull_amenity_id'];
 
     protected function casts(): array
     {
