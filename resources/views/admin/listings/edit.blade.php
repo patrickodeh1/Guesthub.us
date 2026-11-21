@@ -11,7 +11,7 @@
         $roomRows = old('listing_rooms', $listingRooms->map(fn ($room) => [
             'room_type' => $room->room_type, 'room_number' => $room->room_number,
             'room_name' => $room->room_name, 'bed_type' => $room->bed_type,
-            'bed_quantity' => $room->bed_quantity, 'is_private' => $room->is_private,
+            'bed_quantity' => $room->bed_quantity, 'beds' => $room->beds ?: [], 'is_private' => $room->is_private,
         ])->all());
         $methodsValue = old('payment_methods', $paymentMethods->map(fn ($method) => [
             'type' => $method->type,
@@ -168,17 +168,27 @@
                                 <label class="field-label">Room name
                                     <input name="listing_rooms[{{ $roomIndex }}][room_name]" value="{{ $room['room_name'] ?? '' }}" maxlength="120" class="input" placeholder="Primary bedroom">
                                 </label>
-                                <label class="field-label">Bed type
-                                    <select name="listing_rooms[{{ $roomIndex }}][bed_type]" class="input">
-                                        <option value="">No bed configured</option>
-                                        @foreach(['king_bed' => 'King', 'queen_bed' => 'Queen', 'double_bed' => 'Double', 'single_bed' => 'Single', 'sofa_bed' => 'Sofa bed', 'bunk_bed' => 'Bunk bed', 'air_mattress' => 'Air mattress', 'futon' => 'Futon'] as $value => $label)
-                                            <option value="{{ $value }}" @selected(($room['bed_type'] ?? '') === $value)>{{ $label }}</option>
+                                <div class="md:col-span-3">
+                                    <p class="mb-2 text-xs font-semibold text-slate-600">Bed mix (up to four types)</p>
+                                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                        @foreach(range(0, 3) as $bedIndex)
+                                            @php($bed = $room['beds'][$bedIndex] ?? [])
+                                            <div class="rounded-lg bg-slate-50 p-2">
+                                                <label class="field-label">Bed type
+                                                    <select name="listing_rooms[{{ $roomIndex }}][beds][{{ $bedIndex }}][bedType]" class="input">
+                                                        <option value="">No bed</option>
+                                                        @foreach(['king_bed' => 'King', 'queen_bed' => 'Queen', 'double_bed' => 'Double', 'single_bed' => 'Single', 'sofa_bed' => 'Sofa bed', 'bunk_bed' => 'Bunk bed', 'air_mattress' => 'Air mattress', 'futon' => 'Futon'] as $value => $label)
+                                                            <option value="{{ $value }}" @selected(($bed['bedType'] ?? '') === $value)>{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </label>
+                                                <label class="field-label mt-2">Quantity
+                                                    <input type="number" min="1" max="20" name="listing_rooms[{{ $roomIndex }}][beds][{{ $bedIndex }}][quantity]" value="{{ $bed['quantity'] ?? '' }}" class="input">
+                                                </label>
+                                            </div>
                                         @endforeach
-                                    </select>
-                                </label>
-                                <label class="field-label">Bed quantity
-                                    <input type="number" min="1" max="20" name="listing_rooms[{{ $roomIndex }}][bed_quantity]" value="{{ $room['bed_quantity'] ?? '' }}" class="input">
-                                </label>
+                                    </div>
+                                </div>
                                 <label class="flex items-center gap-2 text-sm font-medium">
                                     <input type="checkbox" name="listing_rooms[{{ $roomIndex }}][is_private]" value="1" @checked($room['is_private'] ?? true)>
                                     Private room
