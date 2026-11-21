@@ -24,6 +24,8 @@ class BookingSetupFlowTest extends TestCase
             'repull.api_key' => 'repull-test-key',
             'repull.base_url' => 'https://api.repull.dev',
         ]);
+        Storage::fake('public');
+        Storage::disk('public')->put('test/cover.webp', 'fake-image-bytes');
         Http::fake([
             'api.repull.dev/v1/channels/booking/setup' => Http::sequence()
                 ->push(['data' => ['propertyId' => 'hotel-100', 'roomId' => 'room-1']])
