@@ -168,7 +168,7 @@
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
                             @if($channel === 'booking')
                                 <label class="field-label text-xs">Booking.com property ID (only if multiple)
-                                    <input name="hotel_id" value="{{ old('hotel_id', $link?->external_listing_id) }}" class="input" placeholder="Repull/Booking property ID">
+                                    <input name="hotel_id" value="{{ old('hotel_id') }}" class="input" placeholder="Repull/Booking property ID">
                                 </label>
                             @endif
                             <button @disabled(!empty($gaps)) class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{{ $link && $link->external_listing_id ? 'Update on '.$label : 'Publish to '.$label }}</button>
