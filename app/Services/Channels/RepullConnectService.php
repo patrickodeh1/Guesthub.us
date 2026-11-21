@@ -61,13 +61,21 @@ class RepullConnectService
         if ($channels->count() !== 1 || ! in_array($channels->first(), ['airbnb', 'booking', 'vrbo'], true)) {
             throw new RepullException('Connect one supported channel at a time.', 'invalid_request');
         }
+        if (! in_array($mode, ['standard', 'extranet'], true)) {
+            throw new RepullException('Choose a valid connection mode.', 'invalid_request');
+        }
 
         $channel = (string) $channels->first();
-        $state = $this->stateFor($owner);
-        $redirectUrl = route('admin.channels.connected', ['state' => $state]);
+        $effectiveAccessType = $channel === 'booking' && $mode === 'extranet' ? 'messaging' : $accessType;
+        $state = $this->stateFor((int) $owner->id);
+        $redirectUrl = route('admin.channels.connected', [
+            'state' => $state,
+            'accessType' => $effectiveAccessType,
+            'connectMode' => $mode,
+        ]);
 
         if ($channel === 'airbnb') {
-            if (! in_array($accessType, ['full_access', 'messaging', 'read_only'], true)) {
+            if (! in_array($effectiveAccessType, ['full_access', 'messaging', 'read_only'], true)) {
                 throw new RepullException('Choose a valid Airbnb access level.', 'invalid_request');
             }
             $res = $this->client->createChannelConnectSession('airbnb', [
@@ -79,32 +87,30 @@ class RepullConnectService
                 'redirectUrl' => $redirectUrl,
                 'state' => $state,
                 'allowedProviders' => ['booking-extranet-login'],
-                ]);
+            ]);
         } elseif ($channel === 'booking') {
             $res = $this->client->createChannelConnectSession('booking', [
                 'redirectUrl' => $redirectUrl,
             ]);
         } else {
-            if (! in_array($accessType, ['full_access', 'messaging'], true)) {
+            if (! in_array($effectiveAccessType, ['full_access', 'messaging'], true)) {
                 throw new RepullException('Choose a valid Vrbo access level.', 'invalid_request');
             }
-            // Vrbo uses the multi-provider Connect flow and the vrbo-login provider id.
             $res = $this->client->createConnectSession([
                 'redirectUrl' => $redirectUrl,
                 'state' => $state,
                 'allowedProviders' => ['vrbo-login'],
-                'accessType' => $accessType,
+                'accessType' => $effectiveAccessType,
             ]);
         }
 
-        $url = (string) ($res['url'] ?? data_get($res, 'data.url') ?? '');
+        $url = (string) (data_get($res, 'url') ?? data_get($res, 'data.url') ?? '');
         if ($url === '') {
             throw new RepullException('Repull did not return a Connect URL.', 'invalid_response');
         }
 
         return $url;
     }
-
 
     public function confirmConnection(
         int $ownerId,
