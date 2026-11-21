@@ -12,13 +12,14 @@ use App\Services\Channels\ListingContentMapper;
 use App\Services\Channels\RepullConnectService;
 use App\Services\Channels\RepullListingService;
 use App\Services\Repull\RepullException;
+use App\Services\Repull\RepullClient;
 use App\Services\FeatureGate;
 use Illuminate\Http\Request;
 
 /** Per-listing "Channels" screen: connect OTA accounts, publish content, see per-section results. */
 class ListingChannelController extends Controller
 {
-    public function show(Request $request, Property $property, RepullListingService $service, ListingContentMapper $mapper)
+    public function show(Request $request, Property $property, RepullListingService $service, ListingContentMapper $mapper, RepullClient $repull)
     {
         $this->authorizeProperty($request, $property);
 
@@ -30,9 +31,24 @@ class ListingChannelController extends Controller
             $missing[$channel] = $listing ? $mapper->missing($listing, $channel) : ['listing' => 'Create the direct booking listing first'];
         }
 
+        $bookingLink = $listing?->channelLinks->firstWhere('channel', 'booking');
+        $bookingLicenceInfo = null;
+        if ($bookingLink && filled($bookingLink->external_listing_id) && $repull->isConfigured()) {
+            try {
+                $bookingLicenceInfo = $repull->bookingContent('GET', [], [
+                    'property_id' => (string) $bookingLink->external_listing_id,
+                    'type' => 'licences',
+                ]);
+            } catch (RepullException $e) {
+                $bookingLicenceInfo = ['error' => $e->getMessage()];
+            }
+        }
+
         return view('admin.listings.channels', [
             'property' => $property,
             'listing' => $listing,
+            'bookingLink' => $bookingLink,
+            'bookingLicenceInfo' => $bookingLicenceInfo,
             'links' => $listing ? $listing->channelLinks->keyBy('channel') : collect(),
             'connections' => ChannelConnection::query()->where('owner_id', $property->owner_id)->where('status', 'connected')->get()->groupBy('channel'),
             'missing' => $missing,
@@ -109,6 +125,7 @@ class ListingChannelController extends Controller
         $this->authorizeProperty($request, $property);
         $this->authorizeChannelAddon($property);
         abort_unless(in_array($channel, RepullListingService::PUBLISHABLE, true), 404);
+        $data = $request->validate(['hotel_id' => ['nullable', 'string', 'max:80']]);
 
         $listing = $property->listing()->with('photos')->first();
         abort_unless($listing, 404);
@@ -123,9 +140,47 @@ class ListingChannelController extends Controller
         }
 
         $service->linkFor($listing, $channel)->forceFill(['state' => 'publishing', 'last_error' => null])->save();
-        PublishListingToChannel::dispatch($listing->id, $channel, $request->boolean('force'));
+        PublishListingToChannel::dispatch($listing->id, $channel, $request->boolean('force'), $data['hotel_id'] ?? null);
 
         return back()->with('success', 'Publishing to '.ucfirst($channel).' started. Refresh this page in a minute for the result.');
+    }
+
+    public function saveBookingLicence(Request $request, Property $property, RepullClient $repull)
+    {
+        $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
+        $data = $request->validate([
+            'variant_id' => ['required', 'integer', 'min:1'],
+            'content_data_json' => ['required', 'string', 'max:12000'],
+        ]);
+
+        $listing = $property->listing()->with('channelLinks')->first();
+        abort_unless($listing, 404);
+        $link = $listing->channelLinks->firstWhere('channel', 'booking');
+        abort_unless($link && filled($link->external_listing_id), 422, 'Create or link the Booking.com property first.');
+
+        $contentData = json_decode($data['content_data_json'], true);
+        if (! is_array($contentData) || ! array_is_list($contentData)) {
+            return back()->withErrors(['content_data_json' => 'Enter a JSON array of name/value objects.']);
+        }
+        foreach ($contentData as $item) {
+            if (! is_array($item) || ! is_string($item['name'] ?? null) || ! array_key_exists('value', $item)) {
+                return back()->withErrors(['content_data_json' => 'Each licence entry needs a name and value.']);
+            }
+        }
+
+        try {
+            $result = $repull->bookingContent('POST', [
+                'type' => 'licences',
+                'property_id' => (string) $link->external_listing_id,
+                'variantId' => (int) $data['variant_id'],
+                'contentData' => $contentData,
+            ]);
+        } catch (RepullException $e) {
+            return back()->withErrors(['booking_licence' => $this->friendly($e)]);
+        }
+
+        return back()->with('booking_licence_result', $result)->with('success', 'Booking.com licence details submitted. Re-check readiness before publishing.');
     }
 
     public function unlist(Request $request, Property $property, string $channel, RepullListingService $service)
