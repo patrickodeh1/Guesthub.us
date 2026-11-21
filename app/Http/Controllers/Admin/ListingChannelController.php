@@ -30,6 +30,7 @@ class ListingChannelController extends Controller
         $airbnbListings = [];
         $ownerAirbnbConnections = ChannelConnection::query()
             ->where('owner_id', $property->owner_id)
+            ->where('provider', 'repull')
             ->where('channel', 'airbnb')
             ->where('status', 'connected')
             ->get();
@@ -58,7 +59,8 @@ class ListingChannelController extends Controller
 
         $bookingLink = $listing?->channelLinks->firstWhere('channel', 'booking');
         $bookingLicenceInfo = null;
-        if ($bookingLink && filled($bookingLink->external_listing_id) && $repull->isConfigured()) {
+        if ($bookingLink && filled($bookingLink->external_listing_id) && $repull->isConfigured()
+            && $property->owner && FeatureGate::enabled($property->owner, 'repull_channel_sync')) {
             try {
                 $bookingLicenceInfo = $repull->bookingContent('GET', [], [
                     'property_id' => (string) $bookingLink->external_listing_id,
@@ -76,7 +78,7 @@ class ListingChannelController extends Controller
             'bookingLicenceInfo' => $bookingLicenceInfo,
             'airbnbListings' => $airbnbListings,
             'links' => $listing ? $listing->channelLinks->keyBy('channel') : collect(),
-            'connections' => ChannelConnection::query()->where('owner_id', $property->owner_id)->where('status', 'connected')->get()->groupBy('channel'),
+            'connections' => ChannelConnection::query()->where('owner_id', $property->owner_id)->where('provider', 'repull')->where('status', 'connected')->get()->groupBy('channel'),
             'missing' => $missing,
             'capabilities' => $service->capabilities(),
             'configured' => app(\App\Services\Repull\RepullClient::class)->isConfigured(),
