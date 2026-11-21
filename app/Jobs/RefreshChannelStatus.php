@@ -56,6 +56,7 @@ class RefreshChannelStatus implements ShouldQueue
 
                 $connection = ChannelConnection::query()
                     ->where('owner_id', $this->ownerId)
+                    ->where('provider', 'repull')
                     ->where('channel', 'airbnb')
                     ->where('external_account_id', $accountId)
                     ->where('status', 'connected')
@@ -66,15 +67,18 @@ class RefreshChannelStatus implements ShouldQueue
                 }
 
                 $airbnbId = (string) ($remoteConnection['airbnbId'] ?? '');
-                // The details endpoint is keyed by Repull connection id, not Airbnb's 19-digit listing id.
-                $details = $connectionId !== '' ? $client->getAirbnbListingDetails($connectionId) : [];
-                $detailData = data_get($details, 'data.0') ?? data_get($details, 'data') ?? $details;
+                // Details are keyed by the Repull listing id. Match the returned
+                // connection record locally; never request details with Airbnb's
+                // 19-digit external listing id or another host's connection id.
+                $detailConnection = $detailConnections->first(function ($item) use ($connectionId, $accountId) {
+                    return ($connectionId !== '' && (string) ($item['id'] ?? $item['connectionId'] ?? '') === $connectionId)
+                        || (string) ($item['accountId'] ?? $item['externalAccountId'] ?? '') === $accountId;
+                });
                 $status = collect($statusConnections)->first(function ($item) use ($connectionId, $connection) {
                     $statusId = (string) ($item['connectionId'] ?? $item['id'] ?? '');
                     return ($connectionId !== '' && $statusId === $connectionId)
                         || (string) ($item['externalAccountId'] ?? '') === (string) $connection->external_account_id;
                 });
-                $status ??= collect($statusConnections)->first(fn ($item) => ($item['channel'] ?? null) === 'airbnb');
 
                 $writableValue = $remoteConnection['writable'] ?? data_get($detailConnection, 'writable') ?? data_get($detailConnection, 'syncEnabled') ?? $remote['writable'] ?? (is_array($status) ? ($status['syncEnabled'] ?? $status['writable'] ?? null) : null);
                 $syncEnabled = $writableValue !== null ? (bool) $writableValue : null;
