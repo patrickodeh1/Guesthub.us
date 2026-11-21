@@ -63,7 +63,9 @@ class RefreshChannelStatus implements ShouldQueue
                 }
 
                 $airbnbId = (string) ($remoteConnection['airbnbId'] ?? '');
-                $details = $airbnbId !== '' ? $client->getAirbnbListingDetails($airbnbId) : [];
+                // The details endpoint is keyed by Repull connection id, not Airbnb's 19-digit listing id.
+                $details = $connectionId !== '' ? $client->getAirbnbListingDetails($connectionId) : [];
+                $detailData = data_get($details, 'data.0') ?? data_get($details, 'data') ?? $details;
                 $status = collect($statusConnections)->first(function ($item) use ($connectionId, $connection) {
                     $statusId = (string) ($item['connectionId'] ?? $item['id'] ?? '');
                     return ($connectionId !== '' && $statusId === $connectionId)
@@ -83,8 +85,8 @@ class RefreshChannelStatus implements ShouldQueue
                     'external_listing_id' => (string) ($remoteConnection['airbnbId'] ?? $link->external_listing_id ?? ''),
                     'sync_category' => $syncCategory !== null ? (string) $syncCategory : null,
                     'writable' => $syncEnabled,
-                    'locked_fields' => (array) (data_get($details, 'lockedFields') ?? data_get($details, 'data.lockedFields') ?? (is_array($status) ? ($status['lockedFields'] ?? []) : $link->locked_fields)),
-                    'live' => data_get($publishStatus, 'live') ?? data_get($publishStatus, 'data.live') ?? $link->live,
+                    'locked_fields' => (array) (data_get($detailData, 'lockedFields') ?? (is_array($status) ? ($status['lockedFields'] ?? []) : $link->locked_fields)),
+                    'live' => data_get($detailData, 'live') ?? data_get($detailData, 'isLive') ?? $link->live,
                     'status_checked_at' => now(),
                 ])->save();
             }
