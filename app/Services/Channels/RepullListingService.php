@@ -420,11 +420,14 @@ class RepullListingService
                 throw new ChannelPublishBlocked('A listing photo exceeds Airbnb\'s 25 MB upload limit.');
             }
 
-            $jpeg = $manager->read($bytes)->toJpeg(85);
+            $jpeg = (string) $manager->read($bytes)->toJpeg(85);
+            if (strlen($jpeg) > 24 * 1024 * 1024) {
+                throw new ChannelPublishBlocked('A converted listing photo exceeds Airbnb\'s 25 MB upload limit.');
+            }
             $newPhotos[] = [
                 'model' => $photo,
                 'payload' => [
-                    'image' => base64_encode((string) $jpeg),
+                    'image' => base64_encode($jpeg),
                     'caption' => (string) ($photo->alt ?? ''),
                     'sort_order' => $index + 1,
                 ],
@@ -437,9 +440,10 @@ class RepullListingService
                 array_column($chunk, 'payload'),
                 $idem.'-photos-'.$chunkIndex
             );
-            $remotePhotos = (array) (data_get($response, 'photos') ?? data_get($response, 'data.photos') ?? []);
+            $remotePhotos = data_get($response, 'photos') ?? data_get($response, 'data.photos') ?? data_get($response, 'data') ?? [];
+            $remotePhotos = is_array($remotePhotos) && array_is_list($remotePhotos) ? $remotePhotos : [];
             foreach ($chunk as $photoIndex => $item) {
-                $remote = $remotePhotos[$photoIndex] ?? [];
+                $remote = is_array($remotePhotos[$photoIndex] ?? null) ? $remotePhotos[$photoIndex] : [];
                 $item['model']->forceFill([
                     'source_channel' => 'airbnb',
                     'source_listing_id' => $repullId,
