@@ -229,11 +229,11 @@ class CleaningJobService
             $arrive = Carbon::parse($date.' '.$in->effectiveCheckinTime());
             $minimumMinutes = (int) (Property::query()->whereKey((int) $data['property_id'])->value('turnover_gap_minutes') ?? self::DEFAULT_TURNOVER_MINUTES);
             if ($start->diffInMinutes($arrive, false) < $minimumMinutes) {
-                $conflict = [
-                    'type' => 'turnover_gap',
-                    'message' => 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
-                        .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.',
-                ];
+                $message = $minimumMinutes > 0
+                    ? 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
+                        .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.'
+                    : 'The cleaning is scheduled to start at '.$start->format('g:i A').', after the next guest checks in at '.$arrive->format('g:i A').'.';
+                $conflict = ['type' => 'turnover_gap', 'message' => $message];
                 if (! $confirmTurnoverOverride) {
                     throw new ConflictsDetected([$conflict]);
                 }
@@ -265,11 +265,12 @@ class CleaningJobService
             return [];
         }
 
-        return [[
-            'type' => 'turnover_gap',
-            'message' => 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
-                .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.',
-        ]];
+        $message = $minimumMinutes > 0
+            ? 'The next guest arrives at '.$arrive->format('g:i A').', which leaves less than '
+                .($minimumMinutes / 60).' hours after a '.$start->format('g:i A').' cleaning start.'
+            : 'The cleaning is scheduled to start at '.$start->format('g:i A').', after the next guest checks in at '.$arrive->format('g:i A').'.';
+
+        return [['type' => 'turnover_gap', 'message' => $message]];
     }
 
     public const CLEANER_OVERLAP_MINUTES = 180;
