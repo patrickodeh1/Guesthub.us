@@ -6,6 +6,7 @@ use App\Models\ChannelConnection;
 use App\Models\Feature;
 use App\Jobs\PublishListingToChannel;
 use App\Models\Amenity;
+use App\Models\RepullAmenityCatalog;
 use App\Jobs\RefreshChannelStatus;
 use App\Models\ListingRoom;
 use App\Models\ListingChannelLink;
@@ -304,6 +305,36 @@ class ListingChannelAccessTest extends TestCase
 
         $this->assertSame('error', $link->fresh()->state);
         $this->assertStringContainsString('Complete the listing first', $link->fresh()->last_error);
+    }
+
+
+
+    public function test_deactivated_catalog_amenities_are_not_sent_in_full_replacement_payloads(): void
+    {
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        $listing->forceFill(['amenities_sync_enabled' => true])->save();
+
+        Amenity::create([
+            'property_id' => $listing->property_id,
+            'title' => 'Wi-Fi',
+            'repull_amenity_id' => 'wifi',
+            'active' => true,
+        ]);
+        Amenity::create([
+            'property_id' => $listing->property_id,
+            'title' => 'Old mapping',
+            'repull_amenity_id' => 'old_id',
+            'active' => true,
+        ]);
+        RepullAmenityCatalog::create([
+            'label' => 'Old mapping',
+            'canonical_id' => 'old_id',
+            'active' => false,
+        ]);
+
+        $payload = app(ListingContentMapper::class)->contentPayload($listing->load('property'));
+        $this->assertSame(['wifi'], $payload['amenities']);
     }
 
 
