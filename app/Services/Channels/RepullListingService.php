@@ -2,6 +2,8 @@
 
 namespace App\Services\Channels;
 
+use App\Jobs\PollRepullVrboPublish;
+
 use App\Models\ChannelConnection;
 use App\Models\ChannelSyncEvent;
 use App\Models\ListingChannelLink;
