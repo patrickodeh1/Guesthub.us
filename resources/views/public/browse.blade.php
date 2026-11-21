@@ -72,6 +72,7 @@
 @endpush
 
 @section('content')
+    @include('public.partials.host-brand-header')
     <div class="browse-page">
         <header class="browse-heading">
             <h1>{{ $title }}</h1>
@@ -197,6 +198,7 @@
             </div>
         @endif
     </div>
+    @include('public.partials.host-brand-footer')
 @endsection
 
 @unless($showStayDiscovery)
