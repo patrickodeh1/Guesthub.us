@@ -56,6 +56,9 @@ class CalendarAssignController extends Controller
                 ->where('property_id', $data['property_id'])
                 ->firstOrFail();
             $session = \App\Services\CleaningFlowService::checkoutSessionFor($booking);
+            if ($session?->status === 'cancelled') {
+                $session = null; // Recreate a fresh, active cleaning while retaining the booking link.
+            }
         }
 
         $confirmed = (bool) ($data['confirm_conflicts'] ?? false);
@@ -152,7 +155,7 @@ class CalendarAssignController extends Controller
             $booking = $session->booking;
         } elseif ($bookingId = (int) $request->query('booking_id')) {
             $booking = \App\Models\Booking::with('property')->findOrFail($bookingId);
-            $session = CleaningSession::query()->where('booking_id', $booking->id)->latest('id')->first();
+            $session = CleaningSession::query()->where('booking_id', $booking->id)->where('status', '<>', 'cancelled')->latest('id')->first();
             $propertyLocked = true;
         }
 
