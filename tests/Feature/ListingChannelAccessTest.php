@@ -162,7 +162,8 @@ class ListingChannelAccessTest extends TestCase
             'room_number' => 1,
             'room_name' => 'Primary bedroom',
             'bed_type' => 'queen_bed',
-            'bed_quantity' => 1,
+            'bed_quantity' => 3,
+            'beds' => [['bedType' => 'queen_bed', 'quantity' => 1], ['bedType' => 'single_bed', 'quantity' => 2]],
             'is_private' => true,
         ]);
 
@@ -172,7 +173,7 @@ class ListingChannelAccessTest extends TestCase
                 'roomType' => 'bedroom',
                 'roomNumber' => 1,
                 'roomName' => 'Primary bedroom',
-                'beds' => [['bedType' => 'queen_bed', 'quantity' => 1]],
+                'beds' => [['bedType' => 'queen_bed', 'quantity' => 1], ['bedType' => 'single_bed', 'quantity' => 2]],
                 'isPrivate' => true,
             ],
         ], $payload['rooms']);
