@@ -308,6 +308,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
             ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking'])->name('properties.channels.publish');
         Route::post('properties/{property}/channels/{channel}/unlist', [ListingChannelController::class, 'unlist'])
             ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking'])->name('properties.channels.unlist');
+        Route::post('properties/{property}/channels/airbnb/import', [ListingChannelController::class, 'importAirbnb'])
+            ->middleware('property.access')->name('properties.channels.airbnb.import');
         Route::post('properties/{property}/channels/airbnb/refresh-status', [ListingChannelController::class, 'refreshAirbnbStatus'])
             ->middleware('property.access')->name('properties.channels.airbnb.refresh-status');
         Route::post('properties/{property}/channels/online-status', [ListingChannelController::class, 'setListingOnline'])
