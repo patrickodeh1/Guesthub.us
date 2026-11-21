@@ -35,6 +35,7 @@
                 <label class="field-label">Sort order<input name="sort_order" type="number" min="0" max="100000" value="{{ $amenity->sort_order }}" class="input"></label>
                 <label class="flex items-center gap-2 text-sm"><input type="hidden" name="active" value="0"><input type="checkbox" name="active" value="1" @checked($amenity->active)> Active</label>
                 <button class="btn-secondary">Save</button>
+                <button type="submit" form="delete-amenity-{{ $amenity->id }}" class="text-xs font-semibold text-rose-700 underline" onclick="return confirm('Remove this catalog entry? Existing property mappings will remain unchanged.')">Delete</button>
             </form>
             <form method="post" action="{{ route('admin.repull-amenities.destroy', $amenity) }}" class="hidden" id="delete-amenity-{{ $amenity->id }}">
                 @csrf
