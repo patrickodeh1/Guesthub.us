@@ -109,7 +109,7 @@ class RepullConnectService
     }
 
 
-    public function confirmConnection(int $ownerId, string $provider, string $externalAccountId): ChannelConnection
+    public function confirmConnection(int $ownerId, string $provider, string $externalAccountId, ?string $redirectConnectionId = null): ChannelConnection
     {
         $channel = $this->channelFromProvider($provider);
         if (! $channel || $externalAccountId === '') {
@@ -124,7 +124,7 @@ class RepullConnectService
         }
 
         return $this->recordConnection($ownerId, $channel, $externalAccountId, [
-            'connection_id' => $account['connectionId'] ?? data_get($details, 'connectionId'),
+            'connection_id' => $account['connectionId'] ?? data_get($details, 'connectionId') ?? data_get($details, 'id') ?? $redirectConnectionId,
             'access_type' => $account['accessType'] ?? data_get($details, 'accessType'),
             'display_name' => $account['name'] ?? $account['displayName'] ?? null,
             'provider' => $provider,
