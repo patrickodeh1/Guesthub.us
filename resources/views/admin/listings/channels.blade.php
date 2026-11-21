@@ -6,6 +6,28 @@
             <p class="mt-1 text-sm text-slate-600">Edit your listing once in GuestHub and publish it to Airbnb and Booking.com. Calendar and rates sync separately.</p>
         </div>
 
+        @if($featureEnabled && !empty($airbnbListings) && !($listing && $listing->published_at))
+            <section class="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 class="font-semibold text-slate-900">Import an existing Airbnb listing</h2>
+                <p class="mt-1 text-sm text-slate-600">Choose a listing already synced into Repull. GuestHub will pull its current Airbnb content into this unpublished draft, including photos and room details. This replaces the current draft content; it never overwrites a published GuestHub listing.</p>
+                <form method="post" action="{{ route('admin.properties.channels.airbnb.import', $property) }}" class="mt-3 flex flex-wrap items-end gap-3" onsubmit="return confirm('Replace this unpublished GuestHub draft with the selected Airbnb listing?')">@csrf
+                    <label class="field-label min-w-0 flex-1">Airbnb listing
+                        <select name="selection" required class="input">
+                            <option value="">Choose an Airbnb listing</option>
+                            @foreach($airbnbListings as $remoteListing)
+                                @foreach($remoteListing['connections'] as $remoteConnection)
+                                    <option value="{{ $remoteListing['listingId'] }}|{{ $remoteConnection['id'] }}|{{ $remoteConnection['accountId'] }}">
+                                        {{ $remoteListing['name'] ?? 'Airbnb listing '.$remoteListing['listingId'] }} · {{ $remoteConnection['airbnbId'] ?? '' }} · {{ $remoteConnection['accountName'] ?? 'Airbnb account' }}
+                                    </option>
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </label>
+                    <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Import to draft</button>
+                </form>
+            </section>
+        @endif
+
         @if(session('channel_results'))
             <section class="rounded-xl border border-slate-200 bg-white p-4">
                 <h2 class="font-semibold text-slate-900">Per-channel result</h2>
