@@ -125,6 +125,7 @@ class ListingChannelController extends Controller
 
         $ownedConnection = ChannelConnection::query()
             ->where('owner_id', $property->owner_id)
+            ->where('provider', 'repull')
             ->where('channel', 'airbnb')
             ->where('status', 'connected')
             ->get()
@@ -132,6 +133,28 @@ class ListingChannelController extends Controller
                 || (string) data_get($connection->meta, 'connection_id') === (string) $connectionId);
         if (! $ownedConnection) {
             return back()->withErrors(['selection' => 'That Airbnb account is not connected to this host.']);
+        }
+
+        // The Repull workspace key can see every host's account. Never trust
+        // a browser-supplied listing id just because one of the submitted
+        // connection/account ids belongs to this owner.
+        try {
+            $remote = app(RepullClient::class)->getAirbnbListings();
+        } catch (RepullException $e) {
+            return back()->withErrors(['selection' => $this->friendly($e)]);
+        }
+
+        $selectedListing = collect(data_get($remote, 'data', []))->first(
+            fn ($item) => (string) ($item['listingId'] ?? '') === (string) $repullListingId
+        );
+        $belongsToSelectedAccount = $selectedListing && collect($selectedListing['connections'] ?? [])->contains(
+            fn ($connection) => (string) ($connection['id'] ?? '') === (string) $connectionId
+                && (string) ($connection['accountId'] ?? '') === (string) $accountId
+        );
+        if (! $belongsToSelectedAccount
+            || (string) $ownedConnection->external_account_id !== (string) $accountId
+            || (string) data_get($ownedConnection->meta, 'connection_id') !== (string) $connectionId) {
+            return back()->withErrors(['selection' => 'That Airbnb listing does not belong to the selected connected account. Refresh the page and choose one of your own listings.']);
         }
 
         try {
