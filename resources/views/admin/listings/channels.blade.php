@@ -220,14 +220,38 @@
                         <pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-xs">{{ json_encode($bookingLicenceInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                     </details>
                 @endif
-                <form method="post" action="{{ route('admin.properties.channels.booking.licences', $property) }}" class="mt-4 grid gap-3">@csrf
+                @php
+                    $licenceRows = old('content_data_json') ? json_decode(old('content_data_json'), true) : [];
+                    if (! is_array($licenceRows) || ! array_is_list($licenceRows) || $licenceRows === []) {
+                        $licenceRows = [['name' => '', 'value' => '']];
+                    }
+                @endphp
+                <form id="booking-licence-form" method="post" action="{{ route('admin.properties.channels.booking.licences', $property) }}" class="mt-4 grid gap-3">@csrf
                     <label class="field-label">Variant ID
-                        <input type="number" min="1" name="variant_id" required class="input" placeholder="Variant ID from requirements">
+                        <input type="number" min="1" name="variant_id" value="{{ old('variant_id') }}" required class="input" placeholder="Variant ID from requirements">
                     </label>
-                    <label class="field-label">Licence fields (JSON array)
-                        <textarea name="content_data_json" rows="5" required class="textarea" placeholder='[{"name":"business_tax_receipt","value":"BTR123456"},{"name":"certificate_number","value":"1234567"}]'></textarea>
-                        <span class="field-help">Use the exact field names returned by Booking.com. Do not guess a licence type or number format.</span>
-                    </label>
+                    <div>
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <label class="field-label">Required licence fields</label>
+                            <button id="booking-licence-add-row" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Add field</button>
+                        </div>
+                        <div id="booking-licence-rows" class="grid gap-2">
+                            @foreach($licenceRows as $rowIndex => $licenceRow)
+                                <div class="booking-licence-row grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                                    <label class="field-label">Exact field name
+                                        <input data-licence-name value="{{ $licenceRow['name'] ?? '' }}" class="input" maxlength="120" placeholder="business_tax_receipt">
+                                    </label>
+                                    <label class="field-label">Value
+                                        <input data-licence-value value="{{ is_scalar($licenceRow['value'] ?? null) ? $licenceRow['value'] : '' }}" class="input" maxlength="500" placeholder="Enter the registered value">
+                                    </label>
+                                    <button type="button" data-remove-licence-row class="self-end rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-700">Remove</button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <input type="hidden" id="booking-licence-content-data" name="content_data_json">
+                        <span class="field-help">Use the exact field names and value formats returned by Booking.com for the selected region and variant. Do not guess a licence type or number format.</span>
+                        @error('content_data_json')<p class="field-help text-red-700">{{ $message }}</p>@enderror
+                    </div>
                     <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Submit licence details</button>
                 </form>
                 @if(session('booking_licence_result'))
@@ -254,4 +278,42 @@
             </div>
         @endif
     </div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('booking-licence-form');
+    const rows = document.getElementById('booking-licence-rows');
+    const add = document.getElementById('booking-licence-add-row');
+    const output = document.getElementById('booking-licence-content-data');
+    if (!form || !rows || !add || !output) return;
+
+    const bindRemove = (row) => row.querySelector('[data-remove-licence-row]')?.addEventListener('click', () => {
+        if (rows.children.length > 1) row.remove();
+        else {
+            row.querySelector('[data-licence-name]').value = '';
+            row.querySelector('[data-licence-value]').value = '';
+        }
+    });
+    rows.querySelectorAll('.booking-licence-row').forEach(bindRemove);
+    add.addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'booking-licence-row grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]';
+        row.innerHTML = '<label class="field-label">Exact field name<input data-licence-name class="input" maxlength="120" placeholder="business_tax_receipt"></label><label class="field-label">Value<input data-licence-value class="input" maxlength="500" placeholder="Enter the registered value"></label><button type="button" data-remove-licence-row class="self-end rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-700">Remove</button>';
+        rows.appendChild(row);
+        bindRemove(row);
+        row.querySelector('[data-licence-name]').focus();
+    });
+    form.addEventListener('submit', (event) => {
+        const values = [...rows.querySelectorAll('.booking-licence-row')].map(row => ({
+            name: row.querySelector('[data-licence-name]').value.trim(),
+            value: row.querySelector('[data-licence-value]').value.trim()
+        })).filter(row => row.name !== '' && row.value !== '');
+        if (values.length === 0) {
+            event.preventDefault();
+            alert('Add at least one exact Booking.com licence field and value.');
+            return;
+        }
+        output.value = JSON.stringify(values);
+    });
+});
+</script>
 </x-admin-layout>
