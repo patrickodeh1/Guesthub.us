@@ -204,6 +204,7 @@ class ManageSessionController extends Controller
                 ->get();
 
             $coveredKeys = CleaningSession::query()
+                ->where('status', '<>', 'cancelled')
                 ->whereIn('property_id', $upcoming->pluck('property_id')->unique())
                 ->whereDate('scheduled_date', '>=', $today)
                 ->whereDate('scheduled_date', '<=', $horizon)
