@@ -117,7 +117,7 @@ class BookingSetupFlowTest extends TestCase
             && $request['hotelId'] === 'selected-hotel-9');
         Http::assertSent(fn ($request) => $request->method() === 'PUT'
             && $request->url() === 'https://api.repull.dev/v1/listings/repull-100/content'
-            && $request['photosMode'] === 'append'
+            && ! array_key_exists('photosMode', $request->data())
             && $request['photos'][0]['url'] === 'https://cdn.repull.dev/listings/repull-100/cover.jpg');
         Http::assertSentCount(7);
     }
