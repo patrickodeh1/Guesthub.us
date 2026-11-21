@@ -94,6 +94,10 @@
                     <label class="field-label">Bedrooms
                         <input type="number" min="0" max="100" name="bedrooms" value="{{ old('bedrooms', $listing->bedrooms ?? $property->beds) }}" class="input">
                     </label>
+                    <label class="field-label">Total beds
+                        <input type="number" min="0" max="100" name="total_beds" value="{{ old('total_beds', $property->beds) }}" class="input">
+                        <span class="field-help">When room-layout sync is enabled, this total is calculated from the configured room beds.</span>
+                    </label>
                     <label class="field-label">Bathrooms
                         <input type="number" min="0" max="50" step="0.5" name="bathrooms" value="{{ old('bathrooms', $property->baths) }}" class="input">
                     </label>
