@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Channels\RepullListingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BookingSetupFlowTest extends TestCase
