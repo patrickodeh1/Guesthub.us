@@ -29,7 +29,7 @@ class RepullListingService
     public const CHANNELS = ['airbnb', 'booking', 'vrbo'];
 
     /** Channels GuestHub can publish to today. Vrbo is connect-only until verified (plan task T4.7). */
-    public const PUBLISHABLE = ['airbnb', 'booking'];
+    public const PUBLISHABLE = ['airbnb', 'booking', 'vrbo'];
 
     public function __construct(private RepullClient $client, private ListingContentMapper $mapper)
     {
