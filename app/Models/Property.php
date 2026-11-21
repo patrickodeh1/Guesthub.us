@@ -50,7 +50,7 @@ class Property extends Model
         static::updated(function (self $property): void {
             if (! $property->wasChanged([
                 'address', 'city', 'state', 'zip', 'latitude', 'longitude',
-                'beds', 'baths', 'country', 'amenities',
+                'beds', 'baths', 'country', 'amenities', 'checkin_time', 'checkout_time',
             ])) {
                 return;
             }
