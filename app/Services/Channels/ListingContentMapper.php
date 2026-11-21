@@ -232,7 +232,7 @@ class ListingContentMapper
     {
         return $listing->photos
             ->map(fn ($photo) => array_filter([
-                'url' => URL::temporarySignedRoute('channels.media.show', now()->addDays(7), ['listingPhoto' => $photo->id]),
+                'url' => URL::signedRoute('channels.media.show', ['listingPhoto' => $photo->id]),
                 'caption' => (string) ($photo->alt ?? ''),
             ], fn ($v) => $v !== ''))
             ->filter(fn ($photo) => isset($photo['url']))
