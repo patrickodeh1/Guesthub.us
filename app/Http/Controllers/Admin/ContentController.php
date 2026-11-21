@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Amenity;
+use App\Models\RepullAmenityCatalog;
 use App\Models\Category;
 use App\Models\CategoryPage;
 use App\Models\Property;
@@ -178,6 +179,7 @@ public function editPage(Property $property, Category $category)
         return view('admin.content.amenities-index', [
             'property' => $property,
             'amenities' => $property->amenities,
+            'repullAmenities' => RepullAmenityCatalog::query()->where('active', true)->orderBy('sort_order')->orderBy('label')->get(),
         ]);
     }
 
@@ -186,6 +188,7 @@ public function editPage(Property $property, Category $category)
         return view('admin.content.amenity-form', [
             'property' => $property,
             'amenity' => new Amenity(),
+            'repullAmenities' => RepullAmenityCatalog::query()->where('active', true)->orderBy('sort_order')->orderBy('label')->get(),
         ]);
     }
 
@@ -201,6 +204,7 @@ public function editPage(Property $property, Category $category)
         return view('admin.content.amenity-form', [
             'property' => $amenity->property,
             'amenity' => $amenity,
+            'repullAmenities' => RepullAmenityCatalog::query()->where('active', true)->orderBy('sort_order')->orderBy('label')->get(),
         ]);
     }
 
