@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Feature;
+use App\Models\HostSite;
+use App\Models\HostSiteAlias;
 use App\Models\PropertyListing;
 use App\Models\User;
 use App\Services\AvailabilitySearch;
@@ -36,6 +38,7 @@ class PublicListingController extends Controller
             ->firstOrFail();
 
         $data = $this->present($listing);
+        $hostSite = $listing->property?->owner_id ? HostSite::query()->where('user_id', $listing->property->owner_id)->first() : null;
         $canonical = route('public.listing.show', $listing->listing_slug);
         $metaTitle = $listing->meta_title ?: $listing->public_title;
         $metaDescription = $listing->meta_description ?: Str::limit(strip_tags((string) $listing->public_description), 300);
@@ -77,6 +80,7 @@ class PublicListingController extends Controller
 
         return view('public.listing', [
             'listing' => $listing,
+            'hostSite' => $hostSite,
             'public' => $data,
             'canonical' => $canonical,
             'metaTitle' => $metaTitle,
@@ -94,13 +98,24 @@ class PublicListingController extends Controller
 
     public function host(string $hostSlug)
     {
+        $site = HostSite::query()->where('slug', $hostSlug)->first();
+        if (! $site) {
+            $alias = HostSiteAlias::query()->where('slug', $hostSlug)->with('hostSite')->first();
+            if ($alias?->hostSite) {
+                return redirect()->route('public.host.show', $alias->hostSite->slug, 301);
+            }
+        }
+
         $listings = $this->eligibleListings();
-        $ownerListings = $listings->filter(fn (PropertyListing $listing) => $this->hostSlug($listing->property->owner) === $hostSlug);
+        $ownerListings = $listings->filter(fn (PropertyListing $listing) => $site
+            ? (int) $listing->property->owner_id === (int) $site->user_id
+            : $this->hostSlug($listing->property->owner) === $hostSlug);
         abort_if($ownerListings->isEmpty(), 404);
 
         $owner = $ownerListings->first()->property->owner;
-        $title = $owner->host_name ?: $owner->name;
-        $canonical = route('public.host.show', $hostSlug);
+        $hostSite = $site ?: HostSite::query()->where('user_id', $owner->id)->first();
+        $title = $hostSite?->display_name ?: ($owner->host_name ?: $owner->name);
+        $canonical = route('public.host.show', $hostSite?->slug ?: $hostSlug);
         $cards = $ownerListings->map(fn (PropertyListing $listing) => $this->present($listing))->values();
         $mapPoints = $this->mapPoints($cards);
         $schema = $this->itemListSchema($cards, $canonical, $title.' stays');
@@ -119,6 +134,7 @@ class PublicListingController extends Controller
             'noindex' => request()->query() !== [],
             'structuredData' => [$schema, $breadcrumb],
             'mapPoints' => $mapPoints,
+            'hostSite' => $hostSite,
         ]);
     }
 
@@ -522,7 +538,7 @@ class PublicListingController extends Controller
 
     private function hostSlug(User $owner): string
     {
-        return Str::slug($owner->host_name ?: $owner->name).'-'.$owner->getKey();
+        return HostSite::query()->where('user_id', $owner->id)->value('slug') ?: (Str::slug($owner->host_name ?: $owner->name).'-'.$owner->getKey());
     }
 
     private function timezone(string $timezone): string
