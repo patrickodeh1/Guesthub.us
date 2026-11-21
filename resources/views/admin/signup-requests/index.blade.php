@@ -18,7 +18,7 @@
         <div>
             <p class="eyebrow">Administration</p>
             <h2 class="page-title">Signup Requests</h2>
-            <p class="page-subtitle">Approve with a role and we'll email them a link to create their password (valid 24 hours).</p>
+            <p class="page-subtitle">Approve with a role and we'll email and text them an 8-digit temporary password. They'll change it on first login.</p>
         </div>
     </div>
 
