@@ -56,4 +56,36 @@ class RepullAddonSubscriptionTest extends TestCase
         $this->assertSame(1, $addonLine['quantity']);
         $this->assertSame(1500, $quote['total_cents']);
     }
+
+    public function test_addon_quantity_counts_each_host_listing_once_and_never_counts_another_hosts_listing(): void
+    {
+        Role::findOrCreate('owner');
+        $owner = User::factory()->create();
+        $owner->assignRole('owner');
+        $otherOwner = User::factory()->create();
+        $otherOwner->assignRole('owner');
+
+        $property = Property::factory()->create(['owner_id' => $owner->id, 'active' => true]);
+        $listing = PropertyListing::create([
+            'property_id' => $property->id,
+            'listing_slug' => 'owner-repull-listing',
+            'public_title' => 'Owner listing',
+            'repull_listing_id' => 'repull-unique-1',
+        ]);
+        ListingChannelLink::create(['listing_id' => $listing->id, 'channel' => 'airbnb', 'state' => 'live']);
+        ListingChannelLink::create(['listing_id' => $listing->id, 'channel' => 'booking', 'state' => 'published']);
+
+        $otherProperty = Property::factory()->create(['owner_id' => $otherOwner->id, 'active' => true]);
+        PropertyListing::create([
+            'property_id' => $otherProperty->id,
+            'listing_slug' => 'other-owner-repull-listing',
+            'public_title' => 'Other owner listing',
+            'repull_listing_id' => 'repull-unique-2',
+        ]);
+
+        $counts = app(BillingQuantityResolver::class)->counts($owner);
+        $this->assertSame(1, $counts['per_channel_listing']);
+    }
+
+
 }
