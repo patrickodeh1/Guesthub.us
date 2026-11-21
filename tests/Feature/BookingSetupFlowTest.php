@@ -26,13 +26,19 @@ class BookingSetupFlowTest extends TestCase
             'repull.base_url' => 'https://api.repull.dev',
         ]);
         Storage::fake('public');
-        Storage::disk('public')->put('test/cover.webp', 'fake-image-bytes');
+        Storage::disk('public')->put('test/cover.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/b9sAAAAASUVORK5CYII='));
         Http::fake([
             'api.repull.dev/v1/channels/booking/setup' => Http::sequence()
                 ->push(['data' => ['propertyId' => 'hotel-100', 'roomId' => 'room-1']])
                 ->push(['data' => ['roomId' => 'room-2', 'rateId' => 'rate-2']])
                 ->push(['data' => ['sellable' => true, 'blockers' => []]]),
-            'api.repull.dev/v1/channels/booking/content*' => Http::response(['data' => ['uploaded' => 1]]),
+            'api.repull.dev/v1/listings/repull-100/photos/upload-url' => Http::response([
+                'uploadUrl' => 'https://storage.example.com/upload/cover',
+                'publicUrl' => 'https://cdn.repull.dev/listings/repull-100/cover.jpg',
+                'path' => 'listings/repull-100/cover.jpg',
+            ]),
+            'storage.example.com/upload/cover' => Http::response('', 200),
+            'api.repull.dev/v1/listings/repull-100/content' => Http::response(['changed' => ['photos'], 'deferred' => []]),
             'api.repull.dev/v1/listings/repull-100/publish/booking' => Http::response([
                 'result' => ['published' => true, 'sections' => ['details', 'photos'], 'errors' => []],
             ]),
@@ -109,6 +115,10 @@ class BookingSetupFlowTest extends TestCase
         $this->assertSame('published', $link->state);
         Http::assertSent(fn ($request) => str_ends_with($request->url(), '/v1/listings/repull-100/publish/booking')
             && $request['hotelId'] === 'selected-hotel-9');
-        Http::assertSentCount(5);
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && $request->url() === 'https://api.repull.dev/v1/listings/repull-100/content'
+            && $request['photosMode'] === 'append'
+            && $request['photos'][0]['url'] === 'https://cdn.repull.dev/listings/repull-100/cover.jpg');
+        Http::assertSentCount(7);
     }
 }
