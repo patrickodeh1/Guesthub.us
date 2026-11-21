@@ -36,7 +36,7 @@ class HostSiteBrandingTest extends TestCase
             'display_name' => 'New Host Name',
             'brand_color' => '#334455',
             'support_email' => 'host@example.com',
-            'custom_domain' => 'book.example.com',
+            'custom_domain' => 'book-'.$owner->id.'.example.com',
             'show_powered_by' => '1',
         ])->assertRedirect();
 
@@ -78,7 +78,7 @@ class HostSiteBrandingTest extends TestCase
         $owner = User::factory()->create();
         HostSite::create([
             'user_id' => $owner->id,
-            'slug' => 'custom-host',
+            'slug' => 'custom-host-'.$owner->id,
             'display_name' => 'Custom Host',
             'brand_color' => '#17221e',
             'show_powered_by' => true,
@@ -87,7 +87,7 @@ class HostSiteBrandingTest extends TestCase
             'domain_verified_at' => now(),
         ]);
 
-        $this->get('https://book.example.com/admin')->assertNotFound();
+        $this->get('https://book-'.$owner->id.'.example.com/admin')->assertNotFound();
     }
 
 
