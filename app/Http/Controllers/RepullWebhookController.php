@@ -68,8 +68,8 @@ class RepullWebhookController extends Controller
     private function accountConnected(array $payload, Request $request, RepullConnectService $connect): void
     {
         $ownerId = $connect->ownerIdFromState((string) (data_get($payload, 'data.state') ?? data_get($payload, 'state') ?? ''));
-        $channel = $connect->channelFromProvider((string) (data_get($payload, 'account.provider') ?? data_get($payload, 'data.provider') ?? ''));
-        $accountId = (string) (data_get($payload, 'account.externalAccountId') ?? $request->header('X-Repull-Account-Id') ?? '');
+        $channel = $connect->channelFromProvider((string) (data_get($payload, 'account.provider') ?? data_get($payload, 'data.account.provider') ?? data_get($payload, 'data.provider') ?? ''));
+        $accountId = (string) (data_get($payload, 'account.externalAccountId') ?? data_get($payload, 'data.account.externalAccountId') ?? data_get($payload, 'data.accountId') ?? $request->header('X-Repull-Account-Id') ?? '');
 
         if (! $ownerId || ! $channel || $accountId === '') {
             // account.created carries no state: it cannot be attributed to a host, so ignore it.
@@ -82,9 +82,9 @@ class RepullWebhookController extends Controller
         }
 
         $connect->recordConnection($ownerId, $channel, $accountId, [
-            'connection_id' => data_get($payload, 'data.connectionId') ?? data_get($payload, 'account.connectionId'),
-            'access_type' => data_get($payload, 'data.accessType') ?? data_get($payload, 'account.accessType'),
-            'display_name' => data_get($payload, 'account.name') ?? data_get($payload, 'account.displayName'),
+            'connection_id' => data_get($payload, 'data.connectionId') ?? data_get($payload, 'account.connectionId') ?? data_get($payload, 'data.account.connectionId'),
+            'access_type' => data_get($payload, 'data.accessType') ?? data_get($payload, 'account.accessType') ?? data_get($payload, 'data.account.accessType'),
+            'display_name' => data_get($payload, 'account.name') ?? data_get($payload, 'account.displayName') ?? data_get($payload, 'data.account.name') ?? data_get($payload, 'data.account.displayName'),
         ]);
     }
 
