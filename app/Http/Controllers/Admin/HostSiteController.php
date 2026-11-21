@@ -107,6 +107,34 @@ class HostSiteController extends Controller
     }
 
 
+
+    public function checkSlug(Request $request)
+    {
+        $owner = $request->user();
+        abort_unless($owner->hasAnyRole(['admin', 'owner', 'company']), 403);
+        abort_unless(FeatureGate::enabled($owner, 'direct_booking_site'), 403);
+
+        $raw = strtolower(trim((string) $request->query('slug', '')));
+        $valid = strlen($raw) >= 3 && strlen($raw) <= 40
+            && preg_match('/\\A[a-z0-9]+(?:-[a-z0-9]+)*\\z/', $raw)
+            && ! in_array($raw, self::RESERVED, true);
+        $site = HostSite::query()->where('user_id', $owner->id)->first();
+        $conflict = ! $valid || HostSite::query()->where('slug', $raw)
+            ->when($site, fn ($query) => $query->where('id', '!=', $site->id))
+            ->exists()
+            || HostSiteAlias::query()->where('slug', $raw)
+                ->when($site, fn ($query) => $query->where('host_site_id', '!=', $site->id))
+                ->exists();
+
+        return response()->json([
+            'slug' => $raw,
+            'available' => ! $conflict,
+            'suggestion' => $conflict && $valid ? $this->uniqueSlug($raw, $site) : null,
+            'message' => ! $valid ? 'Use 3–40 lowercase letters, numbers and hyphens; reserved names are unavailable.'
+                : ($conflict ? 'That host address is already in use.' : 'This host address is available.'),
+        ]);
+    }
+
     public function verifyDomain(Request $request)
     {
         $owner = $request->user();
