@@ -312,6 +312,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
             ->middleware('property.access')->name('properties.channels.airbnb.refresh-status');
         Route::post('properties/{property}/channels/online-status', [ListingChannelController::class, 'setListingOnline'])
             ->middleware('property.access')->name('properties.channels.online-status');
+        Route::post('properties/{property}/channels/booking/licences', [ListingChannelController::class, 'saveBookingLicence'])
+            ->middleware('property.access')->name('properties.channels.booking.licences');
         Route::post('properties/{property}/channels/readiness', [ListingChannelController::class, 'readiness'])
             ->middleware('property.access')->name('properties.channels.readiness');
     });
