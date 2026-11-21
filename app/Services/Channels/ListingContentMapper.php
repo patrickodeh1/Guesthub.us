@@ -82,7 +82,7 @@ class ListingContentMapper
 
         $mappedAmenities = $p?->amenities()->whereNotNull('repull_amenity_id')->get() ?? collect();
         $amenities = $mappedAmenities->where('active', true)->pluck('repull_amenity_id')->filter()->unique()->values()->all();
-        if ($mappedAmenities->isNotEmpty()) {
+        if ($listing->amenities_sync_enabled) {
             // Repull replaces the complete canonical set when this key is present.
             $payload['amenities'] = $amenities;
         }
