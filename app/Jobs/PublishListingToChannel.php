@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\PropertyListing;
+use App\Services\Channels\ListingContentMapper;
 use App\Services\Channels\ChannelPublishBlocked;
 use App\Services\Channels\RepullListingService;
 use Illuminate\Bus\Queueable;
@@ -35,10 +36,18 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
         return [60, 300];
     }
 
-    public function handle(RepullListingService $service): void
+    public function handle(RepullListingService $service, ListingContentMapper $mapper): void
     {
-        $listing = PropertyListing::with(['property.owner', 'photos'])->find($this->listingId);
+        $listing = PropertyListing::with(['property.owner', 'photos', 'channelLinks'])->find($this->listingId);
         if (! $listing) {
+            return;
+        }
+
+        // Content-hash no-op: do not call Repull when a prior successful push
+        // already contains the current GuestHub content.
+        $link = $listing->channelLinks->firstWhere('channel', $this->channel);
+        if (! $this->force && $link && in_array($link->state, ['published', 'live'], true)
+            && filled($link->content_hash) && hash_equals((string) $link->content_hash, $mapper->hash($listing))) {
             return;
         }
 
