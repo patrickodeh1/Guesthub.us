@@ -5,6 +5,9 @@
             <h1 class="page-title">Properties</h1>
             <p class="page-subtitle">Manage addresses, maps, images, GPS points, and smart locks for each property.</p>
         </div>
+        @if(auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+            <a href="{{ route('admin.host-site.edit') }}" class="btn-secondary">Host site branding</a>
+        @endif
         @if(\App\Support\RoleAccess::canManageProperties(auth()->user()))
             <a href="{{ route('admin.properties.create') }}" class="btn-primary">Add Property</a>
         @endif
