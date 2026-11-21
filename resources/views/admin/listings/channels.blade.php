@@ -62,6 +62,12 @@
                     </div>
                 </div>
 
+                @if($channel === 'airbnb' && $link && $link->status_checked_at)
+                    <div class="mt-2 text-xs text-slate-500">Airbnb sync: {{ $link->sync_category ?: 'Unknown' }} · {{ $link->writable === null ? 'Not confirmed' : ($link->writable ? 'Writable' : 'Not writable') }} · checked {{ $link->status_checked_at->diffForHumans() }}</div>
+                    @if($link->writable === false || $link->sync_category === 'none')
+                        <div class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Turn on API sync for this individual listing inside Airbnb. Reconnecting your account will not enable listing-level API sync.</div>
+                    @endif
+                @endif
                 @if($link && $link->last_error)
                     <div class="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{{ $link->last_error }}</div>
                 @endif
@@ -81,6 +87,11 @@
                 @endif
 
                 <div class="mt-4 flex flex-wrap gap-2">
+                    @if($featureEnabled && $channel === 'airbnb' && $accounts->isNotEmpty())
+                        <form method="post" action="{{ route('admin.properties.channels.airbnb.refresh-status', $property) }}">@csrf
+                            <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Refresh Airbnb sync status</button>
+                        </form>
+                    @endif
                     @if($featureEnabled && $cap['connect'] && $accounts->isEmpty())
                         <form method="post" action="{{ route('admin.properties.channels.connect', [$property, $channel]) }}">@csrf
                             <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Connect {{ $label }}</button>
