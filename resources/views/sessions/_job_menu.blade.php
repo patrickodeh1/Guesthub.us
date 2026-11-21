@@ -1,5 +1,5 @@
 @php
-    $canManage = auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company', 'manager']);
+    $canManage = auth()->check() && auth()->user()->hasAnyRole(['admin', 'owner', 'company']);
     $hasReport = filled($s->report_token);
 @endphp
 @if (! $canManage)
@@ -22,7 +22,7 @@
         @else
             <a href="{{ route('sessions.show', $s) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Open Cleaning</a>
         @endif
-        <a href="{{ route('manage.sessions.edit', $s) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Edit Cleaning Schedule</a>
+        <a href="{{ route('manage.sessions.index', ['assign' => $s->id]) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700">Edit Cleaning Schedule</a>
         @if ($s->status === 'pending' && ! $s->gps_override_enabled)
             <button type="button"
                     @click="open = false; $dispatch('gps-override-open', { action: '{{ route('sessions.gps-override', $s) }}', label: @js($s->property->name) }); $dispatch('open-modal', 'jobs-gps-override-modal')"
