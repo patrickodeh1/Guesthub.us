@@ -277,7 +277,7 @@ class ListingChannelAccessTest extends TestCase
 
     public function test_publish_job_processes_a_link_already_marked_publishing(): void
     {
-        Feature::create([
+        Feature::updateOrCreate(['key' => 'repull_channel_sync'], [
             'key' => 'repull_channel_sync',
             'name' => 'OTA channel sync',
             'is_free' => true,
