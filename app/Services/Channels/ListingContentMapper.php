@@ -4,6 +4,7 @@ namespace App\Services\Channels;
 
 use App\Models\PropertyListing;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Canonical GuestHub listing  ->  Repull payloads.
@@ -227,7 +228,7 @@ class ListingContentMapper
     {
         return $listing->photos
             ->map(fn ($photo) => array_filter([
-                'url' => url('/img/'.ltrim((string) $photo->path, '/')),
+                'url' => URL::temporarySignedRoute('channels.media.show', now()->addDays(7), ['listingPhoto' => $photo->id]),
                 'caption' => (string) ($photo->alt ?? ''),
             ], fn ($v) => $v !== ''))
             ->filter(fn ($photo) => isset($photo['url']))
