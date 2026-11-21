@@ -167,7 +167,7 @@ class GuestController extends Controller
             'phone_country_code' => ['nullable', 'string', 'max:10'],
             'email' => ['required', 'email', 'max:255'],
             'parking_needed' => [is_null($booking->parking_needed) ? 'required' : 'nullable'],
-            'checkin_time_preference' => ['required', 'string'],
+            'checkin_time_preference' => ['required', 'string', \\Illuminate\\Validation\\Rule::in(array_keys($this->checkinTimeOptions($booking)))],
             'checkout_time_preference' => ['nullable', 'string'],
             // Never required at Step 1 -- task: don't block the initial guest
             // flow on vehicle info. Actually prompted later, in the waiting
@@ -1849,12 +1849,6 @@ $upload = $request->file('license_plate_photo');
                 continue;
             }
             $options[$value] = $candidate->format('g:i A');
-        }
-
-        // Keep an already-submitted preference visible if a host later changes
-        // the property's turnover setting; do not offer it as a new option.
-        if ($booking->checkin_time_preference && ! array_key_exists($booking->checkin_time_preference, $options)) {
-            $options[$booking->checkin_time_preference] = \\Carbon\\Carbon::parse($date.' '.$booking->checkin_time_preference)->format('g:i A');
         }
 
         return $options;
