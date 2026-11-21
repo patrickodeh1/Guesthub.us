@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\PublishListingToChannel;
+use App\Jobs\RefreshChannelStatus;
 use App\Models\ChannelConnection;
 use App\Models\Property;
 use App\Services\Channels\ChannelPublishBlocked;
@@ -53,6 +54,17 @@ class ListingChannelController extends Controller
         } catch (RepullException $e) {
             return back()->withErrors(['channel' => $this->friendly($e)]);
         }
+    }
+
+    public function refreshAirbnbStatus(Request $request, Property $property)
+    {
+        $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
+        abort_unless($property->owner, 422, 'This property has no owner to refresh.');
+
+        RefreshChannelStatus::dispatch((int) $property->owner_id);
+
+        return back()->with('success', 'Airbnb sync status refresh queued. Refresh this page shortly.');
     }
 
     /** Where Repull sends the host after the hosted Connect flow. The webhook records the connection. */
