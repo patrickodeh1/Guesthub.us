@@ -476,6 +476,12 @@ class RepullListingService
             return ['uploaded' => 0];
         }
 
+        foreach ($newPhotos as $photo) {
+            if (! Storage::disk('public')->exists($photo->path)) {
+                throw new ChannelPublishBlocked('A listing photo is missing from storage. Re-upload it before publishing.');
+            }
+        }
+
         $urls = $this->mapper->photoUrls($listing);
         $urlById = collect($urls)->keyBy(fn ($photo) => (int) ($photo['localPhotoId'] ?? 0));
         $payload = $newPhotos->map(function ($photo) use ($urlById) {
