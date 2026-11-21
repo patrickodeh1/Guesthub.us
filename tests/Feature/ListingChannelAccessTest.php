@@ -122,9 +122,9 @@ class ListingChannelAccessTest extends TestCase
         ]);
 
         try {
-            app(\\App\\Services\\Channels\\RepullListingService::class)->unlist($listing->load('property'), 'booking');
+            app(\App\\Services\\Channels\\RepullListingService::class)->unlist($listing->load('property'), 'booking');
             $this->fail('Expected Repull rejection to be propagated.');
-        } catch (\\App\\Services\\Repull\\RepullException $e) {
+        } catch (\App\\Services\\Repull\\RepullException $e) {
             $this->assertSame('not_ready', $e->errorCode);
         }
 
@@ -214,7 +214,7 @@ class ListingChannelAccessTest extends TestCase
             'connection_id' => $connection->id, 'state' => 'live',
         ]);
 
-        (new RefreshChannelStatus($owner->id))->handle(app(\\App\\Services\\Repull\\RepullClient::class));
+        (new RefreshChannelStatus($owner->id))->handle(app(\App\\Services\\Repull\\RepullClient::class));
 
         $fresh = $link->fresh();
         $this->assertFalse($fresh->writable);
