@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use App\Models\HostSite;
 use App\Models\HostSiteAlias;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class HostSiteBrandingTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_host_site_slug_changes_create_a_redirect_alias_and_auto_suffix_collisions(): void
     {
         Role::findOrCreate('admin');
