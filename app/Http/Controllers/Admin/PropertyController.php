@@ -456,11 +456,15 @@ class PropertyController extends Controller
             'early_checkin_rate_2pm_4pm' => ['nullable', 'numeric', 'min:0'],
             'late_checkout_rate_authorized_per_30min' => ['nullable', 'numeric', 'min:0'],
             'late_checkout_rate_unauthorized_per_30min' => ['nullable', 'numeric', 'min:0'],
-            'turnover_gap_hours' => ['required', 'numeric', 'min:0', 'max:24'],
+            'turnover_gap_hours' => ['sometimes', 'numeric', 'min:0', 'max:24'],
         ]);
 
-        $data['turnover_gap_minutes'] = (int) round((float) $data['turnover_gap_hours'] * 60);
-        unset($data['turnover_gap_hours']);
+        if (array_key_exists('turnover_gap_hours', $data)) {
+            $data['turnover_gap_minutes'] = (int) round((float) $data['turnover_gap_hours'] * 60);
+            unset($data['turnover_gap_hours']);
+        } elseif (! $property) {
+            $data['turnover_gap_minutes'] = \\App\\Services\\CleaningJobService::DEFAULT_TURNOVER_MINUTES;
+        }
 
         $data['deposit_cap_cents'] = $request->filled('deposit_cap_dollars')
             ? (int) round((float) $request->input('deposit_cap_dollars') * 100)
