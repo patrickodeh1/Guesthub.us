@@ -72,7 +72,7 @@ class RepullConnectService
             }
             $res = $this->client->createChannelConnectSession('airbnb', [
                 'redirectUrl' => $redirectUrl,
-                'accessType' => $accessType,
+                'accessType' => $effectiveAccessType,
             ]);
         } elseif ($channel === 'booking' && $mode === 'extranet') {
             $res = $this->client->createConnectSession([
