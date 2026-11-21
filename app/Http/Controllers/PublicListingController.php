@@ -229,9 +229,18 @@ class PublicListingController extends Controller
 
     public function sitemap()
     {
+        $hostSite = HostSite::query()
+            ->where('custom_domain', strtolower(request()->getHost()))
+            ->whereNotNull('domain_verified_at')
+            ->first();
+
         $listings = $this->eligibleListings(false);
+        if ($hostSite) {
+            $listings = $listings->filter(fn (PropertyListing $listing) => (int) $listing->property->owner_id === (int) $hostSite->user_id)->values();
+        }
+
         $urls = collect([
-            ['loc' => route('public.stays.index'), 'lastmod' => now()->toAtomString()],
+            ['loc' => $hostSite ? url('/') : route('public.stays.index'), 'lastmod' => now()->toAtomString()],
         ]);
         $listings->each(function (PropertyListing $listing) use ($urls) {
             $urls->push([
@@ -239,6 +248,7 @@ class PublicListingController extends Controller
                 'lastmod' => ($listing->updated_at ?: $listing->published_at)->toAtomString(),
             ]);
         });
+        if (! $hostSite) {
         $listings->map(fn (PropertyListing $listing) => $listing->property->city)
             ->filter()
             ->unique(fn ($city) => Str::slug($city))
@@ -253,6 +263,8 @@ class PublicListingController extends Controller
                 'loc' => route('public.host.show', $this->hostSlug($owner)),
                 'lastmod' => now()->toAtomString(),
             ]));
+
+        }
 
         return response()
             ->view('public.sitemap', ['urls' => $urls->unique('loc')->values()])
@@ -269,16 +281,35 @@ class PublicListingController extends Controller
         $content .= "Allow: /\n";
         $content .= $this->robotsDisallowRules();
         $content .= "\nUser-agent: *\nAllow: /\n".$this->robotsDisallowRules();
-        $content .= "\nSitemap: ".route('public.sitemap', [], true)."\n";
+        $hostSite = HostSite::query()
+            ->where('custom_domain', strtolower(request()->getHost()))
+            ->whereNotNull('domain_verified_at')
+            ->exists();
+        $content .= "\nSitemap: ".($hostSite ? url('/sitemap.xml') : route('public.sitemap', [], true))."\n";
 
         return response($content)->header('Content-Type', 'text/plain; charset=UTF-8');
     }
 
     public function llms()
     {
-        $content = "# GuestHub public stays\n\n"
-            .'Browse published short-term rental listings at '.route('public.stays.index', [], true).".\n"
-            ."Each listing contains public descriptions, amenities, approximate locations, and availability information.\n";
+        $hostSite = HostSite::query()
+            ->where('custom_domain', strtolower(request()->getHost()))
+            ->whereNotNull('domain_verified_at')
+            ->first();
+        if ($hostSite) {
+            $listings = $this->eligibleListings(false)->filter(
+                fn (PropertyListing $listing) => (int) $listing->property->owner_id === (int) $hostSite->user_id
+            );
+            $content = '# '.$hostSite->display_name." public stays\n\n"
+                .'Browse published stays at '.url('/').".\n";
+            foreach ($listings as $listing) {
+                $content .= '- ['.$listing->public_title.']('.route('public.listing.show', $listing->listing_slug, true).")\n";
+            }
+        } else {
+            $content = "# GuestHub public stays\n\n"
+                .'Browse published short-term rental listings at '.route('public.stays.index', [], true).".\n"
+                ."Each listing contains public descriptions, amenities, approximate locations, and availability information.\n";
+        }
 
         return response($content)->header('Content-Type', 'text/plain; charset=UTF-8');
     }
