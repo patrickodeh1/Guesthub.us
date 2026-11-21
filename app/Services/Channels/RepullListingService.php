@@ -41,7 +41,7 @@ class RepullListingService
         return [
             'airbnb' => ['connect' => true, 'publish' => true, 'note' => 'Create and update listings, photos, descriptions, rates and calendar. Some fields on an existing Airbnb listing are host-managed and cannot be changed from here.'],
             'booking' => ['connect' => true, 'publish' => true, 'note' => 'Creates the property and room, then pushes content. Booking.com opens it only after its readiness check passes (photos processed, availability, licence where required).'],
-            'vrbo' => ['connect' => true, 'publish' => false, 'note' => 'Connects through the host\'s own Vrbo login. Listing content pushes for Vrbo are not enabled yet.'],
+            'vrbo' => ['connect' => true, 'publish' => (bool) config('repull.vrbo_publish_enabled', false), 'note' => 'Connects through the host\'s own Vrbo login. Login-based beta; new-listing publish is disabled until the test-account and terms gate passes. Existing Vrbo listing edits are not supported.'],
         ];
     }
 
