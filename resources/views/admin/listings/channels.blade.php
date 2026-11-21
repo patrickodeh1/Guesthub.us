@@ -1,4 +1,5 @@
 <x-admin-layout title="Channels">
+    @php($canManageAnyChannel = $connections->flatten()->contains(fn ($account) => $account->access_type === 'full_access'))
     <div class="mx-auto w-full max-w-4xl space-y-6">
         <div>
             <a href="{{ route('admin.properties.listing.edit', $property) }}" class="text-sm font-semibold text-slate-500 hover:text-slate-800">&larr; Direct booking listing</a>
@@ -62,6 +63,7 @@
             @php
                 $link = $links->get($channel);
                 $accounts = $connections->get($channel, collect());
+                $canManageChannel = $accounts->contains(fn ($account) => $account->access_type === 'full_access');
                 $cap = $capabilities[$channel];
                 $state = $link?->state ?? 'not_connected';
                 $badge = match ($state) {
@@ -137,7 +139,7 @@
                                 <label class="field-label text-xs">Access level
                                     <select name="access_type" class="input">
                                         <option value="full_access">Full management</option>
-                                        <option value="messaging">Messaging only (keep existing PMS)</option>
+                                        <option value="messaging">Messaging only (keep existing PMS; no content/calendar writes)</option>
                                         <option value="read_only">Read only (import)</option>
                                     </select>
                                 </label>
@@ -158,6 +160,9 @@
                             @endif
                             <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{{ $accounts->isEmpty() ? 'Connect' : 'Change access' }} {{ $label }}</button>
                         </form>
+                    @endif
+                    @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && ! $canManageChannel)
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This account is messaging-only or read-only. GuestHub cannot publish, change calendars or unlist with this access level. Reconnect with full management when the host is ready to switch.</p>
                     @endif
                     @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && $canManageChannel)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
@@ -205,7 +210,7 @@
             </section>
         @endif
 
-        @if($featureEnabled && $listing && $listing->repull_listing_id)
+        @if($featureEnabled && $listing && $listing->repull_listing_id && $canManageAnyChannel)
             <div class="flex flex-wrap gap-2">
                 <form method="post" action="{{ route('admin.properties.channels.online-status', $property) }}">@csrf
                     <input type="hidden" name="online" value="0">
