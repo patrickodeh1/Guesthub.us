@@ -462,37 +462,43 @@ class RepullListingService
      */
     private function pushBookingPhotos(PropertyListing $listing, ListingChannelLink $link, string $repullId, string $idem): array
     {
-        $photoUrls = $this->mapper->photoUrls($listing);
-        if ($photoUrls === []) {
+        $listing->loadMissing('photos');
+        $newPhotos = $listing->photos->sortBy('sort_order')->filter(function ($photo) use ($link) {
+            return $photo->booking_listing_id !== (string) $link->external_listing_id
+                || blank($photo->booking_uploaded_at);
+        })->values();
+
+        if ($newPhotos->isEmpty()) {
             return ['uploaded' => 0];
         }
 
-        $current = $this->client->bookingContent('GET', [], [
-            'property_id' => (string) $link->external_listing_id,
-            'type' => 'photos',
-        ]);
-        $currentPhotos = (array) (data_get($current, 'photos') ?? data_get($current, 'data.photos') ?? []);
-        $existingUrls = collect($currentPhotos)
-            ->map(fn ($photo) => (string) (is_array($photo) ? ($photo['url'] ?? $photo['imageUrl'] ?? '') : $photo))
-            ->filter()
-            ->all();
+        $urls = $this->mapper->photoUrls($listing);
+        $urlById = collect($urls)->keyBy(fn ($photo) => (int) ($photo['photoId'] ?? 0));
+        $payload = $newPhotos->map(function ($photo) use ($urlById) {
+            $url = $urlById->get((int) $photo->id)['url'] ?? null;
+            if (! $url) {
+                throw new ChannelPublishBlocked('A listing photo does not have a public signed URL. Re-save the photo and retry.');
+            }
 
-        $missing = collect($photoUrls)->reject(fn ($photo) => in_array((string) ($photo['url'] ?? ''), $existingUrls, true))->values();
-        if ($missing->isEmpty()) {
-            return ['uploaded' => 0];
-        }
+            return ['url' => $url, 'tag' => 'property_building'];
+        })->all();
 
         $this->client->bookingContent('POST', [
             'propertyId' => (string) $link->external_listing_id,
             'type' => 'photos',
-            'photos' => $missing->map(fn ($photo) => [
-                'url' => $photo['url'],
-                'tag' => 'property_building',
-            ])->all(),
+            'photos' => $payload,
         ], [], $idem.'-booking-photos');
 
-        return ['uploaded' => $missing->count()];
+        foreach ($newPhotos as $photo) {
+            $photo->forceFill([
+                'booking_listing_id' => (string) $link->external_listing_id,
+                'booking_uploaded_at' => now(),
+            ])->save();
+        }
+
+        return ['uploaded' => $newPhotos->count()];
     }
+
 
     private function applyResult(PropertyListing $listing, ListingChannelLink $link, string $channel, array $result, string $hash): void
     {
