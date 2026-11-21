@@ -80,6 +80,19 @@ class ListingContentMapper
             ], fn ($v) => $v !== null),
         ];
 
+        $amenities = $p?->amenities()
+            ->where('active', true)
+            ->whereNotNull('repull_amenity_id')
+            ->pluck('repull_amenity_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all() ?? [];
+        if ($amenities !== []) {
+            // Repull replaces the complete canonical set when this key is present.
+            $payload['amenities'] = $amenities;
+        }
+
         $photos = $this->photos($listing);
         if ($photos !== []) {
             $payload['photos'] = $photos;
