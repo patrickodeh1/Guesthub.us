@@ -1,7 +1,7 @@
 <x-admin-layout title="Host billing">
     @php
         $money = fn ($c) => '$'.number_format(((int) $c) / 100, 2);
-        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device'];
+        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device', 'per_channel_listing' => 'per Repull listing'];
     @endphp
     <div class="page-header">
         <div>
@@ -66,7 +66,9 @@
                                 <input type="hidden" name="addons[{{ $f->key }}][enabled]" value="0">
                                 <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(old('addons.'.$f->key.'.enabled', $g && $g->enabled))> Add
                             </label>
-                            @if($unit !== 'flat')
+                            @if($unit === 'per_channel_listing')
+                                <span class="text-xs text-slate-500">{{ max(1, (int) ($billingQuantities['per_channel_listing'] ?? 0)) }} Repull listing(s) · minimum one while enabled</span>
+                            @elseif($unit !== 'flat')
                                 <label class="field-label">{{ $unit === 'per_device' ? 'Devices' : 'Properties' }}
                                     <input type="number" min="1" max="100000" name="addons[{{ $f->key }}][quantity]" class="input w-24" value="{{ old('addons.'.$f->key.'.quantity', $g?->quantity ?? 1) }}">
                                 </label>
