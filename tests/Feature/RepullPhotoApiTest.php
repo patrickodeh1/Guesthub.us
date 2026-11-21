@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class RepullPhotoApiTest extends TestCase
 {
-    public function test_airbnb_photo_upload_uses_base64_payload_and_idempotency_key(): void
+    public function test_canonical_photo_upload_mints_target_then_puts_bytes_without_forwarding_api_key(): void
     {
         config([
             'repull.enabled' => true,
@@ -16,19 +16,30 @@ class RepullPhotoApiTest extends TestCase
             'repull.base_url' => 'https://api.repull.dev',
         ]);
         Http::fake([
-            'api.repull.dev/v1/channels/airbnb/listings/repull-9/photos' => Http::response(['data' => ['uploaded' => 1]]),
+            'api.repull.dev/v1/listings/repull-9/photos/upload-url' => Http::response([
+                'uploadUrl' => 'https://storage.example.com/signed-upload',
+                'publicUrl' => 'https://cdn.repull.dev/listings/repull-9/cover.jpg',
+                'path' => 'listings/repull-9/cover.jpg',
+            ]),
+            'storage.example.com/signed-upload' => Http::response('', 200),
         ]);
 
-        app(RepullClient::class)->uploadAirbnbPhotos('repull-9', [
-            ['image' => 'aGVsbG8=', 'caption' => 'Front', 'sort_order' => 1],
-        ], 'idem-photo-1');
+        $result = app(RepullClient::class)->uploadListingPhoto('repull-9', 'cover.jpg', 'image/jpeg', 'image-bytes', 'idem-photo-1');
 
-        Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/channels/airbnb/listings/repull-9/photos'
-            && $request['photos'][0]['image'] === 'aGVsbG8='
+        $this->assertSame('https://cdn.repull.dev/listings/repull-9/cover.jpg', $result['publicUrl']);
+        Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/listings/repull-9/photos/upload-url'
+            && $request['fileName'] === 'cover.jpg'
+            && $request['fileType'] === 'image/jpeg'
+            && $request['fileSize'] === 11
+            && $request->hasHeader('Authorization', 'Bearer repull-test-key')
             && $request->hasHeader('Idempotency-Key', 'idem-photo-1'));
+        Http::assertSent(fn ($request) => $request->url() === 'https://storage.example.com/signed-upload'
+            && $request->method() === 'PUT'
+            && $request->body() === 'image-bytes'
+            && ! $request->hasHeader('Authorization'));
     }
 
-    public function test_airbnb_photo_delete_uses_photo_id_query_parameter(): void
+    public function test_canonical_photo_delete_uses_the_returned_storage_path(): void
     {
         config([
             'repull.enabled' => true,
@@ -36,13 +47,13 @@ class RepullPhotoApiTest extends TestCase
             'repull.base_url' => 'https://api.repull.dev',
         ]);
         Http::fake([
-            'api.repull.dev/v1/channels/airbnb/listings/repull-9/photos*' => Http::response(['data' => ['deleted' => true]]),
+            'api.repull.dev/v1/listings/repull-9/photos*' => Http::response(['deleted' => true]),
         ]);
 
-        app(RepullClient::class)->deleteAirbnbPhoto('repull-9', 'photo-22', 'idem-delete-22');
+        app(RepullClient::class)->deleteListingPhoto('repull-9', 'listings/repull-9/cover.jpg', 'idem-delete-22');
 
         Http::assertSent(fn ($request) => $request->method() === 'DELETE'
-            && str_contains($request->url(), 'photoId=photo-22')
+            && str_contains($request->url(), 'path=listings%2Frepull-9%2Fcover.jpg')
             && $request->hasHeader('Idempotency-Key', 'idem-delete-22'));
     }
 }
