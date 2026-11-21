@@ -62,16 +62,17 @@ class RefreshChannelStatus implements ShouldQueue
                     continue;
                 }
 
+                $airbnbId = (string) ($remoteConnection['airbnbId'] ?? '');
+                $details = $airbnbId !== '' ? $client->getAirbnbListingDetails($airbnbId) : [];
                 $status = collect($statusConnections)->first(function ($item) use ($connectionId, $connection) {
                     $statusId = (string) ($item['connectionId'] ?? $item['id'] ?? '');
                     return ($connectionId !== '' && $statusId === $connectionId)
                         || (string) ($item['externalAccountId'] ?? '') === (string) $connection->external_account_id;
                 });
 
-                $syncEnabled = is_array($status) && array_key_exists('syncEnabled', $status)
-                    ? (bool) $status['syncEnabled']
-                    : (is_array($status) && array_key_exists('writable', $status) ? (bool) $status['writable'] : null);
-                $syncCategory = is_array($status) ? ($status['syncCategory'] ?? null) : null;
+                $writableValue = $remoteConnection['writable'] ?? $remote['writable'] ?? (is_array($status) ? ($status['syncEnabled'] ?? $status['writable'] ?? null) : null);
+                $syncEnabled = $writableValue !== null ? (bool) $writableValue : null;
+                $syncCategory = $remoteConnection['syncCategory'] ?? $remote['syncCategory'] ?? (is_array($status) ? ($status['syncCategory'] ?? null) : null);
                 if ($syncCategory === null && $syncEnabled !== null) {
                     $syncCategory = $syncEnabled ? 'full' : 'none';
                 }
@@ -82,7 +83,8 @@ class RefreshChannelStatus implements ShouldQueue
                     'external_listing_id' => (string) ($remoteConnection['airbnbId'] ?? $link->external_listing_id ?? ''),
                     'sync_category' => $syncCategory !== null ? (string) $syncCategory : null,
                     'writable' => $syncEnabled,
-                    'locked_fields' => is_array($status) ? (array) ($status['lockedFields'] ?? []) : $link->locked_fields,
+                    'locked_fields' => (array) (data_get($details, 'lockedFields') ?? data_get($details, 'data.lockedFields') ?? (is_array($status) ? ($status['lockedFields'] ?? []) : $link->locked_fields)),
+                    'live' => data_get($publishStatus, 'live') ?? data_get($publishStatus, 'data.live') ?? $link->live,
                     'status_checked_at' => now(),
                 ])->save();
             }
