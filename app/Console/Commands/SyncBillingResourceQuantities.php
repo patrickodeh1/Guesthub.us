@@ -16,7 +16,7 @@ class SyncBillingResourceQuantities extends Command
 {
     protected $signature = 'billing:sync-resource-quantities';
 
-    protected $description = 'Reconcile per-property, per-device, and per-active-OTA-listing subscription quantities with live host resources.';
+    protected $description = 'Reconcile per-property, per-device, and per-Repull-listing subscription quantities with live host resources.';
 
     public function handle(BillingService $billing, BillingQuantityResolver $resolver): int
     {
