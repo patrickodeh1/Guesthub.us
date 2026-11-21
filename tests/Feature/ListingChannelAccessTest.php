@@ -38,6 +38,8 @@ class ListingChannelAccessTest extends TestCase
             'max_guests' => 4,
             'bedrooms' => 2,
             'base_rate_cents' => 24000,
+            'property_type' => 'house',
+            'room_type' => 'private_room',
         ]);
     }
 
@@ -82,6 +84,8 @@ class ListingChannelAccessTest extends TestCase
         $create = $mapper->createPayload($listing);
         $this->assertSame('1200 Ocean Drive', $create['street']);
         $this->assertSame(240.0, $create['defaultDailyPrice']);
+        $this->assertSame('house', $create['propertyType']);
+        $this->assertSame('private_room', $mapper->contentPayload($listing)['details']['roomTypeCategory']);
         $this->assertStringNotContainsString('example.com', $create['description']);
         $this->assertStringNotContainsString('555', $create['description']);
 
