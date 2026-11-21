@@ -51,9 +51,7 @@
                         @if($site->domain_verified_at)
                             <p class="mt-2 font-semibold text-emerald-700">Ownership verified {{ $site->domain_verified_at->diffForHumans() }}</p>
                         @else
-                            <form method="post" action="{{ route('admin.host-site.verify-domain') }}" class="mt-3">@csrf
-                                <button class="btn-secondary">Check TXT verification</button>
-                            </form>
+                            <button type="submit" name="_intent" value="verify_domain" formnovalidate class="btn-secondary mt-3">Check TXT verification</button>
                         @endif
                     </div>
                 @endif
