@@ -35,7 +35,7 @@ class PollRepullVrboPublish implements ShouldQueue
             ->with(['listing.property', 'listing.photos'])
             ->find($this->linkId);
 
-        if (! $link || $link->channel !== 'vrbo') {
+        if (! $link || $link->channel !== 'vrbo' || ! config('repull.vrbo_publish_enabled', false)) {
             return;
         }
 
