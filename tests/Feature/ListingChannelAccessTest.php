@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
+use App\Models\ListingChannelLink;
 use App\Models\Property;
 use App\Models\PropertyListing;
 use App\Models\User;
 use App\Services\Channels\ListingContentMapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -120,7 +122,7 @@ class ListingChannelAccessTest extends TestCase
         }
 
         $this->assertSame('error', $link->fresh()->state);
-        $this->assertSame('not_ready', $link->fresh()->last_error ? 'not_ready' : null);
+        $this->assertStringContainsString('[not_ready]', $link->fresh()->last_error);
     }
 
 }
