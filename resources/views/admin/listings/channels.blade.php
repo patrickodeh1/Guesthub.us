@@ -15,9 +15,6 @@
         @unless($featureEnabled)
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">OTA channel sync is an optional subscription add-on, billed per active OTA listing. Enable it under <a class="font-semibold underline" href="{{ route('admin.plan.index') }}">Settings → Plan</a> before connecting or publishing channels.</div>
         @endunless
-        @unless($featureEnabled)
-            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">OTA channel sync is an optional subscription add-on, billed per active OTA listing. Enable it under <a class="font-semibold underline" href="{{ route('admin.plan.index') }}">Settings → Plan</a> before connecting or publishing channels.</div>
-        @endunless
         @unless($configured)
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Channel sync is not switched on for this server yet (set <code>REPULL_ENABLED</code> and <code>REPULL_API_KEY</code>).</div>
         @endunless
@@ -84,16 +81,16 @@
                 @endif
 
                 <div class="mt-4 flex flex-wrap gap-2">
-                    @if($cap['connect'] && $accounts->isEmpty())
+                    @if($featureEnabled && $cap['connect'] && $accounts->isEmpty())
                         <form method="post" action="{{ route('admin.properties.channels.connect', [$property, $channel]) }}">@csrf
                             <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Connect {{ $label }}</button>
                         </form>
                     @endif
-                    @if($cap['publish'] && $accounts->isNotEmpty() && $listing)
+                    @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
                             <button @disabled(!empty($gaps)) class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{{ $link && $link->external_listing_id ? 'Update on '.$label : 'Publish to '.$label }}</button>
                         </form>
-                        @if($link && in_array($state, ['live', 'published', 'partial']))
+                        @if($featureEnabled && $link && in_array($state, ['live', 'published', 'partial']))
                             <form method="post" action="{{ route('admin.properties.channels.unlist', [$property, $channel]) }}" onsubmit="return confirm('Take this listing off {{ $label }}?')">@csrf
                                 <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Take off market</button>
                             </form>
@@ -103,7 +100,7 @@
             </section>
         @endforeach
 
-        @if($listing && $listing->repull_listing_id)
+        @if($featureEnabled && $listing && $listing->repull_listing_id)
             <form method="post" action="{{ route('admin.properties.channels.readiness', $property) }}">@csrf
                 <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Check channel readiness</button>
             </form>
