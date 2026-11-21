@@ -93,7 +93,18 @@ class RepullWebhookController extends Controller
         $ownerId = $connect->ownerIdFromState((string) (data_get($payload, 'data.state') ?? data_get($payload, 'state') ?? ''));
         $channel = $connect->channelFromProvider((string) (data_get($payload, 'account.provider') ?? data_get($payload, 'data.account.provider') ?? data_get($payload, 'data.provider') ?? ''));
         $accountId = (string) (data_get($payload, 'account.externalAccountId') ?? data_get($payload, 'data.account.externalAccountId') ?? data_get($payload, 'data.accountId') ?? $request->header('X-Repull-Account-Id') ?? '');
-        if (! $ownerId || ! $channel || $accountId === '') {
+        if (! $channel || $accountId === '') {
+            return;
+        }
+        if (! $ownerId) {
+            $matches = ChannelConnection::query()
+                ->where('provider', 'repull')
+                ->where('channel', $channel)
+                ->where('external_account_id', $accountId)
+                ->get();
+            $ownerId = $matches->count() === 1 ? (int) $matches->first()->owner_id : null;
+        }
+        if (! $ownerId) {
             return;
         }
 
@@ -109,6 +120,15 @@ class RepullWebhookController extends Controller
     {
         $ownerId = $connect->ownerIdFromState((string) (data_get($payload, 'data.state') ?? data_get($payload, 'state') ?? ''));
         $listingId = (string) (data_get($payload, 'data.listingId') ?? data_get($payload, 'listingId') ?? '');
+        if (! $ownerId && $listingId !== '') {
+            $connectionId = (string) (data_get($payload, 'data.connectionId') ?? data_get($payload, 'connectionId') ?? '');
+            $accountId = (string) (data_get($payload, 'data.accountId') ?? data_get($payload, 'accountId') ?? '');
+            $matches = ChannelConnection::query()->where('provider', 'repull')->get()->filter(function ($connection) use ($connectionId, $accountId) {
+                return ($connectionId !== '' && (string) data_get($connection->meta, 'connection_id') === $connectionId)
+                    || ($accountId !== '' && (string) $connection->external_account_id === $accountId);
+            });
+            $ownerId = $matches->count() === 1 ? (int) $matches->first()->owner_id : null;
+        }
         if (! $ownerId || $listingId === '') {
             return;
         }
