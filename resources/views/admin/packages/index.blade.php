@@ -3,7 +3,7 @@
         $money = fn ($c) => $c > 0 ? '$'.number_format($c / 100, 2).'/mo' : 'Free';
         $live = $packages->where('active', true)->values();
         $keysByPackage = $live->mapWithKeys(fn ($p) => [$p->id => $p->allFeatureKeys()]);
-        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device'];
+        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device', 'per_channel_listing' => 'per active OTA listing'];
     @endphp
 
     <div class="page-header">
@@ -108,7 +108,7 @@
 
         <div class="card card-pad mt-8">
             <h2 class="text-lg font-semibold text-slate-950">Features and à la carte prices</h2>
-            <p class="mt-1 text-sm text-slate-500">The price is what a host pays when they add the feature on its own. "Per property" and "per device" multiply it by the count.</p>
+            <p class="mt-1 text-sm text-slate-500">The price is what a host pays when they add the feature on its own. Resource-based units multiply by the host’s current billable count. Repull is billed per active channel listing.</p>
             <div class="mt-4 grid gap-4">
                 @foreach($features as $f)
                     @php($k = $f->key)
@@ -127,7 +127,7 @@
                             </label>
                             <label class="field-label">Billed
                                 <select name="feats[{{ $k }}][billing_unit]" class="input">
-                                    @foreach(['flat' => 'Flat', 'per_property' => 'Per property', 'per_device' => 'Per device'] as $v => $l)
+                                    @foreach(['flat' => 'Flat', 'per_property' => 'Per property', 'per_device' => 'Per device', 'per_channel_listing' => 'Per active OTA listing'] as $v => $l)
                                         <option value="{{ $v }}" @selected(($f->billing_unit ?: 'flat') === $v)>{{ $l }}</option>
                                     @endforeach
                                 </select>
