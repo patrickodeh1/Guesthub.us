@@ -55,7 +55,7 @@ class RepullWebhookController extends Controller
             match ($event) {
                 'connect.session.completed', 'account.created' => $this->accountConnected($payload, $request, $connect),
                 'account.disconnected' => $this->accountDisconnected($payload, $request, $connect),
-                'channel.sync.failed', 'channel.degraded', 'listing.suspended' => $this->channelProblem($payload, $event),
+                'channel.sync.failed', 'channel.degraded', 'listing.suspended' => $this->channelProblem($payload, $event, $connect),
                 default => null,
             };
         } catch (RepullException $e) {
@@ -90,25 +90,33 @@ class RepullWebhookController extends Controller
 
     private function accountDisconnected(array $payload, Request $request, RepullConnectService $connect): void
     {
-        $channel = $connect->channelFromProvider((string) data_get($payload, 'account.provider'));
-        $accountId = (string) (data_get($payload, 'account.externalAccountId') ?? $request->header('X-Repull-Account-Id') ?? '');
-        if (! $channel || $accountId === '') {
+        $ownerId = $connect->ownerIdFromState((string) (data_get($payload, 'data.state') ?? data_get($payload, 'state') ?? ''));
+        $channel = $connect->channelFromProvider((string) (data_get($payload, 'account.provider') ?? data_get($payload, 'data.account.provider') ?? data_get($payload, 'data.provider') ?? ''));
+        $accountId = (string) (data_get($payload, 'account.externalAccountId') ?? data_get($payload, 'data.account.externalAccountId') ?? data_get($payload, 'data.accountId') ?? $request->header('X-Repull-Account-Id') ?? '');
+        if (! $ownerId || ! $channel || $accountId === '') {
             return;
         }
 
-        ChannelConnection::where(['provider' => 'repull', 'channel' => $channel, 'external_account_id' => $accountId])
+        ChannelConnection::query()
+            ->where('owner_id', $ownerId)
+            ->where('provider', 'repull')
+            ->where('channel', $channel)
+            ->where('external_account_id', $accountId)
             ->update(['status' => 'revoked']);
     }
 
-    private function channelProblem(array $payload, string $event): void
+    private function channelProblem(array $payload, string $event, RepullConnectService $connect): void
     {
-        $listingId = (string) (data_get($payload, 'data.listingId') ?? '');
-        if ($listingId === '') {
+        $ownerId = $connect->ownerIdFromState((string) (data_get($payload, 'data.state') ?? data_get($payload, 'state') ?? ''));
+        $listingId = (string) (data_get($payload, 'data.listingId') ?? data_get($payload, 'listingId') ?? '');
+        if (! $ownerId || $listingId === '') {
             return;
         }
 
         ListingChannelLink::query()
-            ->whereHas('listing', fn ($q) => $q->where('repull_listing_id', $listingId))
+            ->whereHas('listing', fn ($q) => $q
+                ->where('repull_listing_id', $listingId)
+                ->whereHas('property', fn ($property) => $property->where('owner_id', $ownerId)))
             ->update(['state' => 'error', 'last_error' => 'Repull reported: '.$event, 'last_error_at' => now()]);
     }
 }
