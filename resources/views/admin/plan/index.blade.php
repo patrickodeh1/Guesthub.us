@@ -86,18 +86,19 @@
         @if($shownAddons->isNotEmpty())
             <div class="card card-pad mb-6">
                 <h2 class="section-title">Add-ons</h2>
-                <p class="mt-1 text-xs text-slate-500">Per-property and per-device quantities are calculated from your active properties and connected smart locks.</p>
+                <p class="mt-1 text-xs text-slate-500">Repull is billed once per canonical listing, regardless of how many channels it uses. A one-listing minimum lets you activate the add-on before your first publish.</p>
                 <div class="mt-3 grid gap-3">
                     @foreach($shownAddons as $f)
                         @php
                             $inPkg = in_array($f->key, $includedKeys, true);
                             $unit = $f->billing_unit ?: 'flat';
                             $quantity = $unit === 'flat' ? 1 : ($billingQuantities[$unit] ?? 0);
-                            $quantityHelp = $unit === 'per_channel_listing' ? 'Minimum one listing while enabled; increases with active OTA listings.' : null;
+                            if ($unit === 'per_channel_listing') $quantity = max(1, $quantity);
+                            $quantityHelp = $unit === 'per_channel_listing' ? 'Minimum one Repull listing while enabled; counted once across all channels.' : null;
                         @endphp
                         <div data-addon-row="{{ $f->key }}" class="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <label class="flex items-center gap-2">
-                                <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg || ($unit !== 'flat' && $quantity < 1))>
+                                <input type="checkbox" name="addons[{{ $f->key }}][enabled]" value="1" @checked(isset($addons[$f->key]) && ! $inPkg) @disabled($inPkg || ($unit !== 'flat' && $unit !== 'per_channel_listing' && $quantity < 1))>
                                 @if(! $inPkg && $unit !== 'flat' && $quantity < 1 && isset($addons[$f->key]))
                                     <input class="zero-addon-selection" type="hidden" name="addons[{{ $f->key }}][enabled]" value="1">
                                 @endif
