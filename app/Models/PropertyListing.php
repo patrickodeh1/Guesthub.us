@@ -2,12 +2,41 @@
 
 namespace App\Models;
 
+use App\Jobs\PublishListingToChannel;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PropertyListing extends Model
 {
+    /**
+     * Keep already-published channel listings in sync when their canonical
+     * GuestHub content changes. New/unpublished listings are never pushed
+     * automatically; the host must explicitly publish them first.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $listing): void {
+            $contentFields = [
+                'property_id', 'public_title', 'public_description', 'max_guests',
+                'bedrooms', 'base_rate_cents', 'cleaning_fee_cents',
+                'cancellation_policy', 'house_rules', 'listing_type',
+            ];
+
+            if (blank($listing->published_at) || ! $listing->wasChanged($contentFields)) {
+                return;
+            }
+
+            $channels = $listing->channelLinks()
+                ->whereIn('state', ['published', 'live', 'partial'])
+                ->pluck('channel');
+
+            foreach ($channels as $channel) {
+                PublishListingToChannel::dispatch($listing->id, (string) $channel)->afterCommit();
+            }
+        });
+    }
+
     protected $fillable = [
         'property_id',
         'listing_slug',
