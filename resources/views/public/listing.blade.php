@@ -31,6 +31,7 @@
 @endpush
 
 @section('content')
+    @include('public.partials.host-brand-header')
     @php
         $photos = $public['photos'] ?? [];
         $photoCount = count($photos);
@@ -289,6 +290,7 @@
             @endif
         </div>
     </div>
+    @include('public.partials.host-brand-footer')
 @endsection
 
 @push('scripts')
