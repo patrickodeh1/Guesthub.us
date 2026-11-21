@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
+use App\Jobs\PublishListingToChannel;
 use App\Models\Amenity;
 use App\Jobs\RefreshChannelStatus;
 use App\Models\ListingRoom;
