@@ -96,7 +96,7 @@ class RepullListingService
      * @throws ChannelPublishBlocked when GuestHub refuses to attempt it (record it via recordBlocked)
      * @throws RepullException only when the failure is retryable (after recording it on the link)
      */
-    public function publish(PropertyListing $listing, string $channel, bool $force = false): ListingChannelLink
+    public function publish(PropertyListing $listing, string $channel, bool $force = false, ?string $hotelId = null): ListingChannelLink
     {
         if (! in_array($channel, self::PUBLISHABLE, true)) {
             throw new ChannelPublishBlocked("Publishing to {$channel} is not enabled yet.");
@@ -113,6 +113,9 @@ class RepullListingService
         }
 
         $link = $this->linkFor($listing, $channel);
+        if ($channel === 'booking' && filled($hotelId)) {
+            $link->external_listing_id = (string) $hotelId;
+        }
         $link->forceFill(['state' => 'publishing', 'connection_id' => $connection->id, 'last_error' => null, 'last_error_at' => null])->save();
 
         try {
