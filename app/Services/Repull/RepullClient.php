@@ -118,6 +118,12 @@ class RepullClient
         return $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/publish/booking', $body, $idempotencyKey);
     }
 
+    /** GET /v1/channels/airbnb/listings → connected listings with per-listing sync state. */
+    public function getAirbnbListings(array $query = []): array
+    {
+        return $this->request('GET', '/v1/channels/airbnb/listings', [], null, $query);
+    }
+
     /** POST /v1/channels/booking/setup  {action: create-property|add-room|advance|..., ...} */
     public function bookingSetup(array $body, ?string $idempotencyKey = null): array
     {
