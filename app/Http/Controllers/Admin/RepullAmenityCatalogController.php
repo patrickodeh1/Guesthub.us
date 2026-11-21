@@ -49,6 +49,11 @@ class RepullAmenityCatalogController extends Controller
             'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'active' => ['required', 'boolean'],
         ]);
+        if ($amenity->canonical_id !== $data['canonical_id']
+            && Amenity::query()->where('repull_amenity_id', $amenity->canonical_id)->exists()) {
+            return back()->withErrors(['canonical_id' => 'This ID is already used by property amenities. Keep it unchanged and deactivate it if it should no longer sync.']);
+        }
+
         $amenity->update($data);
 
         return back()->with('success', 'Repull amenity mapping saved.');
