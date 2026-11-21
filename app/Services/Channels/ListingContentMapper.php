@@ -111,7 +111,11 @@ class ListingContentMapper
 
     public function hash(PropertyListing $listing): string
     {
-        return hash('sha256', json_encode([$this->createPayload($listing), $this->contentPayload($listing), $this->photoUrls($listing)]));
+        return hash('sha256', json_encode([
+            $this->createPayload($listing),
+            $this->contentPayload($listing),
+            $listing->photos->sortBy('sort_order')->map(fn ($photo) => [$photo->id, $photo->path, $photo->alt, $photo->sort_order])->values()->all(),
+        ]));
     }
 
     /**
