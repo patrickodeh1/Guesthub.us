@@ -43,6 +43,9 @@ class RefreshChannelStatus implements ShouldQueue
             // Per-listing API sync/writability and locked fields live on publish-status.
             $publishStatus = $client->getPublishStatus($repullId);
             $statusConnections = (array) (data_get($publishStatus, 'connections') ?? data_get($publishStatus, 'data.connections') ?? []);
+            $details = $client->getAirbnbListingDetails($repullId);
+            $detailData = data_get($details, 'data.0') ?? data_get($details, 'data') ?? $details;
+            $detailConnections = collect(data_get($detailData, 'connections', []));
 
             foreach ((array) ($remote['connections'] ?? []) as $remoteConnection) {
                 $accountId = (string) ($remoteConnection['accountId'] ?? '');
@@ -72,14 +75,14 @@ class RefreshChannelStatus implements ShouldQueue
                         || (string) ($item['externalAccountId'] ?? '') === (string) $connection->external_account_id;
                 });
 
-                $writableValue = $remoteConnection['writable'] ?? $remote['writable'] ?? (is_array($status) ? ($status['syncEnabled'] ?? $status['writable'] ?? null) : null);
+                $writableValue = $remoteConnection['writable'] ?? data_get($detailConnection, 'writable') ?? data_get($detailConnection, 'syncEnabled') ?? $remote['writable'] ?? (is_array($status) ? ($status['syncEnabled'] ?? $status['writable'] ?? null) : null);
                 $syncEnabled = $writableValue !== null ? (bool) $writableValue : null;
-                $syncCategory = $remoteConnection['syncCategory'] ?? $remote['syncCategory'] ?? (is_array($status) ? ($status['syncCategory'] ?? null) : null);
+                $syncCategory = $remoteConnection['syncCategory'] ?? data_get($detailConnection, 'syncCategory') ?? $remote['syncCategory'] ?? (is_array($status) ? ($status['syncCategory'] ?? null) : null);
                 if ($syncCategory === null && $syncEnabled !== null) {
                     $syncCategory = $syncEnabled ? 'full' : 'none';
                 }
 
-                $live = data_get($detailData, 'live') ?? data_get($detailData, 'isLive');
+                $live = data_get($detailConnection, 'live') ?? data_get($detailConnection, 'isLive') ?? data_get($detailData, 'live') ?? data_get($detailData, 'isLive');
                 $link = $listing->channelLinks()->firstOrNew(['channel' => 'airbnb']);
                 $nextState = $link->state;
                 if (in_array($link->state, ['live', 'published'], true) && $live === true) {
@@ -93,7 +96,7 @@ class RefreshChannelStatus implements ShouldQueue
                     'external_listing_id' => (string) ($remoteConnection['airbnbId'] ?? $link->external_listing_id ?? ''),
                     'sync_category' => $syncCategory !== null ? (string) $syncCategory : null,
                     'writable' => $syncEnabled,
-                    'locked_fields' => (array) (data_get($detailData, 'lockedFields') ?? (is_array($status) ? ($status['lockedFields'] ?? []) : $link->locked_fields)),
+                    'locked_fields' => (array) (data_get($detailConnection, 'lockedFields') ?? data_get($detailData, 'lockedFields') ?? (is_array($status) ? ($status['lockedFields'] ?? []) : $link->locked_fields)),
                     'live' => is_bool($live) ? $live : $link->live,
                     'status_checked_at' => now(),
                 ])->save();
