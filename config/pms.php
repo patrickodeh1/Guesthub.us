@@ -2,7 +2,7 @@
 
 return [
 
-    // 'channex' | 'nextpax'. Everything else in the app depends only on
+    // 'channex' | 'nextpax' | 'repull'. Everything else in the app depends only on
     // App\Services\Pms\PmsProviderInterface — this is the one line that
     // decides which concrete class gets bound to it (see
     // App\Providers\PmsServiceProvider).
