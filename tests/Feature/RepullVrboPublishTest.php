@@ -76,6 +76,26 @@ class RepullVrboPublishTest extends TestCase
         $this->assertSame('publishing', $link->fresh()->state);
     }
 
+
+    public function test_vrbo_publish_starts_a_job_with_account_and_resume_property_ids(): void
+    {
+        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev']);
+        Http::fake([
+            'api.repull.dev/v1/listings/repull-vrbo-9/publish/vrbo' => Http::response([
+                'job' => ['jobId' => 'job-vrbo-9', 'mode' => 'create', 'propertyId' => 'property-9988'],
+            ], 202),
+        ]);
+
+        app(RepullClient::class)->publishVrbo('repull-vrbo-9', [
+            'accountId' => 'vrbo:9988',
+            'propertyId' => 'property-9988',
+        ]);
+
+        Http::assertSent(fn ($request) => $request->method() === 'POST'
+            && $request['accountId'] === 'vrbo:9988'
+            && $request['propertyId'] === 'property-9988');
+    }
+
     private function makePublishingLink(): array
     {
         $owner = User::factory()->create();
