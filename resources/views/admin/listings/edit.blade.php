@@ -133,6 +133,15 @@
             </section>
 
             <section class="card card-pad">
+                <h2 class="section-title">OTA amenities</h2>
+                <p class="section-copy">Map each amenity in the property Amenities editor to a Repull canonical ID. Enable this switch only when the mapped set is complete; the complete set, including an empty set, replaces channel amenities.</p>
+                <label class="mt-4 flex items-center gap-3 text-sm font-semibold">
+                    <input type="checkbox" name="amenities_sync_enabled" value="1" @checked(old('amenities_sync_enabled', $listing->amenities_sync_enabled)) class="rounded border-slate-300">
+                    Sync mapped amenities to OTA channels
+                </label>
+            </section>
+
+            <section class="card card-pad">
                 <h2 class="section-title">Rooms & sleeping arrangements</h2>
                 <p class="section-copy">Optional OTA room layout. Enable sync only when the rooms below are complete; the room list replaces the full layout on Repull.</p>
                 <label class="mt-4 flex items-center gap-2 text-sm font-medium">
