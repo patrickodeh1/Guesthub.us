@@ -37,6 +37,26 @@
                 <label class="field-label">Support email
                     <input type="email" name="support_email" value="{{ old('support_email', $site->support_email) }}" maxlength="255" class="input" placeholder="support@example.com">
                 </label>
+                <label class="field-label md:col-span-2">Custom domain (optional)
+                    <input name="custom_domain" value="{{ old('custom_domain', $site->custom_domain) }}" maxlength="253" class="input" placeholder="stay.example.com">
+                    <span class="field-help">Enter a domain or subdomain you control. Changing it resets verification.</span>
+                </label>
+                @if($site->custom_domain)
+                    <div class="md:col-span-2 rounded-xl border border-slate-200 p-4 text-sm">
+                        <p class="font-semibold">DNS verification</p>
+                        <p class="mt-1 text-slate-600">Create this TXT record:</p>
+                        <p class="mt-2 font-mono text-xs">_guesthub-verification.{{ $site->custom_domain }}</p>
+                        <p class="font-mono text-xs break-all">{{ $site->domain_verification_token }}</p>
+                        <p class="mt-3 text-slate-600">Point your domain to <span class="font-mono">{{ $domainTarget }}</span> using the DNS record supplied by your hosting provider, and configure TLS/HTTPS for the custom domain.</p>
+                        @if($site->domain_verified_at)
+                            <p class="mt-2 font-semibold text-emerald-700">Ownership verified {{ $site->domain_verified_at->diffForHumans() }}</p>
+                        @else
+                            <form method="post" action="{{ route('admin.host-site.verify-domain') }}" class="mt-3">@csrf
+                                <button class="btn-secondary">Check TXT verification</button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
             </div>
             <label class="mt-6 flex items-center gap-3 text-sm font-medium">
                 <input type="checkbox" name="show_powered_by" value="1" @checked(old('show_powered_by', $site->show_powered_by))>
