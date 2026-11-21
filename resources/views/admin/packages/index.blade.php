@@ -3,7 +3,7 @@
         $money = fn ($c) => $c > 0 ? '$'.number_format($c / 100, 2).'/mo' : 'Free';
         $live = $packages->where('active', true)->values();
         $keysByPackage = $live->mapWithKeys(fn ($p) => [$p->id => $p->allFeatureKeys()]);
-        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device', 'per_channel_listing' => 'per active OTA listing'];
+        $unitLabels = ['flat' => 'flat', 'per_property' => 'per property', 'per_device' => 'per device', 'per_channel_listing' => 'per Repull listing'];
     @endphp
 
     <div class="page-header">
