@@ -1,5 +1,6 @@
 GuestHub Repull integration — implementation delivery
 Branch: feature/repull-foundation
+Version: 2026.11.21-repull.1
 Date: 2026-11-21
 
 Implemented in this delivery
