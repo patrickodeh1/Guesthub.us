@@ -86,6 +86,10 @@ return [
         'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
     ],
 
+    'host_sites' => [
+        'domain_target' => env('HOST_SITE_DOMAIN_TARGET', parse_url(env('APP_URL', 'https://guesthub.us'), PHP_URL_HOST)),
+    ],
+
     'repull' => [
         'api_key' => env('REPULL_API_KEY'),
         'base_url' => env('REPULL_BASE_URL', 'https://api.repull.dev'),
