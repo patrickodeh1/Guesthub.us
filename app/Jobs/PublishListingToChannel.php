@@ -41,13 +41,26 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
     public function handle(RepullListingService $service, ListingContentMapper $mapper): void
     {
         $listing = PropertyListing::with(['property.owner', 'photos', 'channelLinks'])->find($this->listingId);
-        if (! $listing || ! $listing->property?->owner || ! FeatureGate::enabled($listing->property->owner, 'repull_channel_sync')) {
+        if (! $listing || ! $listing->property?->owner) {
+            return;
+        }
+
+        $link = $listing->channelLinks->firstWhere('channel', $this->channel);
+        if (! FeatureGate::enabled($listing->property->owner, 'repull_channel_sync')) {
+            // Preserve an already-live OTA listing when a recurring add-on lapses,
+            // but do not leave a manually queued first publish stuck in "publishing".
+            if ($link && $link->state === 'publishing') {
+                $link->forceFill([
+                    'state' => 'error',
+                    'last_error' => 'Repull channel sync is not active for this host subscription.',
+                    'last_error_at' => now(),
+                ])->save();
+            }
             return;
         }
 
         // Content-hash no-op: do not call Repull when a prior successful push
         // already contains the current GuestHub content.
-        $link = $listing->channelLinks->firstWhere('channel', $this->channel);
         if (! $this->force && $link && in_array($link->state, ['published', 'live'], true)
             && filled($link->content_hash) && hash_equals((string) $link->content_hash, $mapper->hash($listing))) {
             return;
