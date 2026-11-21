@@ -15,7 +15,7 @@ use App\Services\Repull\RepullException;
 class RepullConnectService
 {
     /** GuestHub channel => Repull Connect provider id. */
-    private const CONNECT_PROVIDERS = ['airbnb' => 'airbnb', 'booking' => 'booking', 'vrbo' => 'vrbo-login'];
+    private const CONNECT_PROVIDERS = ['airbnb' => 'airbnb', 'booking' => 'booking', 'vrbo' => 'vrbo'];
 
     /** Repull provider/account.provider value => GuestHub channel. */
     private const CHANNEL_FROM_PROVIDER = [
@@ -57,16 +57,25 @@ class RepullConnectService
      */
     public function start(User $owner, array $channels): string
     {
-        $providers = collect($channels)->map(fn ($c) => self::CONNECT_PROVIDERS[$c] ?? null)->filter()->values()->all();
-        if ($providers === []) {
-            throw new RepullException('No supported channel selected.', 'invalid_request');
+        $providers = collect($channels)->unique()->values();
+        if ($providers->count() !== 1 || ! isset(self::CONNECT_PROVIDERS[$providers->first()])) {
+            throw new RepullException('Connect one supported channel at a time.', 'invalid_request');
         }
 
-        $res = $this->client->createConnectSession([
+        $channel = (string) $providers->first();
+        $provider = self::CONNECT_PROVIDERS[$channel];
+        $payload = [
             'redirectUrl' => route('admin.channels.connected'),
             'state' => $this->stateFor($owner),
-            'allowedProviders' => $providers,
-        ]);
+        ];
+        if ($channel === 'airbnb') {
+            // Listing creation and content management require the full-management tier.
+            $payload['accessType'] = 'full_access';
+        } elseif ($channel === 'vrbo') {
+            $payload['accessType'] = 'full_access';
+        }
+
+        $res = $this->client->createChannelConnectSession($provider, $payload);
 
         $url = (string) ($res['url'] ?? '');
         if ($url === '') {
