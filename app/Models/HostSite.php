@@ -10,12 +10,12 @@ class HostSite extends Model
 {
     protected $fillable = [
         'user_id', 'slug', 'display_name', 'logo_path', 'brand_color',
-        'support_email', 'show_powered_by',
+        'support_email', 'show_powered_by', 'custom_domain', 'domain_verification_token', 'domain_verified_at',
     ];
 
     protected function casts(): array
     {
-        return ['show_powered_by' => 'boolean'];
+        return ['show_powered_by' => 'boolean', 'domain_verified_at' => 'datetime'];
     }
 
     public function owner(): BelongsTo
