@@ -93,6 +93,9 @@ class ImportFromAirbnbService
                 ['title' => Str::headline($amenityId), 'active' => true],
             );
         }
+        if ($amenityIds->isNotEmpty()) {
+            $listing->forceFill(['amenities_sync_enabled' => true])->save();
+        }
 
         $rooms = (array) ($record['rooms'] ?? $content['rooms'] ?? $details['rooms'] ?? []);
         if ($rooms !== []) {
