@@ -222,6 +222,8 @@ class ListingChannelAccessTest extends TestCase
         $this->assertSame('none', $fresh->sync_category);
         $this->assertContains('name', $fresh->locked_fields);
         $this->assertNotNull($fresh->status_checked_at);
+        $this->assertFalse($fresh->live);
+        $this->assertSame('published', $fresh->state);
     }
 
 }
