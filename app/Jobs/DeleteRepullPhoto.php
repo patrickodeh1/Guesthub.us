@@ -22,6 +22,13 @@ class DeleteRepullPhoto implements ShouldQueue
 
     public function handle(RepullClient $client): void
     {
-        $client->deleteListingPhoto($this->listingId, $this->path, 'guesthub-repull-photo-delete-'.hash('sha256', $this->listingId.'|'.$this->path));
+        try {
+            $client->deleteListingPhoto($this->listingId, $this->path, 'guesthub-repull-photo-delete-'.hash('sha256', $this->listingId.'|'.$this->path));
+        } catch (RepullException $e) {
+            if ($e->httpStatus === 404 || $e->errorCode === 'not_found') {
+                return;
+            }
+            throw $e;
+        }
     }
 }
