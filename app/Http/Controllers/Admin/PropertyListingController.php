@@ -59,6 +59,7 @@ class PropertyListingController extends Controller
             'max_guests' => ['nullable', 'integer', 'min:1', 'max:100'],
             'bedrooms' => ['nullable', 'integer', 'min:0', 'max:100'],
             'bathrooms' => ['required', 'numeric', 'min:0', 'max:50'],
+            'total_beds' => ['nullable', 'integer', 'min:0', 'max:100'],
             'checkin_time' => ['required', 'date_format:H:i'],
             'checkout_time' => ['required', 'date_format:H:i'],
             'rooms_sync_enabled' => ['nullable', 'boolean'],
@@ -119,6 +120,11 @@ class PropertyListingController extends Controller
         if ($roomsSyncEnabled && $roomRows->isEmpty()) {
             throw ValidationException::withMessages(['listing_rooms' => 'Add at least one room before enabling room-layout sync.']);
         }
+        $configuredBedCount = (int) $roomRows->sum(fn ($room) => (int) ($room['bed_quantity'] ?? 0));
+        if ($roomsSyncEnabled && $configuredBedCount < 1) {
+            throw ValidationException::withMessages(['listing_rooms' => 'Configure at least one bed in the room layout.']);
+        }
+        $totalBeds = $roomsSyncEnabled ? $configuredBedCount : (int) ($data['total_beds'] ?? $property->beds ?? 0);
         foreach ($roomRows as $room) {
             if (filled($room['bed_type'] ?? null) && empty($room['bed_quantity'])) {
                 throw ValidationException::withMessages(['listing_rooms' => 'Enter a bed quantity for every selected bed type.']);
@@ -211,6 +217,7 @@ class PropertyListingController extends Controller
             DB::transaction(function () use ($listing, $property, $published, $existingPhotos, $remainingPhotos, $removeIds, $orderIds, $data, $methods, $nextPhotos, $roomsSyncEnabled, $roomRows) {
                 $property->forceFill([
                     'baths' => $data['bathrooms'],
+                    'beds' => $totalBeds,
                     'checkin_time' => $data['checkin_time'],
                     'checkout_time' => $data['checkout_time'],
                 ])->save();
