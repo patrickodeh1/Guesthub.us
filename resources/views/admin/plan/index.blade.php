@@ -1,7 +1,7 @@
 <x-admin-layout title="Plan">
     @php
         $money = fn ($c) => $c > 0 ? '$'.number_format($c / 100, 2) : 'Free';
-        $unitLabels = ['flat' => '', 'per_property' => ' per property', 'per_device' => ' per device'];
+        $unitLabels = ['flat' => '', 'per_property' => ' per property', 'per_device' => ' per device', 'per_channel_listing' => ' per active OTA listing'];
         $includedKeys = $selected ? ($keysByPackage[$selected->id] ?? []) : [];
         $shownAddons = $addonFeatures->reject(fn ($f) => in_array($f->key, $includedKeys, true));
         $adminManaged = $current && $current->billing_source === 'admin';
@@ -108,7 +108,7 @@
                                 @if($quantity > 0)
                                     <input type="hidden" name="addons[{{ $f->key }}][quantity]" value="{{ $quantity }}">
                                 @else
-                                    <span class="text-xs text-amber-700">Add a property or connect a device to enable</span>
+                                    <span class="text-xs text-amber-700">Add a billable resource to enable</span>
                                     @if(isset($addons[$f->key]))
                                         <button type="button" data-remove-zero-addon class="text-xs font-medium text-slate-500 underline">Remove selection</button>
                                     @endif
