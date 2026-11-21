@@ -154,7 +154,7 @@ class RepullListingService
             $idem = 'guesthub-pub-'.$channel.'-'.$listing->id.'-'.substr($hash, 0, 16).($force ? '-f'.now()->timestamp : '');
 
             if ($channel === 'vrbo') {
-                return $this->startVrboPublish($listing, $link, $connection, $remoteId);
+                return $this->startVrboPublish($listing, $link, $connection, $remoteId, $idem);
             }
 
             $result = $channel === 'airbnb'
@@ -295,7 +295,7 @@ class RepullListingService
 
     // ── internals ───────────────────────────────────────────────────────────
 
-    private function startVrboPublish(PropertyListing $listing, ListingChannelLink $link, ChannelConnection $connection, string $remoteId): ListingChannelLink
+    private function startVrboPublish(PropertyListing $listing, ListingChannelLink $link, ChannelConnection $connection, string $remoteId, string $idempotencyKey): ListingChannelLink
     {
         $body = [];
         if (filled($connection->external_account_id)) {
@@ -308,7 +308,7 @@ class RepullListingService
             $body['vrboListingNumber'] = (string) $link->external_listing_id;
         }
 
-        $response = $this->client->publishVrbo($remoteId, $body);
+        $response = $this->client->publishVrbo($remoteId, $body, $idempotencyKey);
         $jobId = (string) (data_get($response, 'job.jobId') ?? data_get($response, 'data.job.jobId') ?? '');
         if ($jobId === '') {
             throw new RepullException('Repull did not return a Vrbo publish job id.', 'invalid_response');
