@@ -61,7 +61,7 @@ Sources: `https://repull.dev/llms-full.txt`, `/docs/api/channex`, `/for-platform
 **Model**
 - Base `https://api.repull.dev`, `Authorization: Bearer sk_live_…`. **One key type, no sandbox** — every call hits real channels. `Idempotency-Key` on POST/PUT/PATCH (stored 24 h). Rate limits: Free 60/min, Starter 500/min.
 - **Platform model (`/for-platforms`):** one workspace + one key for GuestHub; each host connects *their own* OTA account via hosted Connect (`POST /v1/connect` with `redirectUrl`, `state`, `allowedProviders`). Every webhook/record names its `account` (`provider`, `externalAccountId`). Keys can't be scoped per listing → **isolation is on us.** Optional per-customer workspace via `X-Workspace-Id`. Billing is on GuestHub's workspace (no reseller billing). White-label Connect: logo/colors/support email at `/dashboard/settings/connect`; URL stays `connect.repull.dev`; "Powered by Repull" link stays; no custom domain.
-**Pricing (current public `/for/operators`, checked 2026-11-21; re-confirm with vendor):** one listing counts once regardless of channels. Free: up to 3 listings and 1,000 API calls/month. Starter: $99/month includes 10 listings; $5 per additional listing up to 100; 100,000 calls/month; extra calls $1/1,000. Above 100 is custom. Booking.com Extranet-login connections add $5 per listing/month; official Booking connectivity has no such add-on. This supersedes the older tier table in `/for-platforms`; confirm the actual workspace contract before quoting hosts.
+**Pricing (current public `/for/operators`, checked 2026-11-21; re-confirm with vendor):** one listing counts once regardless of how many channels it is on. Free: up to 3 listings and 1,000 API calls/month. Starter: $99/month includes 10 listings; $5 per additional listing up to 100; 100,000 calls/month; extra calls $1/1,000. Above 100 is custom. Current public operator pricing does not list a separate Extranet-login surcharge; confirm the actual workspace contract before quoting hosts.
 
 **Airbnb** (`/airbnb-api`)
 - Repull holds Airbnb partner approval; host authorises via OAuth. Tiers: `full_access` (property management), `messaging`, `read_only`.
@@ -106,7 +106,7 @@ Current `/docs/channels/capabilities` says Vrbo beta host sign-in supports new l
 - **R3. Content: Repull-native API** via `RepullClient` → `RepullListingService` (create listing → write canonical content → publish → record per-section result). No abstraction layer yet (YAGNI); add `ChannelContentProvider` only if a second provider is adopted.
 - **R4. Per-channel state is explicit** (`listing_channel_links`: `not_connected | publishing | published | live | partial | error | unlisted`) with per-section results, `locked_fields`, `warnings`, `last_error`. UI shows what is automated vs host-managed instead of failing silently.
 - **R5. Connections are host-owned.** `channel_connections` (owner_id, channel, external_account_id **string**, status). Connect `state` is HMAC-signed (`RepullConnectService::stateFor`) so a webhook can only attach an account to the host we sent through Connect; an account can never be re-assigned to another host.
-- **R6. Vrbo is connect-only** in the foundation (content push disabled until V6/T6.x).
+- **R6. Vrbo remains connect-only in the foundation until the beta sign-in and publish job are tested with a throwaway account; do not enable existing-listing content writes because current Vrbo guide and capability matrix conflict.**
 - **R7. Cost is passed through deliberately** (T7.1): Repull bills GuestHub per active listing.
 
 ---
@@ -231,7 +231,7 @@ php artisan test --filter=Repull && php artisan test --filter=ListingChannelAcce
 |---|---|---|---|
 | B1 | Repull key (free tier) + throwaway Airbnb/Booking.com/Vrbo test accounts | Owner | not started |
 | B2 | Repull platform answers (V8/V9) | Owner | not asked |
-| B3 | Client decision: Repull replaces Channex for OTA hosts; who pays per-listing cost | Client | needs the cost note (T7.1) |
+| B3 | Per-host choice: full Repull channel management (requires Airbnb full-access cutover) or messaging-only alongside existing PMS; confirm host migration and commercial pass-through | Client | review access-mode choice and per-listing add-on price |
 | B4 | Client decision: `/<slug>` vs `/h/<slug>` | Client | open |
 | B5 | Furnished Finder human reply · Zillow formal request · PriceLabs PMS listing | Client/Owner | emailed; FF/Zillow gave AI auto-replies |
 | B6 | Channex production certification (only if Channex stays for non-Repull hosts) | Owner | staging only |
