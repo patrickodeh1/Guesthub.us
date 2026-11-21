@@ -305,6 +305,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
             ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking'])->name('properties.channels.unlist');
         Route::post('properties/{property}/channels/airbnb/refresh-status', [ListingChannelController::class, 'refreshAirbnbStatus'])
             ->middleware('property.access')->name('properties.channels.airbnb.refresh-status');
+        Route::post('properties/{property}/channels/online-status', [ListingChannelController::class, 'setListingOnline'])
+            ->middleware('property.access')->name('properties.channels.online-status');
         Route::post('properties/{property}/channels/readiness', [ListingChannelController::class, 'readiness'])
             ->middleware('property.access')->name('properties.channels.readiness');
     });
