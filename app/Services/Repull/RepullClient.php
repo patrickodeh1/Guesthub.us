@@ -163,6 +163,14 @@ class RepullClient
         ], $idempotencyKey);
     }
 
+    /** Remove one Airbnb photo from the channel tour. */
+    public function deleteAirbnbPhoto(string $listingId, string $photoId, ?string $idempotencyKey = null): array
+    {
+        return $this->request('DELETE', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos', [], $idempotencyKey, [
+            'photoId' => $photoId,
+        ]);
+    }
+
     /** Read back Airbnb's assigned photo ids and CDN URLs. */
     public function getAirbnbPhotos(string $listingId): array
     {
