@@ -52,8 +52,12 @@ class RepullConnectServiceTest extends TestCase
         $url = app(RepullConnectService::class)->start($owner, ['booking'], 'messaging', 'extranet');
 
         $this->assertSame('https://connect.repull.dev/booking-extranet', $url);
-        Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/connect'
-            && $request['allowedProviders'] === ['booking-extranet-login']
-            && ! array_key_exists('accessType', $request->data()));
+        Http::assertSent(function ($request) {
+            parse_str((string) parse_url((string) $request['redirectUrl'], PHP_URL_QUERY), $query);
+            return $request->url() === 'https://api.repull.dev/v1/connect'
+                && $request['allowedProviders'] === ['booking-extranet-login']
+                && ! array_key_exists('accessType', $request->data())
+                && ($query['accessType'] ?? null) === 'messaging';
+        });
     }
 }
