@@ -322,12 +322,25 @@ class ListingChannelController extends Controller
             return back()->withErrors(['channel' => $this->friendly($e)]);
         }
 
-        $airbnb = data_get($status, 'addressReadiness.airbnb');
-        $msg = $airbnb && ($airbnb['ready'] ?? false) === false
-            ? 'Airbnb needs: '.implode(', ', (array) ($airbnb['missing'] ?? []))
-            : 'Readiness check passed (or nothing reported yet).';
+        $addressReadiness = (array) (data_get($status, 'addressReadiness') ?? data_get($status, 'data.addressReadiness') ?? []);
+        $results = [];
+        foreach (RepullListingService::CHANNELS as $channel) {
+            $item = $addressReadiness[$channel] ?? null;
+            if (! is_array($item)) {
+                continue;
+            }
+            $results[$channel] = [
+                'ready' => array_key_exists('ready', $item) ? (bool) $item['ready'] : null,
+                'missing' => array_values((array) ($item['missing'] ?? [])),
+            ];
+        }
 
-        return back()->with('success', $msg);
+        $blocked = collect($results)->filter(fn ($item) => $item['ready'] === false);
+        $msg = $blocked->isNotEmpty()
+            ? 'Readiness check found items to fix: '.$blocked->map(fn ($item, $channel) => ucfirst($channel).': '.implode(', ', $item['missing']))->implode('; ')
+            : ($results !== [] ? 'Repull returned readiness information for the connected channels.' : 'Repull did not return channel address-readiness details.');
+
+        return back()->with('success', $msg)->with('readiness_results', $results);
     }
 
     private function friendly(RepullException $e): string
