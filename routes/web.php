@@ -264,6 +264,7 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     // ─── Property inventory ──────────────────────────────────────────────────
     Route::middleware('role:admin,owner,company')->group(function () {
         Route::get('host-site', [\App\Http\Controllers\Admin\HostSiteController::class, 'edit'])->name('host-site.edit');
+        Route::get('host-site/check-slug', [\App\Http\Controllers\Admin\HostSiteController::class, 'checkSlug'])->name('host-site.check-slug');
         Route::put('host-site', [\App\Http\Controllers\Admin\HostSiteController::class, 'update'])->name('host-site.update');
         Route::post('host-site/verify-domain', [\App\Http\Controllers\Admin\HostSiteController::class, 'verifyDomain'])->name('host-site.verify-domain');
     });
