@@ -91,7 +91,7 @@ class RepullListingService
     public function pushContent(PropertyListing $listing): array
     {
         $id = $this->ensureRemoteListing($listing);
-        $photoSync = $this->pushCanonicalPhotos($listing, $id, $idem);
+        $photoSync = $this->pushCanonicalPhotos($listing, $id);
         $payload = $this->mapper->contentPayload($listing);
         unset($payload['photos']);
         if ($photoSync['payload'] !== []) {
@@ -395,7 +395,7 @@ class RepullListingService
      * The resulting public CDN URLs are then appended to canonical content and distributed
      * to Airbnb/Booking by the normal publish call.
      */
-    private function pushCanonicalPhotos(PropertyListing $listing, string $repullId, string $idem): array
+    private function pushCanonicalPhotos(PropertyListing $listing, string $repullId): array
     {
         $listing->loadMissing('photos');
         $photos = $listing->photos->sortBy('sort_order')->values();
@@ -425,7 +425,6 @@ class RepullListingService
                 pathinfo($photo->path, PATHINFO_FILENAME).'.jpg',
                 'image/jpeg',
                 $jpeg,
-                $idem.'-photo-'.$photo->id,
             );
 
             $uploadedPhotos[] = ['photo' => $photo, 'path' => $uploaded['path'], 'url' => $uploaded['publicUrl']];
