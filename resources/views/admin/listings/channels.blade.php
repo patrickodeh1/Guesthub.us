@@ -15,6 +15,9 @@
         @unless($featureEnabled)
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">OTA channel sync is an optional subscription add-on, billed per active OTA listing. Enable it under <a class="font-semibold underline" href="{{ route('admin.plan.index') }}">Settings → Plan</a> before connecting or publishing channels.</div>
         @endunless
+        @unless($featureEnabled)
+            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">OTA channel sync is an optional subscription add-on, billed per active OTA listing. Enable it under <a class="font-semibold underline" href="{{ route('admin.plan.index') }}">Settings → Plan</a> before connecting or publishing channels.</div>
+        @endunless
         @unless($configured)
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Channel sync is not switched on for this server yet (set <code>REPULL_ENABLED</code> and <code>REPULL_API_KEY</code>).</div>
         @endunless
