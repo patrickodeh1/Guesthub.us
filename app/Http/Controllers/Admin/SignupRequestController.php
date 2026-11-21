@@ -63,7 +63,7 @@ class SignupRequestController extends Controller
         $email = ['status' => 'sent', 'error' => null];
         try {
             Mail::to($user->email)->send(new SignupApprovedMail($user, false, $temporaryPassword));
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             $email = ['status' => 'failed', 'error' => 'Email delivery failed.'];
             Log::error('Signup temporary-password email failed for user '.$user->id.': '.$e->getMessage());
         }
