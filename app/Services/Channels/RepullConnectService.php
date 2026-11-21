@@ -64,7 +64,7 @@ class RepullConnectService
 
         $channel = (string) $channels->first();
         $state = $this->stateFor($owner);
-        $redirectUrl = route('admin.channels.connected');
+        $redirectUrl = route('admin.channels.connected', ['state' => $state]);
 
         if ($channel === 'airbnb') {
             if (! in_array($accessType, ['full_access', 'messaging', 'read_only'], true)) {
@@ -72,7 +72,6 @@ class RepullConnectService
             }
             $res = $this->client->createChannelConnectSession('airbnb', [
                 'redirectUrl' => $redirectUrl,
-                'state' => $state,
                 'accessType' => $accessType,
             ]);
         } elseif ($channel === 'booking' && $mode === 'extranet') {
@@ -84,7 +83,6 @@ class RepullConnectService
         } elseif ($channel === 'booking') {
             $res = $this->client->createChannelConnectSession('booking', [
                 'redirectUrl' => $redirectUrl,
-                'state' => $state,
             ]);
         } else {
             if (! in_array($accessType, ['full_access', 'messaging'], true)) {
