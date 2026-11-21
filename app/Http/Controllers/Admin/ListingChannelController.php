@@ -49,8 +49,18 @@ class ListingChannelController extends Controller
         abort_unless(in_array($channel, RepullListingService::CHANNELS, true), 404);
         abort_unless($property->owner, 422, 'This property has no owner to connect channels for.');
 
+        $data = $request->validate([
+            'access_type' => ['nullable', 'in:full_access,messaging,read_only'],
+            'connection_mode' => ['nullable', 'in:standard,extranet'],
+        ]);
+
         try {
-            return redirect()->away($connect->start($property->owner, [$channel]));
+            return redirect()->away($connect->start(
+                $property->owner,
+                [$channel],
+                $data['access_type'] ?? 'full_access',
+                $data['connection_mode'] ?? 'standard',
+            ));
         } catch (RepullException $e) {
             return back()->withErrors(['channel' => $this->friendly($e)]);
         }
