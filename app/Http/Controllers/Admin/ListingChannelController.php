@@ -248,7 +248,7 @@ class ListingChannelController extends Controller
             return back()->withErrors(['content_data_json' => 'Enter a JSON array of name/value objects.']);
         }
         foreach ($contentData as $item) {
-            if (! is_array($item) || ! is_string($item['name'] ?? null) || ! array_key_exists('value', $item)) {
+            if (! is_array($item) || ! is_string($item['name'] ?? null) || trim($item['name']) === '' || ! array_key_exists('value', $item) || ! is_scalar($item['value'])) {
                 return back()->withErrors(['content_data_json' => 'Each licence entry needs a name and value.']);
             }
         }
