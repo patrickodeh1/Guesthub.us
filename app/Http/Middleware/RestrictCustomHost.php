@@ -32,7 +32,7 @@ class RestrictCustomHost
         abort_unless($site, 404, 'This hostname is not configured for a verified GuestHub site.');
 
         $routeName = (string) optional($request->route())->getName();
-        if ($routeName === 'public.host.custom-domain') {
+        if (in_array($routeName, ['public.host.custom-domain', 'public.sitemap', 'public.robots', 'public.llms'], true)) {
             return $next($request);
         }
 
