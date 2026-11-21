@@ -18,7 +18,7 @@ class ListingRoom extends Model
 
         static::created($sync);
         static::updated(function (self $room) use ($sync): void {
-            if ($room->wasChanged(['room_type', 'room_number', 'room_name', 'bed_type', 'bed_quantity', 'is_private'])) {
+            if ($room->wasChanged(['room_type', 'room_number', 'room_name', 'bed_type', 'bed_quantity', 'beds', 'is_private'])) {
                 $sync($room);
             }
         });
@@ -27,7 +27,7 @@ class ListingRoom extends Model
 
     protected $fillable = [
         'listing_id', 'room_type', 'room_number', 'room_name',
-        'bed_type', 'bed_quantity', 'is_private', 'booking_room_id', 'booking_rate_id',
+        'bed_type', 'bed_quantity', 'beds', 'is_private', 'booking_room_id', 'booking_rate_id',
     ];
 
     protected function casts(): array
@@ -35,6 +35,7 @@ class ListingRoom extends Model
         return [
             'room_number' => 'integer',
             'bed_quantity' => 'integer',
+            'beds' => 'array',
             'is_private' => 'boolean',
         ];
     }
