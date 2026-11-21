@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/seam',
             'webhooks/channex',
+            'webhooks/repull',
             'webhooks/telnyx/sms',
             'webhooks/stripe',
             'webhooks/stripe/connect',

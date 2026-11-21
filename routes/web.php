@@ -19,7 +19,9 @@ use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PhotoReferenceController;
 use App\Http\Controllers\Admin\PropertyAvailabilityController;
 use App\Http\Controllers\Admin\PropertyController;
+use App\Http\Controllers\Admin\ListingChannelController;
 use App\Http\Controllers\Admin\PropertyListingController;
+use App\Http\Controllers\RepullWebhookController;
 use App\Http\Controllers\Admin\PropertyLockboxController;
 use App\Http\Controllers\Admin\PropertyLockController;
 use App\Http\Controllers\Admin\QuickAssignController;
@@ -152,6 +154,7 @@ Route::middleware('auth')->group(function () {
 Route::post('/webhooks/seam', [SeamWebhookController::class, 'handle'])->name('webhooks.seam');
 Route::post('/webhooks/channex', [ChannexWebhookController::class, 'handle'])->name('webhooks.channex');
 Route::post('/webhooks/stripe', [StripeWebhookController::class, 'handle'])->name('webhooks.stripe');
+Route::post('/webhooks/repull', [RepullWebhookController::class, 'handle'])->name('webhooks.repull');
 Route::post('/webhooks/telnyx/sms', [TelnyxWebhookController::class, 'handle'])->name('webhooks.telnyx.sms');
 Route::post('/webhooks/wheelhouse/{secret}', [\App\Http\Controllers\WheelhouseWebhookController::class, 'handle'])
     ->middleware('throttle:60,1')
@@ -289,6 +292,19 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
             ->middleware('property.access')->name('properties.listing.edit');
         Route::put('properties/{property}/listing', [PropertyListingController::class, 'save'])
             ->middleware('property.access')->name('properties.listing.save');
+
+        // Channels (Repull): connect OTA accounts, publish listing content, per-section results.
+        Route::get('channels/connected', [ListingChannelController::class, 'connected'])->name('channels.connected');
+        Route::get('properties/{property}/channels', [ListingChannelController::class, 'show'])
+            ->middleware('property.access')->name('properties.channels.show');
+        Route::post('properties/{property}/channels/{channel}/connect', [ListingChannelController::class, 'connect'])
+            ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking', 'vrbo'])->name('properties.channels.connect');
+        Route::post('properties/{property}/channels/{channel}/publish', [ListingChannelController::class, 'publish'])
+            ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking'])->name('properties.channels.publish');
+        Route::post('properties/{property}/channels/{channel}/unlist', [ListingChannelController::class, 'unlist'])
+            ->middleware('property.access')->whereIn('channel', ['airbnb', 'booking'])->name('properties.channels.unlist');
+        Route::post('properties/{property}/channels/readiness', [ListingChannelController::class, 'readiness'])
+            ->middleware('property.access')->name('properties.channels.readiness');
     });
 
     Route::middleware('role:admin')->group(function () {

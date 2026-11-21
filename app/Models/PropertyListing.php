@@ -35,6 +35,7 @@ class PropertyListing extends Model
         'published_at',
         'meta_title',
         'meta_description',
+        'repull_listing_id',
     ];
 
     protected function casts(): array
@@ -62,6 +63,11 @@ class PropertyListing extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(ListingPhoto::class, 'listing_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function channelLinks(): HasMany
+    {
+        return $this->hasMany(ListingChannelLink::class, 'listing_id');
     }
 
     public function leaseApplications(): HasMany
