@@ -93,6 +93,22 @@ class ListingContentMapper
             $payload['amenities'] = $amenities;
         }
 
+        if ($listing->rooms_sync_enabled) {
+            $payload['rooms'] = $listing->listingRooms->map(function ($room) {
+                $beds = filled($room->bed_type) && (int) $room->bed_quantity > 0
+                    ? [['bedType' => $room->bed_type, 'quantity' => (int) $room->bed_quantity]]
+                    : [];
+
+                return array_filter([
+                    'roomType' => $room->room_type,
+                    'roomNumber' => $room->room_number,
+                    'roomName' => $room->room_name,
+                    'beds' => $beds,
+                    'isPrivate' => (bool) $room->is_private,
+                ], fn ($value) => $value !== null && $value !== '');
+            })->values()->all();
+        }
+
         $photos = $this->photos($listing);
         if ($photos !== []) {
             $payload['photos'] = $photos;
