@@ -29,6 +29,9 @@ class BookingSetupFlowTest extends TestCase
                 ->push(['data' => ['propertyId' => 'hotel-100', 'roomId' => 'room-1']])
                 ->push(['data' => ['roomId' => 'room-2', 'rateId' => 'rate-2']])
                 ->push(['data' => ['sellable' => true, 'blockers' => []]]),
+            'api.repull.dev/v1/channels/booking/content*' => Http::sequence()
+                ->push(['data' => ['photos' => []]])
+                ->push(['data' => ['uploaded' => 1]]),
             'api.repull.dev/v1/listings/repull-100/publish/booking' => Http::response([
                 'result' => ['published' => true, 'sections' => ['details', 'photos'], 'errors' => []],
             ]),
@@ -103,6 +106,6 @@ class BookingSetupFlowTest extends TestCase
         $this->assertSame('room-1', $listing->fresh()->listingRooms()->orderBy('room_number')->first()->booking_room_id);
         $this->assertSame('rate-2', $listing->fresh()->listingRooms()->orderBy('room_number')->skip(1)->first()->booking_rate_id);
         $this->assertSame('published', $link->state);
-        Http::assertSentCount(4);
+        Http::assertSentCount(6);
     }
 }
