@@ -108,6 +108,7 @@ class ImportFromAirbnbService
                     'room_name' => $room['roomName'] ?? null,
                     'bed_type' => $firstBed['bedType'] ?? null,
                     'bed_quantity' => $quantity > 0 ? $quantity : null,
+                    'beds' => array_values(array_filter($beds, fn ($bed) => is_array($bed) && filled($bed['bedType'] ?? null) && (int) ($bed['quantity'] ?? 0) > 0)),
                     'is_private' => (bool) ($room['isPrivate'] ?? true),
                 ]);
             }
