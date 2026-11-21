@@ -48,7 +48,7 @@
                     <div>
                         <div class="font-semibold text-slate-700">Connected account</div>
                         @forelse($accounts as $account)
-                            <div class="text-slate-600">{{ $account->display_name ?: 'Account '.$account->external_account_id }}</div>
+                            <div class="text-slate-600">{{ $account->display_name ?: 'Account '.$account->external_account_id }}@if($account->access_type)<span class="ml-1 text-xs text-slate-500">({{ str_replace('_', ' ', $account->access_type) }})</span>@endif</div>
                         @empty
                             <div class="text-slate-500">Not connected</div>
                         @endforelse
