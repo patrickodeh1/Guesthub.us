@@ -58,6 +58,9 @@ class PropertyListingController extends Controller
             'public_description' => ['nullable', 'string', 'max:30000'],
             'max_guests' => ['nullable', 'integer', 'min:1', 'max:100'],
             'bedrooms' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'bathrooms' => ['required', 'numeric', 'min:0', 'max:50'],
+            'checkin_time' => ['required', 'date_format:H:i'],
+            'checkout_time' => ['required', 'date_format:H:i'],
             'rooms_sync_enabled' => ['nullable', 'boolean'],
             'listing_rooms' => ['nullable', 'array', 'max:8'],
             'listing_rooms.*.room_type' => ['nullable', Rule::in(['bedroom', 'full_bathroom', 'half_bathroom', 'living_room', 'kitchen', 'studio', 'dining_room', 'family_room', 'office', 'garage', 'laundry_room', 'entrance_to_home', 'recreation_area', 'outdoor_space'])],
@@ -206,6 +209,11 @@ class PropertyListingController extends Controller
             }
 
             DB::transaction(function () use ($listing, $property, $published, $existingPhotos, $remainingPhotos, $removeIds, $orderIds, $data, $methods, $nextPhotos, $roomsSyncEnabled, $roomRows) {
+                $property->forceFill([
+                    'baths' => $data['bathrooms'],
+                    'checkin_time' => $data['checkin_time'],
+                    'checkout_time' => $data['checkout_time'],
+                ])->save();
                 $listing->property()->associate($property);
                 $listing->published_at = $published ? ($listing->published_at ?? now()) : null;
                 $listing->save();
