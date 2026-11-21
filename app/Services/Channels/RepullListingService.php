@@ -176,34 +176,37 @@ class RepullListingService
             throw new RepullException('Repull did not return per-channel results for the '.$action.' request.', 'invalid_response');
         }
 
+        $groups = collect($channels)->groupBy(fn ($result) => strtolower((string) ($result['channel'] ?? $result['platform'] ?? '')));
+        $processed = 0;
         $allOk = true;
-        foreach ($channels as $result) {
-            $channel = strtolower((string) ($result['channel'] ?? $result['platform'] ?? ''));
+
+        foreach ($groups as $channel => $entries) {
             if (! in_array($channel, self::CHANNELS, true)) {
                 continue;
             }
+            $processed++;
+            $channelOk = $entries->every(fn ($result) => ($result['ok'] ?? false) === true);
+            $allOk = $allOk && $channelOk;
+            $messages = $entries->filter(fn ($result) => ($result['ok'] ?? false) !== true)
+                ->map(fn ($result) => trim((string) ($result['message'] ?? $result['fix'] ?? $result['code'] ?? 'Channel action was not confirmed.')))
+                ->filter()->unique()->values()->all();
 
             $link = $this->linkFor($listing, $channel);
-            $ok = ($result['ok'] ?? false) === true;
-            if (! $ok) {
-                $allOk = false;
-            }
-
-            $message = trim((string) ($result['message'] ?? $result['fix'] ?? $result['code'] ?? ''));
             $link->forceFill([
-                'state' => $ok ? ($online ? 'published' : 'unlisted') : $link->state,
-                'last_synced_at' => $ok ? now() : $link->last_synced_at,
-                'last_error' => $ok ? null : ($message !== '' ? $message : 'Repull did not confirm this channel action.'),
-                'last_error_at' => $ok ? null : now(),
+                'state' => $channelOk ? ($online ? 'published' : 'unlisted') : $link->state,
+                'last_synced_at' => $channelOk ? now() : $link->last_synced_at,
+                'last_error' => $channelOk ? null : implode('; ', $messages),
+                'last_error_at' => $channelOk ? null : now(),
             ])->save();
 
-            $this->event($listing, $link, $action, $ok ? 'ok' : 'error', null, [
-                'ok' => $ok,
-                'state' => $result['state'] ?? null,
-                'code' => $result['code'] ?? null,
-                'message' => $message,
-                'fix' => $result['fix'] ?? null,
+            $this->event($listing, $link, $action, $channelOk ? 'ok' : 'error', null, [
+                'ok' => $channelOk,
+                'results' => $entries->values()->all(),
             ]);
+        }
+
+        if ($processed === 0) {
+            throw new RepullException('Repull returned no recognized channel results for the '.$action.' request.', 'invalid_response');
         }
 
         return ['ok' => $allOk, 'channels' => $channels];
