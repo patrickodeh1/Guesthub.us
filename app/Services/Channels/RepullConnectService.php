@@ -67,7 +67,7 @@ class RepullConnectService
 
         $channel = (string) $channels->first();
         $effectiveAccessType = $channel === 'booking' && $mode === 'extranet' ? 'messaging' : $accessType;
-        $state = $this->stateFor((int) $owner->id);
+        $state = $this->stateFor($owner);
         $redirectUrl = route('admin.channels.connected', [
             'state' => $state,
             'accessType' => $effectiveAccessType,
