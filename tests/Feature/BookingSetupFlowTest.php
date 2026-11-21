@@ -53,7 +53,7 @@ class BookingSetupFlowTest extends TestCase
             'property_id' => $property->id,
             'listing_slug' => 'booking-setup-'.$property->id,
             'public_title' => 'Ocean House',
-            'public_description' => str_repeat('Comfortable stay near the beach. ', 8),
+            'public_description' => str_repeat('Comfortable stay near the beach. ', 32),
             'max_guests' => 4,
             'bedrooms' => 2,
             'base_rate_cents' => 25000,
