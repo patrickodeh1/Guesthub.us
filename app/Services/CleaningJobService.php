@@ -100,10 +100,16 @@ class CleaningJobService
             ]);
         }
 
-        $checkout = $this->assertSchedulable($data, $confirmConflicts);
+        // Keep checkout ordering and unresolved time requests as hard blocks.
+        // The configured turnover gap is surfaced alongside other soft conflicts
+        // so the first confirmation shows every warning in one place.
+        $checkout = $this->assertSchedulable($data, true);
 
         if (! $confirmConflicts) {
-            $conflicts = $this->detectConflicts($data, $session);
+            $conflicts = array_merge(
+                $this->detectTurnoverConflicts($data),
+                $this->detectConflicts($data, $session)
+            );
             if ($conflicts) {
                 throw new ConflictsDetected($conflicts);
             }
