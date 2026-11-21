@@ -136,9 +136,37 @@ class RepullClient
     }
 
     /** GET/POST /v1/channels/booking/content for property licences and other granular content. */
-    public function bookingContent(string $method, array $body = [], array $query = []): array
+    public function bookingContent(string $method, array $body = [], array $query = [], ?string $idempotencyKey = null): array
     {
-        return $this->request($method, '/v1/channels/booking/content', $body, null, $query);
+        return $this->request($method, '/v1/channels/booking/content', $body, $idempotencyKey, $query);
+    }
+
+    /** Upload up to 20 base64-encoded Airbnb photos in one request. */
+    public function uploadAirbnbPhotos(string $listingId, array $photos, ?string $idempotencyKey = null): array
+    {
+        return $this->request('POST', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos', [
+            'photos' => array_values($photos),
+        ], $idempotencyKey);
+    }
+
+    /** Update an existing Airbnb photo caption and/or order. */
+    public function updateAirbnbPhoto(string $listingId, array $photo, ?string $idempotencyKey = null): array
+    {
+        return $this->request('PATCH', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos', $photo, $idempotencyKey);
+    }
+
+    /** Reorder the complete Airbnb photo tour. */
+    public function orderAirbnbPhotos(string $listingId, array $photoIds, ?string $idempotencyKey = null): array
+    {
+        return $this->request('PUT', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos/order', [
+            'photo_ids' => array_values($photoIds),
+        ], $idempotencyKey);
+    }
+
+    /** Read back Airbnb's assigned photo ids and CDN URLs. */
+    public function getAirbnbPhotos(string $listingId): array
+    {
+        return $this->request('GET', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos');
     }
 
     /** GET /v1/channels/airbnb/listings/{listingId}/details → locked fields and channel-specific metadata. */
