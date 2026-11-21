@@ -187,8 +187,9 @@ class CleaningJobService
     public const DEFAULT_TURNOVER_MINUTES = 240;
 
     /**
-     * Hard rules, not overridable. Returns the departing guest's effective
-     * checkout, or null when no guest checks out that day at that property.
+     * Enforces checkout ordering and pending time-request rules. The configured
+     * turnover gap is a warning that an authorized admin can confirm on a second click.
+     * Returns the departing guest's effective checkout, or null when none applies.
      */
     private function assertSchedulable(array $data, bool $confirmTurnoverOverride = false): ?Carbon
     {
@@ -248,10 +249,6 @@ class CleaningJobService
         $date = Carbon::parse($data['scheduled_date'])->toDateString();
         $propertyId = (int) $data['property_id'];
         $minimumMinutes = (int) (Property::query()->whereKey($propertyId)->value('turnover_gap_minutes') ?? self::DEFAULT_TURNOVER_MINUTES);
-        if ($minimumMinutes <= 0) {
-            return [];
-        }
-
         $dead = ['pending_payment', 'cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
         $live = fn ($q) => $q->whereNull('cancelled_at')
             ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
