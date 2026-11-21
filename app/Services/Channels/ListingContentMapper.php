@@ -110,7 +110,7 @@ class ListingContentMapper
 
     public function hash(PropertyListing $listing): string
     {
-        return hash('sha256', json_encode([$this->createPayload($listing), $this->contentPayload($listing)]));
+        return hash('sha256', json_encode([$this->createPayload($listing), $this->contentPayload($listing), $this->photoUrls($listing)]));
     }
 
     /**
