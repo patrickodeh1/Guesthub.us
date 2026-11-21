@@ -141,6 +141,22 @@ class RepullClient
         return $this->request($method, '/v1/channels/booking/content', $body, null, $query);
     }
 
+    /** POST /v1/listings/{id}/pull/airbnb — synchronously refresh the canonical copy from Airbnb. */
+    public function pullFromAirbnb(string $listingId, ?string $connectionId = null): array
+    {
+        return $this->request('POST', '/v1/listings/'.rawurlencode($listingId).'/pull/airbnb', array_filter([
+            'airbnbConnectionId' => $connectionId,
+        ], fn ($value) => $value !== null && $value !== ''));
+    }
+
+    /** GET /v1/listings/{id}?include=content,details,photos,rooms,amenities,policies. */
+    public function getListing(string $listingId, array $includes = ['content', 'details', 'photos', 'rooms', 'amenities', 'policies']): array
+    {
+        return $this->request('GET', '/v1/listings/'.rawurlencode($listingId), [], null, [
+            'include' => implode(',', $includes),
+        ]);
+    }
+
     /** POST /v1/channels/booking/setup  {action: create-property|add-room|advance|..., ...} */
     public function bookingSetup(array $body, ?string $idempotencyKey = null): array
     {
