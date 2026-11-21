@@ -132,7 +132,10 @@ class ImportFromAirbnbService
     {
         foreach ($listing->photos()->get() as $old) {
             if ($old->source_channel === 'airbnb' && (string) $old->source_listing_id === (string) $listing->repull_listing_id) {
-                $old->forceFill(['source_channel' => null, 'source_listing_id' => null, 'source_photo_id' => null])->saveQuietly();
+                $old->forceFill([
+                    'source_channel' => null, 'source_listing_id' => null, 'source_photo_id' => null,
+                    'repull_photo_listing_id' => null, 'repull_photo_path' => null, 'repull_photo_url' => null, 'repull_uploaded_at' => null,
+                ])->saveQuietly();
             }
             Storage::disk('public')->delete([$old->path, $old->thumbnail_path]);
             $old->delete();
@@ -175,6 +178,10 @@ class ImportFromAirbnbService
                     'source_channel' => 'airbnb',
                     'source_listing_id' => $listing->repull_listing_id,
                     'source_photo_id' => $photo['photoAirbnbId'] ?? $photo['photo_id'] ?? null,
+                    'repull_photo_listing_id' => $listing->repull_listing_id,
+                    'repull_photo_path' => $photo['path'] ?? $photo['repullPath'] ?? null,
+                    'repull_photo_url' => $photo['publicUrl'] ?? $photo['url'] ?? $photo['originalUrl'] ?? null,
+                    'repull_uploaded_at' => now(),
                 ]);
             } catch (\Throwable $e) {
                 report($e);
