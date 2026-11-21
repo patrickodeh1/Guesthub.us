@@ -11,6 +11,7 @@ use App\Services\Channels\ListingContentMapper;
 use App\Services\Channels\RepullConnectService;
 use App\Services\Channels\RepullListingService;
 use App\Services\Repull\RepullException;
+use App\Services\FeatureGate;
 use Illuminate\Http\Request;
 
 /** Per-listing "Channels" screen: connect OTA accounts, publish content, see per-section results. */
@@ -36,12 +37,14 @@ class ListingChannelController extends Controller
             'missing' => $missing,
             'capabilities' => $service->capabilities(),
             'configured' => app(\App\Services\Repull\RepullClient::class)->isConfigured(),
+            'featureEnabled' => $property->owner && FeatureGate::enabled($property->owner, 'repull_channel_sync'),
         ]);
     }
 
     public function connect(Request $request, Property $property, string $channel, RepullConnectService $connect)
     {
         $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
         abort_unless(in_array($channel, RepullListingService::CHANNELS, true), 404);
         abort_unless($property->owner, 422, 'This property has no owner to connect channels for.');
 
@@ -62,6 +65,7 @@ class ListingChannelController extends Controller
     public function publish(Request $request, Property $property, string $channel, RepullListingService $service)
     {
         $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
         abort_unless(in_array($channel, RepullListingService::PUBLISHABLE, true), 404);
 
         $listing = $property->listing()->with('photos')->first();
@@ -85,6 +89,7 @@ class ListingChannelController extends Controller
     public function unlist(Request $request, Property $property, string $channel, RepullListingService $service)
     {
         $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
         abort_unless(in_array($channel, RepullListingService::PUBLISHABLE, true), 404);
 
         $listing = $property->listing()->first();
@@ -103,6 +108,7 @@ class ListingChannelController extends Controller
     public function readiness(Request $request, Property $property, RepullListingService $service)
     {
         $this->authorizeProperty($request, $property);
+        $this->authorizeChannelAddon($property);
 
         $listing = $property->listing()->first();
         abort_unless($listing, 404);
@@ -126,6 +132,11 @@ class ListingChannelController extends Controller
         return $e->errorCode === 'not_configured'
             ? 'Channel sync is not switched on yet.'
             : 'Channel service error ['.$e->errorCode.']: '.$e->getMessage();
+    }
+
+    private function authorizeChannelAddon(Property $property): void
+    {
+        abort_unless($property->owner && FeatureGate::enabled($property->owner, 'repull_channel_sync'), 403, 'OTA channel sync is an add-on. Enable it from Settings → Plan.');
     }
 
     private function authorizeProperty(Request $request, Property $property): void
