@@ -84,6 +84,7 @@ class RepullWebhookController extends Controller
         $connect->recordConnection($ownerId, $channel, $accountId, [
             'connection_id' => data_get($payload, 'data.connectionId') ?? data_get($payload, 'account.connectionId'),
             'access_type' => data_get($payload, 'data.accessType') ?? data_get($payload, 'account.accessType'),
+            'display_name' => data_get($payload, 'account.name') ?? data_get($payload, 'account.displayName'),
         ]);
     }
 
