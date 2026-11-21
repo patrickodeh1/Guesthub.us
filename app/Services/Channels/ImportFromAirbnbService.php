@@ -94,7 +94,7 @@ class ImportFromAirbnbService
             );
         }
 
-        $rooms = (array) ($record['rooms'] ?? []);
+        $rooms = (array) ($record['rooms'] ?? $content['rooms'] ?? $details['rooms'] ?? []);
         if ($rooms !== []) {
             $listing->listingRooms()->delete();
             $bedTotal = 0;
@@ -120,7 +120,7 @@ class ImportFromAirbnbService
             }
         }
 
-        $this->replacePhotos($listing, $property, (array) ($record['photos'] ?? $content['photos'] ?? []));
+        $this->replacePhotos($listing, $property, (array) ($record['photos'] ?? $content['photos'] ?? $details['photos'] ?? []));
 
         return $listing->fresh(['property', 'photos', 'listingRooms']);
     }
@@ -136,7 +136,7 @@ class ImportFromAirbnbService
         $manager = new ImageManager(new $driver);
 
         foreach (array_slice($photos, 0, 30) as $index => $photo) {
-            $url = is_array($photo) ? (string) ($photo['url'] ?? $photo['originalUrl'] ?? $photo['imageUrl'] ?? '') : (string) $photo;
+            $url = is_array($photo) ? (string) ($photo['url'] ?? $photo['originalUrl'] ?? $photo['imageUrl'] ?? $photo['urlOriginal'] ?? '') : (string) $photo;
             if (! $this->isAllowedPhotoUrl($url)) {
                 continue;
             }
