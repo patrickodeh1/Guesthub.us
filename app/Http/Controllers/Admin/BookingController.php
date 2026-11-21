@@ -871,7 +871,7 @@ class BookingController extends Controller
             $dead = ['cancelled', 'canceled', 'declined', 'rejected', 'expired', 'no_show'];
             $live = fn ($q) => $q->whereNull('cancelled_at')
                 ->where(fn ($w) => $w->whereNull('status')->orWhereNotIn('status', $dead));
-            $min = \App\Services\CleaningJobService::MIN_TURNOVER_MINUTES;
+            $min = (int) ($booking->property?->turnover_gap_minutes ?? \App\Services\CleaningJobService::DEFAULT_TURNOVER_MINUTES);
 
             if ($pref && $type === 'checkout') {
                 $date = \Carbon\Carbon::parse($booking->check_out_date)->toDateString();
