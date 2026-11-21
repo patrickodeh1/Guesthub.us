@@ -60,6 +60,17 @@ class RepullWebhookController extends Controller
             };
         } catch (RepullException $e) {
             Log::warning('Repull webhook not applied', ['event' => $event, 'code' => $e->errorCode]);
+            if ($e->retryable) {
+                if ($deliveryId !== '') {
+                    Cache::forget('repull:delivery:'.$deliveryId);
+                }
+                return response()->json(['ok' => false, 'error' => 'Temporary processing failure'], 503);
+            }
+        } catch (Throwable $e) {
+            if ($deliveryId !== '') {
+                Cache::forget('repull:delivery:'.$deliveryId);
+            }
+            throw $e;
         }
 
         return response()->json(['ok' => true]);
