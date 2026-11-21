@@ -93,6 +93,7 @@
                             $inPkg = in_array($f->key, $includedKeys, true);
                             $unit = $f->billing_unit ?: 'flat';
                             $quantity = $unit === 'flat' ? 1 : ($billingQuantities[$unit] ?? 0);
+                            $quantityHelp = $unit === 'per_channel_listing' ? 'Minimum one listing while enabled; increases with active OTA listings.' : null;
                         @endphp
                         <div data-addon-row="{{ $f->key }}" class="flex flex-wrap items-center justify-between gap-3 text-sm">
                             <label class="flex items-center gap-2">
@@ -106,6 +107,7 @@
                             @if($unit !== 'flat' && ! $inPkg)
                                 <span class="text-xs text-slate-500">{{ $quantity }}{{ $unitLabels[$unit] ?? '' }}</span>
                                 @if($quantity > 0)
+                                    @if($quantityHelp)<span class="text-xs text-slate-500">{{ $quantityHelp }}</span>@endif
                                     <input type="hidden" name="addons[{{ $f->key }}][quantity]" value="{{ $quantity }}">
                                 @else
                                     <span class="text-xs text-amber-700">Add a billable resource to enable</span>
