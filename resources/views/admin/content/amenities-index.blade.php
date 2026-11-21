@@ -8,6 +8,7 @@
         <div class="flex gap-2">
             <a href="{{ route('admin.categories.index', ['property_id' => $property->id]) }}" class="btn-secondary">Back to Categories</a>
             <a href="{{ route('admin.amenities.create', $property) }}" class="btn-primary">Add Amenity</a>
+            @if(auth()->user()?->hasRole('admin'))<a href="{{ route('admin.repull-amenities.index') }}" class="btn-secondary">Repull catalog</a>@endif
         </div>
     </div>
 
