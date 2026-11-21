@@ -149,6 +149,12 @@ class ListingContentMapper
             'personCapacity' => [$listing->max_guests, 'Max guests'],
             'bedrooms' => [$listing->bedrooms, 'Bedrooms'],
             'bathrooms' => [$p?->baths, 'Bathrooms'],
+            'beds' => [$p?->beds, 'Total beds'],
+            'propertyType' => [$listing->property_type, 'Property type'],
+            'roomType' => [$listing->room_type, 'Room type'],
+            'checkInTimeStart' => [$p?->checkin_time, 'Check-in time'],
+            'checkOutTime' => [$p?->checkout_time, 'Check-out time'],
+            'cancellationPolicy' => [$listing->cancellation_policy, 'Cancellation policy'],
             'price' => [$listing->base_rate_cents, 'Nightly rate'],
         ];
         if ($isUs) {
