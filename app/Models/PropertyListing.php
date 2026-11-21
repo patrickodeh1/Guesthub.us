@@ -19,7 +19,7 @@ class PropertyListing extends Model
         static::updated(function (self $listing): void {
             $contentFields = [
                 'property_id', 'public_title', 'public_description', 'max_guests',
-                'bedrooms', 'base_rate_cents', 'cleaning_fee_cents',
+                'bedrooms', 'property_type', 'room_type', 'base_rate_cents', 'cleaning_fee_cents',
                 'cancellation_policy', 'house_rules', 'listing_type',
             ];
 
@@ -50,6 +50,8 @@ class PropertyListing extends Model
         'public_description',
         'max_guests',
         'bedrooms',
+        'property_type',
+        'room_type',
         'base_rate_cents',
         'cleaning_fee_cents',
         'tax_percent',
