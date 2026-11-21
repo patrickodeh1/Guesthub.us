@@ -382,6 +382,9 @@
                                         <option value="{{ $value }}" {{ old('checkin_time_preference', $booking->checkin_time_preference) === $value ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                @if(empty($checkinTimeOptions))
+                                    <p class="mt-2 text-xs leading-5 text-amber-700">No check-in times are available for this date because of the property's cleaning turnaround requirement. Please contact your host.</p>
+                                @endif
                             </label>
                             <span id="checkin-time-error" class="guest-field-error" style="display:@error('checkin_time_preference')block @else none @enderror">
                                 @error('checkin_time_preference'){{ $message }}@else Please select a check-in time. @enderror
