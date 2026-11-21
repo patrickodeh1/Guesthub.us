@@ -26,10 +26,6 @@ class HostSiteController extends Controller
         $owner = $request->user();
         abort_unless($owner->hasAnyRole(['admin', 'owner', 'company']), 403);
         abort_unless(FeatureGate::enabled($owner, 'direct_booking_site'), 403, 'Host-branded booking sites are not enabled for this account.');
-        if ($request->input('_intent') === 'verify_domain') {
-            return $this->verifyDomain($request);
-        }
-
         $site = HostSite::query()->firstOrCreate(
             ['user_id' => $owner->id],
             [
@@ -48,6 +44,9 @@ class HostSiteController extends Controller
         $owner = $request->user();
         abort_unless($owner->hasAnyRole(['admin', 'owner', 'company']), 403);
         abort_unless(FeatureGate::enabled($owner, 'direct_booking_site'), 403, 'Host-branded booking sites are not enabled for this account.');
+        if ($request->input('_intent') === 'verify_domain') {
+            return $this->verifyDomain($request);
+        }
 
         $site = HostSite::query()->firstOrCreate(
             ['user_id' => $owner->id],
