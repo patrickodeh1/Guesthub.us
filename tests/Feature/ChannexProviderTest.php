@@ -115,4 +115,22 @@ class ChannexProviderTest extends TestCase
         Http::assertSent(fn (Request $request) => $request->method() === 'POST'
             && str_ends_with($request->url(), '/booking_revisions/revision-123/ack'));
     }
+
+    public function test_repull_provider_mode_uses_compatibility_api_base_url_and_key(): void
+    {
+        config([
+            'pms.provider' => 'repull',
+            'services.repull.channex_base_url' => 'https://api.repull.dev/channex/api/v1',
+            'services.repull.api_key' => 'repull-secret',
+        ]);
+        Http::fake([
+            'api.repull.dev/channex/api/v1/booking_revisions/feed*' => Http::response(['data' => []]),
+        ]);
+
+        (new ChannexProvider())->getBookings();
+
+        Http::assertSent(fn ($request) => str_starts_with($request->url(), 'https://api.repull.dev/channex/api/v1/booking_revisions/feed')
+            && $request->hasHeader('user-api-key', 'repull-secret'));
+    }
+
 }
