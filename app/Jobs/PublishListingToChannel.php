@@ -21,7 +21,7 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
     public int $tries = 3;
     public int $uniqueFor = 600;
 
-    public function __construct(public int $listingId, public string $channel, public bool $force = false)
+    public function __construct(public int $listingId, public string $channel, public bool $force = false, public ?string $hotelId = null)
     {
     }
 
@@ -52,7 +52,7 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
         }
 
         try {
-            $service->publish($listing, $this->channel, $this->force);
+            $service->publish($listing, $this->channel, $this->force, $this->hotelId);
         } catch (ChannelPublishBlocked $e) {
             $service->recordBlocked($listing, $this->channel, $e);
         }
