@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
+use App\Models\Feature;
 use App\Jobs\PublishListingToChannel;
 use App\Models\Amenity;
 use App\Jobs\RefreshChannelStatus;
@@ -270,6 +271,39 @@ class ListingChannelAccessTest extends TestCase
         );
 
         Http::assertNothingSent();
+    }
+
+
+
+    public function test_publish_job_processes_a_link_already_marked_publishing(): void
+    {
+        Feature::create([
+            'key' => 'repull_channel_sync',
+            'name' => 'OTA channel sync',
+            'is_free' => true,
+            'price_cents' => 0,
+            'active' => true,
+            'billing_unit' => 'per_channel_listing',
+        ]);
+
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        $connection = ChannelConnection::create([
+            'owner_id' => $owner->id, 'provider' => 'repull', 'channel' => 'airbnb',
+            'external_account_id' => 'airbnb-account-job', 'status' => 'connected', 'access_type' => 'full_access',
+        ]);
+        $link = ListingChannelLink::create([
+            'listing_id' => $listing->id, 'channel' => 'airbnb', 'connection_id' => $connection->id,
+            'state' => 'publishing',
+        ]);
+
+        (new PublishListingToChannel($listing->id, 'airbnb'))->handle(
+            app(\App\Services\Channels\RepullListingService::class),
+            app(ListingContentMapper::class),
+        );
+
+        $this->assertSame('error', $link->fresh()->state);
+        $this->assertStringContainsString('Complete the listing first', $link->fresh()->last_error);
     }
 
 
