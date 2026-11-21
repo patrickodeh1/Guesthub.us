@@ -48,8 +48,8 @@ class ListingContentMapper
     }
 
     /**
-     * Body for PUT /v1/listings/{id}/content. NOTE: `photos` and `amenities` are FULL
-     * replacements on Repull, so the complete set is sent every time.
+     * Body for PUT /v1/listings/{id}/content. Amenities are a full replacement; photos are
+     * uploaded through each channel's dedicated photo API.
      *
      * @return array<string,mixed>
      */
@@ -80,15 +80,9 @@ class ListingContentMapper
             ], fn ($v) => $v !== null),
         ];
 
-        $amenities = $p?->amenities()
-            ->where('active', true)
-            ->whereNotNull('repull_amenity_id')
-            ->pluck('repull_amenity_id')
-            ->filter()
-            ->unique()
-            ->values()
-            ->all() ?? [];
-        if ($amenities !== []) {
+        $mappedAmenities = $p?->amenities()->whereNotNull('repull_amenity_id')->get() ?? collect();
+        $amenities = $mappedAmenities->where('active', true)->pluck('repull_amenity_id')->filter()->unique()->values()->all();
+        if ($mappedAmenities->isNotEmpty()) {
             // Repull replaces the complete canonical set when this key is present.
             $payload['amenities'] = $amenities;
         }
@@ -109,11 +103,6 @@ class ListingContentMapper
                     'isPrivate' => (bool) $room->is_private,
                 ], fn ($value) => $value !== null && $value !== '');
             })->values()->all();
-        }
-
-        $photos = $this->photos($listing);
-        if ($photos !== []) {
-            $payload['photos'] = $photos;
         }
 
         return array_filter($payload, fn ($v) => $v !== null && $v !== '' && $v !== []);
@@ -229,6 +218,11 @@ class ListingContentMapper
     }
 
     /** @return list<array{url:string,caption:string}> public https URLs (Repull downloads them) */
+    public function photoUrls(PropertyListing $listing): array
+    {
+        return $this->photos($listing);
+    }
+
     private function photos(PropertyListing $listing): array
     {
         return $listing->photos
