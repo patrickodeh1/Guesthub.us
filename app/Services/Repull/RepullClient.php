@@ -146,7 +146,7 @@ class RepullClient
     {
         return $this->request('POST', '/v1/channels/airbnb/listings/'.rawurlencode($listingId).'/photos', [
             'photos' => array_values($photos),
-        ], $idempotencyKey);
+        ]);
     }
 
     /** Update an existing Airbnb photo caption and/or order. */
