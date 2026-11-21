@@ -182,7 +182,9 @@
                     @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && ! $canManageChannel)
                         <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This account is connected with read-only or messaging access. GuestHub does not include OTA messaging in this release and cannot publish, change calendars or unlist with this access level. Reconnect with full management when the host is ready to switch.</p>
                     @endif
-                    @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && $canManageChannel)
+                    @if($channel === 'vrbo' && $link && filled($link->external_listing_id))
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Repull's current capability does not support updating an existing Vrbo listing. Manage changes directly in Vrbo.</p>
+                    @elseif($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && $canManageChannel)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
                             @if($channel === 'booking')
                                 <label class="field-label text-xs">Booking.com property ID (only if multiple)
