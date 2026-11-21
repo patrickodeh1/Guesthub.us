@@ -25,7 +25,7 @@ class ListingContentMapper
 
         return array_filter([
             'name' => $this->title($listing),
-            'propertyType' => 'apartment',
+            'propertyType' => $listing->property_type ?: 'apartment',
             'street' => $street,
             'city' => $p?->city,
             'state' => $p?->state,
@@ -42,6 +42,8 @@ class ListingContentMapper
             'defaultDailyPrice' => $this->money($listing->base_rate_cents),
             'cleaningFee' => $this->money($listing->cleaning_fee_cents),
             'cancellationPolicy' => $listing->cancellation_policy,
+            'checkInTimeStart' => $p?->checkin_time,
+            'checkOutTime' => $p?->checkout_time,
         ], fn ($v) => $v !== null && $v !== '');
     }
 
@@ -65,8 +67,13 @@ class ListingContentMapper
                 'beds' => $p?->beds,
                 'bathrooms' => $p?->baths !== null ? (float) $p->baths : null,
             ], fn ($v) => $v !== null),
-            'details' => ['propertyTypeCategory' => 'apartment', 'roomTypeCategory' => 'entire_home'],
-            'policies' => array_filter(['houseRules' => $this->clean($listing->house_rules)]),
+            'details' => ['propertyTypeCategory' => $listing->property_type ?: 'apartment', 'roomTypeCategory' => $listing->room_type ?: 'entire_home'],
+            'policies' => array_filter([
+                'houseRules' => $this->clean($listing->house_rules),
+                'cancellationPolicy' => $listing->cancellation_policy,
+                'checkInTimeStart' => $p?->checkin_time,
+                'checkOutTime' => $p?->checkout_time,
+            ]),
             'pricing' => array_filter([
                 'defaultDailyPrice' => $this->money($listing->base_rate_cents),
                 'cleaningFee' => $this->money($listing->cleaning_fee_cents),
