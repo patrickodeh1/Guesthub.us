@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
+use App\Models\Amenity;
 use App\Models\ListingChannelLink;
 use App\Models\Property;
 use App\Models\PropertyListing;
@@ -127,6 +128,24 @@ class ListingChannelAccessTest extends TestCase
 
         $this->assertSame('error', $link->fresh()->state);
         $this->assertStringContainsString('[not_ready]', $link->fresh()->last_error);
+    }
+
+
+    public function test_mapper_sends_only_explicitly_mapped_active_amenities(): void
+    {
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner, [
+            'address' => '1200 Ocean Drive, Miami Beach, FL 33139',
+            'city' => 'Miami Beach', 'state' => 'FL', 'zip' => '33139',
+            'latitude' => 25.78, 'longitude' => -80.13, 'beds' => 3, 'baths' => 1.5, 'country' => 'US',
+        ]);
+        $property = $listing->property;
+        Amenity::create(['property_id' => $property->id, 'title' => 'Wi-Fi', 'active' => true, 'repull_amenity_id' => 'wifi']);
+        Amenity::create(['property_id' => $property->id, 'title' => 'Swimming pool', 'active' => true]);
+        Amenity::create(['property_id' => $property->id, 'title' => 'Old amenity', 'active' => false, 'repull_amenity_id' => 'old_value']);
+
+        $payload = app(ListingContentMapper::class)->contentPayload($listing->load(['property', 'photos']));
+        $this->assertSame(['wifi'], $payload['amenities']);
     }
 
 }
