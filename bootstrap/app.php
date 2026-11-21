@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\ForcePasswordChange;
 use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\RestrictPrivateFiles;
+use App\Http\Middleware\RestrictCustomHost;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             EnsureUserIsActive::class,
             ForcePasswordChange::class,
+            RestrictCustomHost::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'webhooks/seam',
