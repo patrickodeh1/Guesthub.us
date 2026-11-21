@@ -49,8 +49,8 @@ class ListingContentMapper
     }
 
     /**
-     * Body for PUT /v1/listings/{id}/content. Amenities are a full replacement; photos are
-     * uploaded through each channel's dedicated photo API.
+     * Body for PUT /v1/listings/{id}/content. Amenities are a full replacement; local photo bytes are uploaded to Repull's
+     * canonical photo storage before the content write.
      *
      * @return array<string,mixed>
      */
