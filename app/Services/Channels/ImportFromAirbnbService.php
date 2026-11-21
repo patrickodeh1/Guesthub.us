@@ -166,6 +166,9 @@ class ImportFromAirbnbService
                     'sort_order' => $index,
                     'width' => $large->width(),
                     'height' => $large->height(),
+                    'source_channel' => 'airbnb',
+                    'source_listing_id' => $listing->repull_listing_id,
+                    'source_photo_id' => $photo['photoAirbnbId'] ?? $photo['photo_id'] ?? null,
                 ]);
             } catch (\Throwable $e) {
                 report($e);
