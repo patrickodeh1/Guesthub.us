@@ -72,7 +72,7 @@ class RepullListingService
         }
 
         $res = $this->client->createListing($this->mapper->createPayload($listing), 'guesthub-listing-'.$listing->id.'-create');
-        $id = isset($res['id']) ? (string) $res['id'] : '';
+        $id = (string) (data_get($res, 'id') ?? data_get($res, 'data.id') ?? '');
         if ($id === '') {
             throw new RepullException('Repull did not return a listing id.', 'invalid_response');
         }
@@ -270,7 +270,7 @@ class RepullListingService
 
         $res = $this->client->publishAirbnb($remoteId, $body, $idem);
 
-        return is_array($res['result'] ?? null) ? $res['result'] : $res;
+        return is_array(data_get($res, 'result')) ? data_get($res, 'result') : (is_array(data_get($res, 'data.result')) ? data_get($res, 'data.result') : $res);
     }
 
     private function publishBooking(PropertyListing $listing, ListingChannelLink $link, string $remoteId, string $idem, ?string $hotelId = null): array
