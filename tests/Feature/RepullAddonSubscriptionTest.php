@@ -4,6 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Feature;
 use App\Models\Package;
+use App\Models\Property;
+use App\Models\PropertyListing;
+use App\Models\ListingChannelLink;
+use App\Services\Billing\BillingQuantityResolver;
 use App\Models\User;
 use App\Services\Billing\PlanPricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
