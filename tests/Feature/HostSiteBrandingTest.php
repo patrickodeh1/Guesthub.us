@@ -72,4 +72,23 @@ class HostSiteBrandingTest extends TestCase
         $this->get(route('public.host.show', 'previous-host'))
             ->assertRedirect(route('public.host.show', 'current-host'));
     }
+
+    public function test_verified_custom_domain_cannot_expose_admin_routes(): void
+    {
+        $owner = User::factory()->create();
+        HostSite::create([
+            'user_id' => $owner->id,
+            'slug' => 'custom-host',
+            'display_name' => 'Custom Host',
+            'brand_color' => '#17221e',
+            'show_powered_by' => true,
+            'custom_domain' => 'book.example.com',
+            'domain_verification_token' => 'verification-token',
+            'domain_verified_at' => now(),
+        ]);
+
+        $this->get('https://book.example.com/admin')->assertNotFound();
+    }
+
+
 }
