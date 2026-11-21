@@ -167,6 +167,16 @@ class RepullListingService
         if (! filled($listing->repull_listing_id)) {
             throw new ChannelPublishBlocked('This listing has not been created in Repull yet.');
         }
+        $ownerId = $listing->property?->owner_id;
+        $hasFullAccess = $ownerId && ChannelConnection::query()
+            ->where('owner_id', $ownerId)
+            ->where('provider', 'repull')
+            ->where('status', 'connected')
+            ->where('access_type', 'full_access')
+            ->exists();
+        if (! $hasFullAccess) {
+            throw new ChannelPublishBlocked('Connect at least one channel with full management access before changing the listing online/offline state.');
+        }
 
         $action = $online ? 'online' : 'offline';
         $response = $this->client->request(
