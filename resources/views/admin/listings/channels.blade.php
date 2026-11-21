@@ -110,7 +110,30 @@
                         </form>
                     @endif
                     @if($featureEnabled && $cap['connect'] && $accounts->isEmpty())
-                        <form method="post" action="{{ route('admin.properties.channels.connect', [$property, $channel]) }}">@csrf
+                        <form method="post" action="{{ route('admin.properties.channels.connect', [$property, $channel]) }}" class="flex flex-wrap items-end gap-2">@csrf
+                            @if($channel === 'airbnb')
+                                <label class="field-label text-xs">Access level
+                                    <select name="access_type" class="input">
+                                        <option value="full_access">Full management</option>
+                                        <option value="messaging">Messaging only (keep existing PMS)</option>
+                                        <option value="read_only">Read only (import)</option>
+                                    </select>
+                                </label>
+                            @elseif($channel === 'vrbo')
+                                <label class="field-label text-xs">Access level
+                                    <select name="access_type" class="input">
+                                        <option value="full_access">Full access (calendar and prices)</option>
+                                        <option value="messaging">Messaging only (keep existing PMS)</option>
+                                    </select>
+                                </label>
+                            @elseif($channel === 'booking')
+                                <label class="field-label text-xs">Connection type
+                                    <select name="connection_mode" class="input">
+                                        <option value="standard">Booking.com partner connection (full management)</option>
+                                        <option value="extranet">Booking.com Extranet login (messaging only)</option>
+                                    </select>
+                                </label>
+                            @endif
                             <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Connect {{ $label }}</button>
                         </form>
                     @endif
