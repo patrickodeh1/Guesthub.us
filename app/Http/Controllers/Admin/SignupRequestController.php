@@ -8,6 +8,7 @@ use App\Mail\SignupRejectedMail;
 use App\Models\User;
 use App\Services\SmsNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class SignupRequestController extends Controller
@@ -33,8 +34,7 @@ class SignupRequestController extends Controller
 
         $delivery = $this->sendTemporaryCredentials($user);
 
-        $message = "{$user->name} has been approved as " . ucfirst($data['role']) . '. A temporary password was emailed';
-        $message .= $delivery['status'] === 'sent' ? ' and texted.' : '. SMS could not be sent: ' . ($delivery['error'] ?? 'delivery failed');
+        $message = "{$user->name} has been approved as " . ucfirst($data['role']) . '. ' . $this->deliverySummary($delivery);
 
         return back()->with('success', $message);
     }
@@ -46,10 +46,7 @@ class SignupRequestController extends Controller
 
         $delivery = $this->sendTemporaryCredentials($user);
 
-        $message = "A new temporary password was emailed to {$user->email}";
-        $message .= $delivery['status'] === 'sent' ? ' and texted.' : '. SMS could not be sent: ' . ($delivery['error'] ?? 'delivery failed');
-
-        return back()->with('success', $message);
+        return back()->with('success', 'A new temporary password was generated. ' . $this->deliverySummary($delivery));
     }
 
     private function sendTemporaryCredentials(User $user): array
@@ -63,14 +60,45 @@ class SignupRequestController extends Controller
             'must_change_password' => true,
         ])->save();
 
-        Mail::to($user->email)->send(new SignupApprovedMail($user, false, $temporaryPassword));
+        $email = ['status' => 'sent', 'error' => null];
+        try {
+            Mail::to($user->email)->send(new SignupApprovedMail($user, false, $temporaryPassword));
+        } catch (\\Throwable $e) {
+            $email = ['status' => 'failed', 'error' => 'Email delivery failed.'];
+            Log::error('Signup temporary-password email failed for user '.$user->id.': '.$e->getMessage());
+        }
 
         $loginUrl = route('login');
         $message = 'Your Guest Hub account is approved. Sign in at ' . $loginUrl
             . ' using temporary password ' . $temporaryPassword
             . '. You must change it before accessing the account.';
+        $sms = SmsNotificationService::deliver($user->phone_number, $message, 'account-approval');
 
-        return SmsNotificationService::deliver($user->phone_number, $message, 'account-approval');
+        return ['email' => $email, 'sms' => $sms];
+    }
+
+    private function deliverySummary(array $delivery): string
+    {
+        $sent = [];
+        $failed = [];
+
+        foreach (['email' => 'email', 'sms' => 'text message'] as $key => $label) {
+            if (($delivery[$key]['status'] ?? null) === 'sent') {
+                $sent[] = $label;
+            } else {
+                $failed[] = $label;
+            }
+        }
+
+        if ($sent && ! $failed) {
+            return 'Temporary credentials sent by '.implode(' and ', $sent).'.';
+        }
+
+        if ($sent) {
+            return 'Temporary credentials sent by '.implode(' and ', $sent).'; '.implode(' and ', $failed).' delivery failed. Check the mail/SMS configuration before resending.';
+        }
+
+        return 'Account approved, but both email and text delivery failed. Check the mail/SMS configuration before resending.';
     }
 
     public function reject(User $user)
