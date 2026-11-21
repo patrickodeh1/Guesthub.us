@@ -197,6 +197,7 @@ class RepullListingService
             $link = $this->linkFor($listing, $channel);
             $link->forceFill([
                 'state' => $channelOk ? ($online ? 'published' : 'unlisted') : $link->state,
+                'live' => $channelOk ? ($online ? null : false) : $link->live,
                 'last_synced_at' => $channelOk ? now() : $link->last_synced_at,
                 'last_error' => $channelOk ? null : implode('; ', $messages),
                 'last_error_at' => $channelOk ? null : now(),
@@ -372,6 +373,7 @@ class RepullListingService
 
         $link->forceFill([
             'state' => $state,
+            'live' => is_bool($live) ? $live : null,
             'content_hash' => $errors === [] ? $hash : $link->content_hash,
             'last_synced_at' => now(),
             'last_error' => $errors === [] ? null : implode('; ', $errors),
