@@ -141,7 +141,7 @@ class RepullClient
         return $this->request($method, '/v1/channels/booking/content', $body, null, $query);
     }
 
-    /** GET /v1/channels/airbnb/listings/{airbnbId}/details → locked fields and channel-specific metadata. */
+    /** GET /v1/channels/airbnb/listings/{connectionId}/details → locked fields and channel-specific metadata. */
     public function getAirbnbListingDetails(string $airbnbListingId): array
     {
         return $this->request('GET', '/v1/channels/airbnb/listings/'.rawurlencode($airbnbListingId).'/details');
