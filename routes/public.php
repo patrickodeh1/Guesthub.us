@@ -8,6 +8,7 @@ use App\Http\Controllers\StripeConnectController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('web')->group(function (): void {
+    Route::get('/', [PublicListingController::class, 'customDomain'])->name('public.host.custom-domain');
     Route::get('/ical/{token}.ics', CalendarExportController::class)
         ->where('token', '[A-Za-z0-9]{64}')
         ->middleware('throttle:60,1')
