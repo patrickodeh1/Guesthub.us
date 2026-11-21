@@ -89,6 +89,20 @@
                     <label class="field-label">Bedrooms
                         <input type="number" min="0" max="100" name="bedrooms" value="{{ old('bedrooms', $listing->bedrooms ?? $property->beds) }}" class="input">
                     </label>
+                    <label class="field-label">Property type
+                        <select name="property_type" class="input">
+                            @foreach(['apartment' => 'Apartment', 'house' => 'House', 'condo' => 'Condo', 'townhouse' => 'Townhouse', 'villa' => 'Villa', 'guesthouse' => 'Guesthouse', 'hotel' => 'Hotel', 'other' => 'Other'] as $value => $label)
+                                <option value="{{ $value }}" @selected(old('property_type', $listing->property_type ?? 'apartment') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="field-label">Room type
+                        <select name="room_type" class="input">
+                            @foreach(['entire_home' => 'Entire home', 'private_room' => 'Private room', 'shared_room' => 'Shared room', 'hotel_room' => 'Hotel room'] as $value => $label)
+                                <option value="{{ $value }}" @selected(old('room_type', $listing->room_type ?? 'entire_home') === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                     <label class="field-label md:col-span-2">Description
                         <textarea name="public_description" rows="9" maxlength="30000" class="textarea">{{ $descriptionValue }}</textarea>
                         <span class="field-help">{{ $descriptionWords }} words; publishing requires at least 150. An empty description gets a factual draft generated from the property details and amenities.</span>
