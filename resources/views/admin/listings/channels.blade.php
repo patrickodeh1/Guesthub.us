@@ -139,6 +139,11 @@
                     @endif
                     @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
+                            @if($channel === 'booking')
+                                <label class="field-label text-xs">Booking.com property ID (only if multiple)
+                                    <input name="hotel_id" value="{{ old('hotel_id', $link?->external_listing_id) }}" class="input" placeholder="Repull/Booking property ID">
+                                </label>
+                            @endif
                             <button @disabled(!empty($gaps)) class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{{ $link && $link->external_listing_id ? 'Update on '.$label : 'Publish to '.$label }}</button>
                         </form>
                         @if($featureEnabled && $link && in_array($state, ['live', 'published', 'partial']))
@@ -150,6 +155,33 @@
                 </div>
             </section>
         @endforeach
+
+
+        @if($featureEnabled && $bookingLink && $bookingLink->external_listing_id)
+            <section class="rounded-xl border border-slate-200 bg-white p-4">
+                <h2 class="font-semibold text-slate-900">Booking.com licence details</h2>
+                <p class="mt-1 text-sm text-slate-600">Some regions require a licence or registration number before Booking.com will open the property. Read the current requirements and enter the matching variant and fields below.</p>
+                @if($bookingLicenceInfo)
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-sm font-semibold text-slate-700">View Booking.com licence requirements</summary>
+                        <pre class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-50 p-3 text-xs">{{ json_encode($bookingLicenceInfo, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </details>
+                @endif
+                <form method="post" action="{{ route('admin.properties.channels.booking.licences', $property) }}" class="mt-4 grid gap-3">@csrf
+                    <label class="field-label">Variant ID
+                        <input type="number" min="1" name="variant_id" required class="input" placeholder="Variant ID from requirements">
+                    </label>
+                    <label class="field-label">Licence fields (JSON array)
+                        <textarea name="content_data_json" rows="5" required class="textarea" placeholder='[{"name":"business_tax_receipt","value":"BTR123456"},{"name":"certificate_number","value":"1234567"}]'></textarea>
+                        <span class="field-help">Use the exact field names returned by Booking.com. Do not guess a licence type or number format.</span>
+                    </label>
+                    <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Submit licence details</button>
+                </form>
+                @if(session('booking_licence_result'))
+                    <pre class="mt-3 max-h-48 overflow-auto rounded-lg bg-slate-50 p-3 text-xs">{{ json_encode(session('booking_licence_result'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                @endif
+            </section>
+        @endif
 
         @if($featureEnabled && $listing && $listing->repull_listing_id)
             <div class="flex flex-wrap gap-2">
