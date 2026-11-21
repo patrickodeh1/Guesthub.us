@@ -176,6 +176,10 @@ class RepullListingService
             $this->event($listing, $link, 'unlist', 'ok');
         } catch (RepullException $e) {
             $this->fail($listing, $link, $channel, $e);
+            // Never tell the host the listing was taken offline when Repull rejected it.
+            // Retryable errors are handled by the caller/queue; non-retryable errors
+            // must also reach the UI instead of being silently converted to success.
+            throw $e;
         }
 
         return $link->fresh();
