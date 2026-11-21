@@ -50,13 +50,13 @@ class RepullPhotoApiTest extends TestCase
             'api.repull.dev/v1/listings/repull-9/photos*' => Http::response(['deleted' => true]),
         ]);
 
-        app(RepullClient::class)->deleteListingPhoto('repull-9', 'listings/repull-9/cover.jpg', 'idem-delete-22');
+        app(RepullClient::class)->deleteListingPhoto('repull-9', 'listings/repull-9/cover.jpg');
 
         Http::assertSent(function ($request) {
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
             return $request->method() === 'DELETE'
                 && ($query['path'] ?? null) === 'listings/repull-9/cover.jpg'
-                && $request->hasHeader('Idempotency-Key', 'idem-delete-22');
+                && ! $request->hasHeader('Idempotency-Key');
         });
     }
 }
