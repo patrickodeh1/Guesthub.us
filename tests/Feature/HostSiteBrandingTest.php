@@ -36,6 +36,7 @@ class HostSiteBrandingTest extends TestCase
             'display_name' => 'New Host Name',
             'brand_color' => '#334455',
             'support_email' => 'host@example.com',
+            'custom_domain' => 'book.example.com',
             'show_powered_by' => '1',
         ])->assertRedirect();
 
@@ -45,6 +46,9 @@ class HostSiteBrandingTest extends TestCase
             'host_site_id' => $site->id,
             'slug' => 'old-host-name',
         ]);
+        $this->assertNotEmpty($site->domain_verification_token);
+        $this->assertNull($site->domain_verified_at);
+        $this->assertSame('book.example.com', $site->custom_domain);
         $this->assertDatabaseHas('host_sites', [
             'id' => $site->id,
             'brand_color' => '#334455',
