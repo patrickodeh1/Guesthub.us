@@ -95,7 +95,9 @@ class RepullListingService
         $payload = $this->mapper->contentPayload($listing);
         unset($payload['photos']);
         if ($photoSync['payload'] !== []) {
-            $payload['photosMode'] = 'append';
+            if ($photoSync['mode'] === 'append') {
+                $payload['photosMode'] = 'append';
+            }
             $payload['photos'] = $photoSync['payload'];
         }
         $res = $this->client->updateListingContent($id, $payload);
@@ -399,7 +401,7 @@ class RepullListingService
         $photos = $listing->photos->sortBy('sort_order')->values();
         $newPhotos = $photos->filter(fn ($photo) => (string) $photo->repull_photo_listing_id !== $repullId)->values();
         if ($newPhotos->isEmpty()) {
-            return ['payload' => [], 'uploaded' => []];
+            return ['payload' => [], 'mode' => null, 'uploaded' => []];
         }
 
         $driver = extension_loaded('imagick') ? ImagickDriver::class : GdDriver::class;
@@ -434,7 +436,32 @@ class RepullListingService
             ];
         }
 
-        return ['payload' => $payload, 'uploaded' => $uploadedPhotos];
+        $urlByPhotoId = [];
+        foreach ($photos as $photo) {
+            if (filled($photo->repull_photo_url)) {
+                $urlByPhotoId[$photo->id] = (string) $photo->repull_photo_url;
+            }
+        }
+        foreach ($uploadedPhotos as $uploaded) {
+            $urlByPhotoId[$uploaded['photo']->id] = $uploaded['url'];
+        }
+
+        $allPhotosHaveUrls = $photos->every(fn ($photo) => isset($urlByPhotoId[$photo->id]));
+        if ($allPhotosHaveUrls) {
+            $payload = $photos->map(fn ($photo) => [
+                'url' => $urlByPhotoId[$photo->id],
+                'caption' => (string) ($photo->alt ?? ''),
+            ])->all();
+            $mode = null; // default Repull semantics are full replacement
+        } else {
+            $payload = collect($uploadedPhotos)->map(fn ($uploaded) => [
+                'url' => $uploaded['url'],
+                'caption' => (string) ($uploaded['photo']->alt ?? ''),
+            ])->all();
+            $mode = $payload !== [] ? 'append' : null;
+        }
+
+        return ['payload' => $payload, 'mode' => $mode, 'uploaded' => $uploadedPhotos];
     }
 
     private function applyResult(PropertyListing $listing, ListingChannelLink $link, string $channel, array $result, string $hash): void
