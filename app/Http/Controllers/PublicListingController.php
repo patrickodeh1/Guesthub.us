@@ -23,12 +23,19 @@ class PublicListingController extends Controller
 
     public function customDomain(Request $request)
     {
+        $applicationHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        if (strtolower($request->getHost()) === $applicationHost) {
+            return app(LandingController::class)->show();
+        }
+
         $site = HostSite::query()
             ->where('custom_domain', strtolower($request->getHost()))
             ->whereNotNull('domain_verified_at')
             ->first();
 
-        return $site ? $this->host($site->slug) : redirect()->route('public.stays.index');
+        abort_unless($site, 404, 'This custom host is not verified for a GuestHub site.');
+
+        return $this->host($site->slug);
     }
 
     public function browse(Request $request)
