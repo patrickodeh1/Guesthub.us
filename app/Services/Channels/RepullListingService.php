@@ -221,11 +221,66 @@ class RepullListingService
                     'phone' => $p?->contact_phone,
                 ]),
             ]), $idem.'-setup');
-            $propertyId = isset($setup['propertyId']) ? (string) $setup['propertyId'] : '';
+            $propertyId = (string) (data_get($setup, 'propertyId') ?? data_get($setup, 'data.propertyId') ?? '');
             if ($propertyId === '') {
                 throw new RepullException('Booking.com property was not created.', 'invalid_response', 0, false, $setup);
             }
             $link->forceFill(['external_listing_id' => $propertyId])->save();
+
+            // create-property creates the first room and its rate product. Persist
+            // its ids so retries never create duplicate Booking.com rooms.
+            $configuredRooms = $listing->rooms_sync_enabled
+                ? $listing->listingRooms()->orderBy('room_number')->orderBy('id')->get()
+                : collect();
+            $firstRoom = $configuredRooms->first();
+            if ($firstRoom && filled(data_get($setup, 'roomId') ?? data_get($setup, 'data.roomId'))) {
+                $firstRoom->forceFill([
+                    'booking_room_id' => (string) (data_get($setup, 'roomId') ?? data_get($setup, 'data.roomId')),
+                    'booking_rate_id' => filled(data_get($setup, 'rateId') ?? data_get($setup, 'data.rateId'))
+                        ? (string) (data_get($setup, 'rateId') ?? data_get($setup, 'data.rateId'))
+                        : null,
+                ])->save();
+            }
+        }
+
+        // Booking.com is a property → room → rate-product hierarchy. A listing
+        // with more than one configured room must add each extra room and verify
+        // that Repull created its rate product before trying to publish.
+        if ($listing->rooms_sync_enabled) {
+            $configuredRooms = $listing->listingRooms()->orderBy('room_number')->orderBy('id')->get();
+            foreach ($configuredRooms->skip(1) as $room) {
+                if (filled($room->booking_room_id) && filled($room->booking_rate_id)) {
+                    continue;
+                }
+
+                $added = $this->client->bookingSetup([
+                    'action' => 'add-room',
+                    'property_id' => (string) $link->external_listing_id,
+                    'listing_id' => $remoteId,
+                ], $idem.'-room-'.$room->id);
+                $roomId = data_get($added, 'roomId') ?? data_get($added, 'data.roomId');
+                $rateId = data_get($added, 'rateId') ?? data_get($added, 'data.rateId');
+                if (! filled($roomId) || ! filled($rateId)) {
+                    throw new ChannelPublishBlocked(
+                        'Booking.com room '.$room->room_number.' was created without an active rate product. Complete its rate setup in Booking.com, then retry.'
+                    );
+                }
+                $room->forceFill([
+                    'booking_room_id' => (string) $roomId,
+                    'booking_rate_id' => (string) $rateId,
+                ])->save();
+            }
+        }
+
+        $advance = $this->client->bookingSetup([
+            'action' => 'advance',
+            'property_id' => (string) $link->external_listing_id,
+        ], $idem.'-advance');
+        $sellable = data_get($advance, 'sellable') ?? data_get($advance, 'data.sellable');
+        $blockers = (array) (data_get($advance, 'blockers') ?? data_get($advance, 'data.blockers') ?? []);
+        if ($sellable !== true) {
+            $detail = $blockers !== [] ? implode('; ', array_map('strval', $blockers)) : 'Booking.com readiness has not confirmed that the property is sellable yet.';
+            throw new ChannelPublishBlocked('Booking.com is not ready to publish: '.$detail);
         }
 
         $res = $this->client->publishBooking($remoteId, ['hotelId' => (string) $link->external_listing_id], $idem);
