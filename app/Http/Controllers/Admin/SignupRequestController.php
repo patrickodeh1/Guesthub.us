@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\SignupApprovedMail;
 use App\Mail\SignupRejectedMail;
 use App\Models\User;
+use App\Services\SmsNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
