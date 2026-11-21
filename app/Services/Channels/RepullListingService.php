@@ -134,13 +134,24 @@ class RepullListingService
         }
 
         $link = $this->linkFor($listing, $channel);
-        $link->forceFill(['state' => 'publishing', 'connection_id' => $connection->id, 'last_error' => null, 'last_error_at' => null])->save();
+        if ($channel === 'vrbo' && $link->state === 'publishing') {
+            throw new ChannelPublishBlocked('Vrbo is already processing this listing. Wait for the publish job to finish before starting another.');
+        }
+        if ($channel !== 'vrbo') {
+            $link->forceFill(['state' => 'publishing', 'connection_id' => $connection->id, 'last_error' => null, 'last_error_at' => null])->save();
+        } else {
+            $link->forceFill(['connection_id' => $connection->id])->save();
+        }
 
         try {
             $remoteId = $this->ensureRemoteListing($listing);
             $this->pushContent($listing);
             $hash = $this->mapper->hash($listing);
             $idem = 'guesthub-pub-'.$channel.'-'.$listing->id.'-'.substr($hash, 0, 16).($force ? '-f'.now()->timestamp : '');
+
+            if ($channel === 'vrbo') {
+                return $this->startVrboPublish($listing, $link, $connection, $remoteId);
+            }
 
             $result = $channel === 'airbnb'
                 ? $this->publishAirbnb($listing, $link, $connection, $remoteId, $force, $idem)
