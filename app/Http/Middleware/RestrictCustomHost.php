@@ -89,7 +89,7 @@ class RestrictCustomHost
 
         // Images used by the host and listing templates are public assets.
         $path = ltrim($request->path(), '/');
-        if (str_starts_with($path, 'img/') || str_starts_with($path, 'og/') || str_starts_with($path, 'storage/')) {
+        if (str_starts_with($path, 'img/') || str_starts_with($path, 'og/') || str_starts_with($path, 'storage/') || str_starts_with($path, 'build/') || str_starts_with($path, 'css/') || str_starts_with($path, 'js/') || str_starts_with($path, 'fonts/') || $path === 'favicon.ico') {
             return $next($request);
         }
 
