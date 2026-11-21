@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Feature;
 use App\Models\Property;
 use App\Models\PropertyLock;
+use App\Models\PropertyListing;
+use App\Models\ListingChannelLink;
 use App\Models\User;
 use App\Services\Billing\BillingQuantityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,6 +60,7 @@ class BillingQuantityResolverTest extends TestCase
         $this->assertSame([
             'per_property' => 2,
             'per_device' => 2,
+            'per_channel_listing' => 0,
         ], $resolver->counts($owner));
 
         $this->assertSame([
@@ -90,4 +93,45 @@ class BillingQuantityResolverTest extends TestCase
             'test_no_device_addon' => 1,
         ]));
     }
+
+    public function test_repull_addon_counts_unique_active_channel_listings_only_for_the_host(): void
+    {
+        Role::findOrCreate('owner');
+        $owner = User::factory()->create();
+        $owner->assignRole('owner');
+        $other = User::factory()->create();
+        $other->assignRole('owner');
+
+        $property = Property::factory()->create(['owner_id' => $owner->id, 'active' => true]);
+        $otherProperty = Property::factory()->create(['owner_id' => $other->id, 'active' => true]);
+
+        $listing = PropertyListing::create([
+            'property_id' => $property->id,
+            'listing_slug' => 'repull-test-'.$property->id,
+            'public_title' => 'Test listing',
+        ]);
+        $listing->forceFill(['repull_listing_id' => 'repull-id-1'])->save();
+        ListingChannelLink::create(['listing_id' => $listing->id, 'channel' => 'airbnb', 'state' => 'live']);
+        ListingChannelLink::create(['listing_id' => $listing->id, 'channel' => 'booking', 'state' => 'published']);
+
+        $draft = PropertyListing::create([
+            'property_id' => $property->id,
+            'listing_slug' => 'repull-draft-'.$property->id,
+            'public_title' => 'Draft listing',
+        ]);
+        $draft->forceFill(['repull_listing_id' => 'repull-id-2'])->save();
+        ListingChannelLink::create(['listing_id' => $draft->id, 'channel' => 'airbnb', 'state' => 'unlisted']);
+
+        $foreignListing = PropertyListing::create([
+            'property_id' => $otherProperty->id,
+            'listing_slug' => 'repull-other-'.$otherProperty->id,
+            'public_title' => 'Other host listing',
+        ]);
+        $foreignListing->forceFill(['repull_listing_id' => 'repull-id-3'])->save();
+        ListingChannelLink::create(['listing_id' => $foreignListing->id, 'channel' => 'airbnb', 'state' => 'live']);
+
+        $this->assertSame(1, app(BillingQuantityResolver::class)->counts($owner)['per_channel_listing']);
+        $this->assertSame(1, app(BillingQuantityResolver::class)->counts($other)['per_channel_listing']);
+    }
+
 }
