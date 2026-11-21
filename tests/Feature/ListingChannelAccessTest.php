@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
 use App\Models\Amenity;
+use App\Jobs\RefreshChannelStatus;
 use App\Models\ListingRoom;
 use App\Models\ListingChannelLink;
 use App\Models\Property;
@@ -175,6 +176,51 @@ class ListingChannelAccessTest extends TestCase
                 'isPrivate' => true,
             ],
         ], $payload['rooms']);
+    }
+
+
+    public function test_airbnb_status_refresh_uses_listing_publish_status_and_stores_locked_fields(): void
+    {
+        config(['repull.enabled' => true, 'repull.api_key' => 'sk_live_test', 'repull.base_url' => 'https://api.repull.dev']);
+        Http::fake([
+            'api.repull.dev/v1/channels/airbnb/listings' => Http::response([
+                'data' => [[
+                    'listingId' => 'repull-4118',
+                    'connections' => [[
+                        'id' => '55', 'airbnbId' => '1693389202618766851',
+                        'accountId' => '112233', 'active' => true, 'primary' => true,
+                    ]],
+                ]],
+            ]),
+            'api.repull.dev/v1/listings/repull-4118/publish-status' => Http::response([
+                'connections' => [[
+                    'connectionId' => '55', 'channel' => 'airbnb',
+                    'connected' => true, 'syncEnabled' => false,
+                    'lockedFields' => ['name', 'property_type_category'],
+                ]],
+            ]),
+        ]);
+
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        $listing->forceFill(['repull_listing_id' => 'repull-4118'])->save();
+        $connection = ChannelConnection::create([
+            'owner_id' => $owner->id, 'provider' => 'repull', 'channel' => 'airbnb',
+            'external_account_id' => '112233', 'status' => 'connected',
+            'meta' => ['connection_id' => '55'],
+        ]);
+        $link = ListingChannelLink::create([
+            'listing_id' => $listing->id, 'channel' => 'airbnb',
+            'connection_id' => $connection->id, 'state' => 'live',
+        ]);
+
+        (new RefreshChannelStatus($owner->id))->handle(app(\\App\\Services\\Repull\\RepullClient::class));
+
+        $fresh = $link->fresh();
+        $this->assertFalse($fresh->writable);
+        $this->assertSame('none', $fresh->sync_category);
+        $this->assertContains('name', $fresh->locked_fields);
+        $this->assertNotNull($fresh->status_checked_at);
     }
 
 }
