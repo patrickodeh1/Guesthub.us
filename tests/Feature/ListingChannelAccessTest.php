@@ -86,4 +86,41 @@ class ListingChannelAccessTest extends TestCase
         $this->assertSame(['photos' => 'At least one photo'], $mapper->missing($listing, 'airbnb'));
         $this->assertNotEmpty($mapper->warnings($listing));
     }
+
+    public function test_failed_unlist_is_recorded_and_not_reported_as_success(): void
+    {
+        config(['repull.enabled' => true, 'repull.api_key' => 'sk_live_test', 'repull.base_url' => 'https://api.repull.dev']);
+        Http::fake([
+            'api.repull.dev/v1/channels/booking/properties/*' => Http::response([
+                'error' => ['code' => 'not_ready', 'message' => 'Property cannot be closed yet.'],
+            ], 422),
+        ]);
+
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner, [
+            'address' => '1200 Ocean Drive, Miami Beach, FL 33139',
+            'city' => 'Miami Beach', 'state' => 'FL', 'zip' => '33139',
+            'latitude' => 25.78, 'longitude' => -80.13, 'beds' => 3, 'baths' => 1.5, 'country' => 'US',
+        ]);
+        $listing->forceFill(['repull_listing_id' => 'repull-listing-1'])->save();
+        $connection = ChannelConnection::create([
+            'owner_id' => $owner->id, 'provider' => 'repull', 'channel' => 'booking',
+            'external_account_id' => 'booking-account-1', 'status' => 'connected',
+        ]);
+        $link = ListingChannelLink::create([
+            'listing_id' => $listing->id, 'channel' => 'booking', 'connection_id' => $connection->id,
+            'external_listing_id' => 'hotel-1', 'state' => 'live',
+        ]);
+
+        try {
+            app(\\App\\Services\\Channels\\RepullListingService::class)->unlist($listing->load('property'), 'booking');
+            $this->fail('Expected Repull rejection to be propagated.');
+        } catch (\\App\\Services\\Repull\\RepullException $e) {
+            $this->assertSame('not_ready', $e->errorCode);
+        }
+
+        $this->assertSame('error', $link->fresh()->state);
+        $this->assertSame('not_ready', $link->fresh()->last_error ? 'not_ready' : null);
+    }
+
 }
