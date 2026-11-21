@@ -31,10 +31,20 @@ class PropertyListing extends Model
                 ->whereIn('state', ['published', 'live', 'partial'])
                 ->pluck('channel');
 
-            foreach ($channels as $channel) {
-                PublishListingToChannel::dispatch($listing->id, (string) $channel)->afterCommit();
-            }
+            self::queueChannelContentSync($listing->id);
         });
+    }
+
+    public static function queueChannelContentSync(int $listingId): void
+    {
+        $listing = self::query()->with('channelLinks')->find($listingId);
+        if (! $listing || blank($listing->published_at)) {
+            return;
+        }
+
+        foreach ($listing->channelLinks->whereIn('state', ['published', 'live', 'partial']) as $link) {
+            PublishListingToChannel::dispatch($listing->id, (string) $link->channel)->afterCommit();
+        }
     }
 
     protected $fillable = [
