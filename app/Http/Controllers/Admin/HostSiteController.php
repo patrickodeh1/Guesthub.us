@@ -10,6 +10,7 @@ use App\Services\MediaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class HostSiteController extends Controller
@@ -107,6 +108,7 @@ class HostSiteController extends Controller
     public function verifyDomain(Request $request)
     {
         $owner = $request->user();
+        abort_unless(FeatureGate::enabled($owner, 'direct_booking_site'), 403);
         $site = HostSite::query()->where('user_id', $owner->id)->firstOrFail();
         abort_unless($site->custom_domain && $site->domain_verification_token, 422, 'Add a custom domain first.');
 
