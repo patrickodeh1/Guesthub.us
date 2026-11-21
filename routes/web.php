@@ -262,6 +262,11 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::post('plan/switch', [\App\Http\Controllers\Admin\PlanController::class, 'switchPlan'])->middleware('role:owner,company')->name('plan.switch');
 
     // ─── Property inventory ──────────────────────────────────────────────────
+    Route::middleware('role:admin,owner,company')->group(function () {
+        Route::get('host-site', [\\App\\Http\\Controllers\\Admin\\HostSiteController::class, 'edit'])->name('host-site.edit');
+        Route::put('host-site', [\\App\\Http\\Controllers\\Admin\\HostSiteController::class, 'update'])->name('host-site.update');
+    });
+
     Route::middleware('role:admin,owner,company,manager')->prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\InventoryController::class, 'index'])->name('index');
         Route::post('items', [\App\Http\Controllers\Admin\InventoryController::class, 'storeItem'])->name('items.store');
