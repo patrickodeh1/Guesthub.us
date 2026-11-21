@@ -413,6 +413,12 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     Route::put('content/{property}/{category}', [ContentController::class, 'updatePage'])->name('content.update')->middleware(['role:admin,owner,company,manager', 'property.access']);
     Route::post('content/{property}/{category}/unlink', [ContentController::class, 'unlinkPage'])->name('content.unlink')->middleware(['role:admin,owner,company,manager', 'property.access']);
     Route::put('content/{property}/{category}/assignment', [ContentController::class, 'updateAssignment'])->name('content.assignment.update')->middleware(['role:admin,owner,company,manager', 'property.access']);
+    Route::middleware('role:admin')->prefix('content/repull-amenities')->name('repull-amenities.')->group(function () {
+        Route::get('/', [\\App\\Http\\Controllers\\Admin\\RepullAmenityCatalogController::class, 'index'])->name('index');
+        Route::post('/', [\\App\\Http\\Controllers\\Admin\\RepullAmenityCatalogController::class, 'store'])->name('store');
+        Route::put('/{amenity}', [\\App\\Http\\Controllers\\Admin\\RepullAmenityCatalogController::class, 'update'])->name('update');
+        Route::delete('/{amenity}', [\\App\\Http\\Controllers\\Admin\\RepullAmenityCatalogController::class, 'destroy'])->name('destroy');
+    });
     Route::get('content/{property}/amenities', [ContentController::class, 'amenitiesIndex'])->name('amenities.index')->middleware(['role:admin,owner,company,manager', 'property.access']);
     Route::get('content/{property}/amenities/create', [ContentController::class, 'createAmenity'])->name('amenities.create')->middleware(['role:admin,owner,company,manager', 'property.access']);
     Route::post('content/{property}/amenities', [ContentController::class, 'storeAmenity'])->name('amenities.store')->middleware(['role:admin,owner,company,manager', 'property.access']);
