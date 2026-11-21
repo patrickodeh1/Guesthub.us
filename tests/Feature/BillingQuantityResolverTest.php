@@ -94,7 +94,7 @@ class BillingQuantityResolverTest extends TestCase
         ]));
     }
 
-    public function test_repull_addon_counts_unique_active_channel_listings_only_for_the_host(): void
+    public function test_repull_addon_counts_unique_repulllistings_for_the_host_even_when_channels_are_offline(): void
     {
         Role::findOrCreate('owner');
         $owner = User::factory()->create();
@@ -130,7 +130,7 @@ class BillingQuantityResolverTest extends TestCase
         $foreignListing->forceFill(['repull_listing_id' => 'repull-id-3'])->save();
         ListingChannelLink::create(['listing_id' => $foreignListing->id, 'channel' => 'airbnb', 'state' => 'live']);
 
-        $this->assertSame(1, app(BillingQuantityResolver::class)->counts($owner)['per_channel_listing']);
+        $this->assertSame(2, app(BillingQuantityResolver::class)->counts($owner)['per_channel_listing']);
         $this->assertSame(1, app(BillingQuantityResolver::class)->counts($other)['per_channel_listing']);
     }
 
