@@ -30,19 +30,46 @@ class SignupRequestController extends Controller
             'is_active'       => true,
         ])->save();
 
-        Mail::to($user->email)->send(new SignupApprovedMail($user));
+        $delivery = $this->sendTemporaryCredentials($user);
 
-        return back()->with('success', "{$user->name} has been approved as " . ucfirst($data['role']) . '. A password link was emailed.');
+        $message = "{$user->name} has been approved as " . ucfirst($data['role']) . '. A temporary password was emailed';
+        $message .= $delivery['status'] === 'sent' ? ' and texted.' : '. SMS could not be sent: ' . ($delivery['error'] ?? 'delivery failed');
+
+        return back()->with('success', $message);
     }
 
     public function resendSetup(User $user)
     {
         abort_unless(auth()->user()?->hasRole('admin'), 403);
-        abort_unless($user->approval_status === 'approved' && $user->is_active, 422, 'Only active, approved users can receive a password link.');
+        abort_unless($user->approval_status === 'approved' && $user->is_active, 422, 'Only active, approved users can receive temporary credentials.');
 
-        Mail::to($user->email)->send(new SignupApprovedMail($user, true));
+        $delivery = $this->sendTemporaryCredentials($user);
 
-        return back()->with('success', "A new password link was sent to {$user->email}.");
+        $message = "A new temporary password was emailed to {$user->email}";
+        $message .= $delivery['status'] === 'sent' ? ' and texted.' : '. SMS could not be sent: ' . ($delivery['error'] ?? 'delivery failed');
+
+        return back()->with('success', $message);
+    }
+
+    private function sendTemporaryCredentials(User $user): array
+    {
+        // Eight numeric digits are easy to relay by SMS; the forced-change
+        // middleware prevents access to the rest of the app until replaced.
+        $temporaryPassword = (string) random_int(10000000, 99999999);
+
+        $user->forceFill([
+            'password' => $temporaryPassword,
+            'must_change_password' => true,
+        ])->save();
+
+        Mail::to($user->email)->send(new SignupApprovedMail($user, false, $temporaryPassword));
+
+        $loginUrl = route('login');
+        $message = 'Your Guest Hub account is approved. Sign in at ' . $loginUrl
+            . ' using temporary password ' . $temporaryPassword
+            . '. You must change it before accessing the account.';
+
+        return SmsNotificationService::deliver($user->phone_number, $message, 'account-approval');
     }
 
     public function reject(User $user)
