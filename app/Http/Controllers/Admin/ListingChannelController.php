@@ -271,8 +271,10 @@ class ListingChannelController extends Controller
         abort_unless($listing, 404);
         $listing->setRelation('property', $property);
 
+        $data = $request->validate(['hotel_id' => ['nullable', 'string', 'max:128']]);
+
         try {
-            $result = $service->setListingOnline($listing, $request->boolean('online'));
+            $result = $service->setListingOnline($listing, $request->boolean('online'), $data['hotel_id'] ?? null);
         } catch (ChannelPublishBlocked|RepullException $e) {
             return back()->withErrors(['channel' => $e instanceof RepullException ? $this->friendly($e) : $e->getMessage()]);
         }
