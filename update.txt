@@ -12,7 +12,7 @@ Implemented in this delivery
 - Repull readiness results are displayed per channel; OTA-managed title/description fields are marked in the listing editor.
 - Vrbo remains opt-in beta. Publishing is disabled by default (REPULL_VRBO_PUBLISH_ENABLED=false), and the code refuses to edit an existing Vrbo listing.
 - Host-branded pages, slug collision checks/availability feedback, logo/brand styling, slug aliases, custom-domain ownership verification, and custom-host route isolation.
-- Repull channel sync is a recurring subscription add-on (repull_channel_sync), priced by the admin as a per-listing add-on in Packages/Plan. It is not a standalone one-off charge.
+- Repull channel sync is a recurring subscription add-on (repull_channel_sync), priced by the admin as a per-listing add-on in Packages/Plan. It is not a standalone one-off charge. Automatic publish jobs enforce the entitlement too, so queued syncs stop when the add-on is no longer active.
 
 How to access
 - Admin → Properties → Direct booking listing → Channels.
