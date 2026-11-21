@@ -88,12 +88,14 @@ class RepullConnectService
         }
 
         $accessType = $meta['access_type'] ?? $connection->access_type;
-        unset($meta['access_type']);
+        $displayName = $meta['display_name'] ?? $connection->display_name;
+        unset($meta['access_type'], $meta['display_name']);
 
         $connection->fill([
             'owner_id' => $ownerId,
             'status' => 'connected',
             'access_type' => $accessType,
+            'display_name' => $displayName,
             'connected_at' => $connection->connected_at ?? now(),
             'last_error' => null,
             'meta' => array_merge($connection->meta ?? [], array_filter($meta, fn ($v) => $v !== null && $v !== '')),
