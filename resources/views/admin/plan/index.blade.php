@@ -1,7 +1,7 @@
 <x-admin-layout title="Plan">
     @php
         $money = fn ($c) => $c > 0 ? '$'.number_format($c / 100, 2) : 'Free';
-        $unitLabels = ['flat' => '', 'per_property' => ' per property', 'per_device' => ' per device', 'per_channel_listing' => ' per active OTA listing'];
+        $unitLabels = ['flat' => '', 'per_property' => ' per property', 'per_device' => ' per device', 'per_channel_listing' => ' per Repull listing'];
         $includedKeys = $selected ? ($keysByPackage[$selected->id] ?? []) : [];
         $shownAddons = $addonFeatures->reject(fn ($f) => in_array($f->key, $includedKeys, true));
         $adminManaged = $current && $current->billing_source === 'admin';
