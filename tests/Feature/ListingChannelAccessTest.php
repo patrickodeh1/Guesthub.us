@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ChannelConnection;
 use App\Models\Amenity;
+use App\Models\ListingRoom;
 use App\Models\ListingChannelLink;
 use App\Models\Property;
 use App\Models\PropertyListing;
@@ -146,6 +147,34 @@ class ListingChannelAccessTest extends TestCase
 
         $payload = app(ListingContentMapper::class)->contentPayload($listing->load(['property', 'photos']));
         $this->assertSame(['wifi'], $payload['amenities']);
+    }
+
+
+    public function test_mapper_sends_complete_configured_rooms_and_beds_only_when_enabled(): void
+    {
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        $listing->forceFill(['rooms_sync_enabled' => true])->save();
+        ListingRoom::create([
+            'listing_id' => $listing->id,
+            'room_type' => 'bedroom',
+            'room_number' => 1,
+            'room_name' => 'Primary bedroom',
+            'bed_type' => 'queen_bed',
+            'bed_quantity' => 1,
+            'is_private' => true,
+        ]);
+
+        $payload = app(ListingContentMapper::class)->contentPayload($listing->load(['property', 'photos', 'listingRooms']));
+        $this->assertSame([
+            [
+                'roomType' => 'bedroom',
+                'roomNumber' => 1,
+                'roomName' => 'Primary bedroom',
+                'beds' => [['bedType' => 'queen_bed', 'quantity' => 1]],
+                'isPrivate' => true,
+            ],
+        ], $payload['rooms']);
     }
 
 }
