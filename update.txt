@@ -7,11 +7,14 @@ Implemented in this delivery
 - Airbnb and Booking.com content publishing workflows, Booking.com setup/readiness/licence submission, channel offline/online actions, Airbnb listing import into an unpublished draft, and per-listing Airbnb sync status.
 - Published listing auto-sync on canonical listing, property, amenity, room-layout and photo changes. Unchanged content is skipped using a content hash.
 - Airbnb import now verifies the selected remote listing AND connection/account belong to the current host before pulling data.
-- Publish failures are recorded and surfaced; queue retries are limited to retryable vendor/network failures.
+- Publish failures are recorded and surfaced; queue retries are limited to retryable vendor/network failures. Fixed the queued-publish state guard so manually queued jobs actually run when the controller has marked the link `publishing`.
+- Repull photo-delete requests now pass the returned storage path in the required query string.
 - Multiple bed types/quantities can be configured per room.
+- Admin-maintained global Repull amenity catalog with host-side picker; only documented example IDs are seeded, and admins can add further IDs confirmed by Repull.
+- Structured Booking.com licence editor with variant ID and editable field/value rows.
 - Repull readiness results are displayed per channel; OTA-managed title/description fields are marked in the listing editor.
 - Vrbo remains opt-in beta. Publishing is disabled by default (REPULL_VRBO_PUBLISH_ENABLED=false), and the code refuses to edit an existing Vrbo listing.
-- Host-branded pages, slug collision checks/availability feedback, logo/brand styling, slug aliases, custom-domain ownership verification, and custom-host route isolation.
+- Host-branded pages, slug collision checks/availability feedback, logo/brand styling, slug aliases, custom-domain ownership verification, custom-host route isolation and host-scoped SEO resources.
 - Repull channel sync is a recurring subscription add-on (repull_channel_sync), priced by the admin as a per-listing add-on in Packages/Plan. It is not a standalone one-off charge. Automatic publish jobs enforce the entitlement too, so queued syncs stop when the add-on is no longer active.
 
 How to access
