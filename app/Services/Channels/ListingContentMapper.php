@@ -95,9 +95,11 @@ class ListingContentMapper
 
         if ($listing->rooms_sync_enabled) {
             $payload['rooms'] = $listing->listingRooms->map(function ($room) {
-                $beds = filled($room->bed_type) && (int) $room->bed_quantity > 0
-                    ? [['bedType' => $room->bed_type, 'quantity' => (int) $room->bed_quantity]]
-                    : [];
+                $beds = is_array($room->beds) && $room->beds !== []
+                    ? $room->beds
+                    : (filled($room->bed_type) && (int) $room->bed_quantity > 0
+                        ? [['bedType' => $room->bed_type, 'quantity' => (int) $room->bed_quantity]]
+                        : []);
 
                 return array_filter([
                     'roomType' => $room->room_type,
