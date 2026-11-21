@@ -102,10 +102,10 @@
                         <input type="number" min="0" max="50" step="0.5" name="bathrooms" value="{{ old('bathrooms', $property->baths) }}" class="input">
                     </label>
                     <label class="field-label">Check-in time
-                        <input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ?? '16:00') }}" class="input">
+                        <input type="time" name="checkin_time" value="{{ old('checkin_time', $property->checkin_time ? substr((string) $property->checkin_time, 0, 5) : '16:00') }}" class="input">
                     </label>
                     <label class="field-label">Check-out time
-                        <input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ?? '11:00') }}" class="input">
+                        <input type="time" name="checkout_time" value="{{ old('checkout_time', $property->checkout_time ? substr((string) $property->checkout_time, 0, 5) : '11:00') }}" class="input">
                     </label>
                     <label class="field-label">Property type
                         <select name="property_type" class="input">
