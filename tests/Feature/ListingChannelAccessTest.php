@@ -286,7 +286,7 @@ class ListingChannelAccessTest extends TestCase
             app(ListingContentMapper::class),
         );
         $this->assertSame('error', $pendingLink->fresh()->state);
-        $this->assertStringContainsString('subscription is not active', $pendingLink->fresh()->last_error);
+        $this->assertStringContainsString('not active for this host subscription', $pendingLink->fresh()->last_error);
 
     }
 
