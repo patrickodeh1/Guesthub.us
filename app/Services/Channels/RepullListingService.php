@@ -105,14 +105,6 @@ class RepullListingService
         if (in_array('photos', $deferred, true)) {
             throw new RepullException('Repull deferred the listing photos instead of attaching them to the canonical listing.', 'photo_attach_deferred');
         }
-        foreach ($photoSync['uploaded'] as $uploaded) {
-            $uploaded['photo']->forceFill([
-                'repull_photo_listing_id' => $id,
-                'repull_photo_path' => $uploaded['path'],
-                'repull_photo_url' => $uploaded['url'],
-                'repull_uploaded_at' => now(),
-            ])->save();
-        }
         $out = ['changed' => (array) ($res['changed'] ?? []), 'deferred' => (array) ($res['deferred'] ?? [])];
         $this->event($listing, null, 'push_content', 'ok', null, $out);
 
@@ -425,6 +417,13 @@ class RepullListingService
                 'image/jpeg',
                 $jpeg,
             );
+
+            $photo->forceFill([
+                'repull_photo_listing_id' => $repullId,
+                'repull_photo_path' => $uploaded['path'],
+                'repull_photo_url' => $uploaded['publicUrl'],
+                'repull_uploaded_at' => now(),
+            ])->save();
 
             $uploadedPhotos[] = ['photo' => $photo, 'path' => $uploaded['path'], 'url' => $uploaded['publicUrl']];
 
