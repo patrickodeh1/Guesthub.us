@@ -38,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Deny-by-default resource checks for {session}, {property}, {room} and {task} route parameters.
         $middleware->appendToGroup('web', EnforceResourceAccess::class);
+        $middleware->appendToGroup('api', RestrictCustomHost::class);
         $middleware->prepend(CheckPostSize::class);
         $middleware->appendToGroup('web', [
             EnsureUserIsActive::class,
