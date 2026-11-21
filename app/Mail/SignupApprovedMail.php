@@ -20,7 +20,7 @@ class SignupApprovedMail extends Mailable
     {
         if ($this->temporaryPassword !== null) {
             $siteName = Branding::siteName();
-            $body = "Hi {$this->user->name},\\n\\nYour {$siteName} account has been approved. Use the temporary password below to sign in. You will be required to choose a new password before you can access the account.";
+            $body = "Hi {$this->user->name},\n\nYour {$siteName} account has been approved. Use the temporary password below to sign in. You will be required to choose a new password before you can access the account.";
 
             return $this->subject("Your {$siteName} account is approved")
                 ->view('emails.signup-approved', [
