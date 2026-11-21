@@ -234,6 +234,7 @@ class PropertyListingController extends Controller
                             'room_name' => $room['room_name'] ?? null,
                             'bed_type' => $room['bed_type'] ?? null,
                             'bed_quantity' => $room['bed_quantity'] ?? null,
+                            'beds' => filled($room['bed_type'] ?? null) && ! empty($room['bed_quantity']) ? [['bedType' => $room['bed_type'], 'quantity' => (int) $room['bed_quantity']]] : [],
                             'is_private' => (bool) ($room['is_private'] ?? true),
                         ]);
                     }
