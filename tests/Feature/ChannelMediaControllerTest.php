@@ -40,7 +40,9 @@ class ChannelMediaControllerTest extends TestCase
             'listingPhoto' => $photo->id,
         ]);
 
-        $this->get($url)->assertOk()->assertSee('fake-image-bytes');
+        $this->get($url)->assertOk()
+            ->assertHeader('Cache-Control', 'public, max-age=86400')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 
     public function test_unsigned_channel_media_requests_are_rejected(): void
