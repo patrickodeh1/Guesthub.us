@@ -134,4 +134,23 @@ class BillingQuantityResolverTest extends TestCase
         $this->assertSame(1, app(BillingQuantityResolver::class)->counts($other)['per_channel_listing']);
     }
 
+
+    public function test_repull_addon_reserves_one_billable_listing_before_first_publish(): void
+    {
+        Role::findOrCreate('owner');
+        $owner = User::factory()->create();
+        $owner->assignRole('owner');
+        Feature::create([
+            'key' => 'repull_channel_sync_test',
+            'name' => 'Repull channel sync test',
+            'is_free' => false,
+            'price_cents' => 500,
+            'active' => true,
+            'billing_unit' => 'per_channel_listing',
+        ]);
+
+        $resolver = app(BillingQuantityResolver::class);
+        $this->assertSame(1, $resolver->resolve($owner, ['repull_channel_sync_test' => 1])['repull_channel_sync_test']);
+    }
+
 }
