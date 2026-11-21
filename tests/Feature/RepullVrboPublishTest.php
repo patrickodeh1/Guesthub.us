@@ -45,6 +45,10 @@ class RepullVrboPublishTest extends TestCase
             app(ListingContentMapper::class),
         );
 
+        Http::assertSent(function ($request) {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+            return $request->method() === 'GET' && ($query['jobId'] ?? null) === 'job-vrbo-9';
+        });
         $link->refresh();
         $this->assertSame('live', $link->state);
         $this->assertTrue($link->live);
