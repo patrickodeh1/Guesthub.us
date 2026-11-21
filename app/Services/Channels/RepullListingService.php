@@ -28,8 +28,8 @@ class RepullListingService
     /** Channels the UI knows about. */
     public const CHANNELS = ['airbnb', 'booking', 'vrbo'];
 
-    /** Channels GuestHub can publish to today. Vrbo is connect-only until verified (plan task T4.7). */
-    public const PUBLISHABLE = ['airbnb', 'booking', 'vrbo'];
+    /** Channels whose content publishing is generally available. Vrbo is gated separately. */
+    public const PUBLISHABLE = ['airbnb', 'booking'];
 
     public function __construct(private RepullClient $client, private ListingContentMapper $mapper)
     {
@@ -119,8 +119,12 @@ class RepullListingService
      */
     public function publish(PropertyListing $listing, string $channel, bool $force = false, ?string $hotelId = null): ListingChannelLink
     {
-        if (! in_array($channel, self::PUBLISHABLE, true)) {
+        $vrboEnabled = $channel === 'vrbo' && (bool) config('repull.vrbo_publish_enabled', false);
+        if (! in_array($channel, self::PUBLISHABLE, true) && ! $vrboEnabled) {
             throw new ChannelPublishBlocked("Publishing to {$channel} is not enabled yet.");
+        }
+        if ($channel === 'vrbo' && filled($this->linkFor($listing, $channel)->external_listing_id)) {
+            throw new ChannelPublishBlocked('Updating an existing Vrbo listing is not supported by the currently documented Repull capability. Manage that listing in Vrbo.');
         }
 
         $missing = $this->mapper->missing($listing, $channel);
