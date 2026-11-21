@@ -399,14 +399,13 @@ class RepullListingService
     {
         $listing->loadMissing('photos');
         $photos = $listing->photos->sortBy('sort_order')->values();
-        $newPhotos = $photos->filter(fn ($photo) => (string) $photo->repull_photo_listing_id !== $repullId)->values();
-        if ($newPhotos->isEmpty()) {
+        if ($photos->isEmpty()) {
             return ['payload' => [], 'mode' => null, 'uploaded' => []];
         }
+        $newPhotos = $photos->filter(fn ($photo) => (string) $photo->repull_photo_listing_id !== $repullId)->values();
 
         $driver = extension_loaded('imagick') ? ImagickDriver::class : GdDriver::class;
         $manager = new ImageManager(new $driver);
-        $payload = [];
         $uploadedPhotos = [];
 
         foreach ($newPhotos as $photo) {
@@ -429,10 +428,6 @@ class RepullListingService
 
             $uploadedPhotos[] = ['photo' => $photo, 'path' => $uploaded['path'], 'url' => $uploaded['publicUrl']];
 
-            $payload[] = [
-                'url' => $uploaded['publicUrl'],
-                'caption' => (string) ($photo->alt ?? ''),
-            ];
         }
 
         $urlByPhotoId = [];
