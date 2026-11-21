@@ -141,10 +141,10 @@ class RepullClient
         return $this->request($method, '/v1/channels/booking/content', $body, null, $query);
     }
 
-    /** GET /v1/channels/airbnb/listings/{connectionId}/details → locked fields and channel-specific metadata. */
-    public function getAirbnbListingDetails(string $airbnbListingId): array
+    /** GET /v1/channels/airbnb/listings/{listingId}/details → locked fields and channel-specific metadata. */
+    public function getAirbnbListingDetails(string $repullListingId): array
     {
-        return $this->request('GET', '/v1/channels/airbnb/listings/'.rawurlencode($airbnbListingId).'/details');
+        return $this->request('GET', '/v1/channels/airbnb/listings/'.rawurlencode($repullListingId).'/details');
     }
 
     /** POST /v1/listings/{id}/pull/airbnb — synchronously refresh the canonical copy from Airbnb. */
