@@ -473,7 +473,7 @@ class RepullListingService
         }
 
         $urls = $this->mapper->photoUrls($listing);
-        $urlById = collect($urls)->keyBy(fn ($photo) => (int) ($photo['photoId'] ?? 0));
+        $urlById = collect($urls)->keyBy(fn ($photo) => (int) ($photo['localPhotoId'] ?? 0));
         $payload = $newPhotos->map(function ($photo) use ($urlById) {
             $url = $urlById->get((int) $photo->id)['url'] ?? null;
             if (! $url) {
