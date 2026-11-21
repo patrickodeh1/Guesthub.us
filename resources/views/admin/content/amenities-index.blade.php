@@ -18,6 +18,7 @@
                 <div class="min-w-0">
                     <p class="font-semibold text-slate-950">{{ $amenity->title }}</p>
                     <p class="mt-1 text-sm text-slate-500">{{ $amenity->active ? 'Active' : 'Inactive' }}</p>
+                    <p class="mt-1 text-xs {{ $amenity->repull_amenity_id ? 'text-emerald-700' : 'text-amber-700' }}">{{ $amenity->repull_amenity_id ? 'Repull ID: '.$amenity->repull_amenity_id : 'Not mapped to Repull' }}</p>
                     @if($amenity->details)
                         <p class="mt-2 text-sm text-slate-600">{{ strip_tags($amenity->details) }}</p>
                     @endif
