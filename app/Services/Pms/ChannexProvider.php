@@ -32,8 +32,11 @@ class ChannexProvider implements PmsProviderInterface
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('services.channex.base_url'), '/');
-        $this->apiKey = config('services.channex.api_key');
+        $repullMode = config('pms.provider') === 'repull';
+        $this->baseUrl = rtrim((string) config($repullMode ? 'services.repull.channex_base_url' : 'services.channex.base_url'), '/');
+        $this->apiKey = $repullMode
+            ? config('services.repull.api_key')
+            : config('services.channex.api_key');
     }
 
     private function client()
