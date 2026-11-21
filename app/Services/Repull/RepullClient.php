@@ -45,7 +45,7 @@ class RepullClient
                 'POST' => $http->post($url, $body),
                 'PUT' => $http->put($url, $body),
                 'PATCH' => $http->patch($url, $body),
-                'DELETE' => $http->delete($url, $body),
+                'DELETE' => $http->delete($query !== [] ? $url.'?'.http_build_query($query) : $url, $body),
                 default => throw new RepullException('Unsupported method '.$method, 'invalid_request'),
             };
         } catch (ConnectionException $e) {
