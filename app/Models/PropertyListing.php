@@ -20,7 +20,7 @@ class PropertyListing extends Model
             $contentFields = [
                 'property_id', 'public_title', 'public_description', 'max_guests',
                 'bedrooms', 'property_type', 'room_type', 'base_rate_cents', 'cleaning_fee_cents',
-                'cancellation_policy', 'house_rules', 'listing_type',
+                'cancellation_policy', 'house_rules', 'listing_type', 'rooms_sync_enabled',
             ];
 
             if (blank($listing->published_at) || ! $listing->wasChanged($contentFields)) {
@@ -73,6 +73,7 @@ class PropertyListing extends Model
         'meta_title',
         'meta_description',
         'repull_listing_id',
+        'rooms_sync_enabled',
     ];
 
     protected function casts(): array
@@ -89,6 +90,7 @@ class PropertyListing extends Model
             'lease_auto_route_29_nights' => 'boolean',
             'lease_application_fee_cents' => 'integer',
             'published_at' => 'datetime',
+            'rooms_sync_enabled' => 'boolean',
         ];
     }
 
@@ -100,6 +102,11 @@ class PropertyListing extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(ListingPhoto::class, 'listing_id')->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function listingRooms(): HasMany
+    {
+        return $this->hasMany(ListingRoom::class, 'listing_id')->orderBy('room_number')->orderBy('id');
     }
 
     public function channelLinks(): HasMany
