@@ -36,7 +36,7 @@ class HostSiteController extends Controller
             ],
         );
 
-        return view('admin.host-sites.edit', compact('site'));
+        return view('admin.host-sites.edit', ['site' => $site, 'domainTarget' => config('services.host_sites.domain_target', parse_url(config('app.url'), PHP_URL_HOST))]);
     }
 
     public function update(Request $request)
@@ -60,6 +60,7 @@ class HostSiteController extends Controller
             'support_email' => ['nullable', 'email', 'max:255'],
             'logo' => ['nullable', 'image', 'max:5120'],
             'show_powered_by' => ['nullable', 'boolean'],
+            'custom_domain' => ['nullable', 'string', 'max:253', 'regex:/\\A(?=.{4,253}\\z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}\\z/i', Rule::unique('host_sites', 'custom_domain')->ignore($site->id)],
         ]);
 
         if (in_array($data['slug'], self::RESERVED, true)) {
@@ -84,6 +85,13 @@ class HostSiteController extends Controller
             $site->logo_path = $path;
         }
 
+        $customDomain = strtolower(rtrim(trim((string) ($data['custom_domain'] ?? '')), '.'));
+        if ($customDomain !== (string) $site->custom_domain) {
+            $site->custom_domain = $customDomain !== '' ? $customDomain : null;
+            $site->domain_verification_token = $customDomain !== '' ? Str::random(48) : null;
+            $site->domain_verified_at = null;
+        }
+
         $site->fill([
             'slug' => $newSlug,
             'display_name' => trim($data['display_name']),
@@ -93,6 +101,32 @@ class HostSiteController extends Controller
         ])->save();
 
         return back()->with('success', 'Your host site branding has been saved.');
+    }
+
+
+    public function verifyDomain(Request $request)
+    {
+        $owner = $request->user();
+        $site = HostSite::query()->where('user_id', $owner->id)->firstOrFail();
+        abort_unless($site->custom_domain && $site->domain_verification_token, 422, 'Add a custom domain first.');
+
+        $records = function_exists('dns_get_record')
+            ? @dns_get_record('_guesthub-verification.'.$site->custom_domain, DNS_TXT)
+            : [];
+        $verified = collect($records ?: [])->contains(function ($record) use ($site) {
+            $txt = (string) ($record['txt'] ?? '');
+            $entries = (array) ($record['entries'] ?? []);
+            return hash_equals($site->domain_verification_token, $txt)
+                || in_array($site->domain_verification_token, $entries, true);
+        });
+
+        if (! $verified) {
+            return back()->withErrors(['custom_domain' => 'The TXT verification record was not found yet. DNS changes can take time to propagate.']);
+        }
+
+        $site->forceFill(['domain_verified_at' => now()])->save();
+
+        return back()->with('success', 'Custom domain ownership verified. Configure DNS routing and a valid TLS certificate before sharing the domain.');
     }
 
     private function uniqueSlug(string $desired, ?HostSite $current = null): string
