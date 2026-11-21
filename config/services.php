@@ -86,6 +86,12 @@ return [
         'webhook_secret' => env('WHEELHOUSE_WEBHOOK_SECRET'),
     ],
 
+    'repull' => [
+        'api_key' => env('REPULL_API_KEY'),
+        'base_url' => env('REPULL_BASE_URL', 'https://api.repull.dev'),
+        'channex_base_url' => env('REPULL_CHANNEX_BASE_URL', 'https://api.repull.dev/channex/api/v1'),
+    ],
+
     'channex' => [
         'api_key' => env('CHANNEX_API_KEY'),
         'base_url' => env('CHANNEX_BASE_URL', 'https://staging.channex.io/api/v1'),
