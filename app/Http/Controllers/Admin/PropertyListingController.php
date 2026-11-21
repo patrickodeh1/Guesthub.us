@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Feature;
 use App\Models\HostPaymentMethod;
 use App\Models\ListingPhoto;
+use App\Models\ListingRoom;
 use App\Models\MediaFile;
 use App\Models\Property;
 use App\Models\PropertyListing;
@@ -32,7 +33,8 @@ class PropertyListingController extends Controller
 
         return view('admin.listings.edit', [
             'property' => $property->load(['amenities']),
-            'listing' => $property->listing()->with('photos')->firstOrNew(),
+            'listing' => $property->listing()->with(['photos', 'listingRooms'])->firstOrNew(),
+            'listingRooms' => $property->listing?->listingRooms ?? collect(),
             'paymentMethods' => $property->owner_id
                 ? HostPaymentMethod::query()->where('owner_id', $property->owner_id)->orderBy('id')->get()
                 : collect(),
@@ -56,6 +58,14 @@ class PropertyListingController extends Controller
             'public_description' => ['nullable', 'string', 'max:30000'],
             'max_guests' => ['nullable', 'integer', 'min:1', 'max:100'],
             'bedrooms' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'rooms_sync_enabled' => ['nullable', 'boolean'],
+            'listing_rooms' => ['nullable', 'array', 'max:8'],
+            'listing_rooms.*.room_type' => ['nullable', Rule::in(['bedroom', 'full_bathroom', 'half_bathroom', 'living_room', 'kitchen', 'studio', 'dining_room', 'family_room', 'office', 'garage', 'laundry_room', 'entrance_to_home', 'recreation_area', 'outdoor_space'])],
+            'listing_rooms.*.room_number' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'listing_rooms.*.room_name' => ['nullable', 'string', 'max:120'],
+            'listing_rooms.*.bed_type' => ['nullable', Rule::in(['king_bed', 'queen_bed', 'double_bed', 'single_bed', 'sofa_bed', 'bunk_bed', 'air_mattress', 'futon'])],
+            'listing_rooms.*.bed_quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'listing_rooms.*.is_private' => ['nullable', 'boolean'],
             'property_type' => ['required', Rule::in(['apartment', 'house', 'condo', 'townhouse', 'villa', 'guesthouse', 'hotel', 'other'])],
             'room_type' => ['required', Rule::in(['entire_home', 'private_room', 'shared_room', 'hotel_room'])],
             'base_rate' => ['nullable', 'string', 'max:11', 'regex:/\A\d{1,8}(?:\.\d{1,2})?\z/'],
@@ -99,6 +109,22 @@ class PropertyListingController extends Controller
             throw ValidationException::withMessages(['listing_type' => 'Long-term-only advertising requires long-term lease applications to be enabled for this account.']);
         }
 
+        $roomsSyncEnabled = (bool) ($data['rooms_sync_enabled'] ?? false);
+        $roomRows = collect($data['listing_rooms'] ?? [])
+            ->filter(fn ($room) => filled($room['room_type'] ?? null))
+            ->values();
+        if ($roomsSyncEnabled && $roomRows->isEmpty()) {
+            throw ValidationException::withMessages(['listing_rooms' => 'Add at least one room before enabling room-layout sync.']);
+        }
+        foreach ($roomRows as $room) {
+            if (filled($room['bed_type'] ?? null) && empty($room['bed_quantity'])) {
+                throw ValidationException::withMessages(['listing_rooms' => 'Enter a bed quantity for every selected bed type.']);
+            }
+            if (! filled($room['bed_type'] ?? null) && filled($room['bed_quantity'] ?? null)) {
+                throw ValidationException::withMessages(['listing_rooms' => 'Choose a bed type for every bed quantity.']);
+            }
+        }
+
         $published = (bool) $data['published'];
         $wasPublished = $listing->exists && $listing->published_at !== null;
         $baseRateCents = $this->dollarsToCents($data['base_rate'] ?? null, 'base_rate');
@@ -129,6 +155,7 @@ class PropertyListingController extends Controller
             'bedrooms' => $data['bedrooms'] ?? $property->beds,
             'property_type' => $data['property_type'],
             'room_type' => $data['room_type'],
+            'rooms_sync_enabled' => $roomsSyncEnabled,
             'base_rate_cents' => $baseRateCents,
             'cleaning_fee_cents' => $cleaningFeeCents,
             'tax_percent' => $data['tax_percent'] ?? null,
@@ -178,10 +205,24 @@ class PropertyListingController extends Controller
                 $nextPhotos[] = $this->storePhoto($file, $property, $alt ?: ($title ?: $property->name).' photo', $storedPaths);
             }
 
-            DB::transaction(function () use ($listing, $property, $published, $existingPhotos, $remainingPhotos, $removeIds, $orderIds, $data, $methods, $nextPhotos) {
+            DB::transaction(function () use ($listing, $property, $published, $existingPhotos, $remainingPhotos, $removeIds, $orderIds, $data, $methods, $nextPhotos, $roomsSyncEnabled, $roomRows) {
                 $listing->property()->associate($property);
                 $listing->published_at = $published ? ($listing->published_at ?? now()) : null;
                 $listing->save();
+
+                if ($roomsSyncEnabled) {
+                    $listing->listingRooms()->delete();
+                    foreach ($roomRows as $room) {
+                        $listing->listingRooms()->create([
+                            'room_type' => $room['room_type'],
+                            'room_number' => $room['room_number'] ?? null,
+                            'room_name' => $room['room_name'] ?? null,
+                            'bed_type' => $room['bed_type'] ?? null,
+                            'bed_quantity' => $room['bed_quantity'] ?? null,
+                            'is_private' => (bool) ($room['is_private'] ?? true),
+                        ]);
+                    }
+                }
 
                 $photosById = $existingPhotos->keyBy('id');
                 $sort = 0;
