@@ -192,7 +192,7 @@ class RepullListingService
      *
      * @return array{ok:bool,channels:array<int,array<string,mixed>>}
      */
-    public function setListingOnline(PropertyListing $listing, bool $online): array
+    public function setListingOnline(PropertyListing $listing, bool $online, ?string $hotelId = null): array
     {
         if (! filled($listing->repull_listing_id)) {
             throw new ChannelPublishBlocked('This listing has not been created in Repull yet.');
@@ -211,7 +211,8 @@ class RepullListingService
         $action = $online ? 'online' : 'offline';
         $response = $this->client->request(
             'POST',
-            '/v1/listings/'.rawurlencode((string) $listing->repull_listing_id).'/'.$action
+            '/v1/listings/'.rawurlencode((string) $listing->repull_listing_id).'/'.$action,
+            filled($hotelId) ? ['hotelId' => $hotelId] : []
         );
         $channels = (array) (data_get($response, 'channels') ?? data_get($response, 'data.channels') ?? []);
         if ($channels === []) {
