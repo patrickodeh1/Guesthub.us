@@ -6,6 +6,7 @@ use App\Models\PropertyListing;
 use App\Services\Channels\ListingContentMapper;
 use App\Services\Channels\ChannelPublishBlocked;
 use App\Services\Channels\RepullListingService;
+use App\Services\FeatureGate;
 use App\Services\Repull\RepullException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -40,7 +41,7 @@ class PublishListingToChannel implements ShouldQueue, ShouldBeUnique
     public function handle(RepullListingService $service, ListingContentMapper $mapper): void
     {
         $listing = PropertyListing::with(['property.owner', 'photos', 'channelLinks'])->find($this->listingId);
-        if (! $listing) {
+        if (! $listing || ! $listing->property?->owner || ! FeatureGate::enabled($listing->property->owner, 'repull_channel_sync')) {
             return;
         }
 
