@@ -78,10 +78,30 @@ class ListingChannelController extends Controller
     }
 
     /** Where Repull sends the host after the hosted Connect flow. The webhook records the connection. */
-    public function connected(Request $request)
+    public function connected(Request $request, RepullConnectService $connect)
     {
+        if ($request->query('status') !== 'connected') {
+            return redirect()->route('admin.properties.index')
+                ->with('warning', 'The channel connection was not completed.');
+        }
+
+        $ownerId = $connect->ownerIdFromState((string) $request->query('state', ''));
+        $provider = (string) $request->query('provider', '');
+        $externalAccountId = (string) $request->query('externalAccountId', '');
+        if (! $ownerId || (int) $request->user()->id !== $ownerId || $provider === '' || $externalAccountId === '') {
+            return redirect()->route('admin.properties.index')
+                ->withErrors(['channel' => 'The returned channel connection could not be securely matched to your account.']);
+        }
+
+        try {
+            $connect->confirmConnection($ownerId, $provider, $externalAccountId);
+        } catch (RepullException $e) {
+            return redirect()->route('admin.properties.index')
+                ->withErrors(['channel' => $this->friendly($e)]);
+        }
+
         return redirect()->route('admin.properties.index')
-            ->with('success', 'Channel connection finished. It will show on the Channels screen in a moment.');
+            ->with('success', 'Channel account connected and confirmed.');
     }
 
     public function publish(Request $request, Property $property, string $channel, RepullListingService $service)
