@@ -20,7 +20,7 @@ class PropertyListing extends Model
             $contentFields = [
                 'property_id', 'public_title', 'public_description', 'max_guests',
                 'bedrooms', 'property_type', 'room_type', 'base_rate_cents', 'cleaning_fee_cents',
-                'cancellation_policy', 'house_rules', 'listing_type', 'property_type', 'room_type', 'rooms_sync_enabled',
+                'cancellation_policy', 'house_rules', 'listing_type', 'rooms_sync_enabled',
             ];
 
             if (blank($listing->published_at) || ! $listing->wasChanged($contentFields)) {
