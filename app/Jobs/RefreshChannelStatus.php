@@ -74,6 +74,7 @@ class RefreshChannelStatus implements ShouldQueue
                     return ($connectionId !== '' && $statusId === $connectionId)
                         || (string) ($item['externalAccountId'] ?? '') === (string) $connection->external_account_id;
                 });
+                $status ??= collect($statusConnections)->first(fn ($item) => ($item['channel'] ?? null) === 'airbnb');
 
                 $writableValue = $remoteConnection['writable'] ?? data_get($detailConnection, 'writable') ?? data_get($detailConnection, 'syncEnabled') ?? $remote['writable'] ?? (is_array($status) ? ($status['syncEnabled'] ?? $status['writable'] ?? null) : null);
                 $syncEnabled = $writableValue !== null ? (bool) $writableValue : null;
