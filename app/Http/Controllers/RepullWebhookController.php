@@ -13,6 +13,7 @@ use App\Services\Repull\RepullSignature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Receives Repull webhooks (HMAC-signed). Always answers 200 for events we choose to
