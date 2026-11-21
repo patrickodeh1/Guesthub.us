@@ -93,8 +93,8 @@ class ListingChannelController extends Controller
 
         try {
             $service->unlist($listing, $channel);
-        } catch (ChannelPublishBlocked $e) {
-            return back()->withErrors(['channel' => $e->getMessage()]);
+        } catch (ChannelPublishBlocked|RepullException $e) {
+            return back()->withErrors(['channel' => $e instanceof RepullException ? $this->friendly($e) : $e->getMessage()]);
         }
 
         return back()->with('success', ucfirst($channel).' listing taken off the market.');
