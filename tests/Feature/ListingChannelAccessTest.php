@@ -192,7 +192,7 @@ class ListingChannelAccessTest extends TestCase
                     ]],
                 ]],
             ]),
-            'api.repull.dev/v1/channels/airbnb/listings/55/details' => Http::response(['data' => [['lockedFields' => ['name', 'property_type_category'], 'live' => false]]]),
+            'api.repull.dev/v1/channels/airbnb/listings/repull-4118/details' => Http::response(['data' => [['lockedFields' => ['name', 'property_type_category'], 'live' => false]]]),
             'api.repull.dev/v1/listings/repull-4118/publish-status' => Http::response([
                 'connections' => [[
                     'connectionId' => '55', 'channel' => 'airbnb',
