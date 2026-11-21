@@ -32,7 +32,7 @@ class RepullAddonSubscriptionTest extends TestCase
             'sort_order' => 1,
             'active' => true,
         ]);
-        Feature::create([
+        Feature::updateOrCreate(['key' => 'repull_channel_sync'], [
             'key' => 'repull_channel_sync',
             'name' => 'OTA channel sync (Repull)',
             'is_free' => false,
