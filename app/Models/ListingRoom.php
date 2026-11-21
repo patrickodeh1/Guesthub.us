@@ -27,7 +27,7 @@ class ListingRoom extends Model
 
     protected $fillable = [
         'listing_id', 'room_type', 'room_number', 'room_name',
-        'bed_type', 'bed_quantity', 'is_private',
+        'bed_type', 'bed_quantity', 'is_private', 'booking_room_id', 'booking_rate_id',
     ];
 
     protected function casts(): array
