@@ -209,6 +209,7 @@ public function editPage(Property $property, Category $category)
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:80'],
+            'repull_amenity_id' => ['nullable', 'string', 'max:100', 'regex:/\\A[a-z0-9_]+\\z/'],
             'details' => ['nullable', 'string'],
             'images.*' => ['nullable', 'image', 'max:10240'],
             'existing_images' => ['nullable', 'array'],
