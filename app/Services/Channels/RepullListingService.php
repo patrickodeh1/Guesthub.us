@@ -315,7 +315,7 @@ class RepullListingService
             'content_hash' => $this->mapper->hash($listing),
         ])->save();
 
-        \\App\\Jobs\\PollRepullVrboPublish::dispatch($link->id, $remoteId, $jobId, $mode, 0)
+        PollRepullVrboPublish::dispatch($link->id, $remoteId, $jobId, $mode, 0)
             ->delay(now()->addSeconds(10));
 
         return $link->fresh();
