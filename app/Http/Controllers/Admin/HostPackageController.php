@@ -39,14 +39,14 @@ class HostPackageController extends Controller
         $this->adminOnly($request);
         $features = Feature::query()->where('is_free', false)->orderBy('name')->get();
         $hostPackage = HostPackage::query()->where('user_id', $user->id)->with('package.parent')->first();
-        $included = $hostPackage && $hostPackage->package && $hostPackage->isGranting() ? $hostPackage->package->allFeatureKeys() : [];
+        $included = $hostPackage && $hostPackage->package && $hostPackage->isGranting() ? $hostPackage->package->allFeatureKeys() : [];\n        $billingQuantities = app(BillingQuantityResolver::class)->counts($user);
         $grants = DB::table('host_features')->where('user_id', $user->id)->get()->keyBy('feature_key');
 
         $estimate = $hostPackage && $hostPackage->package && in_array($hostPackage->status, ['active', 'trialing'], true) ? (int) $hostPackage->package->price_cents : 0;
         foreach ($features as $f) {
             $g = $grants->get($f->key);
             if ($g && $g->enabled && ! in_array($f->key, $included, true)) {
-                $units = ($f->billing_unit ?: 'flat') === 'flat' ? 1 : max(1, (int) $g->quantity);
+                $unit = $f->billing_unit ?: 'flat';\n                $units = match ($unit) {\n                    'per_channel_listing' => max(1, (int) $billingQuantities['per_channel_listing']),\n                    'per_property' => max(1, (int) $billingQuantities['per_property']),\n                    'per_device' => max(1, (int) $billingQuantities['per_device']),\n                    default => 1,\n                };
                 $estimate += (int) $f->price_cents * $units;
             }
         }
@@ -58,7 +58,7 @@ class HostPackageController extends Controller
             'hostPackage' => $hostPackage,
             'included' => $included,
             'grants' => $grants,
-            'estimate' => $estimate,
+            'estimate' => $estimate,\n            'billingQuantities' => $billingQuantities,
         ]);
     }
 
@@ -87,7 +87,7 @@ class HostPackageController extends Controller
             }
         }
 
-        DB::transaction(function () use ($user, $package, $data, $features, $trialEnds) {
+        $billingQuantities = app(BillingQuantityResolver::class)->counts($user);\n\n        DB::transaction(function () use ($user, $package, $data, $features, $trialEnds, $billingQuantities) {
             if (! $package) {
                 HostPackage::query()->where('user_id', $user->id)->delete();
             } else {
@@ -110,7 +110,7 @@ class HostPackageController extends Controller
                 $on = ! empty($row['enabled']);
                 $exists = DB::table('host_features')->where('user_id', $user->id)->where('feature_key', $key)->exists();
                 if ($on) {
-                    $qty = max(1, (int) ($row['quantity'] ?? 1));
+                    $unit = $feature->billing_unit ?: 'flat';\n                    $qty = match ($unit) {\n                        'per_channel_listing' => max(1, (int) $billingQuantities['per_channel_listing']),\n                        'per_property' => max(1, (int) $billingQuantities['per_property']),\n                        'per_device' => max(1, (int) $billingQuantities['per_device']),\n                        default => 1,\n                    };
                     if ($exists) {
                         DB::table('host_features')->where('user_id', $user->id)->where('feature_key', $key)
                             ->update(['enabled' => 1, 'quantity' => $qty, 'updated_at' => now()]);
