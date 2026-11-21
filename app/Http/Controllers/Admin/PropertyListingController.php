@@ -63,6 +63,7 @@ class PropertyListingController extends Controller
             'checkin_time' => ['required', 'date_format:H:i'],
             'checkout_time' => ['required', 'date_format:H:i'],
             'rooms_sync_enabled' => ['nullable', 'boolean'],
+            'amenities_sync_enabled' => ['nullable', 'boolean'],
             'listing_rooms' => ['nullable', 'array', 'max:8'],
             'listing_rooms.*.room_type' => ['nullable', Rule::in(['bedroom', 'full_bathroom', 'half_bathroom', 'living_room', 'kitchen', 'studio', 'dining_room', 'family_room', 'office', 'garage', 'laundry_room', 'entrance_to_home', 'recreation_area', 'outdoor_space'])],
             'listing_rooms.*.room_number' => ['nullable', 'integer', 'min:1', 'max:50'],
