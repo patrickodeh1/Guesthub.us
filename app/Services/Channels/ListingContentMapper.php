@@ -234,6 +234,7 @@ class ListingContentMapper
             ->map(fn ($photo) => array_filter([
                 'url' => URL::signedRoute('channels.media.show', ['listingPhoto' => $photo->id]),
                 'caption' => (string) ($photo->alt ?? ''),
+                'localPhotoId' => (int) $photo->id,
             ], fn ($v) => $v !== ''))
             ->filter(fn ($photo) => isset($photo['url']))
             ->values()
