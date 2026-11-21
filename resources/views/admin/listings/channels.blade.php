@@ -106,8 +106,8 @@
                         <div class="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Turn on API sync for this individual listing inside Airbnb. Reconnecting your account will not enable listing-level API sync.</div>
                     @endif
                 @endif
-                @if($state === 'published')
-                    <div class="mt-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">Content is published, but this status does not confirm the listing is live and bookable. Check the channel's activation status.</div>
+                @if($state === 'published' && $link?->live !== true)
+                    <div class="mt-2 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">{{ $link?->live === false ? 'Repull confirms the content is published but the channel listing is not live yet.' : 'Content is published, but the live/bookable state has not been confirmed.' }} Check the channel's activation status.</div>
                 @endif
                 @if($link && $link->last_error)
                     <div class="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-800">{{ $link->last_error }}</div>
