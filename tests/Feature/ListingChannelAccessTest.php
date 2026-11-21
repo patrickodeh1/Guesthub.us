@@ -246,4 +246,31 @@ class ListingChannelAccessTest extends TestCase
         $this->assertNull($service->connectionFor($listing->load('property'), 'airbnb'));
     }
 
+
+    public function test_auto_sync_job_does_not_bypass_the_repull_subscription_addon(): void
+    {
+        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev']);
+        Http::fake();
+
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        $listing->forceFill(['repull_listing_id' => 'repull-listing-disabled'])->save();
+        $connection = ChannelConnection::create([
+            'owner_id' => $owner->id, 'provider' => 'repull', 'channel' => 'airbnb',
+            'external_account_id' => 'airbnb-account-1', 'status' => 'connected', 'access_type' => 'full_access',
+        ]);
+        ListingChannelLink::create([
+            'listing_id' => $listing->id, 'channel' => 'airbnb', 'connection_id' => $connection->id,
+            'state' => 'live', 'content_hash' => 'old-hash',
+        ]);
+
+        (new PublishListingToChannel($listing->id, 'airbnb'))->handle(
+            app(\App\Services\Channels\RepullListingService::class),
+            app(ListingContentMapper::class),
+        );
+
+        Http::assertNothingSent();
+    }
+
+
 }
