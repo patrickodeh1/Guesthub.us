@@ -28,7 +28,10 @@ class ImportFromAirbnbService
             throw new ChannelPublishBlocked('Import is only available for an unpublished draft. Published GuestHub listings are never overwritten by an Airbnb pull.');
         }
 
-        $this->client->pullFromAirbnb($repullListingId, $airbnbConnectionId);
+        $pullResult = $this->client->pullFromAirbnb($repullListingId, $airbnbConnectionId);
+        if (data_get($pullResult, 'refreshedFromChannel') === false || data_get($pullResult, 'data.refreshedFromChannel') === false) {
+            throw new RepullException('Repull could not refresh this listing from Airbnb. Check the account connection and try again later.', 'airbnb_refresh_failed');
+        }
         $response = $this->client->getListing($repullListingId);
         $record = data_get($response, 'data') ?: $response;
         $content = (array) data_get($record, 'content', []);
@@ -140,7 +143,8 @@ class ImportFromAirbnbService
 
             try {
                 $response = Http::timeout(25)->withOptions(['allow_redirects' => false])->get($url);
-                if (! $response->successful() || ! str_starts_with(strtolower((string) $response->header('Content-Type')), 'image/')) {
+                if (! $response->successful() || strlen($response->body()) > 15 * 1024 * 1024
+                    || ! str_starts_with(strtolower((string) $response->header('Content-Type')), 'image/')) {
                     continue;
                 }
 
