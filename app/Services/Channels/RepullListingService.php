@@ -91,8 +91,13 @@ class RepullListingService
     public function pushContent(PropertyListing $listing): array
     {
         $id = $this->ensureRemoteListing($listing);
+        $photos = $this->pushCanonicalPhotos($listing, $id, $idem);
         $payload = $this->mapper->contentPayload($listing);
-        unset($payload['photos']); // Channel photo APIs are separate from canonical content writes.
+        unset($payload['photos']);
+        if ($photos !== []) {
+            $payload['photosMode'] = 'append';
+            $payload['photos'] = $photos;
+        }
         $res = $this->client->updateListingContent($id, $payload);
         $out = ['changed' => (array) ($res['changed'] ?? []), 'deferred' => (array) ($res['deferred'] ?? [])];
         $this->event($listing, null, 'push_content', 'ok', null, $out);
@@ -286,10 +291,6 @@ class RepullListingService
 
         $res = $this->client->publishAirbnb($remoteId, $body, $idem);
         $result = is_array(data_get($res, 'result')) ? data_get($res, 'result') : (is_array(data_get($res, 'data.result')) ? data_get($res, 'data.result') : $res);
-        $photoResult = $this->pushAirbnbPhotos($listing, $remoteId, $idem);
-        $result['photos'] = $photoResult;
-        $result['sections'] = array_values(array_unique(array_merge((array) ($result['sections'] ?? []), ['photos'])));
-
         return $result;
     }
 
@@ -357,8 +358,6 @@ class RepullListingService
             }
         }
 
-        $photoResult = $this->pushBookingPhotos($listing, $link, $remoteId, $idem);
-
         $advance = $this->client->bookingSetup([
             'action' => 'advance',
             'property_id' => (string) $link->external_listing_id,
@@ -373,142 +372,61 @@ class RepullListingService
         $res = $this->client->publishBooking($remoteId, ['hotelId' => (string) ($hotelId ?: $link->external_listing_id)], $idem);
 
         $result = is_array(data_get($res, 'result')) ? data_get($res, 'result') : (is_array(data_get($res, 'data.result')) ? data_get($res, 'data.result') : $res);
-        $result['photos'] = $photoResult;
-        $result['sections'] = array_values(array_unique(array_merge((array) ($result['sections'] ?? []), ['photos'])));
         return $result;
     }
 
 
     /**
-     * Airbnb requires photo bytes as base64; it does not fetch public URLs.
-     * Imported Airbnb photos are already on the channel and are not uploaded again.
+     * Upload local images into Repull's canonical listing via a short-lived storage URL.
+     * The resulting public CDN URLs are then appended to canonical content and distributed
+     * to Airbnb/Booking by the normal publish call.
      */
-    private function pushAirbnbPhotos(PropertyListing $listing, string $repullId, string $idem): array
+    private function pushCanonicalPhotos(PropertyListing $listing, string $repullId, string $idem): array
     {
         $listing->loadMissing('photos');
         $photos = $listing->photos->sortBy('sort_order')->values();
-        if ($photos->isEmpty()) {
-            return ['uploaded' => 0, 'managed' => 0];
+        $newPhotos = $photos->filter(fn ($photo) => (string) $photo->repull_photo_listing_id !== $repullId)->values();
+        if ($newPhotos->isEmpty()) {
+            return [];
         }
 
         $driver = extension_loaded('imagick') ? ImagickDriver::class : GdDriver::class;
         $manager = new ImageManager(new $driver);
-        $newPhotos = [];
-        $managed = 0;
+        $payload = [];
 
-        foreach ($photos as $index => $photo) {
-            $alreadyOnAirbnb = $photo->source_channel === 'airbnb'
-                && (string) $photo->source_listing_id === $repullId;
-            if ($alreadyOnAirbnb) {
-                $managed++;
-                if (filled($photo->source_photo_id)) {
-                    $this->client->updateAirbnbPhoto($repullId, [
-                        'photo_id' => (string) $photo->source_photo_id,
-                        'caption' => (string) ($photo->alt ?? ''),
-                        'sort_order' => $index + 1,
-                    ], $idem.'-photo-'.$photo->source_photo_id);
-                }
-                continue;
-            }
-
+        foreach ($newPhotos as $photo) {
             if (! Storage::disk('public')->exists($photo->path)) {
                 throw new ChannelPublishBlocked('A listing photo is missing from storage. Re-upload it before publishing.');
             }
 
             $bytes = Storage::disk('public')->get($photo->path);
-            if (strlen($bytes) > 24 * 1024 * 1024) {
-                throw new ChannelPublishBlocked('A listing photo exceeds Airbnb\'s 25 MB upload limit.');
+            $jpeg = (string) $manager->read($bytes)->toJpeg(85);
+            if (strlen($jpeg) > 40 * 1024 * 1024) {
+                throw new ChannelPublishBlocked('A converted listing photo exceeds Repull\'s 40 MB upload limit.');
             }
 
-            $jpeg = (string) $manager->read($bytes)->toJpeg(85);
-            if (strlen($jpeg) > 24 * 1024 * 1024) {
-                throw new ChannelPublishBlocked('A converted listing photo exceeds Airbnb\'s 25 MB upload limit.');
-            }
-            $newPhotos[] = [
-                'model' => $photo,
-                'payload' => [
-                    'image' => base64_encode($jpeg),
-                    'caption' => (string) ($photo->alt ?? ''),
-                    'sort_order' => $index + 1,
-                ],
+            $uploaded = $this->client->uploadListingPhoto(
+                $repullId,
+                pathinfo($photo->path, PATHINFO_FILENAME).'.jpg',
+                'image/jpeg',
+                $jpeg,
+            );
+
+            $photo->forceFill([
+                'repull_photo_listing_id' => $repullId,
+                'repull_photo_path' => $uploaded['path'],
+                'repull_photo_url' => $uploaded['publicUrl'],
+                'repull_uploaded_at' => now(),
+            ])->save();
+
+            $payload[] = [
+                'url' => $uploaded['publicUrl'],
+                'caption' => (string) ($photo->alt ?? ''),
             ];
         }
 
-        foreach (array_chunk($newPhotos, 20) as $chunkIndex => $chunk) {
-            $response = $this->client->uploadAirbnbPhotos(
-                $repullId,
-                array_column($chunk, 'payload'),
-                $idem.'-photos-'.$chunkIndex
-            );
-            $remotePhotos = data_get($response, 'photos') ?? data_get($response, 'data.photos') ?? data_get($response, 'data') ?? [];
-            $remotePhotos = is_array($remotePhotos) && array_is_list($remotePhotos) ? $remotePhotos : [];
-            foreach ($chunk as $photoIndex => $item) {
-                $remote = is_array($remotePhotos[$photoIndex] ?? null) ? $remotePhotos[$photoIndex] : [];
-                $item['model']->forceFill([
-                    'source_channel' => 'airbnb',
-                    'source_listing_id' => $repullId,
-                    'source_photo_id' => $remote['photoAirbnbId'] ?? $remote['photo_id'] ?? null,
-                ])->save();
-            }
-        }
-
-        $photoIds = $listing->photos()->orderBy('sort_order')->pluck('source_photo_id')->filter()->values()->all();
-        if (count($photoIds) === $photos->count()) {
-            $this->client->orderAirbnbPhotos($repullId, $photoIds, $idem.'-photo-order');
-        }
-
-        return ['uploaded' => count($newPhotos), 'managed' => $managed];
+        return $payload;
     }
-
-    /**
-     * Booking.com photo content accepts public URLs and is separate from listing content.
-     * Read the current tour first so repeated edits do not append duplicate images.
-     */
-    private function pushBookingPhotos(PropertyListing $listing, ListingChannelLink $link, string $repullId, string $idem): array
-    {
-        $listing->loadMissing('photos');
-        $newPhotos = $listing->photos->sortBy('sort_order')->filter(function ($photo) use ($link) {
-            return $photo->booking_listing_id !== (string) $link->external_listing_id
-                || blank($photo->booking_uploaded_at);
-        })->values();
-
-        if ($newPhotos->isEmpty()) {
-            return ['uploaded' => 0];
-        }
-
-        foreach ($newPhotos as $photo) {
-            if (! Storage::disk('public')->exists($photo->path)) {
-                throw new ChannelPublishBlocked('A listing photo is missing from storage. Re-upload it before publishing.');
-            }
-        }
-
-        $urls = $this->mapper->photoUrls($listing);
-        $urlById = collect($urls)->keyBy(fn ($photo) => (int) ($photo['localPhotoId'] ?? 0));
-        $payload = $newPhotos->map(function ($photo) use ($urlById) {
-            $url = $urlById->get((int) $photo->id)['url'] ?? null;
-            if (! $url) {
-                throw new ChannelPublishBlocked('A listing photo does not have a public signed URL. Re-save the photo and retry.');
-            }
-
-            return ['url' => $url, 'tag' => 'property_building'];
-        })->all();
-
-        $this->client->bookingContent('POST', [
-            'propertyId' => (string) $link->external_listing_id,
-            'type' => 'photos',
-            'photos' => $payload,
-        ], [], $idem.'-booking-photos');
-
-        foreach ($newPhotos as $photo) {
-            $photo->forceFill([
-                'booking_listing_id' => (string) $link->external_listing_id,
-                'booking_uploaded_at' => now(),
-            ])->save();
-        }
-
-        return ['uploaded' => $newPhotos->count()];
-    }
-
 
     private function applyResult(PropertyListing $listing, ListingChannelLink $link, string $channel, array $result, string $hash): void
     {
