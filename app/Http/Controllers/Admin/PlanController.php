@@ -17,7 +17,7 @@ class PlanController extends Controller
 
     /**
      * Accept selected feature keys only. Billable quantities are calculated
-     * server-side from active properties and registered smart-lock devices.
+     * server-side from active properties, registered smart locks, and active OTA listings.
      *
      * @param array<int,string> $excluded
      * @return array<string,int>
