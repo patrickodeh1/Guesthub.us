@@ -27,9 +27,10 @@
                 <label class="field-label md:col-span-2">Host page address
                     <div class="flex items-center gap-2">
                         <span class="shrink-0 text-sm text-slate-500">{{ url('/h') }}/</span>
-                        <input name="slug" value="{{ old('slug', $site->slug) }}" minlength="3" maxlength="40" pattern="[a-z0-9]+(-[a-z0-9]+)*" required class="input">
+                        <input id="host-site-slug" name="slug" value="{{ old('slug', $site->slug) }}" data-check-url="{{ route('admin.host-site.check-slug') }}" minlength="3" maxlength="40" pattern="[a-z0-9]+(-[a-z0-9]+)*" required class="input">
                     </div>
                     <span class="field-help">Lowercase letters, numbers and hyphens. Your previous host-page address will redirect here.</span>
+                    <span id="host-site-slug-status" class="field-help" aria-live="polite"></span>
                 </label>
                 <label class="field-label">Brand color
                     <input type="color" name="brand_color" value="{{ old('brand_color', $site->brand_color) }}" class="input h-12">
@@ -86,4 +87,29 @@
             <a href="{{ route('public.host.show', $site->slug) }}" target="_blank" rel="noopener" class="mt-4 inline-block text-sm font-semibold underline">View your public host page</a>
         </aside>
     </form>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('host-site-slug');
+    const status = document.getElementById('host-site-slug-status');
+    if (!input || !status) return;
+    let requestController = null;
+    input.addEventListener('blur', async () => {
+        const slug = input.value.trim().toLowerCase();
+        if (!slug) { status.textContent = ''; return; }
+        if (requestController) requestController.abort();
+        requestController = new AbortController();
+        status.textContent = 'Checking address…';
+        try {
+            const url = new URL(input.dataset.checkUrl, window.location.origin);
+            url.searchParams.set('slug', slug);
+            const response = await fetch(url, {headers: {'Accept': 'application/json'}, signal: requestController.signal});
+            const result = await response.json();
+            status.textContent = result.message + (result.suggestion ? ' Suggested: ' + result.suggestion : '');
+            status.className = 'field-help ' + (result.available ? 'text-emerald-700' : 'text-amber-700');
+        } catch (error) {
+            if (error.name !== 'AbortError') status.textContent = 'Could not check the address right now.';
+        }
+    });
+});
+</script>
 </x-admin-layout>
