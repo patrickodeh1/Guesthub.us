@@ -20,13 +20,13 @@ class RepullChannexMigrationServiceTest extends TestCase
         ]);
         Http::fake([
             'api.repull.dev/v1/migrations/channex' => Http::response([
-                'data' => ['attributes' => ['dry_run' => true, 'complete' => true]],
+                'data' => ['dryRun' => true, 'complete' => true, 'summary' => ['properties' => ['matched' => 1]]],
             ]),
         ]);
 
         $result = app(RepullChannexMigrationService::class)->import('production', true);
 
-        $this->assertTrue(data_get($result, 'data.attributes.dry_run'));
+        $this->assertTrue(data_get($result, 'data.dryRun'));
         Http::assertSent(fn ($request) => $request->url() === 'https://api.repull.dev/v1/migrations/channex'
             && $request->hasHeader('Authorization', 'Bearer repull-secret')
             && $request['apiKey'] === 'channex-secret'
