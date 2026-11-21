@@ -53,7 +53,7 @@ class ListingChannelController extends Controller
         }
 
         $missing = [];
-        foreach (RepullListingService::PUBLISHABLE as $channel) {
+        foreach (RepullListingService::CHANNELS as $channel) {
             $missing[$channel] = $listing ? $mapper->missing($listing, $channel) : ['listing' => 'Create the direct booking listing first'];
         }
 
