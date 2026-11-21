@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\Repull\RepullClient;
+use App\Services\Repull\RepullException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
