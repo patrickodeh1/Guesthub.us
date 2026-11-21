@@ -8,6 +8,11 @@
             $sameDayCutoffTime = substr($sameDayCutoffTime, 0, 5);
         }
         $photoCount = $listing->exists ? $listing->photos->count() : 0;
+        $roomRows = old('listing_rooms', $listingRooms->map(fn ($room) => [
+            'room_type' => $room->room_type, 'room_number' => $room->room_number,
+            'room_name' => $room->room_name, 'bed_type' => $room->bed_type,
+            'bed_quantity' => $room->bed_quantity, 'is_private' => $room->is_private,
+        ])->all());
         $methodsValue = old('payment_methods', $paymentMethods->map(fn ($method) => [
             'type' => $method->type,
             'label' => $method->label,
@@ -111,6 +116,54 @@
                     <label class="field-label md:col-span-2">House rules
                         <textarea name="house_rules" rows="5" class="textarea" maxlength="20000">{{ old('house_rules', $listing->house_rules) }}</textarea>
                     </label>
+                </div>
+            </section>
+
+            <section class="card card-pad">
+                <h2 class="section-title">Rooms & sleeping arrangements</h2>
+                <p class="section-copy">Optional OTA room layout. Enable sync only when the rooms below are complete; the room list replaces the full layout on Repull.</p>
+                <label class="mt-4 flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" name="rooms_sync_enabled" value="1" @checked(old('rooms_sync_enabled', $listing->rooms_sync_enabled))>
+                    Sync this room layout to OTA channels
+                </label>
+                <div class="mt-4 grid gap-3">
+                    @foreach(range(0, 7) as $roomIndex)
+                        @php($room = $roomRows[$roomIndex] ?? [])
+                        <div class="rounded-lg border border-slate-200 p-3">
+                            <p class="mb-2 text-xs font-semibold text-slate-500">Room {{ $roomIndex + 1 }}</p>
+                            <div class="grid gap-3 md:grid-cols-3">
+                                <label class="field-label">Room type
+                                    <select name="listing_rooms[{{ $roomIndex }}][room_type]" class="input">
+                                        <option value="">Not configured</option>
+                                        @foreach(['bedroom' => 'Bedroom', 'full_bathroom' => 'Full bathroom', 'half_bathroom' => 'Half bathroom', 'living_room' => 'Living room', 'kitchen' => 'Kitchen', 'studio' => 'Studio', 'dining_room' => 'Dining room', 'family_room' => 'Family room', 'office' => 'Office', 'garage' => 'Garage', 'laundry_room' => 'Laundry room', 'entrance_to_home' => 'Entrance', 'recreation_area' => 'Recreation area', 'outdoor_space' => 'Outdoor space'] as $value => $label)
+                                            <option value="{{ $value }}" @selected(($room['room_type'] ?? '') === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label class="field-label">Room number
+                                    <input type="number" min="1" max="50" name="listing_rooms[{{ $roomIndex }}][room_number]" value="{{ $room['room_number'] ?? ($roomIndex + 1) }}" class="input">
+                                </label>
+                                <label class="field-label">Room name
+                                    <input name="listing_rooms[{{ $roomIndex }}][room_name]" value="{{ $room['room_name'] ?? '' }}" maxlength="120" class="input" placeholder="Primary bedroom">
+                                </label>
+                                <label class="field-label">Bed type
+                                    <select name="listing_rooms[{{ $roomIndex }}][bed_type]" class="input">
+                                        <option value="">No bed configured</option>
+                                        @foreach(['king_bed' => 'King', 'queen_bed' => 'Queen', 'double_bed' => 'Double', 'single_bed' => 'Single', 'sofa_bed' => 'Sofa bed', 'bunk_bed' => 'Bunk bed', 'air_mattress' => 'Air mattress', 'futon' => 'Futon'] as $value => $label)
+                                            <option value="{{ $value }}" @selected(($room['bed_type'] ?? '') === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                                <label class="field-label">Bed quantity
+                                    <input type="number" min="1" max="20" name="listing_rooms[{{ $roomIndex }}][bed_quantity]" value="{{ $room['bed_quantity'] ?? '' }}" class="input">
+                                </label>
+                                <label class="flex items-center gap-2 text-sm font-medium">
+                                    <input type="checkbox" name="listing_rooms[{{ $roomIndex }}][is_private]" value="1" @checked($room['is_private'] ?? true)>
+                                    Private room
+                                </label>
+                            </div>
+                        </div>
+                    @endforeach
                 </div>
             </section>
 
