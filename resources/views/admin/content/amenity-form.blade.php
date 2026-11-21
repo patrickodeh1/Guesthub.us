@@ -18,6 +18,10 @@
             <h2 class="section-title">Details</h2>
             <label class="field-label mt-6">Title <span class="text-red-600">*</span><input name="title" value="{{ old('title', $amenity->title) }}" required placeholder="Fitness Center" class="input"></label>
             <label class="field-label mt-5">Icon label<input name="icon" value="{{ old('icon', $amenity->icon) }}" placeholder="Fitness Center, Pool, Parking" class="input"></label>
+            <label class="field-label mt-5">Repull amenity ID (optional)
+                <input name="repull_amenity_id" value="{{ old('repull_amenity_id', $amenity->repull_amenity_id) }}" class="input" placeholder="e.g. wifi, kitchen, free_parking">
+                <span class="field-help">Use the exact canonical amenity ID supported by Repull. Unmapped amenities remain in the GuestHub guide but are not sent to OTA channels.</span>
+            </label>
             <label class="field-label mt-5">Details<textarea name="details" rows="6" placeholder="Open daily from 6:00 AM to 10:00 PM..." class="textarea">{{ old('details', $amenity->details) }}</textarea></label>
             <label class="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" name="active" value="1" @checked(old('active', $amenity->active ?? true)) class="rounded border-slate-300"> Active</label>
             <button class="btn-primary mt-6">{{ $amenity->exists ? 'Save Amenity' : 'Add Amenity' }}</button>
