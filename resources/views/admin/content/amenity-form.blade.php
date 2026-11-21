@@ -19,8 +19,16 @@
             <label class="field-label mt-6">Title <span class="text-red-600">*</span><input name="title" value="{{ old('title', $amenity->title) }}" required placeholder="Fitness Center" class="input"></label>
             <label class="field-label mt-5">Icon label<input name="icon" value="{{ old('icon', $amenity->icon) }}" placeholder="Fitness Center, Pool, Parking" class="input"></label>
             <label class="field-label mt-5">Repull amenity ID (optional)
-                <input name="repull_amenity_id" value="{{ old('repull_amenity_id', $amenity->repull_amenity_id) }}" class="input" placeholder="e.g. wifi, kitchen, free_parking">
-                <span class="field-help">Use the exact canonical amenity ID supported by Repull. Unmapped amenities remain in the GuestHub guide but are not sent to OTA channels.</span>
+                <input name="repull_amenity_id" list="repull-amenity-options" value="{{ old('repull_amenity_id', $amenity->repull_amenity_id) }}" class="input" placeholder="Choose a confirmed Repull ID or enter one manually">
+                <datalist id="repull-amenity-options">
+                    @foreach($repullAmenities as $repullAmenity)
+                        <option value="{{ $repullAmenity->canonical_id }}" label="{{ $repullAmenity->label }}{{ $repullAmenity->category ? ' · '.$repullAmenity->category : '' }}"></option>
+                    @endforeach
+                </datalist>
+                <span class="field-help">Choose an approved ID from the shared catalog or enter an ID confirmed by Repull. Unmapped amenities remain in the GuestHub guide but are not sent to OTA channels.</span>
+                @if(auth()->user()?->hasRole('admin'))
+                    <span class="field-help"><a class="underline" href="{{ route('admin.repull-amenities.index') }}">Manage the shared Repull amenity catalog</a>.</span>
+                @endif
             </label>
             <label class="field-label mt-5">Details<textarea name="details" rows="6" placeholder="Open daily from 6:00 AM to 10:00 PM..." class="textarea">{{ old('details', $amenity->details) }}</textarea></label>
             <label class="mt-5 flex items-center gap-3 text-sm font-semibold"><input type="checkbox" name="active" value="1" @checked(old('active', $amenity->active ?? true)) class="rounded border-slate-300"> Active</label>
