@@ -58,7 +58,9 @@ class RepullListingService
         return ChannelConnection::query()
             ->where('owner_id', $ownerId)
             ->where('channel', $channel)
+            ->where('provider', 'repull')
             ->where('status', 'connected')
+            ->where('access_type', 'full_access')
             ->orderByDesc('connected_at')
             ->first();
     }
@@ -238,7 +240,7 @@ class RepullListingService
             } else {
                 throw new ChannelPublishBlocked('Unlisting is not available for '.ucfirst($channel).'.');
             }
-            $link->forceFill(['state' => 'unlisted', 'last_synced_at' => now(), 'last_error' => null])->save();
+            $link->forceFill(['state' => 'unlisted', 'live' => false, 'last_synced_at' => now(), 'last_error' => null])->save();
             $this->event($listing, $link, 'unlist', 'ok');
         } catch (RepullException $e) {
             $this->fail($listing, $link, $channel, $e);
