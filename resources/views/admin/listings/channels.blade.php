@@ -131,7 +131,7 @@
                             <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Refresh Airbnb sync status</button>
                         </form>
                     @endif
-                    @if($featureEnabled && $cap['connect'] && $accounts->isEmpty())
+                    @if($featureEnabled && $cap['connect'] && ($accounts->isEmpty() || ! $canManageChannel))
                         <form method="post" action="{{ route('admin.properties.channels.connect', [$property, $channel]) }}" class="flex flex-wrap items-end gap-2">@csrf
                             @if($channel === 'airbnb')
                                 <label class="field-label text-xs">Access level
@@ -156,10 +156,10 @@
                                     </select>
                                 </label>
                             @endif
-                            <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Connect {{ $label }}</button>
+                            <button class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{{ $accounts->isEmpty() ? 'Connect' : 'Change access' }} {{ $label }}</button>
                         </form>
                     @endif
-                    @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing)
+                    @if($featureEnabled && $cap['publish'] && $accounts->isNotEmpty() && $listing && $canManageChannel)
                         <form method="post" action="{{ route('admin.properties.channels.publish', [$property, $channel]) }}">@csrf
                             @if($channel === 'booking')
                                 <label class="field-label text-xs">Booking.com property ID (only if multiple)
@@ -168,7 +168,7 @@
                             @endif
                             <button @disabled(!empty($gaps)) class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{{ $link && $link->external_listing_id ? 'Update on '.$label : 'Publish to '.$label }}</button>
                         </form>
-                        @if($featureEnabled && $link && in_array($state, ['live', 'published', 'partial']))
+                        @if($featureEnabled && $canManageChannel && $link && in_array($state, ['live', 'published', 'partial']))
                             <form method="post" action="{{ route('admin.properties.channels.unlist', [$property, $channel]) }}" onsubmit="return confirm('Take this listing off {{ $label }}?')">@csrf
                                 <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Take off market</button>
                             </form>
