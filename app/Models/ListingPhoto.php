@@ -23,12 +23,19 @@ class ListingPhoto extends Model
             }
         });
         static::deleting(function (self $photo): void {
-            if ($photo->source_channel === 'airbnb' && filled($photo->source_listing_id) && filled($photo->source_photo_id)) {
+            if ($photo->source_channel === 'airbnb' && filled($photo->source_listing_id) && filled($photo->source_photo_id) && $photo->hasPublishedAirbnbLink()) {
                 DeleteAirbnbPhoto::dispatch((string) $photo->source_listing_id, (string) $photo->source_photo_id)->afterCommit();
             }
         });
 
         static::deleted($syncListing);
+    }
+
+    protected function hasPublishedAirbnbLink(): bool
+    {
+        return $this->listing()
+            ->whereHas('channelLinks', fn ($query) => $query->where('channel', 'airbnb')->whereIn('state', ['published', 'live', 'partial']))
+            ->exists();
     }
 
     protected $fillable = ['listing_id', 'path', 'thumbnail_path', 'alt', 'sort_order', 'width', 'height'];
