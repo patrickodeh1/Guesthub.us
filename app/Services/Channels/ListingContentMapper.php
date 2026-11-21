@@ -3,6 +3,7 @@
 namespace App\Services\Channels;
 
 use App\Models\PropertyListing;
+use App\Models\RepullAmenityCatalog;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
 
@@ -82,7 +83,13 @@ class ListingContentMapper
         ];
 
         $mappedAmenities = $p?->amenities()->whereNotNull('repull_amenity_id')->get() ?? collect();
-        $amenities = $mappedAmenities->where('active', true)->pluck('repull_amenity_id')->filter()->unique()->values()->all();
+        $amenityIds = $mappedAmenities->where('active', true)->pluck('repull_amenity_id')->filter()->unique()->values()->all();
+        $disabledCatalogIds = $amenityIds === [] ? [] : RepullAmenityCatalog::query()
+            ->whereIn('canonical_id', $amenityIds)
+            ->where('active', false)
+            ->pluck('canonical_id')
+            ->all();
+        $amenities = array_values(array_diff($amenityIds, $disabledCatalogIds));
         if ($listing->amenities_sync_enabled) {
             // Repull replaces the complete canonical set when this key is present.
             $payload['amenities'] = $amenities;
