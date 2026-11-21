@@ -87,13 +87,16 @@ class RepullConnectService
             throw new RepullException('This channel account is already connected to another host.', 'account_conflict');
         }
 
+        $accessType = $meta['access_type'] ?? $connection->access_type;
+        unset($meta['access_type']);
+
         $connection->fill([
             'owner_id' => $ownerId,
             'status' => 'connected',
-            'access_type' => $meta['access_type'] ?? $connection->access_type,
+            'access_type' => $accessType,
             'connected_at' => $connection->connected_at ?? now(),
             'last_error' => null,
-            'meta' => array_merge($connection->meta ?? [], array_filter($meta, fn ($v) => $v !== null && $v !== '' && $v !== 'access_type')),
+            'meta' => array_merge($connection->meta ?? [], array_filter($meta, fn ($v) => $v !== null && $v !== '')),
         ])->save();
 
         return $connection;
