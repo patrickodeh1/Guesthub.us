@@ -21,7 +21,7 @@ class RepullVrboPublishTest extends TestCase
 
     public function test_vrbo_done_and_linked_job_marks_channel_live(): void
     {
-        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev']);
+        config(['repull.enabled' => true, 'repull.api_key' => 'repull-test', 'repull.base_url' => 'https://api.repull.dev', 'repull.vrbo_publish_enabled' => true]);
         [$listing, $link] = $this->makePublishingLink();
         $link->forceFill(['content_hash' => app(ListingContentMapper::class)->hash($listing->load('property', 'photos'))])->save();
 
