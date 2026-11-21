@@ -226,4 +226,22 @@ class ListingChannelAccessTest extends TestCase
         $this->assertSame('published', $fresh->state);
     }
 
+
+    public function test_messaging_only_connection_cannot_be_used_for_content_or_unlisting(): void
+    {
+        $owner = $this->owner();
+        $listing = $this->listingFor($owner);
+        ChannelConnection::create([
+            'owner_id' => $owner->id,
+            'provider' => 'repull',
+            'channel' => 'airbnb',
+            'external_account_id' => 'airbnb-account-messaging',
+            'status' => 'connected',
+            'access_type' => 'messaging',
+        ]);
+
+        $service = app(\App\\Services\\Channels\\RepullListingService::class);
+        $this->assertNull($service->connectionFor($listing->load('property'), 'airbnb'));
+    }
+
 }
