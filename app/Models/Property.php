@@ -46,6 +46,20 @@ class Property extends Model
                 report($e);
             }
         });
+
+        static::updated(function (self $property): void {
+            if (! $property->wasChanged([
+                'address', 'city', 'state', 'zip', 'latitude', 'longitude',
+                'beds', 'baths', 'country', 'amenities',
+            ])) {
+                return;
+            }
+
+            $listingId = $property->listing()->value('id');
+            if ($listingId) {
+                PropertyListing::queueChannelContentSync((int) $listingId);
+            }
+        });
     }
 
     /**
