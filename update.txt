@@ -1,0 +1,42 @@
+GuestHub Repull integration — implementation delivery
+Branch: feature/repull-foundation
+Date: 2026-11-21
+
+Implemented in this delivery
+- Repull connection foundation, host-owned connection records, signed Connect state, webhook verification/deduplication, and per-listing channel state.
+- Airbnb and Booking.com content publishing workflows, Booking.com setup/readiness/licence submission, channel offline/online actions, Airbnb listing import into an unpublished draft, and per-listing Airbnb sync status.
+- Published listing auto-sync on canonical listing, property, amenity, room-layout and photo changes. Unchanged content is skipped using a content hash.
+- Airbnb import now verifies the selected remote listing AND connection/account belong to the current host before pulling data.
+- Publish failures are recorded and surfaced; queue retries are limited to retryable vendor/network failures.
+- Multiple bed types/quantities can be configured per room.
+- Repull readiness results are displayed per channel; OTA-managed title/description fields are marked in the listing editor.
+- Vrbo remains opt-in beta. Publishing is disabled by default (REPULL_VRBO_PUBLISH_ENABLED=false), and the code refuses to edit an existing Vrbo listing.
+- Host-branded pages, slug collision checks/availability feedback, logo/brand styling, slug aliases, custom-domain ownership verification, and custom-host route isolation.
+- Repull channel sync is a recurring subscription add-on (repull_channel_sync), priced by the admin as a per-listing add-on in Packages/Plan. It is not a standalone one-off charge.
+
+How to access
+- Admin → Properties → Direct booking listing → Channels.
+- Admin → Host site for logo, brand, slug and optional custom domain.
+- Host → Settings → Plan to select the OTA channel-sync subscription add-on.
+- Admin → Packages / Features to configure the recurring per-listing add-on price.
+
+Deployment / local verification
+1. Back up the database and deploy this branch only after reviewing it.
+2. Set REPULL_ENABLED=false until a production Repull key and webhook secret are configured. Never commit either secret.
+3. Keep REPULL_VRBO_PUBLISH_ENABLED=false until the Vrbo throwaway-account and terms gate passes.
+4. Configure REPULL_API_KEY, REPULL_WEBHOOK_SECRET and the webhook URL under the /welcome base path.
+5. Run: php artisan migrate
+6. Run: php artisan test --filter=Repull
+7. Run: php artisan test --filter=ListingChannelAccess
+8. Run the remaining targeted tests, then the full suite.
+9. Run: npm run build
+10. Run: php artisan view:clear
+11. Run: php artisan queue:restart
+12. Ensure the database queue worker and scheduler are running.
+
+External verification still required before enabling real hosts
+- Repull webhook payload shape, Connect callback/access tiers, Airbnb/Booking publish response shapes, photo retrieval under /welcome, and real channel readiness.
+- Repull workspace pricing/active-listing definition, SLA, account revocation behaviour, and Vrbo login terms/capabilities.
+- Channex-compatible ARI + booking revision/webhook/ack and host-by-host migration/cutover.
+- Custom-domain DNS target and edge TLS configuration (Cloudflare for SaaS or equivalent).
+- The Laravel migrations/tests and production build must be run in the checked-out project environment. No live OTA success is claimed by this file.
