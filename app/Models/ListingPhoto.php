@@ -22,6 +22,12 @@ class ListingPhoto extends Model
                 $syncListing($photo);
             }
         });
+        static::deleting(function (self $photo): void {
+            if ($photo->source_channel === 'airbnb' && filled($photo->source_listing_id) && filled($photo->source_photo_id)) {
+                DeleteAirbnbPhoto::dispatch((string) $photo->source_listing_id, (string) $photo->source_photo_id)->afterCommit();
+            }
+        });
+
         static::deleted($syncListing);
     }
 
