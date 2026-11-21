@@ -279,6 +279,48 @@ class RepullListingService
 
     // ── internals ───────────────────────────────────────────────────────────
 
+    private function startVrboPublish(PropertyListing $listing, ListingChannelLink $link, ChannelConnection $connection, string $remoteId): ListingChannelLink
+    {
+        $body = [];
+        if (filled($connection->external_account_id)) {
+            $body['accountId'] = (string) $connection->external_account_id;
+        }
+        if (filled(data_get($link->meta, 'vrbo_property_id'))) {
+            $body['propertyId'] = (string) data_get($link->meta, 'vrbo_property_id');
+        }
+        if (filled($link->external_listing_id)) {
+            $body['vrboListingNumber'] = (string) $link->external_listing_id;
+        }
+
+        $response = $this->client->publishVrbo($remoteId, $body);
+        $jobId = (string) (data_get($response, 'job.jobId') ?? data_get($response, 'data.job.jobId') ?? '');
+        if ($jobId === '') {
+            throw new RepullException('Repull did not return a Vrbo publish job id.', 'invalid_response');
+        }
+
+        $mode = (string) (data_get($response, 'mode') ?? data_get($response, 'job.mode') ?? (filled($link->external_listing_id) ? 'update' : 'create'));
+        $propertyId = data_get($response, 'job.propertyId') ?? data_get($response, 'propertyId');
+        $meta = $link->meta ?? [];
+        $meta['vrbo_job_id'] = $jobId;
+        $meta['vrbo_job_mode'] = $mode;
+        $meta['vrbo_account_id'] = (string) $connection->external_account_id;
+        if (filled($propertyId)) {
+            $meta['vrbo_property_id'] = (string) $propertyId;
+        }
+
+        $link->forceFill([
+            'state' => 'publishing',
+            'last_error' => null,
+            'meta' => $meta,
+            'content_hash' => $this->mapper->hash($listing),
+        ])->save();
+
+        \\App\\Jobs\\PollRepullVrboPublish::dispatch($link->id, $remoteId, $jobId, $mode, 0)
+            ->delay(now()->addSeconds(10));
+
+        return $link->fresh();
+    }
+
     private function publishAirbnb(PropertyListing $listing, ListingChannelLink $link, ChannelConnection $connection, string $remoteId, bool $force, string $idem): array
     {
         if (blank($link->external_listing_id)) {
