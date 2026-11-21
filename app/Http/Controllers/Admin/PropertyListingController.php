@@ -166,6 +166,7 @@ class PropertyListingController extends Controller
             'property_type' => $data['property_type'],
             'room_type' => $data['room_type'],
             'rooms_sync_enabled' => $roomsSyncEnabled,
+            'amenities_sync_enabled' => (bool) ($data['amenities_sync_enabled'] ?? false),
             'base_rate_cents' => $baseRateCents,
             'cleaning_fee_cents' => $cleaningFeeCents,
             'tax_percent' => $data['tax_percent'] ?? null,
