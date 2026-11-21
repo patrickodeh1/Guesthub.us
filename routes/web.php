@@ -552,6 +552,8 @@ Route::middleware(['auth', 'role:admin,owner,company,manager', 'booking.access',
     })->name('search');
 });
 Route::get('/img/{path}', [ImageController::class, 'show'])->where('path', '.*')->middleware('private.files');
+Route::get('/channel-media/{listingPhoto}', [\\App\\Http\\Controllers\\ChannelMediaController::class, 'show'])
+    ->middleware('signed')->name('channels.media.show');
 Route::get('/og/{path}', [ImageController::class, 'og'])->where('path', '.*')->middleware('private.files');
 if (! function_exists('serveVideoStream')) {
     function serveVideoStream($fullPath, $mimeType)
