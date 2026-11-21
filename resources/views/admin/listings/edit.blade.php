@@ -14,7 +14,7 @@
         $roomRows = old('listing_rooms', $listingRooms->map(fn ($room) => [
             'room_type' => $room->room_type, 'room_number' => $room->room_number,
             'room_name' => $room->room_name, 'bed_type' => $room->bed_type,
-            'bed_quantity' => $room->bed_quantity, 'beds' => $room->beds ?: [], 'is_private' => $room->is_private,
+            'bed_quantity' => $room->bed_quantity, 'beds' => $room->beds ?: (filled($room->bed_type) && filled($room->bed_quantity) ? [['bedType' => $room->bed_type, 'quantity' => $room->bed_quantity]] : []), 'is_private' => $room->is_private,
         ])->all());
         $methodsValue = old('payment_methods', $paymentMethods->map(fn ($method) => [
             'type' => $method->type,
