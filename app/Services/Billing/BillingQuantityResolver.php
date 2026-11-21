@@ -71,7 +71,8 @@ class BillingQuantityResolver
             'per_channel_listing' => PropertyListing::query()
                 ->whereNotNull('repull_listing_id')
                 ->whereHas('property', fn ($query) => $query->whereIn('id', $propertyIds))
-                ->whereHas('channelLinks', fn ($query) => $query->whereIn('state', ['published', 'live', 'partial']))
+                // Repull bills the canonical listing once, regardless of channel count or
+                // whether an individual channel is currently live/unlisted.
                 ->distinct('property_listings.id')->count('property_listings.id'),
         ];
     }
